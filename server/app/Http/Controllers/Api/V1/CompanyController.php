@@ -36,7 +36,7 @@ class CompanyController extends Controller
             : null;
 
         // A própria empresa mais as que a agência dela gere (relação ativa); o root vê todas.
-        $filter = $user->role === 'root' ? [] : ['id' => [(int) $user->company_id, ...app(CompanyAccess::class)->managedCompanyIds($user)]];
+        $filter = $user->isRoot() ? [] : ['id' => [(int) $user->company_id, ...app(CompanyAccess::class)->managedCompanyIds($user)]];
 
         $companies = $this->companyService->getAll(
             ['*'],
@@ -53,7 +53,7 @@ class CompanyController extends Controller
         $user = Auth::user();
 
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->role !== 'root') {
+        if (! $user->isRoot()) {
             return ApiResponse::error('Acesso negado: utilziador não tem permissão para criar empresa.', 403);
         }
 
@@ -88,7 +88,7 @@ class CompanyController extends Controller
     {
         // Bloqueia caso o usuário não pertença à empresa da rota
         if (! $this->authorizeCompany($id)) {
-            return ApiResponse::error('Acesso negado: utilziador não tem permissão para aceder a empresa.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         $company = $this->companyService->findOrFail($id, 'id');
@@ -119,10 +119,7 @@ class CompanyController extends Controller
 
     public function destroy(int $id)
     {
-        // Apagar uma empresa (e tudo o que dela depende) é só do root.
-        if (Auth::user()?->role !== 'root') {
-            return ApiResponse::error('Acesso restrito ao administrador da plataforma.', 403);
-        }
+        // Apagar uma empresa (e tudo o que dela depende) é só do root: plataforma.configurar, verificada na rota (ACL).
 
         $this->companyService->destroy($id);
         return ApiResponse::success(null, 'Company deleted successfully.');

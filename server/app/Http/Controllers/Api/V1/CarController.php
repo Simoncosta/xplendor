@@ -526,7 +526,7 @@ class CarController extends Controller
     public function recropImage(Request $request, int $companyId, int $carId, int $imageId): JsonResponse
     {
         if (!$this->authorizeCompanyAccess($companyId)) {
-            return ApiResponse::error('Acesso negado.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         $image = CarImage::where('id', $imageId)

@@ -65,7 +65,7 @@ class CompanySetupLinkController extends Controller
     {
         return ApiResponse::success([
             'events' => $this->links->history($companyId),
-            'can_manage' => CollaboratorService::canConfigureIntegrations($request->user(), $companyId),
+            'can_manage' => $this->can($companyId, 'integracoes.configurar', ['sensitive' => true]),
         ], 'Histórico das ligações.');
     }
 

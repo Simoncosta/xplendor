@@ -61,9 +61,9 @@ class CompanyChargeController extends Controller
         return ExpenseCharge::where('company_id', $companyId)->where('status', '!=', ExpenseCharge::CANCELLED)->findOrFail($chargeId);
     }
 
-    /** Os utilizadores da própria empresa e o root; a agência gestora nunca. */
+    /** A agência gestora nunca vê as cobranças: o teto não dá faturacao_xplendor (ACL, na rota). Aqui fica a empresa. */
     private function assertCompany(int $companyId): void
     {
-        abort_if(! $this->authorizeCompany($companyId) || $this->viaAgency($companyId), 403, 'As cobranças da XPLENDOR são só da própria empresa.');
+        abort_if(! $this->authorizeCompany($companyId), 403, 'Acesso negado: utilizador inválido.');
     }
 }

@@ -38,10 +38,10 @@ class RestaurantMarketingDataController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $isRoot = $this->isRoot($request);
+        $isRoot = $this->can($companyId, 'plataforma.configurar'); // os postos de venda do relatório anual: só o root
 
         return ApiResponse::success($this->quality->card($companyId) + [
-            'can_manage' => CollaboratorService::canConfigureIntegrations($request->user(), $companyId),
+            'can_manage' => $this->can($companyId, 'restauracao.configurar', ['sensitive' => true]),
             // Postos de venda do relatório anual: só o root os vê e edita.
             'can_edit_locals' => $isRoot,
             'annual_locals' => $isRoot ? app(PingwinService::class)->annualLocals($companyId) : null,
@@ -51,9 +51,6 @@ class RestaurantMarketingDataController extends Controller
     // PUT /companies/{id}/integrations/pingwin/annual-locals   Body: { locals: "id,id" | "" } (só root)
     public function annualLocals(Request $request, int $companyId)
     {
-        if (! $this->authorizeCompany($companyId) || ! $this->isRoot($request)) {
-            abort(403, 'Só o root define os postos de venda do relatório anual.');
-        }
         $data = $request->validate([
             'locals' => ['present', 'nullable', 'string', 'max:500', 'regex:/^\s*(\d{1,20}\s*(,\s*\d{1,20}\s*)*)?$/'],
         ], ['locals.regex' => 'Indique os IDs dos postos de venda (só números), separados por vírgulas.']);
@@ -93,14 +90,13 @@ class RestaurantMarketingDataController extends Controller
         }
 
         return ApiResponse::success($this->categories->list($companyId) + [
-            'can_manage' => CollaboratorService::canConfigureIntegrations($request->user(), $companyId),
+            'can_manage' => $this->can($companyId, 'restauracao.configurar', ['sensitive' => true]),
         ], 'Categorias das famílias.');
     }
 
     // POST /companies/{id}/integrations/pingwin/family-categories/ai-suggest
     public function suggest(Request $request, int $companyId)
     {
-        $this->assertCanManage($request, $companyId);
         try {
             $count = $this->categories->suggestWithAi($companyId, $request->user()->id);
         } catch (AiProviderException $e) {
@@ -116,7 +112,6 @@ class RestaurantMarketingDataController extends Controller
     // POST /companies/{id}/integrations/pingwin/excluded-items/{itemId}/include   ("Voltar a incluir" um artigo excluído das sugestões)
     public function includeItem(Request $request, int $companyId, int $itemId)
     {
-        $this->assertCanManage($request, $companyId);
         app(\App\Services\Restaurant\RestaurantSignalPanelService::class)->includeItem($companyId, $itemId, $request->user());
 
         return ApiResponse::success($this->categories->list($companyId) + ['can_manage' => true], 'Artigo incluído de novo nas sugestões.');
@@ -125,7 +120,6 @@ class RestaurantMarketingDataController extends Controller
     // PUT /companies/{id}/integrations/pingwin/family-categories   Body: { items: [{ family_pingwin_id, category }] }
     public function confirm(Request $request, int $companyId)
     {
-        $this->assertCanManage($request, $companyId);
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1', 'max:200'],
             'items.*.family_pingwin_id' => ['required', 'string', 'max:32'],
@@ -138,21 +132,5 @@ class RestaurantMarketingDataController extends Controller
 
         return ApiResponse::success($this->categories->list($companyId) + ['can_manage' => true],
             $count === 1 ? 'Categoria confirmada.' : "{$count} categorias confirmadas.");
-    }
-
-    /** Regra da plataforma: os postos de venda do relatório anual são só do root. */
-    private function isRoot(Request $request): bool
-    {
-        return $request->user()->role === 'root';
-    }
-
-    private function assertCanManage(Request $request, int $companyId): void
-    {
-        if (! $this->authorizeCompany($companyId)) {
-            abort(403, 'Acesso negado: utilizador inválido.');
-        }
-        if (! CollaboratorService::canConfigureIntegrations($request->user(), $companyId)) {
-            abort(403, 'Só o administrador da empresa ou um administrador da agência gestora pode confirmar as categorias.');
-        }
     }
 }

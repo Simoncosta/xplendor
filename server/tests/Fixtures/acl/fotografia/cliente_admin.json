@@ -7,9 +7,9 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals"
     ],
     "motivos": {
-        "DELETE api/v1/companies/{company}": "Acesso restrito ao administrador da plataforma.",
-        "POST api/v1/companies/{id}/management/first-admin": "Só a agência gestora convida o primeiro administrador.",
-        "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals": "Só o root define os postos de venda do relatório anual."
+        "DELETE api/v1/companies/{company}": "Só a equipa da plataforma pode fazer isto.",
+        "POST api/v1/companies/{id}/management/first-admin": "O seu perfil não permite configurar em Agência gestora.",
+        "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals": "Só a equipa da plataforma pode fazer isto."
     },
     "estados": {
         "DELETE api/v1/companies/{company}": 403,
@@ -148,7 +148,7 @@
         "GET api/v1/companies/{id}/integrations/pingwin/family-categories": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/heatmap": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/locations": 200,
-        "GET api/v1/companies/{id}/integrations/pingwin/marketing-data": 200,
+        "GET api/v1/companies/{id}/integrations/pingwin/marketing-data": 500,
         "GET api/v1/companies/{id}/integrations/pingwin/payment-conditions": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/payment-conditions/creation/{creationId}": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/payment-conditions/docs-template": 200,

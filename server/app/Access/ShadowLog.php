@@ -34,8 +34,17 @@ final class ShadowLog
         return array_values(array_filter(self::$entries, fn ($e) => $e['tipo'] !== 'inconclusivo'));
     }
 
+    /** Nos testes: cada decisão do middleware e o estado da resposta (o varrimento da F3). @var array<int, array{rota: string, permitido: bool, estado: int, motivo: ?string}> */
+    public static array $decisions = [];
+
+    public static function decision(string $route, bool $allowed, int $status, ?string $reason): void
+    {
+        self::$decisions[] = ['rota' => $route, 'permitido' => $allowed, 'estado' => $status, 'motivo' => $reason];
+    }
+
     public static function reset(): void
     {
         self::$entries = [];
+        self::$decisions = [];
     }
 }

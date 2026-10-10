@@ -23,7 +23,8 @@ namespace App\Access;
 final class CompatibilityProfiles
 {
     public const FILE = 'database/data/acl/perfis-compatibilidade.json';
-    public const SNAPSHOT_DIR = 'tests/Fixtures/acl/fotografia';
+    /** A fotografia de ANTES do ACL (congelada; a de depois de cada decisão da F3 está em tests/Fixtures/acl/fotografia). */
+    public const SNAPSHOT_DIR = 'tests/Fixtures/acl/fotografia-antes';
 
     public const CLIENT_ADMIN = 'cliente_admin';
     public const CLIENT_USER = 'cliente_utilizador';

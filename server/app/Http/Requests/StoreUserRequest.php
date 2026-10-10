@@ -11,11 +11,9 @@ class StoreUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $auth = $this->user();
-
-        return $auth !== null
-            && $auth->role === 'admin'
-            && (int) $auth->company_id === (int) $this->route('id');
+        // Nas rotas de empresa, a permissão utilizadores.configurar é verificada na rota (ACL:
+        // app/Access/RoutePermissions.php). Sem empresa no endereço (POST /register), nunca.
+        return $this->user() !== null && $this->route('id') !== null;
     }
 
     /**

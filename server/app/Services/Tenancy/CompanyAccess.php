@@ -79,6 +79,12 @@ class CompanyAccess
             || $this->agencyEditsBasics($user, $companyId);
     }
 
+    /** Administra esta agência (o root também, no painel da agência). */
+    public function isAgencyAdmin(?User $user, int $agencyId): bool
+    {
+        return $user !== null && ($user->isRoot() || ($user->isAdmin() && (int) $user->company_id === $agencyId));
+    }
+
     /** A relação ativa da empresa (ou null). */
     public function management(int $managedCompanyId): ?CompanyManagement
     {

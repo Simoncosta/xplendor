@@ -16,5 +16,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(ForceJsonResponse::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // ACL: todos os 403 da API com o mesmo formato {success, message, reason, errors}.
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*')) {
+                return \App\Helpers\ApiResponse::forbidden('Não tem permissão para esta ação.', 'perfil');
+            }
+        });
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e, \Illuminate\Http\Request $request) {
+            if ($e->getStatusCode() === 403 && $request->is('api/*')) {
+                $message = $e->getMessage() !== '' ? $e->getMessage() : 'Não tem permissão para esta ação.';
+
+                return \App\Helpers\ApiResponse::forbidden($message, str_contains($message, 'impersonation') ? \App\Access\Decision::IMPERSONATION : null);
+            }
+        });
     })->create();

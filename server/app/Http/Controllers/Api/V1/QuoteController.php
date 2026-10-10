@@ -56,9 +56,6 @@ class QuoteController extends Controller
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
-        if ($this->viaAgency($companyId)) {
-            return ApiResponse::error('As decisões sobre orçamentos são do cliente.', 403);
-        }
 
         $quote = $this->findScoped($companyId, $id);
         if (! $quote) {

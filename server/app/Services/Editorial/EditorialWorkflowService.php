@@ -153,12 +153,10 @@ class EditorialWorkflowService
             || app(CompanyAccess::class)->viaAgency($user, $companyId);
     }
 
+    /** Aprovar e pedir alterações: editorial.aprovar no ACL (app/Access), nunca em impersonation (decisão do cliente). */
     public static function isApprover(User $user, int $companyId): bool
     {
-        return $user->role !== 'root'
-            && (int) $user->company_id === $companyId
-            && ($user->role === 'admin' || (bool) $user->can_approve_content)
-            && ! ImpersonationSession::activeFor($user);
+        return app(\App\Access\Access::class)->can($user, $companyId, 'editorial.aprovar', ['sensitive' => true])->allowed;
     }
 
     // ── Passagens ────────────────────────────────────────────────────────────

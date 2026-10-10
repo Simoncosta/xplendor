@@ -33,7 +33,9 @@ final class Permissions
     public const AREAS = [
         'empresa' => ['label' => 'Empresa', 'module' => null, 'actions' => ['ver', 'editar', 'aprovar']],
         'utilizadores' => ['label' => 'Utilizadores e equipa', 'module' => null, 'actions' => ['ver', 'criar', 'editar', 'apagar', 'configurar']],
-        'integracoes' => ['label' => 'Integrações', 'module' => null, 'actions' => ['ver', 'editar', 'configurar']],
+        // D7: ligar, alterar e desligar QUALQUER integração é integracoes.configurar (antes, o
+        // PingWin, o CoverManager, o GA4 e a Carmine eram "editar", ao alcance de um utilizador).
+        'integracoes' => ['label' => 'Integrações', 'module' => null, 'actions' => ['ver', 'configurar']],
         'faturacao_xplendor' => ['label' => 'Faturação da XPLENDOR', 'module' => null, 'actions' => ['ver', 'aprovar']],
         'editorial' => ['label' => 'Linha Editorial', 'module' => 'linha_editorial', 'actions' => ['ver', 'criar', 'editar', 'aprovar', 'apagar', 'configurar']],
         'blog' => ['label' => 'Blog', 'module' => null, 'actions' => ['ver', 'criar', 'editar', 'aprovar', 'apagar']],
@@ -53,6 +55,21 @@ final class Permissions
 
     /** D1: decisões do cliente. Nem o root nem a agência as tomam. */
     public const CLIENT_DECISIONS = ['editorial.aprovar', 'blog.aprovar', 'faturacao_xplendor.aprovar', 'empresa.aprovar'];
+
+    /**
+     * Regra transversal de hoje: em sessão como cliente (impersonation), a equipa da
+     * plataforma edita os conteúdos da empresa (equipa, departamentos, marca e fluxo
+     * editorial), mesmo que o utilizador impersonado não os possa editar.
+     */
+    public const IMPERSONATION_GRANTS = [
+        'utilizadores.criar', 'utilizadores.editar', 'utilizadores.apagar', 'marca.criar', 'marca.editar', 'editorial.configurar',
+    ];
+
+    /**
+     * O aprovador de conteúdos (a coluna can_approve_content, escolhida na Linha Editorial)
+     * aprova na Linha Editorial e, desde a decisão D6, também no blog.
+     */
+    public const APPROVER_GRANTS = ['editorial.aprovar', 'blog.aprovar'];
 
     /** Rótulos das ações em frases ("aprovar na Linha Editorial"). */
     public const ACTION_PHRASES = [

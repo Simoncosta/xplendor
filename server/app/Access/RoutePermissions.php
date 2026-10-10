@@ -63,16 +63,16 @@ final class RoutePermissions
         'GET {id}/users/{user}' => 'utilizadores.ver',
         'PUT {id}/users/{user}' => 'utilizadores.configurar',
         // ── integracoes ──
-        'POST {id}/carmine-connection' => 'integracoes.editar',
-        'DELETE {id}/carmine-connection/{carmine_connection}' => 'integracoes.editar',
+        'POST {id}/carmine-connection' => 'integracoes.configurar', // D7
+        'DELETE {id}/carmine-connection/{carmine_connection}' => 'integracoes.configurar', // D7
         'GET {id}/carmine-connection/{carmine_connection}' => 'integracoes.ver',
-        'PUT {id}/carmine-connection/{carmine_connection}' => 'integracoes.editar',
+        'PUT {id}/carmine-connection/{carmine_connection}' => 'integracoes.configurar', // D7
         'GET {id}/integrations' => 'integracoes.ver',
-        'DELETE {id}/integrations/covermanager' => 'integracoes.editar',
+        'DELETE {id}/integrations/covermanager' => 'integracoes.configurar', // D7
         'GET {id}/integrations/covermanager' => 'integracoes.ver',
-        'POST {id}/integrations/covermanager/connect' => 'integracoes.editar',
-        'DELETE {id}/integrations/google' => 'integracoes.editar',
-        'POST {id}/integrations/google/connect' => 'integracoes.editar',
+        'POST {id}/integrations/covermanager/connect' => 'integracoes.configurar', // D7
+        'DELETE {id}/integrations/google' => 'integracoes.configurar', // D7
+        'POST {id}/integrations/google/connect' => 'integracoes.configurar', // D7
         'GET {id}/integrations/history' => 'integracoes.ver',
         'DELETE {id}/integrations/meta' => 'integracoes.configurar',
         'PATCH {id}/integrations/meta/account' => 'integracoes.configurar',
@@ -81,7 +81,7 @@ final class RoutePermissions
         'POST {id}/integrations/meta/connect' => 'integracoes.configurar',
         'GET {id}/integrations/meta/oauth-url' => 'integracoes.configurar',
         'GET {id}/integrations/pingwin' => 'integracoes.ver',
-        'POST {id}/integrations/pingwin/connect' => 'integracoes.editar',
+        'POST {id}/integrations/pingwin/connect' => 'integracoes.configurar', // D7
         'DELETE {id}/integrations/social' => 'integracoes.configurar',
         'GET {id}/integrations/social' => 'integracoes.ver',
         'PUT {id}/integrations/social/accounts' => 'integracoes.configurar',
@@ -407,6 +407,103 @@ final class RoutePermissions
         'POST {id}/integrations/pingwin/excluded-items/{itemId}/include',
         'POST {id}/integrations/pingwin/family-categories/ai-suggest',
         'PUT {id}/integrations/pingwin/family-categories',
+    ];
+
+    /**
+     * D8: módulos verificados no backend nas rotas que hoje só o menu escondia (os 9 de
+     * restauracao_*, marketing_analytics e support_tasks). Só as rotas EXCLUSIVAS de cada
+     * módulo: as partilhadas com páginas de outros módulos (por exemplo, a lista dos
+     * fornecedores do PingWin, usada nos artigos e nos fornecedores) ficam só com o módulo
+     * principal. Somam-se aos ensure_module da própria rota.
+     */
+    public const MODULES = [
+        'GET {id}/integrations/pingwin/locations' => 'restauracao_lojas',
+        'POST {id}/integrations/pingwin/locations' => 'restauracao_lojas',
+        'PATCH {id}/integrations/pingwin/locations/{locationId}' => 'restauracao_lojas',
+        'DELETE {id}/integrations/pingwin/locations/{locationId}' => 'restauracao_lojas',
+        'POST {id}/integrations/covermanager/sync' => 'restauracao_lojas',
+        'POST {id}/integrations/restaurant/sync-period' => 'restauracao_lojas',
+        'GET {id}/analytics/pingwin/calendar' => 'restauracao_calendario',
+        'GET {id}/integrations/pingwin/documents' => 'restauracao_documentos',
+        'POST {id}/integrations/pingwin/documents/sync' => 'restauracao_documentos',
+        'POST {id}/integrations/pingwin/documents/sync-rich' => 'restauracao_documentos',
+        'POST {id}/integrations/pingwin/documents' => 'restauracao_documentos',
+        'GET {id}/integrations/pingwin/documents/writes/{writeId}' => 'restauracao_documentos',
+        'PUT {id}/integrations/pingwin/documents/{externalId}' => 'restauracao_documentos',
+        'DELETE {id}/integrations/pingwin/documents/{externalId}' => 'restauracao_documentos',
+        'GET {id}/integrations/pingwin/documents/{externalId}' => 'restauracao_documentos',
+        'GET {id}/integrations/pingwin/catalog' => 'restauracao_artigos',
+        'POST {id}/integrations/pingwin/catalog/sync' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/articles/form-lookups' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/articles/{productId}' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/articles/read/{token}' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/articles/{catalogItemId}/supplier-prices' => 'restauracao_artigos',
+        'POST {id}/integrations/pingwin/articles' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/articles/creation/{creationId}' => 'restauracao_artigos',
+        'PUT {id}/integrations/pingwin/articles/{catalogItemId}' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/articles/edition/{creationId}' => 'restauracao_artigos',
+        'DELETE {id}/integrations/pingwin/articles/{catalogItemId}' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/articles/deletion/{creationId}' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/families' => 'restauracao_familias',
+        'POST {id}/integrations/pingwin/families/sync' => 'restauracao_familias',
+        'POST {id}/integrations/pingwin/suppliers/sync' => 'restauracao_fornecedores',
+        'GET {id}/ocr/invoices' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices' => 'restauracao_faturas',
+        'GET {id}/ocr/invoices/{invoiceId}' => 'restauracao_faturas',
+        'GET {id}/ocr/invoices/{invoiceId}/image' => 'restauracao_faturas',
+        'PUT {id}/ocr/invoices/{invoiceId}' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/reprocess' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/pingwin-link' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/pingwin-link/confirm' => 'restauracao_faturas',
+        'DELETE {id}/ocr/invoices/{invoiceId}/pingwin-link' => 'restauracao_faturas',
+        'GET {id}/ocr/articles/search' => 'restauracao_faturas',
+        'GET {id}/ocr/articles/form' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/lines/accept-suggestions' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/lines/relink' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/article' => 'restauracao_faturas',
+        'DELETE {id}/ocr/invoices/{invoiceId}/lines/{lineId}/article' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/create-article' => 'restauracao_faturas',
+        'GET {id}/ocr/invoices/{invoiceId}/pingwin-launch' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch/close' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch/void' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/launch-unit' => 'restauracao_faturas',
+        'GET {id}/integrations/pingwin/supplier-documents' => 'restauracao_faturas',
+        'POST {id}/integrations/pingwin/supplier-documents/sync' => 'restauracao_faturas',
+        'GET {id}/integrations/pingwin/supplier-documents/sync-runs/{runId}' => 'restauracao_faturas',
+        'GET {id}/integrations/pingwin/units' => 'restauracao_unidades',
+        'POST {id}/integrations/pingwin/units/sync' => 'restauracao_unidades',
+        'POST {id}/integrations/pingwin/units/create' => 'restauracao_unidades',
+        'GET {id}/integrations/pingwin/units/creations/{creationId}' => 'restauracao_unidades',
+        'GET {id}/integrations/pingwin/units/{unitId}/usage' => 'restauracao_unidades',
+        'POST {id}/integrations/pingwin/units/{unitId}/edit' => 'restauracao_unidades',
+        'POST {id}/integrations/pingwin/units/{unitId}/anular' => 'restauracao_unidades',
+        'POST {id}/integrations/pingwin/payment-conditions/sync' => 'restauracao_condicoes_pagamento',
+        'GET {id}/integrations/pingwin/payment-conditions/docs-template' => 'restauracao_condicoes_pagamento',
+        'GET {id}/integrations/pingwin/payment-conditions/creation/{creationId}' => 'restauracao_condicoes_pagamento',
+        'POST {id}/integrations/pingwin/payment-conditions' => 'restauracao_condicoes_pagamento',
+        'PUT {id}/integrations/pingwin/payment-conditions/{paycondId}' => 'restauracao_condicoes_pagamento',
+        'DELETE {id}/integrations/pingwin/payment-conditions/{paycondId}' => 'restauracao_condicoes_pagamento',
+        'GET {id}/analytics/meta/overview' => 'marketing_analytics',
+        'GET {id}/analytics/meta/ad-tag-warnings' => 'marketing_analytics',
+        'GET {id}/support-tickets' => 'support_tasks',
+        'POST {id}/support-tickets' => 'support_tasks',
+        'GET {id}/support-tickets/quotes' => 'support_tasks',
+        'POST {id}/support-tickets/quotes/approve' => 'support_tasks',
+        'GET {id}/support-tickets/{ticket}' => 'support_tasks',
+        'POST {id}/support-tickets/{ticket}/messages' => 'support_tasks',
+        'PATCH {id}/support-tickets/{ticket}/quote-decision' => 'support_tasks',
+        'GET {id}/tasks' => 'support_tasks',
+        'POST {id}/tasks' => 'support_tasks',
+        'PUT {id}/tasks/{task}' => 'support_tasks',
+        'PATCH {id}/tasks/{task}/move' => 'support_tasks',
+        'DELETE {id}/tasks/{task}' => 'support_tasks',
+    ];
+
+    /** Rotas sobre a PRÓPRIA conta: a pessoa pode sempre ver e alterar a sua (rota → parâmetro do utilizador). */
+    public const SELF = [
+        'GET {id}/users/{user}' => 'user',
+        'PUT {id}/users/{user}' => 'user',
     ];
 
     /** "GET {id}/blogs" para a rota dada (null se não for uma rota de empresa). */

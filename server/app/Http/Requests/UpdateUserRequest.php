@@ -23,12 +23,9 @@ class UpdateUserRequest extends FormRequest
 
         $isSelf = (int) $auth->id === (int) $target->id;
 
-        if ($this->filled('password') && ! $isSelf) {
-            return false;
-        }
-
-        return $isSelf
-            || ($auth->role === 'admin' && (int) $auth->company_id === (int) $target->company_id);
+        // A password só a muda a própria pessoa. O resto: a própria conta, ou quem tem
+        // utilizadores.configurar (verificado na rota, ACL: app/Access/RoutePermissions.php).
+        return ! ($this->filled('password') && ! $isSelf);
     }
 
     /**

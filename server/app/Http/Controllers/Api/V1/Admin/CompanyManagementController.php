@@ -23,7 +23,7 @@ class CompanyManagementController extends Controller
 
     private function ensureRoot(): void
     {
-        abort_unless(Auth::user()?->role === 'root', 403);
+        abort_unless(Auth::user()?->isRoot(), 403);
     }
 
     /** Agências (para o campo "Gerida por"), com o número de empresas geridas ativas. */

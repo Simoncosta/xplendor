@@ -145,14 +145,14 @@ class AgencyController extends Controller
 
         return ApiResponse::success([
             'requests' => $rows->map(fn ($r) => ManagedCompanyRequestService::present($r))->values(),
-            'can_request' => $this->isAgencyAdmin($request) && $request->user()->role !== 'root',
+            'can_request' => $this->isAgencyAdmin($request) && ! $request->user()->isRoot(),
         ], 'Pedidos de nova empresa gerida.');
     }
 
     public function storeRequest(Request $request)
     {
         $agency = $this->agency($request);
-        abort_unless($this->isAgencyAdmin($request) && $request->user()->role !== 'root', 403, 'Só o administrador da agência pede novas empresas geridas.');
+        abort_unless($this->isAgencyAdmin($request) && ! $request->user()->isRoot(), 403, 'Só o administrador da agência pede novas empresas geridas.');
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'content_sector_id' => ['nullable', 'integer', Rule::exists('content_sectors', 'id')->where('is_selectable', true)],
@@ -175,7 +175,7 @@ class AgencyController extends Controller
 
         return ApiResponse::success([
             'requests' => $rows->map(fn ($r) => \App\Services\Agency\ManagementRequestService::presentForAgency($r))->values(),
-            'can_request' => $this->isAgencyAdmin($request) && $request->user()->role !== 'root',
+            'can_request' => $this->isAgencyAdmin($request) && ! $request->user()->isRoot(),
         ], 'Pedidos de gestão.');
     }
 
@@ -183,7 +183,7 @@ class AgencyController extends Controller
     public function storeManagementRequest(Request $request, \App\Services\Agency\ManagementRequestService $service)
     {
         $agency = $this->agency($request);
-        abort_unless($this->isAgencyAdmin($request) && $request->user()->role !== 'root', 403, 'Só o administrador da agência pede a gestão de uma empresa.');
+        abort_unless($this->isAgencyAdmin($request) && ! $request->user()->isRoot(), 403, 'Só o administrador da agência pede a gestão de uma empresa.');
         $data = $request->validate([
             'nipc' => ['nullable', 'required_without:email', 'regex:/^\D*(\d\D*){9}$/'],
             'email' => ['nullable', 'required_without:nipc', 'email', 'max:255'],
@@ -216,7 +216,7 @@ class AgencyController extends Controller
     public function endManagement(Request $request, int $agencyId, int $companyId)
     {
         $agency = $this->agency($request);
-        abort_unless($this->isAgencyAdmin($request) && $request->user()->role !== 'root', 403, 'Só o administrador da agência termina a relação com um cliente.');
+        abort_unless($this->isAgencyAdmin($request) && ! $request->user()->isRoot(), 403, 'Só o administrador da agência termina a relação com um cliente.');
         $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:500']], ['reason.required' => 'Indique o motivo.']);
         $company = \App\Models\Company::findOrFail($companyId);
         $this->managements->endByAgency($agency, $company, $request->user(), $data['reason']);
@@ -237,7 +237,7 @@ class AgencyController extends Controller
     {
         $user = $request->user();
 
-        return $user->role === 'root' || ($user->role === 'admin' && (int) $user->company_id === $this->agency($request)->id);
+        return app(\App\Services\Tenancy\CompanyAccess::class)->isAgencyAdmin($user, $this->agency($request)->id);
     }
 
     private function assertAgencyAdmin(Request $request): void

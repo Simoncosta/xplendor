@@ -32,7 +32,6 @@ class CompanyIntegrationController extends Controller
     // Body: { short_lived_token: string, account_id: string }
     public function connectMeta(Request $request, int $companyId): JsonResponse
     {
-        $this->assertCanManage($request, $companyId);
         $request->validate([
             'short_lived_token' => 'required|string',
             'account_id'        => 'required|string',
@@ -82,7 +81,6 @@ class CompanyIntegrationController extends Controller
     // token mas não pode perguntar o account_id). Body: { account_id: string }
     public function setMetaAccount(Request $request, int $companyId): JsonResponse
     {
-        $this->assertCanManage($request, $companyId);
         $request->validate(['account_id' => 'required|string']);
 
         // Normaliza "act_123", grava, dispara o backfill de 90 dias (apaga os dados da conta
@@ -96,7 +94,6 @@ class CompanyIntegrationController extends Controller
     // As contas de anúncios a que a autorização atual dá acesso (para escolher numa lista).
     public function metaAdAccounts(Request $request, int $companyId): JsonResponse
     {
-        $this->assertCanManage($request, $companyId);
         $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', 'meta')->first();
 
         return ApiResponse::success([
@@ -115,7 +112,6 @@ class CompanyIntegrationController extends Controller
     //   Também serve para apagar o histórico de uma integração já desligada.
     public function disconnectMeta(Request $request, int $companyId): JsonResponse
     {
-        $this->assertCanManage($request, $companyId);
         $data = $request->validate([
             'purge'        => 'sometimes|boolean',
             'confirmation' => 'nullable|string',
@@ -129,14 +125,6 @@ class CompanyIntegrationController extends Controller
         $result = app(\App\Services\Integrations\MetaAdsDisconnector::class)->disconnect($companyId, $purge, $request->user()?->id);
 
         return ApiResponse::success($result, $purge ? 'Meta Ads desligado e dados da Meta apagados.' : 'Meta Ads desconectado.');
-    }
-
-    /** Ligar e desligar os anúncios: admin da empresa, root ou admin da agência gestora, fora de impersonation. */
-    private function assertCanManage(Request $request, int $companyId): void
-    {
-        if (! CollaboratorService::canConfigureIntegrations($request->user(), $companyId)) {
-            abort(403, 'Só o administrador da empresa ou um administrador da agência gestora pode ligar ou desligar os anúncios da Meta.');
-        }
     }
 
     // GET /companies/{id}/integrations/meta/adsets

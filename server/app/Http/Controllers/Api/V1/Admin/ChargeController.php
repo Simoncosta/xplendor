@@ -25,7 +25,7 @@ class ChargeController extends Controller
 
     private function ensureRoot(): void
     {
-        abort_unless(Auth::user()?->role === 'root', 403);
+        abort_unless(Auth::user()?->isRoot(), 403);
     }
 
     public function index(Request $request)

@@ -22,16 +22,13 @@ class BrandProfileController extends Controller
     {
         return ApiResponse::success(
             $this->present(CompanyBrandProfile::where('company_id', $companyId)->first())
-                + ['can_edit' => CollaboratorService::canEditContent($request->user(), $companyId)],
+                + ['can_edit' => $this->can($companyId, 'marca.editar')],
             'Perfil carregado.'
         );
     }
 
     public function update(Request $request, int $companyId)
     {
-        if (! CollaboratorService::canEditContent($request->user(), $companyId)) {
-            return ApiResponse::error('Só o administrador da empresa pode alterar o perfil da marca.', 403);
-        }
 
         $data = $request->validate([
             'tone_of_voice'     => ['nullable', 'string', 'max:2000'],

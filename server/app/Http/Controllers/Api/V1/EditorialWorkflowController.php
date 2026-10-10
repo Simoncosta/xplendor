@@ -151,9 +151,6 @@ class EditorialWorkflowController extends Controller
      */
     public function updateSettings(Request $request, int $companyId)
     {
-        if (! CollaboratorService::canEditContent($request->user(), $companyId)) {
-            return ApiResponse::error('Só o administrador da empresa ou ' . EditorialWorkflowService::producerLabel($companyId) . ' pode alterar o fluxo.', 403);
-        }
         $data = $request->validate([
             'content_approval_required' => ['required', 'boolean'],
             'internal_review_required' => ['required', 'boolean'],
@@ -176,9 +173,6 @@ class EditorialWorkflowController extends Controller
     /** Quem pode aprovar: só o administrador da própria empresa, fora de impersonation. */
     public function setApprover(Request $request, int $companyId, int $userId)
     {
-        if (! CollaboratorService::canManageAccess($request->user(), $companyId)) {
-            return ApiResponse::error('Só o administrador da empresa pode escolher quem aprova os conteúdos.', 403);
-        }
         $data = $request->validate(['can_approve_content' => ['required', 'boolean']]);
         $target = User::where('company_id', $companyId)->whereNull('deactivated_at')->find($userId);
         if (! $target) {
@@ -206,14 +200,14 @@ class EditorialWorkflowController extends Controller
             'internal_review_required' => (bool) $company->internal_review_required,
             'production_mode' => EditorialWorkflowService::productionMode($company->id),
             'can_change_mode' => EditorialWorkflowService::isTeam($user, (int) $company->id),
-            'can_edit' => CollaboratorService::canEditContent($user, $company->id),
-            'can_manage_approvers' => CollaboratorService::canManageAccess($user, $company->id),
+            'can_edit' => $this->can($company->id, 'editorial.configurar'),
+            'can_manage_approvers' => $this->can($company->id, 'utilizadores.configurar'),
             'users' => User::where('company_id', $company->id)->whereNull('deactivated_at')->whereIn('role', ['admin', 'user'])
                 ->orderBy('name')->get(['id', 'name', 'email', 'role', 'can_approve_content'])
                 ->map(fn (User $u) => [
                     'id' => $u->id, 'name' => $u->name, 'role' => $u->role,
-                    'is_approver' => $u->role === 'admin' || (bool) $u->can_approve_content,
-                    'by_role' => $u->role === 'admin',
+                    'is_approver' => $u->isAdmin() || (bool) $u->can_approve_content,
+                    'by_role' => $u->isAdmin(),
                 ])->all(),
         ];
     }

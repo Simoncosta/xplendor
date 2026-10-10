@@ -21,7 +21,7 @@ class ScraperController extends Controller
     public function run(Request $request, int $id)
     {
         if (! $this->authorizeCompany($id)) {
-            return ApiResponse::error('Acesso negado.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         $validated = $request->validate([
@@ -57,7 +57,7 @@ class ScraperController extends Controller
     public function executions(Request $request, int $id)
     {
         if (! $this->authorizeCompany($id)) {
-            return ApiResponse::error('Acesso negado.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         $perPage = (int) $request->input('per_page', 20);
@@ -94,7 +94,7 @@ class ScraperController extends Controller
     public function show(Request $request, int $id, int $runId)
     {
         if (! $this->authorizeCompany($id)) {
-            return ApiResponse::error('Acesso negado.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         $execution = ScraperExecution::where('id', $runId)

@@ -31,16 +31,13 @@ class FollowerSnapshotController extends Controller
 
         return ApiResponse::success(
             $this->followers->overview($companyId, $days)
-                + ['can_record' => CollaboratorService::canEditContent($request->user(), $companyId), 'automation' => $this->social->automation($companyId)],
+                + ['can_record' => $this->can($companyId, 'marca.editar'), 'automation' => $this->social->automation($companyId)],
             'Seguidores carregados.'
         );
     }
 
     public function store(Request $request, int $companyId)
     {
-        if (! CollaboratorService::canEditContent($request->user(), $companyId)) {
-            return ApiResponse::error('Só o administrador da empresa pode registar os seguidores.', 403);
-        }
 
         $data = $request->validate([
             'platform'        => ['required', Rule::in(SocialFollowerSnapshot::PLATFORMS)],

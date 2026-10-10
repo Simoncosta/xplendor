@@ -287,10 +287,11 @@ class AgencyManagementTest extends TestCase
         $this->as($this->member)->postJson($this->url($this->client, '/integrations/google/connect'), ['property_id' => '398765432'])->assertForbidden();
         $this->as($this->member)->deleteJson($this->url($this->client, '/integrations/google'))->assertForbidden();
 
-        // Os utilizadores do cliente seguem as regras da empresa (a Meta só o admin; o GA4 qualquer utilizador, como antes).
+        // Os utilizadores do cliente seguem o perfil: desde a decisão D7 do ACL, ligar QUALQUER
+        // integração (a Meta, o GA4, o PingWin…) é integracoes.configurar, só no Administrador.
         $clientUser = User::factory()->create(['company_id' => $this->client->id, 'role' => 'user']);
         $this->as($clientUser)->getJson($this->url($this->client, '/integrations/meta/oauth-url'))->assertForbidden();
-        $this->as($clientUser)->postJson($this->url($this->client, '/integrations/google/connect'), ['property_id' => '398765432'])->assertOk();
+        $this->as($clientUser)->postJson($this->url($this->client, '/integrations/google/connect'), ['property_id' => '398765432'])->assertForbidden();
     }
 
     public function test_only_agency_admins_change_pingwin_covermanager_and_carmine_credentials(): void

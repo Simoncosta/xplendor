@@ -46,11 +46,10 @@ class BlogWorkflowService
     }
 
     /** Administrador da própria empresa (o root só na sua própria empresa), fora de impersonation. */
+    /** Aprovar ou devolver artigos: blog.aprovar no ACL (app/Access), nunca em impersonation (decisão do cliente). */
     public static function canApprove(User $actor, int $companyId): bool
     {
-        return in_array($actor->role, ['admin', 'root'], true)
-            && (int) $actor->company_id === $companyId
-            && ! ImpersonationSession::activeFor($actor);
+        return app(\App\Access\Access::class)->can($actor, $companyId, 'blog.aprovar', ['sensitive' => true])->allowed;
     }
 
     public static function canEdit(User $actor, Blog $blog): bool
@@ -225,7 +224,7 @@ class BlogWorkflowService
     private function assertApprover(User $actor, Blog $blog): void
     {
         if (! self::canApprove($actor, (int) $blog->company_id)) {
-            throw new HttpException(403, 'Só o administrador da empresa pode aprovar ou devolver artigos.');
+            throw new HttpException(403, 'Só quem aprova os conteúdos da empresa pode aprovar ou devolver artigos.');
         }
     }
 

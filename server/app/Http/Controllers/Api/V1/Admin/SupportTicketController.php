@@ -32,7 +32,7 @@ class SupportTicketController extends Controller
 
     private function ensureRoot(): void
     {
-        abort_unless(Auth::user()?->role === 'root', 403);
+        abort_unless(Auth::user()?->isRoot(), 403);
     }
 
     /** Listagem TRANSVERSAL (todas as empresas) + filtros + ordenação por-tratar. */

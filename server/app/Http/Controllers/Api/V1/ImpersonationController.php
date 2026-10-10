@@ -38,7 +38,7 @@ class ImpersonationController extends Controller
         if ($target->deactivated_at !== null) {
             return ApiResponse::error('Esta conta tem o acesso retirado.', 422);
         }
-        if ($target->role === 'root') {
+        if ($target->isRoot()) {
             return ApiResponse::error('Não é possível impersonar outro administrador.', 422);
         }
         if (! $target->company_id) {

@@ -36,52 +36,13 @@ class CollaboratorService
 
     // ── Permissões ───────────────────────────────────────────────────────────
 
-    /** Conteúdo da empresa (perfil da marca, equipa, definições): admin, root, sessão como cliente ou agência gestora. */
-    public static function canEditContent(User $actor, int $companyId): bool
-    {
-        return $actor->role === 'root'
-            || ((int) $actor->company_id === $companyId && ($actor->role === 'admin' || ImpersonationSession::activeFor($actor)))
-            || app(CompanyAccess::class)->viaAgency($actor, $companyId);
-    }
-
     /**
-     * Ligar e desligar integrações (redes sociais, anúncios, GA4) com o próprio login:
-     * admin da própria empresa, o root (em qualquer empresa) ou um ADMIN da agência
-     * gestora (os outros membros da agência produzem, mas não ligam integrações).
-     * Nunca em impersonation (o login seria o do cliente).
+     * Ligar e desligar integrações com o próprio login: integracoes.configurar no ACL
+     * (app/Access), nunca em impersonation (o login seria o do cliente).
      */
     public static function canConfigureIntegrations(User $actor, int $companyId): bool
     {
-        if (ImpersonationSession::activeFor($actor)) {
-            return false;
-        }
-
-        return ($actor->role === 'admin' && (int) $actor->company_id === $companyId)
-            || $actor->role === 'root'
-            || self::isAgencyAdmin($actor, $companyId);
-    }
-
-    /** Pela agência gestora, só os admins dela ligam integrações (os utilizadores do cliente seguem as regras da empresa). */
-    public static function agencyMayConfigureIntegrations(User $actor, int $companyId): bool
-    {
-        return ! app(CompanyAccess::class)->viaAgency($actor, $companyId) || $actor->role === 'admin';
-    }
-
-    private static function isAgencyAdmin(User $actor, int $companyId): bool
-    {
-        return $actor->role === 'admin' && app(CompanyAccess::class)->viaAgency($actor, $companyId);
-    }
-
-    /**
-     * Acessos do cliente (contas dos colaboradores, aprovadores, terminar a relação com a
-     * agência): administrador da própria empresa; o root conta como admin da SUA empresa
-     * (nunca de outras). Nunca em impersonation. A agência gestora nunca.
-     */
-    public static function canManageAccess(User $actor, int $companyId): bool
-    {
-        return in_array($actor->role, ['admin', 'root'], true)
-            && (int) $actor->company_id === $companyId
-            && ! ImpersonationSession::activeFor($actor);
+        return app(\App\Access\Access::class)->can($actor, $companyId, 'integracoes.configurar', ['sensitive' => true])->allowed;
     }
 
     // ── Conteúdo ─────────────────────────────────────────────────────────────

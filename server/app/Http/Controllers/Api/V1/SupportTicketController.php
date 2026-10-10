@@ -115,7 +115,7 @@ class SupportTicketController extends Controller
         ]);
 
         $user = Auth::user();
-        $this->service->addMessage($ticket, (int) $user->id, $data['body'], $user->role === 'root');
+        $this->service->addMessage($ticket, (int) $user->id, $data['body'], $user->isRoot());
 
         $ticket->load(['user', 'messages.user']);
 
@@ -159,9 +159,6 @@ class SupportTicketController extends Controller
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
-        }
-        if ($this->viaAgency($companyId)) {
-            return ApiResponse::error('As decisões sobre orçamentos são do cliente.', 403);
         }
 
         $data = $request->validate([
@@ -216,9 +213,6 @@ class SupportTicketController extends Controller
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
-        }
-        if ($this->viaAgency($companyId)) {
-            return ApiResponse::error('As decisões sobre orçamentos são do cliente.', 403);
         }
 
         $ticket = $this->findScoped($companyId, $id);

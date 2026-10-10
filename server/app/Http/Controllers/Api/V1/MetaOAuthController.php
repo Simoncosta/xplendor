@@ -23,10 +23,6 @@ class MetaOAuthController extends Controller
 
     public function getAuthUrl(Request $request, int $companyId): JsonResponse
     {
-        // Ligar os anúncios com o próprio login: admin da empresa, root ou admin da agência gestora, fora de impersonation.
-        if (! CollaboratorService::canConfigureIntegrations($request->user(), $companyId)) {
-            return ApiResponse::error('Só o administrador da empresa pode ligar os anúncios da Meta.', 403);
-        }
 
         // Nonce de uso único em cache, com a empresa e quem iniciou (MetaAdsConnectionService).
         $url = app(\App\Services\Integrations\MetaAdsConnectionService::class)->authUrl($companyId, $request->user()?->id);
@@ -108,7 +104,8 @@ class MetaOAuthController extends Controller
         }
 
         $user = $request->user();
-        if (!$user || ! CollaboratorService::canConfigureIntegrations($user, (int) $companyId)) {
+        // O callback não tem empresa no endereço: a mesma decisão do ACL, com a regra da impersonation.
+        if (!$user || app(\App\Access\Access::class)->can($user, (int) $companyId, 'integracoes.configurar', ['sensitive' => true])->denied()) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

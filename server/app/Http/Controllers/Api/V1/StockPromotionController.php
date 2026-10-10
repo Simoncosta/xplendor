@@ -39,7 +39,7 @@ class StockPromotionController extends Controller
     public function index(ListPromotionCandidatesRequest $request, int $companyId): JsonResponse
     {
         if (!$this->authorizeCompanyAccess($companyId)) {
-            return ApiResponse::error('Acesso negado.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         $perPage   = (int) ($request->input('per_page') ?? 25);
@@ -54,7 +54,7 @@ class StockPromotionController extends Controller
     public function summary(int $companyId): JsonResponse
     {
         if (!$this->authorizeCompanyAccess($companyId)) {
-            return ApiResponse::error('Acesso negado.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         return ApiResponse::success(
@@ -70,7 +70,7 @@ class StockPromotionController extends Controller
         int $carId
     ): JsonResponse {
         if (!$this->authorizeCompanyAccess($companyId)) {
-            return ApiResponse::error('Acesso negado.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         // Defesa em profundidade: o car TEM de pertencer ao companyId do path.
@@ -106,7 +106,7 @@ class StockPromotionController extends Controller
     public function destroy(int $companyId, int $carId): JsonResponse
     {
         if (!$this->authorizeCompanyAccess($companyId)) {
-            return ApiResponse::error('Acesso negado.', 403);
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         $car = Car::find($carId);

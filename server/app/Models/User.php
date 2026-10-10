@@ -90,6 +90,18 @@ class User extends Authenticatable
         return $this->belongsTo(Company::class);
     }
 
+    /** O dono da plataforma (a equipa XPLENDOR). Num só sítio, em vez de comparar o papel. */
+    public function isRoot(): bool
+    {
+        return $this->role === 'root';
+    }
+
+    /** Administrador da própria empresa (o papel; as permissões vêm do perfil, ACL). */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
     /** ACL: o perfil na própria empresa. */
     public function profile(): BelongsTo
     {

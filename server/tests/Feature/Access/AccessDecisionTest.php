@@ -50,13 +50,15 @@ class AccessDecisionTest extends TestCase
         $this->assertSame(Decision::TENANT, $other->code);
     }
 
-    public function test_the_approver_column_adds_editorial_approval_to_the_user_profile(): void
+    public function test_the_approver_column_adds_editorial_and_blog_approval_to_the_user_profile(): void
     {
         $user = User::factory()->create(['company_id' => $this->client->id, 'role' => 'user']);
         $this->assertTrue($this->access()->can($user, $this->client->id, 'editorial.aprovar')->denied());
         $user->forceFill(['can_approve_content' => true])->save();
         $this->assertTrue($this->access()->can($user->fresh(), $this->client->id, 'editorial.aprovar')->allowed);
-        $this->assertTrue($this->access()->can($user->fresh(), $this->client->id, 'blog.aprovar')->denied());
+        $this->assertTrue($this->access()->can($user->fresh(), $this->client->id, 'blog.aprovar')->allowed, 'D6: o aprovador também aprova o blog');
+        $this->assertTrue($this->access()->can($user->fresh(), $this->client->id, 'blog.apagar')->allowed);
+        $this->assertTrue($this->access()->can($user->fresh(), $this->client->id, 'utilizadores.configurar')->denied());
     }
 
     public function test_only_root_gets_the_platform_area(): void

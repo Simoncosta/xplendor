@@ -21,14 +21,9 @@ class CompanyRequest extends FormRequest
             return false;
         }
 
-        $companyId = $this->route('company');
-        if ($companyId === null) {
-            return $auth->role === 'root';
-        }
-
-        return $auth->role === 'root'
-            || ($auth->role === 'admin' && (int) $auth->company_id === (int) $companyId)
-            || ($this->isMethod('PUT') || $this->isMethod('PATCH')) && app(CompanyAccess::class)->agencyEditsBasics($auth, $companyId);
+        // Criar empresas: só o root. Alterar: empresa.editar, verificada na rota (ACL), que já
+        // inclui a agência nos dados básicos das empresas que criou enquanto não há admin.
+        return $this->route('company') !== null || $auth->isRoot();
     }
 
     public function rules(): array

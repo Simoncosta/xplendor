@@ -95,24 +95,26 @@ class RootOwnCompanyAdminActionsTest extends TestCase
             ['escolher a conta de anúncios', 'PATCH', "{$base}/integrations/meta/account", ['account_id' => 'act_456'], 'integration'],
             ['desligar os anúncios', 'DELETE', "{$base}/integrations/meta", [], 'integration'],
             ['convidar um colaborador', 'POST', "{$base}/collaborators/{$collaborator->id}/access", ['email' => 'ana.' . $c->id . '@exemplo.pt'], 'client'],
-            ['aprovar um artigo', 'POST', "{$base}/blogs/{$blogId}/approve", [], 'client'],
+            ['aprovar um artigo', 'POST', "{$base}/blogs/{$blogId}/approve", [], 'decisao'],
         ];
     }
 
+    /** ACL, D1: o root passa em tudo, exceto nas decisões do cliente (nem na própria empresa as toma). */
     public function test_root_acts_as_admin_of_its_own_company(): void
     {
-        foreach ($this->actions($this->x) as [$name, $method, $url, $body]) {
+        foreach ($this->actions($this->x) as [$name, $method, $url, $body, $kind]) {
             $status = $this->as($this->root)->json($method, $url, $body)->status();
-            $this->assertSame(200, $status, "O root na própria empresa deve poder: {$name}.");
+            $this->assertSame($kind === 'decisao' ? 403 : 200, $status, "O root na própria empresa: {$name}.");
         }
-        // As ações tiveram efeito na empresa do root.
+        // As ações tiveram efeito na empresa do root (a aprovação do artigo é do cliente: não).
         $this->assertSame('revoked', CompanyIntegration::where('company_id', $this->x->id)->value('status'));
-        $this->assertSame('published', DB::table('blogs')->where('company_id', $this->x->id)->value('status'));
+        $this->assertNotSame('published', DB::table('blogs')->where('company_id', $this->x->id)->value('status'));
         // E nada mudou na outra empresa.
         $this->assertSame('active', CompanyIntegration::where('company_id', $this->b->id)->value('status'));
         $this->assertSame(SocialConnection::STATUS_ACTIVE, SocialConnection::where('company_id', $this->b->id)->value('status'));
     }
 
+    /** ACL, D1: noutra empresa, o root gere os acessos, mas as decisões continuam a ser do cliente. */
     public function test_root_cannot_do_admin_actions_in_another_company(): void
     {
         foreach ($this->actions($this->b) as [$name, $method, $url, $body, $kind]) {
@@ -120,7 +122,7 @@ class RootOwnCompanyAdminActionsTest extends TestCase
                 continue; // ver test_root_configures_integrations_in_any_company
             }
             $status = $this->as($this->root)->json($method, $url, $body)->status();
-            $this->assertSame(403, $status, "O root noutra empresa não pode: {$name}.");
+            $this->assertSame($kind === 'decisao' ? 403 : 200, $status, "O root noutra empresa: {$name}.");
         }
         $this->assertSame('active', CompanyIntegration::where('company_id', $this->b->id)->value('status'));
         $this->assertSame(SocialConnection::STATUS_ACTIVE, SocialConnection::where('company_id', $this->b->id)->value('status'));

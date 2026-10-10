@@ -17,10 +17,6 @@ class CompanyDepartmentController extends Controller
 {
     public function __construct(private readonly CollaboratorService $service) {}
 
-    private function ensureContent(Request $request, int $companyId): void
-    {
-        abort_unless(CollaboratorService::canEditContent($request->user(), $companyId), 403, 'Só o administrador da empresa pode alterar os departamentos.');
-    }
 
     private function rules(bool $creating): array
     {
@@ -55,7 +51,6 @@ class CompanyDepartmentController extends Controller
 
     public function store(Request $request, int $companyId)
     {
-        $this->ensureContent($request, $companyId);
         $data = $request->validate($this->rules(true));
         $data['sort'] ??= ((int) CompanyDepartment::where('company_id', $companyId)->max('sort')) + 10;
 
@@ -64,7 +59,6 @@ class CompanyDepartmentController extends Controller
 
     public function update(Request $request, int $companyId, int $id)
     {
-        $this->ensureContent($request, $companyId);
         $d = $this->find($companyId, $id);
         $d->update($request->validate($this->rules(false)));
 
@@ -74,7 +68,6 @@ class CompanyDepartmentController extends Controller
     /** Apagar: os colaboradores do departamento ficam sem departamento. */
     public function destroy(Request $request, int $companyId, int $id)
     {
-        $this->ensureContent($request, $companyId);
         $this->find($companyId, $id)->delete();
 
         return ApiResponse::success(null, 'Departamento apagado.');
@@ -82,7 +75,6 @@ class CompanyDepartmentController extends Controller
 
     public function suggested(Request $request, int $companyId)
     {
-        $this->ensureContent($request, $companyId);
         $created = $this->service->createSuggestedDepartments($companyId);
 
         return ApiResponse::success(

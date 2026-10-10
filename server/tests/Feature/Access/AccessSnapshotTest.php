@@ -49,6 +49,7 @@ class AccessSnapshotTest extends TestCase
     public const ACTORS = [
         'cliente_admin', 'cliente_utilizador', 'cliente_aprovador', 'root_propria', 'root_outra',
         'agencia_admin', 'agencia_membro', 'impersonacao_admin', 'sem_modulos_admin',
+        'impersonacao_utilizador', 'agencia_membro_criou',
     ];
 
     /** Pedidos que mudam o estado da empresa inteira: sempre os últimos (por esta ordem). */
@@ -61,11 +62,15 @@ class AccessSnapshotTest extends TestCase
     protected Company $client;
     protected Company $agency;
     protected Company $bare;
+    /** Empresa criada pela agência e ainda sem administrador (a agência edita os dados básicos). */
+    protected Company $created;
     /** @var array<string, User> */
     protected array $users = [];
     /** @var array<int, array<string, int>> empresa → parâmetro → id real */
     protected array $children = [];
-    protected ?string $impersonationToken = null;
+    /** @var array<string, string> ator → token de impersonation */
+    protected array $impersonationTokens = [];
+    protected string $currentActor = '';
 
     protected function setUp(): void
     {
@@ -116,27 +121,27 @@ class AccessSnapshotTest extends TestCase
     }
 
     /**
-     * F1, modo sombra: em todos os pedidos da bateria, a decisão do Access bate com a
-     * resposta de hoje (nenhuma "perda" nem "excesso"). Os inconclusivos (o Access recusa e
-     * hoje a rota deu 404 ou 422) não são divergências: ficam listados no relatório.
+     * F3 (critério do desenho): para cada rota e cada ator, a resposta é 403 SE E SÓ SE o Access
+     * disser que não. As únicas exceções são as regras transversais que ficam nos controllers
+     * (TenancyArchitectureTest::ALLOWED_403), e nenhuma aparece nesta bateria.
+     * (Na F1 e na F2, o mesmo varrimento em modo sombra deu zero divergências: ver
+     * documents/acl/FOTOGRAFIA-ANTES.md.)
      *
      * @dataProvider actors
      */
-    public function test_shadow_mode_has_zero_divergences(string $actor): void
+    public function test_403_if_and_only_if_access_denies(string $actor): void
     {
-        config(['access.mode' => 'shadow']);
         ShadowLog::reset();
         $this->sweep($actor);
 
-        if (getenv('ACL_SNAPSHOT') === 'write') {
-            $dir = base_path('tests/Fixtures/acl/sombra');
-            if (! is_dir($dir)) {
-                mkdir($dir, 0775, true);
+        $wrong = [];
+        foreach (ShadowLog::$decisions as $d) {
+            if (($d['estado'] === 403) !== ! $d['permitido']) {
+                $wrong[] = "{$d['rota']} → {$d['estado']} (Access: " . ($d['permitido'] ? 'sim' : 'não') . ')';
             }
-            file_put_contents("{$dir}/{$actor}.json", json_encode(['ator' => $actor, 'registos' => ShadowLog::$entries],
-                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");
         }
-        $this->assertSame([], ShadowLog::divergences(), "Divergências do ator {$actor} em modo sombra.");
+        $this->assertNotEmpty(ShadowLog::$decisions);
+        $this->assertSame([], $wrong, "Respostas do ator {$actor} que não batem com o Access.");
     }
 
     /** F2: os atores usam os perfis gravados na base de dados (e não o papel). */
@@ -173,10 +178,15 @@ class AccessSnapshotTest extends TestCase
         $this->agency = $make('Agência Teste');
         $this->agency->forceFill(['agency_enabled_at' => now()])->save();
         $this->bare = $make('Sem Módulos', false);
+        $this->created = $make('Criada pela Agência');
 
         CompanyManagement::create([
             'agency_company_id' => $this->agency->id, 'managed_company_id' => $this->client->id, 'origin' => 'platform', 'status' => 'active',
             'active_key' => $this->client->id, 'team_scope' => 'all', 'requested_at' => now(),
+        ]);
+        CompanyManagement::create([
+            'agency_company_id' => $this->agency->id, 'managed_company_id' => $this->created->id, 'origin' => CompanyManagement::ORIGIN_CREATED_BY_AGENCY,
+            'status' => 'active', 'active_key' => $this->created->id, 'team_scope' => 'all', 'requested_at' => now(),
         ]);
 
         $u = fn (Company $c, string $role, array $extra = []) => User::factory()->create(['company_id' => $c->id, 'role' => $role] + $extra);
@@ -190,14 +200,16 @@ class AccessSnapshotTest extends TestCase
             'sem_modulos_admin' => $u($this->bare, 'admin'),
         ];
 
-        foreach ([$this->platform, $this->client, $this->bare] as $company) {
+        foreach ([$this->platform, $this->client, $this->bare, $this->created] as $company) {
             $this->children[$company->id] = $this->seedChildren($company);
         }
 
-        $token = $this->users['cliente_admin']->createToken('impersonation');
-        ImpersonationSession::create(['root_id' => $this->users['root']->id, 'target_user_id' => $this->users['cliente_admin']->id,
-            'company_id' => $this->client->id, 'token_id' => $token->accessToken->getKey(), 'reason' => 'Teste', 'started_at' => now()]);
-        $this->impersonationToken = $token->plainTextToken;
+        foreach (['impersonacao_admin' => 'cliente_admin', 'impersonacao_utilizador' => 'cliente_utilizador'] as $actor => $target) {
+            $token = $this->users[$target]->createToken('impersonation');
+            ImpersonationSession::create(['root_id' => $this->users['root']->id, 'target_user_id' => $this->users[$target]->id,
+                'company_id' => $this->client->id, 'token_id' => $token->accessToken->getKey(), 'reason' => 'Teste', 'started_at' => now()]);
+            $this->impersonationTokens[$actor] = $token->plainTextToken;
+        }
     }
 
     /** Registos reais na empresa, para as rotas com filhos chegarem às verificações de papel. @return array<string, int> */
@@ -228,9 +240,11 @@ class AccessSnapshotTest extends TestCase
             'root_propria' => [$this->users['root'], $this->platform],
             'root_outra' => [$this->users['root'], $this->client],
             'agencia_admin', 'agencia_membro' => [$this->users[$actor], $this->client],
-            'impersonacao_admin' => [null, $this->client],
+            'impersonacao_admin', 'impersonacao_utilizador' => [null, $this->client],
             'sem_modulos_admin' => [$this->users['sem_modulos_admin'], $this->bare],
+            'agencia_membro_criou' => [$this->users['agencia_membro'], $this->created],
         };
+        $this->currentActor = $actor;
 
         $out = [];
         $reasons = [];
@@ -296,7 +310,7 @@ class AccessSnapshotTest extends TestCase
         $body = $method === 'DELETE' || $method === 'GET' ? [] : $this->body() + (isset($children['postId']) ? ['post_ids' => [$children['postId']]] : []);
         $this->app['auth']->forgetGuards();
 
-        $request = $user ? $this->actingAs($user, 'sanctum') : $this->withToken((string) $this->impersonationToken);
+        $request = $user ? $this->actingAs($user, 'sanctum') : $this->withToken((string) $this->impersonationTokens[$this->currentActor]);
 
         return $request->json($method, '/' . $url, $body)->baseResponse;
     }

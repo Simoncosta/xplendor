@@ -27,7 +27,7 @@ class SocialConnectionController extends Controller
     public function show(Request $request, int $companyId)
     {
         return ApiResponse::success(
-            $this->social->status($companyId) + ['can_manage' => CollaboratorService::canConfigureIntegrations($request->user(), $companyId)],
+            $this->social->status($companyId) + ['can_manage' => $this->can($companyId, 'integracoes.configurar', ['sensitive' => true])],
             'Estado das redes sociais.'
         );
     }
@@ -35,7 +35,6 @@ class SocialConnectionController extends Controller
     // GET /companies/{id}/integrations/social/auth-url
     public function authUrl(Request $request, int $companyId)
     {
-        $this->assertCanManage($request, $companyId);
 
         return ApiResponse::success(['url' => $this->social->authUrl($companyId, $request->user())]);
     }
@@ -43,7 +42,6 @@ class SocialConnectionController extends Controller
     // GET /companies/{id}/integrations/social/candidates
     public function candidates(Request $request, int $companyId)
     {
-        $this->assertCanManage($request, $companyId);
 
         return ApiResponse::success($this->social->candidates($companyId), 'Contas disponíveis.');
     }
@@ -51,7 +49,6 @@ class SocialConnectionController extends Controller
     // PUT /companies/{id}/integrations/social/accounts
     public function saveAccounts(Request $request, int $companyId)
     {
-        $this->assertCanManage($request, $companyId);
         $data = $request->validate([
             'facebook' => ['present', 'array', 'max:50'],
             'facebook.*' => ['string', 'regex:/^\d{1,40}$/'],
@@ -79,7 +76,6 @@ class SocialConnectionController extends Controller
     // DELETE /companies/{id}/integrations/social   Body (opcional): { purge, confirmation }
     public function disconnect(Request $request, int $companyId)
     {
-        $this->assertCanManage($request, $companyId);
         $data = $request->validate([
             'purge' => 'sometimes|boolean',
             'confirmation' => 'nullable|string',
@@ -131,12 +127,5 @@ class SocialConnectionController extends Controller
         }
 
         return rtrim($origin, '/') . '/app';
-    }
-
-    private function assertCanManage(Request $request, int $companyId): void
-    {
-        if (! CollaboratorService::canConfigureIntegrations($request->user(), $companyId)) {
-            abort(403, 'Só o administrador da empresa ou um administrador da agência gestora pode ligar ou desligar as redes sociais.');
-        }
     }
 }

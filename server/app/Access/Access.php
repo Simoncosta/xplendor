@@ -18,14 +18,16 @@ use App\Services\Tenancy\CompanyAccess;
  *   2. plataforma: só o root;
  *   3. módulos: os módulos pedidos (os do ensure_module da rota) têm de estar ativos;
  *   4. impersonation: as rotas sensíveis (block_when_impersonating) ficam recusadas;
- *   5. root: até à decisão D1 (F3), a regra de hoje (as rotas que lhe davam 403);
+ *   5. root (D1): passa em todas as permissões, EXCETO as decisões do cliente (aprovar
+ *      conteúdos, aceitar orçamentos, aceitar ou terminar a gestão), que exigem uma pessoa
+ *      do próprio cliente — nem na própria empresa o root as toma, como hoje;
  *   6. perfil: own → o perfil do utilizador (users.profile_id; + editorial.aprovar se for
  *      aprovador); agency → o perfil dentro dos clientes (users.agency_profile_id) ∩ o teto
  *      que o cliente deu à agência (company_managements.guest_profile_id). Sem perfil
  *      gravado, vale o perfil de compatibilidade do papel (o mesmo que a migração F2 dá).
  *
  * Contexto (opcional): route ("MÉTODO api/v1/companies/…"), modules (string[]),
- * sensitive (bool). Sem pedido HTTP (jobs, comandos), não há Access: os serviços não podem
+ * sensitive (bool), self (bool: a rota é sobre a própria conta). Sem pedido HTTP (jobs, comandos), não há Access: os serviços não podem
  * depender do utilizador autenticado.
  */
 class Access
@@ -54,7 +56,7 @@ class Access
         if (Permissions::area($permission) === 'plataforma' && $user->role !== 'root') {
             return Decision::deny('Só a equipa da plataforma pode fazer isto.', Decision::PLATFORM);
         }
-        foreach ((array) ($context['modules'] ?? []) as $module) {
+        foreach ($user->role === 'root' ? [] : (array) ($context['modules'] ?? []) as $module) { // o root não é filtrado por módulos (regra de hoje)
             if (! $this->modules->isEnabled($companyId, (string) $module)) {
                 return Decision::deny('Este módulo não está ativo para a empresa.', Decision::MODULE);
             }
@@ -64,12 +66,21 @@ class Access
         }
 
         if ($user->role === 'root') {
-            return $this->rootDecision($kind, $permission, $context);
+            return Permissions::isClientDecision($permission)
+                ? Decision::deny('Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.', Decision::CLIENT_DECISION)
+                : Decision::allow();
+        }
+
+        if (($context['self'] ?? false) && $kind === CompanyAccess::OWN) {
+            return Decision::allow(); // a própria conta (o FormRequest continua a limitar o que se pode mudar)
         }
 
         $allowed = $this->permissionsFor($user, $kind, $companyId);
         if (isset($allowed[$permission])) {
             return Decision::allow();
+        }
+        if ($kind === CompanyAccess::OWN && in_array($permission, Permissions::IMPERSONATION_GRANTS, true) && ImpersonationSession::activeFor($user)) {
+            return Decision::allow(); // em sessão como cliente, a equipa edita os conteúdos (regra de hoje)
         }
         if ($permission === 'empresa.editar' && $kind === CompanyAccess::AGENCY && $this->companies->agencyEditsBasics($user, $companyId)) {
             return Decision::allow(); // a agência edita os dados básicos das empresas que criou, enquanto não houver admin
@@ -95,7 +106,9 @@ class Access
                 ? $this->profilePermissions((int) $user->profile_id)
                 : CompatibilityProfiles::allowed($user->role === 'admin' ? CompatibilityProfiles::CLIENT_ADMIN : CompatibilityProfiles::CLIENT_USER);
             if ($user->can_approve_content) {
-                $set[CompatibilityProfiles::load()['aprovador']] = true;
+                foreach (Permissions::APPROVER_GRANTS as $grant) { // D6: o aprovador também aprova o blog
+                    $set[$grant] = true;
+                }
             }
         }
 
@@ -122,20 +135,6 @@ class Access
         }
 
         return $this->profiles[$profileId];
-    }
-
-    /** Regra do root de hoje (até à D1, na F3): as rotas que lhe davam 403 continuam a dar. */
-    private function rootDecision(string $kind, string $permission, array $context): Decision
-    {
-        $route = $context['route'] ?? null;
-        $list = CompatibilityProfiles::load()['root'][$kind === CompanyAccess::OWN ? 'propria' : 'outra'] ?? [];
-        if ($route !== null && in_array($route, $list, true)) {
-            return Decision::deny(Permissions::isClientDecision($permission)
-                ? 'Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.'
-                : 'Esta ação não está disponível para a equipa da plataforma nesta empresa.', Decision::ROOT);
-        }
-
-        return Decision::allow();
     }
 
     private function denial(User $user, string $kind, int $companyId, string $permission): Decision

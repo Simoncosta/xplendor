@@ -25,7 +25,7 @@ class AdminController extends Controller
     public function ping()
     {
         $user = Auth::user();
-        abort_unless($user && $user->role === 'root', 403);
+        abort_unless($user && $user->isRoot(), 403);
 
         return ApiResponse::success([
             'ok'   => true,
@@ -45,7 +45,7 @@ class AdminController extends Controller
      */
     public function platformSummary()
     {
-        abort_unless(Auth::user()?->role === 'root', 403);
+        abort_unless(Auth::user()?->isRoot(), 403);
 
         return ApiResponse::success([
             'users_total'   => User::count(),

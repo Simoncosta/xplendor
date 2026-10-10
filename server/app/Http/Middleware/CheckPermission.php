@@ -46,20 +46,28 @@ class CheckPermission
                     array_push($modules, ...explode(',', substr($m, strlen('ensure_module:'))));
                 }
             }
+            if (isset(RoutePermissions::MODULES[$key])) {
+                $modules[] = RoutePermissions::MODULES[$key]; // D8
+            }
             $decision = $this->access->can($request->user(), $companyId, $permission, [
                 'route' => $fullKey,
                 'modules' => $modules,
                 'sensitive' => in_array('block_when_impersonating', $middleware, true) || in_array($key, RoutePermissions::SENSITIVE, true),
+                'self' => isset(RoutePermissions::SELF[$key]) && (int) $route->parameter(RoutePermissions::SELF[$key]) === (int) $request->user()?->id,
             ]);
         }
         $request->attributes->set('access_decision', $decision);
 
-        if (config('access.mode') === 'enforce') {
-            if ($decision->denied()) {
-                return new JsonResponse(['success' => false, 'message' => $decision->reason, 'reason' => $decision->code], 403);
+        // Depois da F3 as verificações antigas saíram dos controllers: o modo sombra só existe nos testes.
+        if (config('access.mode') !== 'shadow' || ! app()->environment('testing')) {
+            $response = $decision->denied()
+                ? new JsonResponse(['success' => false, 'message' => $decision->reason, 'reason' => $decision->code, 'errors' => null], 403)
+                : $next($request);
+            if (app()->environment('testing')) {
+                ShadowLog::decision((string) $fullKey, $decision->allowed, $response->getStatusCode(), $decision->reason);
             }
 
-            return $next($request);
+            return $response;
         }
 
         $response = $next($request);

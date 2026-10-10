@@ -24,9 +24,6 @@ class BrandProfileSuggestionController extends Controller
 
     public function store(Request $request, int $companyId)
     {
-        if (! CollaboratorService::canEditContent($request->user(), $companyId)) {
-            return ApiResponse::error('Só o administrador da empresa pode pedir sugestões para o perfil da marca.', 403);
-        }
 
         $suggestion = $this->ai->request(Company::with('contentSector')->findOrFail($companyId), $request->user());
 

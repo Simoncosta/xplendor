@@ -41,12 +41,12 @@ class CompanyManagementController extends Controller
         $company = Company::findOrFail($companyId);
         $m = $company->activeManagement()->with('agency:id,fiscal_name,trade_name')->first();
         $user = $request->user();
-        $own = $this->isOwnAdmin($user, $companyId);
+        $own = $this->can($companyId, 'empresa.aprovar');
 
         return ApiResponse::success([
             'agency' => $m ? ['id' => $m->agency_company_id, 'name' => $m->agency?->trade_name ?: $m->agency?->fiscal_name] : null,
             'since' => $m ? optional($m->responded_at ?? $m->requested_at)->toIso8601String() : null,
-            'can_end' => $m !== null && $this->isOwnAdmin($user, $companyId),
+            'can_end' => $m !== null && $this->can($companyId, 'empresa.aprovar'),
             'via_agency' => $this->access->viaAgency($user, $companyId),
             'can_invite_first_admin' => $this->canInviteFirstAdmin($user, $company),
             // O formulário do perfil fica só de leitura quando a pessoa não o pode gravar (regra do CompanyRequest).
@@ -71,7 +71,6 @@ class CompanyManagementController extends Controller
 
     public function requests(Request $request, int $companyId)
     {
-        $this->assertOwnAdmin($request, $companyId);
         $rows = ManagementRequest::where('managed_company_id', $companyId)->where('status', ManagementRequest::PENDING)
             ->where('expires_at', '>', now())->orderByDesc('id')->get();
 
@@ -80,7 +79,6 @@ class CompanyManagementController extends Controller
 
     public function accept(Request $request, int $companyId, int $requestId, ManagementRequestService $service)
     {
-        $this->assertOwnAdmin($request, $companyId);
         $service->accept(ManagementRequest::findOrFail($requestId), Company::findOrFail($companyId), $request->user());
 
         return ApiResponse::success(null, 'Pedido aceite. A agência passou a gerir a sua empresa.');
@@ -88,7 +86,6 @@ class CompanyManagementController extends Controller
 
     public function decline(Request $request, int $companyId, int $requestId, ManagementRequestService $service)
     {
-        $this->assertOwnAdmin($request, $companyId);
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
         $service->decline(ManagementRequest::findOrFail($requestId), Company::findOrFail($companyId), $request->user(), $data['reason'] ?? null);
 
@@ -98,7 +95,6 @@ class CompanyManagementController extends Controller
     // POST { decision: keep|disconnect }: a escolha sobre as ligações deixadas pela agência.
     public function decideConnections(Request $request, int $companyId, ManagementEndEffects $effects)
     {
-        $this->assertOwnAdmin($request, $companyId);
         $data = $request->validate(['decision' => ['required', 'in:keep,disconnect']]);
         $m = CompanyManagement::where('managed_company_id', $companyId)->where('connections_decision', ManagementEndEffects::DECISION_PENDING)->latest('id')->first();
         if (! $m) {
@@ -121,16 +117,9 @@ class CompanyManagementController extends Controller
             'connections' => app(AgencyConnectionsService::class)->agencyMade($companyId, $m->agency_company_id)];
     }
 
-    private function assertOwnAdmin(Request $request, int $companyId): void
-    {
-        abort_unless($this->isOwnAdmin($request->user(), $companyId) && $request->user()->role === 'admin', 403, 'Só os administradores da empresa decidem sobre a gestão por agências.');
-    }
 
     public function end(Request $request, int $companyId)
     {
-        if (! $this->isOwnAdmin($request->user(), $companyId)) {
-            return ApiResponse::error('Só o administrador da empresa pode terminar a relação com a agência.', 403);
-        }
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:500'], 'connections' => ['nullable', 'in:keep,disconnect']]);
         $this->service->endByCompany(Company::findOrFail($companyId), $request->user(), $data['reason'] ?? null, $data['connections'] ?? null);
 
@@ -142,9 +131,6 @@ class CompanyManagementController extends Controller
     {
         $company = Company::findOrFail($companyId);
         $user = $request->user();
-        if (! $this->access->viaAgency($user, $companyId) && $user->role !== 'root') {
-            return ApiResponse::error('Só a agência gestora convida o primeiro administrador.', 403);
-        }
         if (! $this->canInviteFirstAdmin($user, $company)) {
             throw ValidationException::withMessages(['email' => ['Esta empresa já tem um administrador (ou um convite pendente).']]);
         }
@@ -157,14 +143,9 @@ class CompanyManagementController extends Controller
         return ApiResponse::success($invite, 'Convite enviado ao administrador da empresa.');
     }
 
-    private function isOwnAdmin(User $user, int $companyId): bool
-    {
-        return CollaboratorService::canManageAccess($user, $companyId);
-    }
-
     private function canInviteFirstAdmin(User $user, Company $company): bool
     {
-        if (! $this->access->viaAgency($user, $company->id) && $user->role !== 'root') {
+        if (! $this->access->viaAgency($user, $company->id) && ! $user->isRoot()) {
             return false;
         }
 

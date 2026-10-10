@@ -42,7 +42,7 @@ class PlanController extends Controller
     public function destroy(Request $request, int $id)
     {
         // Planos são da plataforma: só o root os apaga.
-        if ($request->user()?->role !== 'root') {
+        if (! $request->user()?->isRoot()) {
             return ApiResponse::error('Acesso restrito ao administrador da plataforma.', 403);
         }
 
