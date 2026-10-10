@@ -54,7 +54,7 @@ export default function FilePickerModal({ isOpen, companyId, busy, onClose, onPi
                     ))}
                     {files.map((f) => (
                         <div key={f.shortcut_id ? `s${f.shortcut_id}` : f.id} className="col-6 col-md-3">
-                            <button type="button" className="btn btn-outline-primary w-100 p-1 text-start h-100" disabled={busy} onClick={() => onPick(f)} aria-label={`Escolher: ${f.name}`}>
+                            <button type="button" className="btn btn-light border w-100 p-1 text-start h-100" disabled={busy} onClick={() => onPick(f)} aria-label={`Escolher: ${f.name}`}>
                                 <div className="bg-light rounded d-flex align-items-center justify-content-center overflow-hidden" style={{ height: 90 }}>
                                     {f.thumb_url ? <img src={fileSrc(f.thumb_url)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                         : <i className={`${KIND_META[f.kind].icon} text-${KIND_META[f.kind].color} display-6`} aria-hidden />}

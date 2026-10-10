@@ -235,6 +235,9 @@ class FilesController extends Controller
 
         return $files->map(function (StoredFile $f) use ($uses) {
             $asset = $f->mediaAsset;
+            $url = $f->deleted_at ? null : $this->files->signedUrl($f);
+            // Uma imagem fora da media (ex.: as da viatura): a miniatura é o próprio ficheiro, se for leve.
+            $selfThumb = ! $asset && $url && in_array($f->mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true) && (int) $f->size_bytes <= 3 * 1024 * 1024;
 
             return [
                 'id' => $f->id, 'name' => $f->name, 'extension' => $f->extension, 'mime' => $f->mime, 'kind' => $f->kind(),
@@ -243,9 +246,9 @@ class FilesController extends Controller
                 'purge_after' => optional($f->purge_after)->toDateString(),
                 'media_asset_id' => $f->media_asset_id, 'media_status' => $asset?->status,
                 'in_use' => (int) ($uses[$f->media_asset_id] ?? 0),
-                'thumb_url' => $asset && $asset->pathFor('thumb') ? $asset->signedUrl('thumb') : null,
+                'thumb_url' => $asset && $asset->pathFor('thumb') ? $asset->signedUrl('thumb') : ($selfThumb ? $url : null),
                 'preview_url' => $asset && $asset->pathFor('preview') ? $asset->signedUrl('preview') : null,
-                'url' => $f->deleted_at ? null : $this->files->signedUrl($f),
+                'url' => $url,
                 'download_url' => $f->deleted_at ? null : $this->files->signedUrl($f, 'original', true),
             ];
         })->values()->all();

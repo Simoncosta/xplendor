@@ -68,7 +68,7 @@ class FilesEditorialTest extends TestCase
 
     private function makePost(): EditorialPost
     {
-        $month = DB::table('editorial_months')->insertGetId(['company_id' => $this->c->id, 'year' => 2026, 'month' => 11, 'state' => 'open', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('editorial_months')->insert(['company_id' => $this->c->id, 'year' => 2026, 'month' => 11, 'state' => 'open', 'created_at' => now(), 'updated_at' => now()]);
 
         return EditorialPost::create(['company_id' => $this->c->id, 'publish_date' => '2026-11-10', 'title' => 'Promoção de outono', 'format' => 'post',
             'status' => 'planned', 'stage' => EditorialPost::STAGE_IDEA, 'channel' => EditorialPost::CHANNEL_SOCIAL]);
@@ -90,6 +90,10 @@ class FilesEditorialTest extends TestCase
     {
         $file = $this->carImage();
         $publicBefore = Storage::disk('public')->allFiles();
+
+        // Uma imagem fora da media tem como miniatura o próprio ficheiro (endereço assinado).
+        $listed = $this->actingAs($this->admin, 'sanctum')->getJson($this->url("files?folder_id={$file->folder_id}"))->assertOk()->json('data.files.0');
+        $this->assertStringContainsString("/api/files/stored/{$file->id}", (string) $listed['thumb_url']);
 
         $res = $this->actingAs($this->admin, 'sanctum')->postJson($this->url('editorial/media/from-file'), ['stored_file_id' => $file->id])->assertOk();
         $asset = MediaAsset::findOrFail($res->json('data.id'));
