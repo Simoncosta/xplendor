@@ -106,9 +106,9 @@ Estão em `documents/NOITE-PERGUNTAS.md`, cada uma com a decisão tomada por omi
 - **Aprovadores de conteúdos:** passam a **aprovar e devolver artigos do blog** (D6).
 - **Root, a equipa XPLENDOR (D1):**
   - **passa a poder**, em qualquer empresa: criar e alterar utilizadores, dar e retirar acessos aos colaboradores, e escolher os aprovadores;
-  - **deixa de poder**, em qualquer empresa (incluindo a própria): aceitar orçamentos, indicar o pagamento de uma cobrança, aprovar artigos do blog e decidir sobre a gestão por agências;
+  - **deixa de poder**, nas **outras** empresas: aceitar orçamentos, indicar o pagamento de uma cobrança, aprovar artigos do blog e decidir sobre a gestão por agências; na XPLENDOR conta como administrador, também nestas decisões (resposta 1 do pré-deploy);
   - continua a marcar as cobranças como pagas no `/admin`.
-- **Empresas sem o módulo "Suporte / Tarefas"** perdem o suporte, as tarefas, a página dos orçamentos e o botão flutuante (D8).
+- **Empresas sem o módulo "Suporte / Tarefas"** perdem só as tarefas. O suporte com a XPLENDOR (o botão flutuante, os pedidos e os orçamentos) passou a área base, em todas as empresas (resposta 3 do pré-deploy).
 - **Empresas sem a "Análise de Marketing"** perdem a página da Meta / Anúncios (o tráfego do site continua: também é lido no separador das integrações).
 - **Empresas do PingWin sem uma secção** (lojas, artigos, faturas…) deixam de chegar a essa secção também pela API (D8).
 - **Todos:**
@@ -133,7 +133,7 @@ O detalhe está em `documents/r2/R2-PRODUCAO.md`.
 3. **No `.env` de produção:** acrescentar `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET=xplendor-media`, `R2_ENDPOINT=https://<ID_DA_CONTA>.eu.r2.cloudflarestorage.com`, `R2_REGION=auto`, `R2_PATH_STYLE=true` e `MEDIA_EXTERNAL_FETCH_TTL=3600`. **Por agora, manter `MEDIA_DISK=media` e `PRIVATE_FILES_DISK=local`.**
 4. **Deploy:**
    - fazer push e correr o `deploy.sh`; entram três migrações aditivas: perfis, sugestões e registo da migração dos ficheiros;
-   - depois: `docker exec xplendor-php composer install --no-dev --optimize-autoloader`, `php artisan config:cache` e `php artisan queue:restart`;
+   - o `composer install --no-dev --optimize-autoloader` passou a correr no próprio `deploy.sh` (pré-deploy, ponto 7);
    - confirmar `php artisan acl:migrate-profiles`: deve dizer 0 utilizadores com perfil novo, porque a migração já os atribuiu.
 5. **Testar a ligação ao R2** com o comando do passo 4.3 do guia; deve escrever `ok`.
 6. **Migrar os ficheiros:**
@@ -143,6 +143,8 @@ O detalhe está em `documents/r2/R2-PRODUCAO.md`.
    - confirmar no ecrã: uma imagem, um vídeo, uma fatura do OCR e uma cobrança.
 7. **Uns dias depois:** `php artisan storage:purge-local` (simulação) e depois `--execute`.
 
-Fora do pedido, mas notado:
-- Os problemas de exposição do disco público estão em `documents/r2/INVENTARIO.md`: as fotografias originais das viaturas, as faturas dos tickets e as fotografias dos relatórios de satisfação são públicas.
-- Salvar uma fatura do OCR parece usar PATCH quando a rota só aceita PUT. Não mexi.
+Fora do pedido, mas notado (resolvido no pré-deploy):
+- Os problemas de exposição do disco público (`documents/r2/INVENTARIO.md`): resolvidos no ponto 5.
+- Gravar uma fatura do OCR usava PATCH numa rota só com PUT: corrigido no ponto 4.
+
+**A lista de deploy completa, com tudo o que está no `main` desde o último deploy, está em `documents/DEPLOY-LISTA-CONSOLIDADA.md`.**
