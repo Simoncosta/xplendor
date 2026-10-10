@@ -131,10 +131,10 @@ A regra: os Ficheiros nunca abrem um ficheiro que a pessoa não pudesse abrir no
 | Pasta | Ficheiros | Módulo | Permissão | Notas |
 |---|---|---|---|---|
 | Linha Editorial / AAAA-MM | media das publicações (originais, com as variantes) | Linha Editorial | `editorial.ver` | |
-| Faturas de fornecedores / AAAA-MM | faturas do OCR (as não apagadas) | Restauração: Faturas | `restauracao.ver` **e** `financas.ver` | nunca a agência (decisão 9) |
+| Faturas de fornecedores / AAAA-MM | faturas do OCR (as não apagadas) | Restauração: Faturas | `restauracao.ver` **e** `financas.ver` | nunca a agência (decisão 9); as duas permissões confirmadas (3.1) |
 | Faturação XPLENDOR / Cobranças, Comprovativos, Pedidos de suporte, Orçamentos | PDFs das cobranças, comprovativos, faturas dos pedidos, PDFs dos orçamentos | (base) | `faturacao_xplendor.ver` (só o Administrador) | o `Access` já recusa a agência e o root noutras empresas |
 | Suporte | capturas de ecrã dos pedidos | (base) | `suporte.ver` | |
-| Relatórios de satisfação | fotografias dos clientes | Pós-venda | `automovel.ver` | dados pessoais: nunca a agência |
+| Relatórios de satisfação | fotografias dos clientes | Pós-venda | `automovel.ver` | dados pessoais: nunca a agência (confirmado, 3.1) |
 | Viaturas / {viatura} | imagens, originais e 360 | Stock de Veículos | `automovel.ver` | |
 | Marca e logótipos | logótipo | (base) | `empresa.ver` | |
 | Blog | banners dos artigos | (base) | `blog.ver` | |
@@ -142,6 +142,14 @@ A regra: os Ficheiros nunca abrem um ficheiro que a pessoa não pudesse abrir no
 | Modelos de documento | modelos .docx | Documentos | `automovel.ver` | |
 
 As pastas das pessoas seguem a área `ficheiros`: ver, criar, editar e apagar.
+
+### 3.1 Respostas do Simon (pré-deploy)
+
+- **Faturas de fornecedores:** ficam as duas permissões (`restauracao.ver` e `financas.ver`).
+- **Relatórios de satisfação:** continuam fechados à agência.
+- **"Só leitura" e a pasta "Viaturas":** fica como está; a sugestão "Só leitura" não tem `automovel.ver`.
+  - **Para mais tarde:** separar a área `automovel` em "stock" e "contactos", para um perfil poder ver o stock sem ver os contactos dos clientes.
+- **O módulo:** liga-se primeiro na XPLENDOR, em produção, pelo Simon (`DEPLOY-FICHEIROS.md`).
 
 ## 4. O que pode correr mal
 
@@ -198,19 +206,22 @@ for p in "cars/*/images" "cars/*/originals" "cars/*/360_exterior" logo team user
   - os anúncios e catálogos que alguém tenha criado à mão na Meta com um URL `/storage/…` são o caso de risco (não há código que os envie, mas podem existir).
 - **O editor de imagem** lê pela rota `/api/media/{path}` (limitada às imagens das viaturas).
 
-### 5.3 As duas opções de domínio (a decisão é do Simon)
+### 5.3 As duas opções de domínio
+
+**Decidido pelo Simon: opção B, com um domínio próprio para as imagens**, comprado à parte e todo na Cloudflare. Nada a construir agora.
 
 - **A. Pôr o `xplendor.tech` na Cloudflare** (DNS e proxy):
   - uma regra no domínio serve `/storage/*` a partir do R2 (Worker ou "R2 custom domain" num caminho);
   - os URL não mudam: os links publicados continuam a funcionar sem mexer na base de dados;
-  - **mas** todo o domínio passa pela Cloudflare (DNS, certificados, e o tráfego da aplicação), uma mudança maior e com mais risco.
-- **B. Um domínio só para imagens** (por exemplo, `img.xplendor.tech`, ligado ao bucket público):
-  - mudança pequena e isolada;
-  - os URL novos passam a apontar para lá: a base de dados guarda o caminho e o domínio vem da configuração;
+  - **mas** todo o domínio passa pela Cloudflare (DNS, certificados, e o tráfego da aplicação), uma mudança maior e com mais risco;
+  - **um subdomínio do `xplendor.tech`** (por exemplo, `img.xplendor.tech`) também só se liga ao R2 desta forma, porque o domínio próprio de um bucket do R2 tem de pertencer a uma zona na Cloudflare.
+- **B. Um domínio próprio, só para as imagens** (a escolha), comprado à parte e com a zona toda na Cloudflare, ligado ao bucket público como domínio próprio do R2:
+  - mudança pequena e isolada: o `xplendor.tech` fica como está;
+  - os URL novos passam a apontar para lá: a base de dados guarda o caminho e o domínio vem da configuração (`PUBLIC_FILES_BASE_URL`);
   - os URL antigos (`/storage/…`) continuam a funcionar pelo nginx, que pode servir do disco ou redirecionar (301) para o domínio novo;
   - os links publicados não partem desde que o nginx mantenha `/storage/*`.
 
-**Recomendação técnica: B**, com o redirecionamento no nginx: menos risco, reversível e sem mexer no domínio principal.
+**Correção a este desenho:** a primeira versão dava `img.xplendor.tech` como exemplo da opção B. Não funciona sem pôr o `xplendor.tech` na Cloudflare, ou seja, sem a opção A. A opção B pede um domínio diferente.
 
 ### 5.4 O comando de migração (para escrever na R2-2)
 
@@ -231,10 +242,11 @@ for p in "cars/*/images" "cars/*/originals" "cars/*/360_exterior" logo team user
 
 - Antes do `purge-local`: `PUBLIC_FILES_BASE_URL` vazio e `config:cache`. Volta tudo ao disco local, sem perda.
 - Depois do `purge-local`: copiar de volta do R2 (o mesmo comando ao contrário, `--from=r2`), e só depois tirar o 301.
+- O domínio das imagens pode ficar registado mesmo sem uso.
 
 ### 5.7 As fatias
 
-1. Medir em produção (5.1) e decidir o domínio (5.3).
+1. Medir em produção (5.1) e comprar o domínio das imagens, com a zona na Cloudflare (decidido: opção B, 5.3).
 2. `PUBLIC_FILES_BASE_URL` e a geração dos URL num só sítio (`PublicUrl`), sem mudar nada com a variável vazia.
 3. O comando de migração (simulação e `--execute`), com testes.
 4. Em produção: copiar e confirmar, ligar a variável e o 301 no nginx.
