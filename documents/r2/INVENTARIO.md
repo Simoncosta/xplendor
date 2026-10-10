@@ -40,3 +40,11 @@ Levantamento do código (só leitura) e dos tamanhos em dev. Discos em `server/c
 - Vários `Storage::url()` usam o disco por omissão por acaso; se `FILESYSTEM_DISK` mudar, esses URLs partem. Devem passar a `Storage::disk('public')->url()`.
 - O apagamento definitivo de uma empresa não apagava os envios em partes por concluir: corrigido esta noite (apaga-os, e apaga também no R2 e na cópia local).
 - `league/commonmark` tem dois avisos de segurança no `composer audit` (já existia antes desta noite).
+
+## Resolvido no pré-deploy (ponto 5)
+
+- **Faturas dos tickets** e **fotografias dos relatórios de satisfação:** passam para o disco privado (`PRIVATE_FILES_DISK`), em `support-invoices/company_{c}/` e `satisfaction-reports/company_{c}/{relatório}/`, servidas por URLs assinados de 30 minutos (`/api/files/ticket-invoice/{id}` e `/api/files/report-photo/{id}`), gerados apenas por quem já passou a empresa e o ACL. Os ficheiros antigos migram com `php artisan files:make-private` (simulação por omissão; `--execute` copia, confirma os bytes, atualiza a referência e apaga a cópia pública).
+- **Originais das viaturas:** gravados sem EXIF nem GPS. As existentes limpam-se com `php artisan images:strip-exif` (simulação por omissão; também trata os avatares).
+- **Rota `/api/media/{path}`:** só serve imagens de viaturas (`company_{c}/cars/.../images|originals/...`), que é o que o editor de imagem precisa; o CORS vem da configuração global (`config/cors.php`), sem localhost fixo.
+- **Avatares:** recodificados em WebP (sem EXIF), em `company_{c}/users/`, com o id da empresa certo.
+- **`Storage::url()`:** os caminhos públicos pedem-se sempre ao disco `public` (`App\Support\Storage\PublicUrl`).

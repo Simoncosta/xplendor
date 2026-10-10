@@ -561,11 +561,16 @@ class TenancyHotfixTest extends TestCase
         $this->assertDatabaseHas('company_integrations', ['company_id' => $this->companyA->id, 'platform' => 'meta', 'account_id' => '222']);
     }
 
+    /** Pré-deploy, ponto 5: a rota só serve imagens de viaturas (a do editor), nada mais do disco público. */
     public function test_media_continua_a_servir_ficheiros_publicos(): void
     {
-        File::ensureDirectoryExists(storage_path('app/public'));
+        File::ensureDirectoryExists(storage_path('app/public/company_1/cars/carro-1/images'));
+        File::put(storage_path('app/public/company_1/cars/carro-1/images/1.webp'), 'WEBP');
         File::put(storage_path('app/public/hotfix-ok.txt'), 'PUBLICO');
 
-        $this->get('/api/media/hotfix-ok.txt')->assertOk();
+        $this->get('/api/media/company_1/cars/carro-1/images/1.webp')->assertOk();
+        $this->get('/api/media/hotfix-ok.txt')->assertNotFound();
+        File::deleteDirectory(storage_path('app/public/company_1/cars/carro-1'));
+        File::delete(storage_path('app/public/hotfix-ok.txt'));
     }
 }

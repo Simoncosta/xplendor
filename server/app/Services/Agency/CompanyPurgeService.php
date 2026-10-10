@@ -105,7 +105,7 @@ class CompanyPurgeService
         $media = array_unique(['media', (string) config('media.disk', 'media')]);
         $plan = ['public' => ["company_{$id}"]];
         foreach ($private as $disk) {
-            $plan[$disk] = array_merge($plan[$disk] ?? [], ["company_{$id}", "ocr-invoices/{$id}"]);
+            $plan[$disk] = array_merge($plan[$disk] ?? [], ["company_{$id}", "ocr-invoices/{$id}", "support-invoices/company_{$id}", "satisfaction-reports/company_{$id}"]);
         }
         foreach ($media as $disk) {
             $plan[$disk] = array_merge($plan[$disk] ?? [], ["company_{$id}", "social/company_{$id}"]);

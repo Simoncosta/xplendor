@@ -67,7 +67,7 @@ class SatisfactionReportPublicResource extends JsonResource
             ],
             // Fotos carregadas pelo cliente (o widget "As suas fotos").
             'photos' => collect($report->photos)
-                ->map(fn ($p) => ['id' => $p->id, 'url' => $p->path])
+                ->map(fn ($p) => ['id' => $p->id, 'url' => \App\Support\Storage\PrivateFiles::reportPhotoUrl($p)])
                 ->values(),
         ];
     }

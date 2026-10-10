@@ -45,7 +45,9 @@ class AgencyTenancySweepTest extends TestCase
     private const NON_COMPANY_ROUTES = [
         'POST api/market/snapshots' => 'scraper (token próprio)',
         'GET api/media/{asset}/{variant}' => 'ficheiros por URL assinado',
-        'GET api/media/{path}' => 'armazenamento público',
+        'GET api/media/{path}' => 'imagens das viaturas para o editor (só essas)',
+        'GET api/files/ticket-invoice/{ticket}' => 'ficheiros privados por URL assinado',
+        'GET api/files/report-photo/{photo}' => 'ficheiros privados por URL assinado',
         'GET api/oauth/meta/callback' => 'OAuth (empresa no nonce)',
         'GET api/oauth/meta/social/callback' => 'OAuth (empresa no nonce)',
         'GET api/social-avatar/{account}' => 'URL assinado',

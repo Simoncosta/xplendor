@@ -65,12 +65,14 @@ class CarImageService
             $suffix     = substr(md5(uniqid()), 0, 6);
             $basename   = "{$order}_{$timestamp}{$suffix}";
 
-            // Save original with real extension (no conversion)
+            // Original no mesmo formato, mas recodificado sem metadados: sem EXIF nem localização GPS
+            // (o disco é público). A orientação fica aplicada, como no recorte.
             $ext             = strtolower($image->getClientOriginalExtension() ?: 'jpg');
+            $ext             = in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true) ? $ext : 'jpg';
             $originalFilename = "{$basename}.{$ext}";
             $originalStoragePath = "{$originalsFolder}/{$originalFilename}";
-            Storage::disk('public')->putFileAs($originalsFolder, $image, $originalFilename);
-            $originalPublicPath = Storage::url($originalStoragePath);
+            Storage::disk('public')->put($originalStoragePath, \App\Support\Images\ImageMetadata::strippedBinary((string) file_get_contents($image->getRealPath()), $ext));
+            $originalPublicPath = \App\Support\Storage\PublicUrl::path($originalStoragePath);
 
             // Build converted/cropped version
             $img = $manager->read($image);
@@ -92,7 +94,7 @@ class CarImageService
             $croppedFilename = "{$basename}.webp";
             $croppedPath     = "{$imagesFolder}/{$croppedFilename}";
             Storage::disk('public')->put($croppedPath, $img->toWebp(85)->toString());
-            $croppedPublicPath = Storage::url($croppedPath);
+            $croppedPublicPath = \App\Support\Storage\PublicUrl::path($croppedPath);
 
             $results[] = [
                 'image'         => $croppedPublicPath,

@@ -35,6 +35,7 @@ class SiteChangeTicketTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
+        Storage::fake('local'); // disco privado (pré-deploy, ponto 5)
         Mail::fake();
 
         $planId = DB::table('plans')->insertGetId([
@@ -130,7 +131,9 @@ class SiteChangeTicketTest extends TestCase
         $fresh = $t->fresh();
         $this->assertNotNull($fresh->invoice_path);
         $this->assertStringEndsWith('.pdf', $fresh->invoice_path);
-        Storage::disk('public')->assertExists(ltrim(str_replace('/storage', '', $fresh->invoice_path), '/'));
+        // Pré-deploy, ponto 5: a fatura fica no disco PRIVADO e sai por URL assinado.
+        Storage::disk('local')->assertExists($fresh->invoice_path);
+        $this->assertStringStartsWith('support-invoices/', $fresh->invoice_path);
     }
 
     public function test_mark_paid_rejects_non_pdf(): void

@@ -186,7 +186,7 @@ class BlogService extends BaseService
             $this->deleteBanner($blog->banner);
         }
 
-        $url = Storage::url($path);
+        $url = \App\Support\Storage\PublicUrl::path($path);
         $blog->forceFill(['banner' => $url, 'og_image' => $url])->save();
     }
 

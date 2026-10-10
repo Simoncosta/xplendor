@@ -35,6 +35,7 @@ class SatisfactionReportPhotoTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
+        Storage::fake('local'); // disco privado (pré-deploy, ponto 5)
 
         $planId = DB::table('plans')->insertGetId([
             'name' => 'Test Plan', 'price' => 0, 'car_limit' => 99,
@@ -73,7 +74,9 @@ class SatisfactionReportPhotoTest extends TestCase
         $this->assertNotNull($photo);
         $this->assertStringEndsWith('.webp', $photo->path);                 // re-encode
         $this->assertNotNull($photo->social_consent_at);                    // consentimento registado
-        Storage::disk('public')->assertExists(ltrim(str_replace('/storage', '', $photo->path), '/'));
+        // Pré-deploy, ponto 5: dados pessoais do cliente, no disco PRIVADO (nada em /storage).
+        Storage::disk('local')->assertExists($photo->path);
+        $this->assertStringStartsWith('satisfaction-reports/', $photo->path);
     }
 
     public function test_rejects_non_image(): void
@@ -97,13 +100,13 @@ class SatisfactionReportPhotoTest extends TestCase
     {
         $this->upload(UploadedFile::fake()->image('a.jpg'))->assertStatus(201);
         $photo = SatisfactionReportPhoto::first();
-        $diskPath = ltrim(str_replace('/storage', '', $photo->path), '/');
-        Storage::disk('public')->assertExists($diskPath);
+        $diskPath = $photo->path;
+        Storage::disk('local')->assertExists($diskPath);
 
         $this->delete("{$this->photosUrl()}/{$photo->id}", [], ['Accept' => 'application/json'])->assertStatus(200);
 
         // Direito ao esquecimento: ficheiro E registo desaparecem de verdade.
-        Storage::disk('public')->assertMissing($diskPath);
+        Storage::disk('local')->assertMissing($diskPath);
         $this->assertNull(SatisfactionReportPhoto::find($photo->id));
     }
 

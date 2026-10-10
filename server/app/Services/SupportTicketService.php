@@ -447,16 +447,16 @@ class SupportTicketService extends BaseService
         }
     }
 
-    /** Fatura em PDF (anexada pelo admin). Validada como pdf no controller. */
+    /**
+     * Fatura em PDF (anexada pelo admin). Validada como pdf no controller. Fica no disco
+     * PRIVADO e sai por URL assinado (PrivateFiles), nunca por /storage.
+     */
     private function storeInvoice(int $companyId, UploadedFile $file): string
     {
-        $folder = "company_{$companyId}/ticket-invoices";
-        Storage::disk('public')->makeDirectory($folder);
+        $diskPath = "support-invoices/company_{$companyId}/" . now()->format('YmdHisv') . Str::lower(Str::random(6)) . '.pdf';
+        Storage::disk(\App\Support\Storage\PrivateFiles::disk())->put($diskPath, file_get_contents($file->getRealPath()));
 
-        $diskPath = "{$folder}/" . now()->format('YmdHisv') . Str::lower(Str::random(6)) . '.pdf';
-        Storage::disk('public')->put($diskPath, file_get_contents($file->getRealPath()));
-
-        return Storage::url($diskPath);
+        return $diskPath;
     }
 
     /** Upload não-confiável: re-encode via Intervention (descarta EXIF/payloads). */
@@ -475,6 +475,6 @@ class SupportTicketService extends BaseService
 
         Storage::disk('public')->put($diskPath, $binary);
 
-        return Storage::url($diskPath);
+        return \App\Support\Storage\PublicUrl::path($diskPath);
     }
 }

@@ -109,7 +109,7 @@ class UserService extends BaseService
             }
 
             // Salva nova logo
-            $data['avatar'] = $this->uploadAvatar($data['avatar'], $user->id);
+            $data['avatar'] = $this->uploadAvatar($data['avatar'], (int) $user->company_id); // a pasta é a da EMPRESA (antes usava o id do utilizador)
         } else {
             // Mantém logo antiga
             $data['avatar'] = $user->avatar;
@@ -129,23 +129,20 @@ class UserService extends BaseService
         return $user->refresh();
     }
 
+    /**
+     * Avatar recodificado (WebP, no máximo 512 px), sem EXIF nem localização GPS, e nunca com a
+     * extensão que o cliente enviou: o conteúdo é sempre uma imagem nova.
+     */
     private function uploadAvatar(UploadedFile $file, int $companyId): string
     {
-        $ext = $file->getClientOriginalExtension();
-
-        if (!$ext) {
-            // fallback baseado no mimeType
-            $mime = $file->getMimeType(); // ex: image/png
-            $ext = match ($mime) {
-                'image/png' => 'png',
-                'image/jpeg' => 'jpg',
-                'image/jpg' => 'jpg',
-                default => 'bin', // última linha de defesa
-            };
-        }
-
-        $filename = time() . '_' . uniqid() . '.' . $ext;
-        $path = $file->storeAs("company_{$companyId}/users", $filename, "public");
+        $binary = (new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver()))
+            ->read($file->getRealPath())
+            ->orient()
+            ->scaleDown(512, 512)
+            ->toWebp(85)
+            ->toString();
+        $path = "company_{$companyId}/users/" . time() . '_' . uniqid() . '.webp';
+        Storage::disk('public')->put($path, $binary);
 
         return $path;
     }

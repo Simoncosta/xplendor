@@ -109,6 +109,6 @@ class CompanyService extends BaseService
 
         $disk->put($path, $converted);
 
-        return Storage::url($path); // /storage/company_X/logo/logo.webp
+        return \App\Support\Storage\PublicUrl::path($path); // /storage/company_X/logo/logo.webp
     }
 }

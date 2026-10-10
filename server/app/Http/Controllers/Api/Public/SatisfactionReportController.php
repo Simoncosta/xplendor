@@ -102,7 +102,7 @@ class SatisfactionReportController extends Controller
         $photo = $service->upload($report, $request->file('photo'));
 
         return ApiResponse::success(
-            ['id' => $photo->id, 'url' => $photo->path],
+            ['id' => $photo->id, 'url' => \App\Support\Storage\PrivateFiles::reportPhotoUrl($photo)],
             'Foto carregada com sucesso.',
             201
         );

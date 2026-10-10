@@ -206,7 +206,7 @@ class SatisfactionReportController extends Controller
         $photos = $report
             ? $report->photos->map(fn ($p) => [
                 'id'         => $p->id,
-                'url'        => $p->path,
+                'url'        => \App\Support\Storage\PrivateFiles::reportPhotoUrl($p),
                 'created_at' => optional($p->created_at)->toIso8601String(),
             ])->values()
             : [];

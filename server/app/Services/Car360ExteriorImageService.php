@@ -28,7 +28,7 @@ class Car360ExteriorImageService
             Storage::disk('public')->put($path, $converted);
 
             // Generate public URL
-            $publicPath = Storage::url($path); // → /storage/company_xxx/...
+            $publicPath = \App\Support\Storage\PublicUrl::path($path); // → /storage/company_xxx/...
 
             $results[] = [
                 'image' => $publicPath,

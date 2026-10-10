@@ -39,8 +39,8 @@ class SatisfactionReportPhotoService
             throw new \DomainException('Limite de fotos atingido.');
         }
 
-        $folder = "company_{$report->company_id}/reports/{$report->id}";
-        Storage::disk('public')->makeDirectory($folder);
+        // Dados pessoais do cliente: disco PRIVADO, servido por URL assinado (PrivateFiles).
+        $folder = "satisfaction-reports/company_{$report->company_id}/{$report->id}";
 
         $basename = now()->format('YmdHisv') . substr(md5(uniqid('', true)), 0, 6) . '.webp';
         $diskPath = "{$folder}/{$basename}";
@@ -52,11 +52,11 @@ class SatisfactionReportPhotoService
             ->toWebp(82)
             ->toString();
 
-        Storage::disk('public')->put($diskPath, $binary);
+        Storage::disk(\App\Support\Storage\PrivateFiles::disk())->put($diskPath, $binary);
 
         return SatisfactionReportPhoto::create([
             'satisfaction_report_id' => $report->id,
-            'path'                   => Storage::url($diskPath),
+            'path'                   => $diskPath,
             'order'                  => $this->count($report) + 1,
             'social_consent_at'      => now(),
         ]);
@@ -68,10 +68,7 @@ class SatisfactionReportPhotoService
      */
     public function delete(SatisfactionReportPhoto $photo): void
     {
-        $diskPath = ltrim(str_replace('/storage', '', (string) $photo->path), '/');
-        if ($diskPath !== '') {
-            Storage::disk('public')->delete($diskPath);
-        }
+        \App\Support\Storage\PrivateFiles::delete($photo->path);
         $photo->delete();
     }
 }

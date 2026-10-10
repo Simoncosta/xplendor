@@ -877,38 +877,18 @@ Route::get('media/{asset}/{variant}', [\App\Http\Controllers\Api\MediaFileContro
     ->whereNumber('asset')->where('variant', 'original|thumb|preview|poster')
     ->middleware(['signed:relative', 'throttle:600,1'])->name('media.file');
 
+// Ficheiros privados (faturas dos pedidos de suporte e fotografias dos relatórios de
+// satisfação): só por URL assinado, gerado nas respostas que já verificaram a empresa e o ACL.
+Route::get('/files/ticket-invoice/{ticket}', [\App\Http\Controllers\Api\PrivateFileController::class, 'ticketInvoice'])
+    ->whereNumber('ticket')->middleware(['signed:relative', 'throttle:600,1'])->name('files.ticket-invoice');
+Route::get('/files/report-photo/{photo}', [\App\Http\Controllers\Api\PrivateFileController::class, 'reportPhoto'])
+    ->whereNumber('photo')->middleware(['signed:relative', 'throttle:600,1'])->name('files.report-photo');
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::match(['GET', 'OPTIONS'], '/media/{path}', function ($path) {
-    $origin = request()->headers->get('Origin');
-
-    $allowed = ['http://localhost:3000']; // adiciona outros se precisares
-
-    if (request()->isMethod('OPTIONS')) {
-        return response('', 204, [
-            'Access-Control-Allow-Origin' => in_array($origin, $allowed) ? $origin : '',
-            'Access-Control-Allow-Methods' => 'GET, OPTIONS',
-            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
-            'Vary' => 'Origin',
-        ]);
-    }
-
-    // Defesa em profundidade: resolve o caminho real e recusa tudo o que saia
-    // da pasta pública do storage (../, %2F codificado, symlinks para fora).
-    $publicRoot = realpath(storage_path('app/public'));
-    $fullPath   = realpath(storage_path('app/public/' . $path));
-    abort_unless(
-        $publicRoot !== false
-            && $fullPath !== false
-            && str_starts_with($fullPath, $publicRoot . DIRECTORY_SEPARATOR)
-            && is_file($fullPath),
-        404
-    );
-
-    return Response::file($fullPath, [
-        'Access-Control-Allow-Origin' => in_array($origin, $allowed) ? $origin : '',
-        'Vary' => 'Origin',
-    ]);
-})->where('path', '.*');
+// Imagens das viaturas para o editor (FilePond e recorte), com o CORS global. Só imagens de
+// viaturas (CarImageFileController::PATTERN); a rota antiga servia todo o disco público.
+Route::get('/media/{path}', [\App\Http\Controllers\Api\CarImageFileController::class, 'show'])
+    ->where('path', \App\Http\Controllers\Api\CarImageFileController::PATTERN);

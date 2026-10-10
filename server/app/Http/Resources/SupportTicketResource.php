@@ -29,7 +29,8 @@ class SupportTicketResource extends JsonResource
             'quote_status'    => $this->quote_status,
             'estimated_hours' => $this->estimated_hours !== null ? (float) $this->estimated_hours : null,
             'quoted_amount'   => $this->quoted_amount !== null ? (float) $this->quoted_amount : null,
-            'invoice_url'     => $this->invoice_path,
+            // Disco privado: URL assinado de curta duração (esta resposta já passou pela empresa e pelo ACL).
+            'invoice_url'     => \App\Support\Storage\PrivateFiles::ticketInvoiceUrl($this->resource),
             'hourly_rate'     => $this->type === 'site_change' ? (float) config('tickets.site_change_hourly_rate') : null,
             'author_name'    => $this->whenLoaded('user', fn () => $this->user?->name),
             'messages_count' => $this->whenCounted('messages'),
