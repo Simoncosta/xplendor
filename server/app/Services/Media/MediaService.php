@@ -13,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Support\Storage\LocalCopy;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -28,9 +29,25 @@ class MediaService
 {
     public function __construct(private readonly MediaProbe $probe) {}
 
+    /** O disco dos ficheiros NOVOS (config media.disk: o local "media" ou o R2). */
     public static function disk(): \Illuminate\Contracts\Filesystem\Filesystem
     {
         return Storage::disk((string) config('media.disk', 'media'));
+    }
+
+    /** O disco onde ESTE asset está (cada asset guarda o seu; durante a migração convivem os dois). */
+    public static function diskFor(MediaAsset $asset): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return Storage::disk((string) ($asset->disk ?: config('media.disk', 'media')));
+    }
+
+    /**
+     * Os envios em partes ficam SEMPRE no disco local "media" (num objeto S3 não se pode
+     * acrescentar); no fim, o original passa para o disco configurado.
+     */
+    public static function tempDisk(): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return Storage::disk('media');
     }
 
     // ── Quota ────────────────────────────────────────────────────────────────
@@ -103,7 +120,7 @@ class MediaService
                 throw ValidationException::withMessages(['chunk' => ['Parte do ficheiro com tamanho inválido.']]);
             }
 
-            $disk = self::disk();
+            $disk = self::tempDisk();
             $disk->makeDirectory('tmp');
             $target = $disk->path($upload->tempPath());
             $in = fopen($chunk->getRealPath(), 'rb');
@@ -126,8 +143,7 @@ class MediaService
     /** Fim do envio: confirma o tipo real, deduplica pela empresa e põe o processamento em fila. */
     private function complete(MediaUpload $upload): void
     {
-        $disk = self::disk();
-        $temp = $disk->path($upload->tempPath());
+        $temp = self::tempDisk()->path($upload->tempPath());
         $real = (string) (new \finfo(FILEINFO_MIME_TYPE))->file($temp);
         $allowed = config($upload->kind === MediaAsset::IMAGE ? 'media.image_mimes' : 'media.video_mimes');
         if (! in_array($real, $allowed, true)) {
@@ -147,8 +163,15 @@ class MediaService
         }
 
         $dir = "company_{$upload->company_id}/" . Str::uuid();
-        $disk->makeDirectory($dir);
-        rename($temp, $disk->path("{$dir}/original.{$upload->extension}"));
+        $disk = self::disk();
+        $original = "{$dir}/original.{$upload->extension}";
+        if (LocalCopy::isLocal($disk) && (string) config('media.disk', 'media') === 'media') {
+            $disk->makeDirectory($dir);
+            rename($temp, $disk->path($original));
+        } else {
+            LocalCopy::put($disk, $original, $temp); // R2: envia em stream e apaga a cópia local
+            @unlink($temp);
+        }
 
         $asset = MediaAsset::create([
             'company_id' => $upload->company_id, 'uploaded_by_user_id' => $upload->user_id, 'impersonator_user_id' => $upload->impersonator_user_id,
@@ -169,19 +192,33 @@ class MediaService
         if (! $asset || $asset->status !== MediaAsset::PROCESSING) {
             return;
         }
-        $disk = self::disk();
-        $original = $disk->path((string) $asset->pathFor('original'));
+        $disk = self::diskFor($asset);
 
         try {
-            $manager = new ImageManager(new Driver());
-            $variants = [];
+            // Num disco S3 (R2), o ffmpeg e as miniaturas trabalham numa cópia temporária local.
+            LocalCopy::with($disk, (string) $asset->pathFor('original'), fn (string $original) => $this->processLocal($asset, $disk, $original));
+        } catch (\Throwable $e) {
+            Log::warning('[Media] Processamento falhou', ['asset_id' => $assetId, 'error' => mb_substr($e->getMessage(), 0, 300)]);
+            $asset->fill(['status' => MediaAsset::REJECTED, 'error' => $e instanceof \RuntimeException && str_starts_with($e->getMessage(), 'Não foi')
+                ? $e->getMessage() : 'Não foi possível ler este ficheiro. Experimente exportá-lo de novo (JPEG, PNG, WebP, MP4 ou MOV).'])->save();
+        }
+    }
 
+    /** O processamento propriamente dito, com o original num caminho local. */
+    private function processLocal(MediaAsset $asset, \Illuminate\Contracts\Filesystem\Filesystem $disk, string $original): void
+    {
+        $manager = new ImageManager(new Driver());
+        $variants = [];
+
+        $posterTmp = null;
+        try {
             if ($asset->kind === MediaAsset::VIDEO) {
                 $info = $this->probe->probeVideo($original);
-                $poster = "{$asset->dir}/poster.jpg";
-                $this->probe->posterFrame($original, $disk->path($poster), min(1.0, $info['duration_ms'] / 2000));
+                $posterTmp = LocalCopy::tempPath('jpg');
+                $this->probe->posterFrame($original, $posterTmp, min(1.0, $info['duration_ms'] / 2000));
+                LocalCopy::put($disk, "{$asset->dir}/poster.jpg", $posterTmp);
                 $variants['poster'] = 'poster.jpg';
-                $source = $disk->path($poster);
+                $source = $posterTmp;
                 $asset->fill(['width' => $info['width'], 'height' => $info['height'], 'duration_ms' => $info['duration_ms'], 'codec' => $info['codec']]);
             } else {
                 $source = $original;
@@ -195,13 +232,12 @@ class MediaService
                 $disk->put("{$asset->dir}/{$name}.webp", (clone $image)->scaleDown(width: $width)->toWebp(80)->toString());
                 $variants[$name] = "{$name}.webp";
             }
-
-            $asset->fill(['variants' => $variants, 'status' => MediaAsset::READY, 'error' => null])->save();
-        } catch (\Throwable $e) {
-            Log::warning('[Media] Processamento falhou', ['asset_id' => $assetId, 'error' => mb_substr($e->getMessage(), 0, 300)]);
-            $asset->fill(['status' => MediaAsset::REJECTED, 'error' => $e instanceof \RuntimeException && str_starts_with($e->getMessage(), 'Não foi')
-                ? $e->getMessage() : 'Não foi possível ler este ficheiro. Experimente exportá-lo de novo (JPEG, PNG, WebP, MP4 ou MOV).'])->save();
+        } finally {
+            if ($posterTmp) {
+                @unlink($posterTmp); // a cópia local do poster nunca fica
+            }
         }
+        $asset->fill(['variants' => $variants, 'status' => MediaAsset::READY, 'error' => null])->save();
     }
 
     // ── Remoção ──────────────────────────────────────────────────────────────
@@ -209,7 +245,7 @@ class MediaService
     /** Apaga o asset e todas as variantes. */
     public function purge(MediaAsset $asset): void
     {
-        self::disk()->deleteDirectory($asset->dir);
+        self::diskFor($asset)->deleteDirectory($asset->dir);
         $asset->delete();
     }
 
@@ -217,7 +253,7 @@ class MediaService
     public function purgeOriginal(MediaAsset $asset): void
     {
         if ($path = $asset->pathFor('original')) {
-            self::disk()->delete($path);
+            self::diskFor($asset)->delete($path);
         }
         $asset->forceFill(['original_deleted_at' => now()])->save();
     }

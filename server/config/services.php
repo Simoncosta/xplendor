@@ -50,7 +50,8 @@ return [
     'openai' => [
         'key' => env('OPENAI_KEY'),
         // OCR de faturas de fornecedor (Fase A).
-        'ocr_disk' => env('OCR_INVOICE_DISK', 'local'),        // disco onde a imagem original é guardada
+        // disco onde a imagem original é guardada (R2: por omissão, o disco privado de config/storage_targets.php)
+        'ocr_disk' => env('OCR_INVOICE_DISK', env('PRIVATE_FILES_DISK', 'local')),
         'ocr_monthly_cap' => (int) env('OCR_MONTHLY_CAP', 200), // teto de faturas OCR por empresa/mês (controlo de custo)
         // F2a: QR da AT primeiro (cabeçalho sem IA) + linhas pela IA, com o modelo POR VIA.
         'ocr' => [

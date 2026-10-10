@@ -32,7 +32,11 @@ use Illuminate\Validation\ValidationException;
  */
 class ChargeService
 {
-    public const DISK = 'local';
+    /** R2: o disco dos PDFs e comprovativos (config storage_targets.private_disk: "local" ou "r2"). */
+    public static function disk(): string
+    {
+        return (string) config('storage_targets.private_disk', 'local');
+    }
     public const TIMEZONE = 'Europe/Lisbon';
     public const INVOICE_MAX_KB = 10240;
     public const PROOF_MAX_KB = 10240;
@@ -49,7 +53,7 @@ class ChargeService
 
     public function create(Company $company, array $data, UploadedFile $invoice, User $root): ExpenseCharge
     {
-        $path = $invoice->storeAs('charges/company_' . $company->id, Str::uuid() . '.pdf', self::DISK);
+        $path = $invoice->storeAs('charges/company_' . $company->id, Str::uuid() . '.pdf', self::disk());
 
         $charge = DB::transaction(function () use ($company, $data, $invoice, $root, $path) {
             $category = ExpenseCategory::ensureXplendor($company->id);
@@ -132,7 +136,7 @@ class ChargeService
     public function indicatePayment(ExpenseCharge $charge, string $via, ?User $user, ?string $note, ?UploadedFile $proof): ExpenseCharge
     {
         $this->assertStatus($charge, [ExpenseCharge::OPEN], 'Esta cobrança já não está em aberto.');
-        $proofPath = $proof?->storeAs('charges/company_' . $charge->company_id . '/proofs', Str::uuid() . '.' . ($proof->guessExtension() ?: 'bin'), self::DISK);
+        $proofPath = $proof?->storeAs('charges/company_' . $charge->company_id . '/proofs', Str::uuid() . '.' . ($proof->guessExtension() ?: 'bin'), self::disk());
 
         $charge->update([
             'status' => ExpenseCharge::PAYMENT_INDICATED, 'payment_indicated_at' => now(), 'payment_indicated_via' => $via,
@@ -252,14 +256,14 @@ class ChargeService
 
     public function invoice(ExpenseCharge $charge): string
     {
-        return Storage::disk(self::DISK)->get($charge->invoice_path) ?? abort(404, 'Fatura não encontrada.');
+        return Storage::disk(self::disk())->get($charge->invoice_path) ?? abort(404, 'Fatura não encontrada.');
     }
 
     public function proof(ExpenseCharge $charge): string
     {
-        abort_unless($charge->proof_path && Storage::disk(self::DISK)->exists($charge->proof_path), 404, 'Sem comprovativo.');
+        abort_unless($charge->proof_path && Storage::disk(self::disk())->exists($charge->proof_path), 404, 'Sem comprovativo.');
 
-        return Storage::disk(self::DISK)->get($charge->proof_path);
+        return Storage::disk(self::disk())->get($charge->proof_path);
     }
 
     /** Para o cliente (na plataforma e no link): sem notas internas nem dados da equipa. */

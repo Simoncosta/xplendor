@@ -59,6 +59,29 @@ class MediaAsset extends Model
             ['asset' => $this->id, 'variant' => $variant], absolute: false);
     }
 
+    /**
+     * Para um serviço externo ir buscar o ficheiro (a Meta, na F2 da publicação: ela faz um
+     * pedido ao endereço no momento da publicação). Endereço ABSOLUTO e assinado, válido por
+     * config storage_targets.external_fetch_ttl (1 hora por omissão):
+     *  · no R2: um endereço assinado do próprio R2 (o bucket continua privado);
+     *  · no disco local: o URL assinado da aplicação, absoluto.
+     * Quem chama tem de ter verificado a empresa e a permissão (ACL) antes.
+     */
+    public function externalUrl(string $variant = 'original'): ?string
+    {
+        $path = $this->pathFor($variant);
+        if (! $path) {
+            return null;
+        }
+        $disk = (string) ($this->disk ?: config('media.disk', 'media'));
+        $ttl = (int) config('storage_targets.external_fetch_ttl', 3600);
+        if (\App\Support\Storage\SignedFileUrl::supports($disk)) {
+            return \App\Support\Storage\SignedFileUrl::for($disk, $path, $ttl);
+        }
+
+        return URL::temporarySignedRoute('media.file', now()->addSeconds($ttl), ['asset' => $this->id, 'variant' => $variant]);
+    }
+
     public function ratio(): ?float
     {
         return $this->width && $this->height ? $this->width / $this->height : null;

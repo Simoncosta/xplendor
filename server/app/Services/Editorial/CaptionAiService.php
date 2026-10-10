@@ -220,10 +220,11 @@ class CaptionAiService
             return [];
         }
         $assets = MediaAsset::whereIn('id', $assetIds)->where('status', MediaAsset::READY)->get()->keyBy('id');
-        $disk = MediaService::disk();
         $images = [];
         foreach ($assetIds as $id) {
-            $path = $assets->get($id)?->pathFor('preview');
+            $asset = $assets->get($id);
+            $disk = $asset ? MediaService::diskFor($asset) : null;
+            $path = $asset?->pathFor('preview');
             if (! $path || ! $disk->exists($path)) {
                 continue;
             }

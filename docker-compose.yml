@@ -96,6 +96,43 @@ services:
     networks:
       - xplendor
 
+  # R2 em dev: um MinIO (compatível com S3) para testar o disco de ficheiros de ponta a ponta.
+  # SÓ em dev (nunca no docker-compose.prod.yml): em produção, o disco é o Cloudflare R2.
+  # Consola em http://localhost:9011 (minioadmin / minioadmin). O bucket privado é criado
+  # pelo serviço minio-setup.
+  minio:
+    # A imagem já está em cache nesta máquina; o Docker Hub deixou de servir as versões fixas do MinIO.
+    image: minio/minio:latest
+    pull_policy: missing
+    container_name: xplendor-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9010:9000"
+      - "9011:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - xplendor
+
+  minio-setup:
+    image: minio/mc:latest
+    pull_policy: missing
+    container_name: xplendor-minio-setup
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 2; done;
+      mc mb --ignore-existing local/xplendor-media;
+      mc anonymous set none local/xplendor-media;
+      echo bucket privado pronto"
+    networks:
+      - xplendor
+
   redis:
     image: redis:alpine
     container_name: xplendor-redis
@@ -179,6 +216,7 @@ networks:
   xplendor: {}
 
 volumes:
+  minio_data:
   db_data_xplendor:
   xplendor_vendor:
   xplendor_composer_cache:

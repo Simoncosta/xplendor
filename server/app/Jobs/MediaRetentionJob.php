@@ -76,13 +76,14 @@ class MediaRetentionJob implements ShouldQueue
 
         // 4. Envios por concluir e expirados.
         foreach (MediaUpload::whereNull('completed_at')->where('expires_at', '<', now())->get() as $u) {
-            MediaService::disk()->delete($u->tempPath());
+            MediaService::tempDisk()->delete($u->tempPath()); // os envios em partes estão sempre no disco local
             $u->delete();
             $stats['uploads']++;
         }
 
         // 5. Aviso de disco (equipa XPLENDOR), no máximo um por dia.
-        $percent = $disk->percentUsed(MediaService::disk()->path(''));
+        // Com o R2 não há disco do servidor a encher: o aviso só conta para o disco local.
+        $percent = \App\Support\Storage\LocalCopy::isLocal(MediaService::disk()) ? $disk->percentUsed(MediaService::disk()->path('')) : null;
         $limit = (float) config('media.disk_alert_percent', 70);
         $teamCompany = (int) config('quotes.team_company_id', 0);
         if ($percent !== null && $percent >= $limit) {

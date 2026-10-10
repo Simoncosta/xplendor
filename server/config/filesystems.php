@@ -57,6 +57,26 @@ return [
             'report' => false,
         ],
 
+        // Cloudflare R2 (compatível com S3): bucket PRIVADO. Os ficheiros saem só por endereços
+        // assinados de curta duração, gerados pelo backend depois da verificação de empresa e do
+        // ACL. Em dev aponta para o MinIO do docker-compose (R2_ENDPOINT=http://minio:9000).
+        // Fica em uso só quando MEDIA_DISK=r2 e/ou PRIVATE_FILES_DISK=r2 (config/storage_targets.php).
+        'r2' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => env('R2_REGION', 'auto'),
+            'bucket' => env('R2_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            // Os endereços assinados são assinados com este endpoint (o que o browser e a Meta
+            // usam). Em produção é o mesmo do R2_ENDPOINT; em dev, o MinIO visto de fora do Docker.
+            'public_endpoint' => env('R2_PUBLIC_ENDPOINT'),
+            'use_path_style_endpoint' => (bool) env('R2_PATH_STYLE', true),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

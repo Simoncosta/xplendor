@@ -99,16 +99,27 @@ class CompanyPurgeService
     /** Ficheiros da empresa em todos os discos, salvo as faturas e os comprovativos da XPLENDOR. */
     private function deleteFiles(int $id): void
     {
-        foreach ([
-            'public' => ["company_{$id}"],
-            'local' => ["company_{$id}", "ocr-invoices/{$id}"],
-            'media' => ["company_{$id}", "social/company_{$id}"],
-        ] as $disk => $dirs) {
-            foreach ($dirs as $dir) {
-                if (Storage::disk($disk)->exists($dir)) {
-                    Storage::disk($disk)->deleteDirectory($dir);
+        // R2: os ficheiros podem estar no disco configurado (R2) e ainda nos discos locais (a
+        // migração não apaga o local): apaga-se nos dois.
+        $private = array_unique(['local', (string) config('storage_targets.private_disk', 'local'), (string) config('services.openai.ocr_disk', 'local')]);
+        $media = array_unique(['media', (string) config('media.disk', 'media')]);
+        $plan = ['public' => ["company_{$id}"]];
+        foreach ($private as $disk) {
+            $plan[$disk] = array_merge($plan[$disk] ?? [], ["company_{$id}", "ocr-invoices/{$id}"]);
+        }
+        foreach ($media as $disk) {
+            $plan[$disk] = array_merge($plan[$disk] ?? [], ["company_{$id}", "social/company_{$id}"]);
+        }
+        foreach ($plan as $disk => $dirs) {
+            foreach (array_unique($dirs) as $dir) {
+                if (Storage::disk($disk)->exists($dir) || ! \App\Support\Storage\LocalCopy::isLocal(Storage::disk($disk))) {
+                    Storage::disk($disk)->deleteDirectory($dir); // num disco S3 não há diretórios: apaga pelo prefixo
                 }
             }
+        }
+        // Os envios em partes por concluir desta empresa (ficavam órfãos no disco local).
+        foreach (\App\Models\MediaUpload::where('company_id', $id)->whereNull('completed_at')->get() as $u) {
+            Storage::disk('media')->delete($u->tempPath());
         }
     }
 
