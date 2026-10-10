@@ -909,10 +909,11 @@ Route::get('media/{asset}/{variant}', [\App\Http\Controllers\Api\MediaFileContro
 // Ficheiros privados (faturas dos pedidos de suporte e fotografias dos relatórios de
 // satisfação): só por URL assinado, gerado nas respostas que já verificaram a empresa e o ACL.
 // Ficheiros: abrir ou descarregar um ficheiro do catálogo (o endereço é gerado depois do ACL e da regra da pasta).
-Route::get('/files/stored/{file}', [\App\Http\Controllers\Api\StoredFileController::class, 'show'])
-    ->whereNumber('file')->middleware(['signed:relative', 'throttle:600,1'])->name('files.stored');
-Route::get('/files/ticket-invoice/{ticket}', [\App\Http\Controllers\Api\PrivateFileController::class, 'ticketInvoice'])
-    ->whereNumber('ticket')->middleware(['signed:relative', 'throttle:600,1'])->name('files.ticket-invoice');
+// {name}: o nome do ficheiro no fim do endereço (o leitor de PDF do browser mostra-o como título).
+Route::get('/files/stored/{file}/{name?}', [\App\Http\Controllers\Api\StoredFileController::class, 'show'])
+    ->whereNumber('file')->where('name', '[^/]+')->middleware(['signed:relative', 'throttle:600,1'])->name('files.stored');
+Route::get('/files/ticket-invoice/{ticket}/{name?}', [\App\Http\Controllers\Api\PrivateFileController::class, 'ticketInvoice'])
+    ->whereNumber('ticket')->where('name', '[^/]+')->middleware(['signed:relative', 'throttle:600,1'])->name('files.ticket-invoice');
 Route::get('/files/report-photo/{photo}', [\App\Http\Controllers\Api\PrivateFileController::class, 'reportPhoto'])
     ->whereNumber('photo')->middleware(['signed:relative', 'throttle:600,1'])->name('files.report-photo');
 

@@ -43,7 +43,13 @@ final class PrivateFiles
             return $ticket->invoice_path;
         }
 
-        return URL::temporarySignedRoute('files.ticket-invoice', now()->addMinutes(self::MINUTES), ['ticket' => $ticket->id], absolute: false);
+        return URL::temporarySignedRoute('files.ticket-invoice', now()->addMinutes(self::MINUTES), ['ticket' => $ticket->id, 'name' => self::ticketInvoiceName($ticket)], absolute: false);
+    }
+
+    /** O nome da fatura de um pedido de suporte (no fim do endereço e no Content-Disposition). */
+    public static function ticketInvoiceName(SupportTicket $ticket): string
+    {
+        return "fatura-pedido-{$ticket->id}.pdf";
     }
 
     public static function reportPhotoUrl(SatisfactionReportPhoto $photo): ?string
@@ -58,18 +64,25 @@ final class PrivateFiles
         return URL::temporarySignedRoute('files.report-photo', now()->addMinutes(self::MINUTES), ['photo' => $photo->id], absolute: false);
     }
 
-    /** Serve um ficheiro do disco privado (no R2, por um endereço assinado do próprio R2). */
+    /**
+     * Serve um ficheiro do disco privado (no R2, por um endereço assinado do próprio R2), com o
+     * nome no Content-Disposition. Um PDF no R2 passa pela aplicação (InlinePdf), para o leitor
+     * mostrar o nome do fim do endereço em vez do identificador do objeto.
+     */
     public static function serve(string $path, string $mime, ?string $downloadName = null): Response
     {
         $disk = self::disk();
         abort_unless(Storage::disk($disk)->exists($path), 404);
+        if (SignedFileUrl::supports($disk) && $mime === 'application/pdf' && $downloadName !== null) {
+            return InlinePdf::stream($disk, $path, $downloadName);
+        }
         if (SignedFileUrl::supports($disk)) {
             return redirect()->away(SignedFileUrl::for($disk, $path, 300, $downloadName), 302, ['Cache-Control' => 'private, no-store', 'Referrer-Policy' => 'no-referrer']);
         }
 
         return response(Storage::disk($disk)->get($path), 200, [
             'Content-Type' => $mime,
-            'Content-Disposition' => 'inline' . ($downloadName ? '; filename="' . addslashes($downloadName) . '"' : ''),
+            'Content-Disposition' => ContentDisposition::make('inline', $downloadName),
             'Cache-Control' => 'private, max-age=1800',
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'no-referrer',

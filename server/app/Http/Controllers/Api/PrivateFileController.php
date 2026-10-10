@@ -22,7 +22,7 @@ class PrivateFileController extends Controller
         $t = SupportTicket::find($ticket);
         abort_if(! $t || ! $t->invoice_path || PrivateFiles::isLegacyPublic($t->invoice_path), 404);
 
-        return PrivateFiles::serve($t->invoice_path, 'application/pdf', "fatura-pedido-{$t->id}.pdf");
+        return PrivateFiles::serve($t->invoice_path, 'application/pdf', PrivateFiles::ticketInvoiceName($t));
     }
 
     public function reportPhoto(int $photo): Response

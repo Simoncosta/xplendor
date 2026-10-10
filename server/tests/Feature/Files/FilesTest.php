@@ -297,4 +297,33 @@ class FilesTest extends TestCase
         $this->assertNotNull(MediaAsset::find($file->media_asset_id), 'guardada nos Ficheiros');
         $this->assertNull(MediaAsset::find($other->id), 'a solta é apagada, como antes');
     }
+
+    public function test_the_signed_address_ends_with_the_file_name_and_the_header_carries_it(): void
+    {
+        $id = $this->upload($this->adminA, $this->a, $this->pdf('Tabela de preços (exemplo).pdf'))->assertCreated()->json('data.id');
+        $file = $this->actingAs($this->adminA, 'sanctum')->getJson($this->url($this->a, "/{$id}"))->assertOk()->json('data');
+
+        // O leitor de PDF do browser mostra o fim do endereço: o nome, não o identificador.
+        $this->assertStringContainsString("/api/files/stored/{$id}/Tabela%20de%20pre%C3%A7os%20%28exemplo%29.pdf?", $file['url']);
+        $inline = $this->get($file['url'])->assertOk();
+        $this->assertSame("inline; filename=\"Tabela de precos (exemplo).pdf\"; filename*=utf-8''Tabela%20de%20pre%C3%A7os%20%28exemplo%29.pdf",
+            $inline->headers->get('Content-Disposition'));
+        $this->assertStringStartsWith('attachment; filename=', (string) $this->get($file['download_url'])->assertOk()->headers->get('Content-Disposition'));
+        // A assinatura cobre o nome: outro nome no endereço não abre.
+        $this->get(str_replace('Tabela%20de', 'Outra%20de', $file['url']))->assertForbidden();
+
+        // No R2: ver o PDF passa pela aplicação (o endereço acaba no nome); descarregar redireciona para o R2, com o nome.
+        $adapter = new \League\Flysystem\InMemory\InMemoryFilesystemAdapter();
+        Storage::set('r2', new \Illuminate\Filesystem\FilesystemAdapter(new \League\Flysystem\Filesystem($adapter), $adapter, ['driver' => 's3']));
+        config(['filesystems.disks.r2' => ['driver' => 's3', 'key' => 'chave', 'secret' => 'segredo', 'region' => 'auto', 'bucket' => 'xplendor-media',
+            'endpoint' => 'https://conta.r2.cloudflarestorage.com', 'use_path_style_endpoint' => true]]);
+        $stored = StoredFile::find($id);
+        Storage::disk('r2')->put($stored->path, Storage::disk($stored->disk)->get($stored->path));
+        $stored->forceFill(['disk' => 'r2'])->save();
+        $fromR2 = $this->get($file['url'])->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-1.4', $fromR2->streamedContent());
+        $this->assertStringContainsString("filename*=utf-8''Tabela%20de%20pre%C3%A7os%20%28exemplo%29.pdf", (string) $fromR2->headers->get('Content-Disposition'));
+        $redirect = (string) $this->get($file['download_url'])->assertRedirect()->headers->get('Location');
+        $this->assertStringContainsString('response-content-disposition=' . rawurlencode("attachment; filename=\"Tabela de precos (exemplo).pdf\"; filename*=utf-8''Tabela%20de%20pre%C3%A7os%20%28exemplo%29.pdf"), $redirect);
+    }
 }

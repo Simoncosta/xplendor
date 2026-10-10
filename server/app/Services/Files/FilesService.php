@@ -410,14 +410,15 @@ class FilesService
 
     // ── Endereços e leitura ──────────────────────────────────────────────────
 
-    /** Endereço assinado e relativo (30 minutos), gerado só depois do acesso confirmado. */
+    /** Endereço assinado e relativo (30 minutos), gerado só depois do acesso confirmado; acaba no nome do ficheiro. */
     public function signedUrl(StoredFile $file, string $variant = 'original', bool $download = false): ?string
     {
         if ($file->media_asset_id && $variant !== 'original' && ($asset = $file->mediaAsset) && $asset->pathFor($variant)) {
             return $asset->signedUrl($variant);
         }
 
-        return URL::temporarySignedRoute('files.stored', now()->addMinutes(30), array_filter(['file' => $file->id, 'download' => $download ? 1 : null]), absolute: false);
+        return URL::temporarySignedRoute('files.stored', now()->addMinutes(30),
+            array_filter(['file' => $file->id, 'name' => str_replace(['/', '\\'], '-', (string) $file->name) ?: null, 'download' => $download ? 1 : null]), absolute: false);
     }
 
     // ── Reciclagem: apagar de vez (tarefa diária) ────────────────────────────

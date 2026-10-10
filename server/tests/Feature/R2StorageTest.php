@@ -236,7 +236,8 @@ class R2StorageTest extends TestCase
 
         $this->assertSame(2, (new StorageMigration('r2'))->purgeLocal(true)['mantidos'], 'ainda se lê do local');
         config(['storage_targets.private_disk' => 'r2']);
-        $this->get(\App\Support\Storage\PrivateFiles::ticketInvoiceUrl($ticket))->assertRedirect();
+        // O PDF lê-se do R2 pela aplicação (o leitor mostra o nome do fim do endereço).
+        $this->assertSame('%PDF-1.4 fatura do ticket', $this->get(\App\Support\Storage\PrivateFiles::ticketInvoiceUrl($ticket))->assertOk()->streamedContent());
         $this->assertSame(2, (new StorageMigration('r2'))->purgeLocal(true)['apagados']);
         $this->assertFalse(Storage::disk('local')->exists($photo->path));
     }
@@ -258,8 +259,13 @@ class R2StorageTest extends TestCase
         $photo = app(\App\Services\SatisfactionReportPhotoService::class)->upload($report, UploadedFile::fake()->image('foto.jpg', 120, 90));
         $this->assertTrue(Storage::disk('r2')->exists($photo->path));
 
-        // Saem por um endereço assinado do R2 (redirecionamento), atrás do endereço assinado da aplicação.
-        $this->get(\App\Support\Storage\PrivateFiles::ticketInvoiceUrl($ticket))->assertRedirect();
+        // A fotografia sai por um endereço assinado do R2 (redirecionamento), atrás do endereço assinado da
+        // aplicação. A fatura (PDF) passa pela aplicação, com o nome no fim do endereço e no Content-Disposition.
+        $url = \App\Support\Storage\PrivateFiles::ticketInvoiceUrl($ticket);
+        $this->assertStringContainsString("/api/files/ticket-invoice/{$ticket->id}/fatura-pedido-{$ticket->id}.pdf?", $url);
+        $pdf = $this->get($url)->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertSame('%PDF-1.4 no R2', $pdf->streamedContent());
+        $this->assertStringStartsWith("inline; filename=fatura-pedido-{$ticket->id}.pdf", (string) $pdf->headers->get('Content-Disposition'));
         $this->get(\App\Support\Storage\PrivateFiles::reportPhotoUrl($photo))->assertRedirect();
 
         // Repetir a migração depois da mudança: o que já está no R2 conta como "já estava", não "em falta".

@@ -35,7 +35,8 @@ final class SignedFileUrl
         $args = ['Bucket' => $cfg['bucket'], 'Key' => ltrim(($cfg['root'] ?? '') . '/' . $path, '/')];
         if ($downloadName !== null || $attachment) {
             // attachment: o browser descarrega e nunca mostra como página (por exemplo, o SVG).
-            $args['ResponseContentDisposition'] = ($attachment ? 'attachment' : 'inline') . ($downloadName !== null ? '; filename="' . addslashes($downloadName) . '"' : '');
+            // Com o nome do ficheiro (UTF-8 e uma versão em ASCII), em vez do identificador do objeto.
+            $args['ResponseContentDisposition'] = ContentDisposition::make($attachment ? 'attachment' : 'inline', $downloadName);
         }
         if ($contentType !== null) {
             $args['ResponseContentType'] = $contentType;

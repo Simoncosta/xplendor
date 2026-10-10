@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\StoredFile;
+use App\Support\Storage\ContentDisposition;
+use App\Support\Storage\InlinePdf;
 use App\Support\Storage\SignedFileUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -15,7 +17,8 @@ use Illuminate\Support\Facades\Storage;
  * gerado só depois da empresa, do ACL e da regra da pasta (FilesController). Os ficheiros ficam
  * onde estão (disco privado, R2 ou disco público). Só as imagens (sem o SVG), os vídeos e os PDF
  * abrem no browser; o resto descarrega. O SVG descarrega sempre, com CSP "sandbox": nunca abre
- * como página.
+ * como página. O endereço acaba no nome do ficheiro e o Content-Disposition leva o nome; um PDF
+ * aberto a partir do R2 passa pela aplicação (InlinePdf), para o leitor mostrar o nome certo.
  */
 class StoredFileController extends Controller
 {
@@ -32,6 +35,9 @@ class StoredFileController extends Controller
         $isSvg = $mime === 'image/svg+xml' || $f->extension === 'svg';
         if ($isSvg) {
             $attachment = true;
+        }
+        if (SignedFileUrl::supports($f->disk) && ! $attachment && $mime === 'application/pdf') {
+            return InlinePdf::stream($f->disk, $f->path, $f->name);
         }
         if (SignedFileUrl::supports($f->disk)) {
             return redirect()->away(SignedFileUrl::for($f->disk, $f->path, 300, $f->name, $attachment, $isSvg ? 'application/octet-stream' : $mime), 302,
@@ -50,6 +56,8 @@ class StoredFileController extends Controller
         if ($mime !== 'application/pdf') {
             $headers['Content-Security-Policy'] = 'sandbox';
         }
+
+        $headers['Content-Disposition'] = ContentDisposition::make($attachment ? 'attachment' : 'inline', $f->name);
 
         return $disk->response($f->path, $f->name, $headers, $attachment ? 'attachment' : 'inline');
     }
