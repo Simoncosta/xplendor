@@ -15,7 +15,8 @@ use App\Models\ContentSector;
  */
 final class BrandProfileTemplates
 {
-    public const VERSION = 'brand-templates-v1';
+    // v2: + Software (SaaS) e Agência de comunicação.
+    public const VERSION = 'brand-templates-v2';
     public const FALLBACK = 'universal';
 
     private const TEMPLATES = [
@@ -85,6 +86,42 @@ final class BrandProfileTemplates
             'topics_to_avoid' => ['política'],
             'hashtags_default' => ['#domotica', '#casainteligente', '#smarthome'],
             'cta_default' => 'Peça uma avaliação da sua casa.',
+            'emoji_policy' => 'light',
+        ],
+        'software-saas' => [
+            'label' => 'Software (SaaS)',
+            'tone_of_voice' => 'Claro e confiante. Explica o problema que o produto resolve e mostra-o a funcionar, com exemplos concretos e sem jargão.',
+            'audience' => 'Empresas e profissionais que procuram uma ferramenta para resolver um problema concreto do dia a dia e querem perceber depressa se ela serve.',
+            'pillars' => [
+                ['name' => 'O problema e a solução', 'description' => 'O problema que o produto resolve e a forma como o resolve.'],
+                ['name' => 'O produto em ação', 'description' => 'As funcionalidades e as novidades, mostradas a funcionar.'],
+                ['name' => 'Casos de clientes', 'description' => 'O que os clientes conseguiram com o produto, sempre com a autorização deles.'],
+                ['name' => 'Dicas de utilização', 'description' => 'Formas simples de tirar mais partido do produto.'],
+                ['name' => 'Bastidores', 'description' => 'A equipa e a forma como o produto é pensado e construído.'],
+            ],
+            'words_to_use' => ['simples', 'em minutos', 'automático', 'experimente'],
+            'words_to_avoid' => ['revolucionário', 'disruptivo', 'garantido'],
+            'topics_to_avoid' => ['clientes sem autorização', 'concorrentes pelo nome'],
+            'hashtags_default' => ['#software', '#saas', '#produtividade'],
+            'cta_default' => 'Peça uma demonstração.',
+            'emoji_policy' => 'light',
+        ],
+        'agencia-comunicacao' => [
+            'label' => 'Agência de comunicação',
+            'tone_of_voice' => 'Criativo e profissional. Mostra o trabalho e a forma de pensar da agência com exemplos reais, num registo próximo e seguro.',
+            'audience' => 'Empresas e marcas que procuram uma agência para a sua comunicação: redes sociais, digital, imagem e campanhas.',
+            'pillars' => [
+                ['name' => 'Trabalhos para clientes', 'description' => 'Projetos feitos pela agência, sempre com a autorização dos clientes.'],
+                ['name' => 'Processo e bastidores', 'description' => 'Como a agência trabalha, da ideia à entrega.'],
+                ['name' => 'Dicas de comunicação', 'description' => 'Conselhos práticos para as marcas comunicarem melhor.'],
+                ['name' => 'A equipa', 'description' => 'As pessoas da agência e o que cada uma faz.'],
+                ['name' => 'Resultados', 'description' => 'O que as campanhas alcançaram, com números concretos.'],
+            ],
+            'words_to_use' => ['ideia', 'estratégia', 'marca', 'resultados'],
+            'words_to_avoid' => ['barato', 'imperdível'],
+            'topics_to_avoid' => ['clientes sem autorização', 'críticas a outras agências'],
+            'hashtags_default' => ['#comunicacao', '#marketingdigital', '#agencia'],
+            'cta_default' => 'Fale connosco sobre o seu projeto.',
             'emoji_policy' => 'light',
         ],
         'universal' => [

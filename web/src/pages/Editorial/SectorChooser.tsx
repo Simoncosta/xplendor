@@ -16,6 +16,8 @@ const ICONS: Record<string, string> = {
     carros: "ri-car-line",
     autocaravanas: "ri-caravan-line",
     domotica: "ri-home-gear-line",
+    "software-saas": "ri-cloud-line",
+    "agencia-comunicacao": "ri-megaphone-line",
 };
 
 export default function SectorChooser({
@@ -81,7 +83,7 @@ export default function SectorChooser({
                             const isCurrent = variant === "change" && currentSectorId === s.id;
                             const disabled = busy || isCurrent; // não deixar escolher o ramo atual
                             return (
-                                <Col key={s.id} xs={6} md={3}>
+                                <Col key={s.id} xs={6} md={4}>
                                     <button
                                         type="button"
                                         onClick={() => !isCurrent && setSelected(s.id)}

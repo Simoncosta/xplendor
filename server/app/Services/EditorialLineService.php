@@ -36,7 +36,7 @@ class EditorialLineService
 
     public function __construct(private readonly EditorialAnchorResolver $resolver) {}
 
-    /** Folhas selecionáveis (Restauração, Carros, Autocaravanas, Domótica). */
+    /** Folhas selecionáveis (Restauração, Carros, Autocaravanas, Domótica, Software (SaaS), Agência de comunicação). */
     public function selectableSectors(): array
     {
         return ContentSector::where('is_selectable', true)
