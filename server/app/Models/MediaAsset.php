@@ -24,7 +24,7 @@ class MediaAsset extends Model
 
     protected $fillable = [
         'company_id', 'uploaded_by_user_id', 'impersonator_user_id', 'kind', 'disk', 'dir', 'original_name',
-        'extension', 'mime', 'size_bytes', 'width', 'height', 'duration_ms', 'codec', 'sha256', 'variants',
+        'extension', 'mime', 'size_bytes', 'variants_bytes', 'width', 'height', 'duration_ms', 'codec', 'sha256', 'variants',
         'status', 'error', 'original_deleted_at',
     ];
 

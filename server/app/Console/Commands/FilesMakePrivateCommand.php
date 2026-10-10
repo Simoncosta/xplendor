@@ -33,13 +33,13 @@ class FilesMakePrivateCommand extends Command
 
         foreach (SupportTicket::where('invoice_path', 'like', '/storage/%')->orderBy('id')->cursor() as $t) {
             $target = "support-invoices/company_{$t->company_id}/" . basename($t->invoice_path);
-            $r = $this->move($t->invoice_path, $target, $execute, fn () => $t->forceFill(['invoice_path' => $target])->saveQuietly());
+            $r = $this->move($t->invoice_path, $target, $execute, fn (int $size) => $t->forceFill(['invoice_path' => $target, 'invoice_size_bytes' => $size])->saveQuietly());
             $stats[$r === 'ok' ? 'faturas' : $r]++;
         }
         foreach (SatisfactionReportPhoto::where('path', 'like', '/storage/%')->with('report')->orderBy('id')->cursor() as $p) {
             $companyId = $p->report?->company_id ?? 0;
             $target = "satisfaction-reports/company_{$companyId}/{$p->satisfaction_report_id}/" . basename($p->path);
-            $r = $this->move($p->path, $target, $execute, fn () => $p->forceFill(['path' => $target])->saveQuietly());
+            $r = $this->move($p->path, $target, $execute, fn (int $size) => $p->forceFill(['path' => $target, 'size_bytes' => $size])->saveQuietly());
             $stats[$r === 'ok' ? 'fotografias' : $r]++;
         }
 
@@ -70,7 +70,7 @@ class FilesMakePrivateCommand extends Command
 
             return 'falhas';
         }
-        $updateReference();
+        $updateReference(strlen($bytes)); // com o tamanho, para o espaço por empresa
         $public->delete($source);
 
         return 'ok';

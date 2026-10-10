@@ -358,6 +358,8 @@ export const setAgencyCeiling = (companyId: number, profileId: number) =>
     api.put(url.GET_COMPANIES + `/${companyId}/management/guest-profile`, { profile_id: profileId });
 
 // Cobranças da XPLENDOR. Root: todas as empresas; empresa: as suas (sem o módulo de Finanças).
+// Espaço usado por cada empresa (por tipo e total), somado na base de dados.
+export const getAdminStorageUsage = () => api.get(url.GET_ADMIN + `/storage-usage`);
 export const getAdminCharges = (params?: { status?: string; company_id?: number; overdue?: 1 }) => api.get(url.GET_ADMIN + `/charges`, params);
 export const createAdminCharge = (data: FormData) => api.create(url.GET_ADMIN + `/charges`, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const adminChargeAction = (id: number, action: "paid" | "cancel" | "refuse" | "send", body: Record<string, unknown> = {}) =>

@@ -18,7 +18,7 @@ class OcrInvoice extends Model
 {
     protected $fillable = [
         'company_id', 'supplier_id', 'supplier_name', 'supplier_nif', 'number', 'issue_date',
-        'image_path', 'image_mime', 'model', 'prompt_version', 'confidence', 'status',
+        'image_path', 'image_size_bytes', 'image_mime', 'model', 'prompt_version', 'confidence', 'status',
         'error_message', 'synced_to_pingwin',
         // F2a: QR + origem + custo + conferência
         'qr_raw', 'qr_ok', 'qr_data', 'buyer_nif', 'atcud', 'doc_type', 'source', 'lines_source', 'pages',

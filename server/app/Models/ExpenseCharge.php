@@ -28,9 +28,9 @@ class ExpenseCharge extends Model
     public const LINK_DAYS_AFTER_PAID = 90;
 
     protected $fillable = [
-        'expense_id', 'company_id', 'status', 'due_date', 'invoice_path', 'invoice_name', 'created_by_user_id',
+        'expense_id', 'company_id', 'status', 'due_date', 'invoice_path', 'invoice_name', 'invoice_size_bytes', 'created_by_user_id',
         'cancel_reason', 'cancelled_at', 'cancelled_by_user_id',
-        'payment_indicated_at', 'payment_indicated_via', 'payment_indicated_by_user_id', 'payment_note', 'proof_path', 'proof_name', 'proof_mime',
+        'payment_indicated_at', 'payment_indicated_via', 'payment_indicated_by_user_id', 'payment_note', 'proof_path', 'proof_name', 'proof_mime', 'proof_size_bytes',
         'refused_at', 'refuse_note', 'paid_at', 'paid_by_user_id',
         'last_reminder_on', 'reminders_sent', 'no_recipient_alerted_at',
         'token_hash', 'token_encrypted', 'link_revoked_at',

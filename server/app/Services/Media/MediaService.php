@@ -54,8 +54,9 @@ class MediaService
 
     public static function usedBytes(int $companyId): int
     {
-        return (int) MediaAsset::where('company_id', $companyId)->whereNull('original_deleted_at')
-            ->where('status', '!=', MediaAsset::REJECTED)->sum('size_bytes');
+        // Todos os ficheiros guardados da empresa, somados na base de dados (Linha Editorial com as
+        // variantes, faturas do OCR, cobranças e comprovativos, faturas dos tickets e fotografias).
+        return \App\Services\Storage\CompanyStorageUsage::totalBytes($companyId);
     }
 
     public static function quotaBytes(): int
@@ -209,6 +210,7 @@ class MediaService
     {
         $manager = new ImageManager(new Driver());
         $variants = [];
+        $variantBytes = 0; // o espaço das variantes conta para a empresa (sem listar o disco)
 
         $posterTmp = null;
         try {
@@ -218,6 +220,7 @@ class MediaService
                 $this->probe->posterFrame($original, $posterTmp, min(1.0, $info['duration_ms'] / 2000));
                 LocalCopy::put($disk, "{$asset->dir}/poster.jpg", $posterTmp);
                 $variants['poster'] = 'poster.jpg';
+                $variantBytes += (int) filesize($posterTmp);
                 $source = $posterTmp;
                 $asset->fill(['width' => $info['width'], 'height' => $info['height'], 'duration_ms' => $info['duration_ms'], 'codec' => $info['codec']]);
             } else {
@@ -229,15 +232,17 @@ class MediaService
                 $asset->fill(['width' => $image->width(), 'height' => $image->height()]);
             }
             foreach (['thumb' => 320, 'preview' => 1080] as $name => $width) {
-                $disk->put("{$asset->dir}/{$name}.webp", (clone $image)->scaleDown(width: $width)->toWebp(80)->toString());
+                $binary = (clone $image)->scaleDown(width: $width)->toWebp(80)->toString();
+                $disk->put("{$asset->dir}/{$name}.webp", $binary);
                 $variants[$name] = "{$name}.webp";
+                $variantBytes += strlen($binary);
             }
         } finally {
             if ($posterTmp) {
                 @unlink($posterTmp); // a cópia local do poster nunca fica
             }
         }
-        $asset->fill(['variants' => $variants, 'status' => MediaAsset::READY, 'error' => null])->save();
+        $asset->fill(['variants' => $variants, 'variants_bytes' => $variantBytes, 'status' => MediaAsset::READY, 'error' => null])->save();
     }
 
     // ── Remoção ──────────────────────────────────────────────────────────────

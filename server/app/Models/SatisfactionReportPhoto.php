@@ -15,6 +15,7 @@ class SatisfactionReportPhoto extends Model
     protected $fillable = [
         'satisfaction_report_id',
         'path',
+        'size_bytes',
         'order',
         'social_consent_at',
     ];

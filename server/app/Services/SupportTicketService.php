@@ -301,6 +301,9 @@ class SupportTicketService extends BaseService
             'quote_status' => 'paid',
             'invoice_path' => $invoicePath,
         ]);
+        if ($invoice) {
+            $ticket->forceFill(['invoice_size_bytes' => (int) $invoice->getSize()])->saveQuietly(); // espaço por empresa
+        }
 
         return $ticket->fresh();
     }

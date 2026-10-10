@@ -60,6 +60,7 @@ import PrivacyPolicy from "pages/Privacy";
 import QuotePublicPage from "pages/QuotePublic";
 import ChargePublicPage from "pages/ChargePublic";
 import AdminChargesPage from "pages/Admin/AdminChargesPage";
+import StorageUsagePage from "pages/Admin/StorageUsagePage";
 import ContentReviewPage from "pages/ContentReview";
 import ContentReviewPreview from "pages/ContentReview/Preview";
 import QuotePublicPreview from "pages/Admin/QuotePublicPreview";
@@ -261,6 +262,7 @@ const authProtectedRoutes = [
     { path: "/admin/quotes", component: <RequireSuperAdmin><AdminQuotesList /></RequireSuperAdmin> },
     // Cobranças da XPLENDOR (todas as empresas).
     { path: "/admin/charges", component: <RequireSuperAdmin><AdminChargesPage /></RequireSuperAdmin> },
+    { path: "/admin/espaco", component: <RequireSuperAdmin><StorageUsagePage /></RequireSuperAdmin> },
     { path: "/admin/quotes/new", component: <RequireSuperAdmin><QuoteEditor /></RequireSuperAdmin> },
     { path: "/admin/quotes/:id", component: <RequireSuperAdmin><QuoteEditor /></RequireSuperAdmin> },
     { path: "/admin/service-catalog", component: <RequireSuperAdmin><ServiceCatalogPage /></RequireSuperAdmin> },

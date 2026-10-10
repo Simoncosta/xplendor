@@ -57,6 +57,7 @@ class SatisfactionReportPhotoService
         return SatisfactionReportPhoto::create([
             'satisfaction_report_id' => $report->id,
             'path'                   => $diskPath,
+            'size_bytes'             => strlen($binary),
             'order'                  => $this->count($report) + 1,
             'social_consent_at'      => now(),
         ]);

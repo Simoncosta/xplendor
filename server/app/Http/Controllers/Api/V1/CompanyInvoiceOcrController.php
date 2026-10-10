@@ -111,6 +111,7 @@ class CompanyInvoiceOcrController extends Controller
         $invoice = OcrInvoice::create([
             'company_id'    => $companyId,
             'image_path'    => $path,
+            'image_size_bytes' => (int) $file->getSize(),
             'image_mime'    => $file->getClientMimeType(),
             'status'        => 'processing',
             'synced_to_pingwin' => false,

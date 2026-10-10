@@ -696,6 +696,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/ai-blind-tests/{testId}/cases/{caseId}/choice', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'chooseBlindCase'])->whereNumber('testId')->whereNumber('caseId');
             // Contagens transversais para o dashboard root (users + carros da plataforma).
             Route::get('/platform/summary', [AdminController::class, 'platformSummary']);
+            // Espaço usado por cada empresa (por tipo e total), somado na base de dados.
+            Route::get('/storage-usage', [\App\Http\Controllers\Api\V1\Admin\StorageUsageController::class, 'index']);
 
             // IMPERSONATION — INICIAR (só root). Emite token de impersonation p/ o user-alvo.
             Route::post('/impersonation/start', [\App\Http\Controllers\Api\V1\ImpersonationController::class, 'start']);

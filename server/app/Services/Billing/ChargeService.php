@@ -67,6 +67,7 @@ class ChargeService
             $charge = new ExpenseCharge([
                 'expense_id' => $expense->id, 'company_id' => $company->id, 'status' => ExpenseCharge::OPEN,
                 'due_date' => $data['due_date'], 'invoice_path' => $path, 'invoice_name' => mb_substr($invoice->getClientOriginalName(), 0, 190),
+                'invoice_size_bytes' => (int) $invoice->getSize(),
                 'created_by_user_id' => $root->id,
             ]);
             $charge->issueToken();
@@ -143,6 +144,7 @@ class ChargeService
             'payment_indicated_by_user_id' => $user?->id, 'payment_note' => $note ? mb_substr($note, 0, 1000) : null,
             'proof_path' => $proofPath ?? $charge->proof_path, 'proof_name' => $proof ? mb_substr($proof->getClientOriginalName(), 0, 190) : $charge->proof_name,
             'proof_mime' => $proof?->getMimeType() ?? $charge->proof_mime,
+            'proof_size_bytes' => $proof ? (int) $proof->getSize() : $charge->proof_size_bytes,
         ]);
         $this->notifyTeam($charge->fresh(['company', 'expense']), $via, $proof !== null, $note);
 
