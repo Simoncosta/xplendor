@@ -122,7 +122,7 @@ class OcrCompareCommand extends Command
             if (isset($hashes[sha1($bytes)])) {
                 continue;
             }
-            $hashes[sha1($bytes)] = true;
+            $hashes[sha1($bytes)] = count($out); // posição, para juntar a fatura igual desta base
             $out[] = $this->describe('pasta: ' . basename($path), 'pasta', $bytes, $mime, null, null, null, $ocr);
         }
 
@@ -134,7 +134,19 @@ class OcrCompareCommand extends Command
         $later = [];
         foreach ($dev as $inv) {
             $bytes = Storage::disk((string) config('services.openai.ocr_disk', 'local'))->get((string) $inv->image_path);
-            if (! $bytes || isset($hashes[sha1($bytes)])) {
+            if (! $bytes) {
+                continue;
+            }
+            $pos = $hashes[sha1($bytes)] ?? null;
+            if (is_int($pos) && $out[$pos]['invoice_id'] === null) {
+                // A mesma fatura (pelo conteúdo) está na pasta: fica uma só, com os dados desta base.
+                $out[$pos] = ['ref' => $out[$pos]['ref'] . " (= fatura #{$inv->id})", 'lines' => (int) $inv->lines_count, 'supplier' => $inv->supplier_nif,
+                    'invoice_id' => $inv->id, 'truth' => $inv->status === 'validada' ? OcrComparison::truthFrom($inv) : null] + $out[$pos];
+                $suppliers[(string) $inv->supplier_nif] = true;
+
+                continue;
+            }
+            if ($pos !== null) {
                 continue;
             }
             $hashes[sha1($bytes)] = true;

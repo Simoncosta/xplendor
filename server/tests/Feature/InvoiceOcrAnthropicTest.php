@@ -201,4 +201,14 @@ class InvoiceOcrAnthropicTest extends TestCase
         Http::assertSentCount(3);
         $this->assertSame('erro', $inv->fresh()->status);
     }
+
+    public function test_the_schemas_respect_the_api_limits_no_union_types_and_at_most_24_optional_fields(): void
+    {
+        foreach (['completo' => \App\Services\Ocr\OcrSchemas::full(), 'linhas' => \App\Services\Ocr\OcrSchemas::lines()] as $name => $schema) {
+            $json = json_encode($schema);
+            $this->assertStringNotContainsString('"null"', $json, "{$name}: sem tipos anuláveis");
+            $this->assertStringNotContainsString('anyOf', $json, "{$name}: sem uniões");
+            $this->assertLessThanOrEqual(\App\Services\Ocr\OcrSchemas::MAX_OPTIONAL, \App\Services\Ocr\OcrSchemas::optionalCount($schema), "{$name}: opcionais a mais");
+        }
+    }
 }
