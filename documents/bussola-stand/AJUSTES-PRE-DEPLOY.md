@@ -228,3 +228,11 @@ Corrigidas as mensagens visíveis sem acentos ou com a grafia anterior ao Acordo
   - Cama elevatória eléctrica → Cama elevatória elétrica
 
 Nenhum teste nem código dependia destes textos (o cartão das decisões tira os acentos antes de comparar o motivo).
+
+## 7. Verificação e lista de deploy
+
+- **Suite completa com a árvore limpa** (`git status` sem alterações antes e depois): 1884 testes, as 24 falhas conhecidas, nenhuma nova. No frontend, 92 testes passam (o `App.test.tsx` é uma falha conhecida).
+- **A lista do dia:** `documents/DEPLOY-FICHEIROS-BUSSOLA.md`.
+  - Primeiro os Ficheiros, depois a Bússola do stand, por ordem.
+  - Em cada passo, o que confirmar e como voltar atrás.
+  - Inclui a migração do trabalho F2d (`f869922`), que vai no mesmo deploy.
