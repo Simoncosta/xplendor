@@ -271,7 +271,8 @@ class OcrLineArticleTest extends TestCase
         Bus::assertDispatched(WriteArticleSupplierCodeJob::class, fn ($j) => $j->lineId === $this->line($inv)->id && $j->replace === false);
     }
 
-    public function test_associate_asks_before_replacing_another_supplier_code(): void
+    /** F2d: já há outro código deste fornecedor no artigo → liga sem perguntar; o novo fica alternativo. */
+    public function test_associate_keeps_the_pingwin_code_as_principal_and_the_new_one_as_alternative(): void
     {
         Bus::fake();
         $frango = $this->article('100478', 'FRANGO');
@@ -280,13 +281,18 @@ class OcrLineArticleTest extends TestCase
         $inv = $this->invoice([['supplier_code' => '00058', 'item' => 'AVE']]);
         $url = "/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/lines/{$this->line($inv)->id}/article";
 
-        $this->actingAs($this->user, 'sanctum')->postJson($url, ['article_id' => $frango->id])
-            ->assertStatus(409)->assertJsonPath('errors.code', 'codigo_diferente')->assertJsonPath('errors.existing_code', 'ANTIGO-9');
-        $this->assertNull($this->line($inv)->article_id);
+        $this->actingAs($this->user, 'sanctum')->postJson($url, ['article_id' => $frango->id])->assertOk()
+            ->assertJsonPath('message', 'Associado. No PingWin fica o código principal ANTIGO-9; 00058 fica como alternativo na XPLENDOR.')
+            ->assertJsonPath('data.line_links.0.supplier_code_status', 'alternativo')
+            ->assertJsonPath('data.line_links.0.principal_code', 'ANTIGO-9');
+        $this->assertSame($frango->id, $this->line($inv)->article_id);
+        $this->assertDatabaseHas('supplier_article_map', ['supplier_nif' => '502811331', 'supplier_code_norm' => '58', 'article_id' => $frango->id, 'source' => 'manual']);
         Bus::assertNotDispatched(WriteArticleSupplierCodeJob::class);
 
-        // Como o frontend envia (multipart: booleanos em texto).
-        $this->actingAs($this->user, 'sanctum')->post($url, ['article_id' => (string) $frango->id, 'replace_code' => 'false'], ['Accept' => 'application/json'])->assertStatus(409);
+        // Como o frontend envia (multipart: booleanos em texto): replace_code=false continua a não substituir.
+        $this->actingAs($this->user, 'sanctum')->post($url, ['article_id' => (string) $frango->id, 'replace_code' => 'false'], ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('data.line_links.0.supplier_code_status', 'alternativo');
+        Bus::assertNotDispatched(WriteArticleSupplierCodeJob::class);
         $this->actingAs($this->user, 'sanctum')->post($url, ['article_id' => (string) $frango->id, 'replace_code' => 'true'], ['Accept' => 'application/json'])->assertOk();
         Bus::assertDispatched(WriteArticleSupplierCodeJob::class, fn ($j) => $j->replace === true);
     }
@@ -396,7 +402,8 @@ class OcrLineArticleTest extends TestCase
         $this->bindPingwinForCodeJob($existing, []);
 
         (new WriteArticleSupplierCodeJob($this->yuko->id, $line->id))->handle(app(PingwinService::class), app(OcrLineArticleService::class));
-        $this->assertSame('conflito', $line->fresh()->supplier_code_status);
+        $this->assertSame('alternativo', $line->fresh()->supplier_code_status); // F2d: não é um erro
+        $this->assertNull($line->fresh()->supplier_code_error);
         $this->assertCount(1, $this->pwCalls);                        // só leu; não escreveu
 
         $line->refresh()->update(['supplier_code_status' => 'pendente']);

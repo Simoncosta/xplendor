@@ -285,6 +285,9 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/pingwin/articles/read/{token}', [CompanyPingwinController::class, 'articleRead']);
                     // Artigos — tab Compras (C1, só leitura): linhas de fornecedor do espelho.
                     Route::get('/integrations/pingwin/articles/{catalogItemId}/supplier-prices', [CompanyPingwinController::class, 'supplierPrices'])->whereNumber('catalogItemId');
+                    // F2d: códigos dos fornecedores do artigo (principal + alternativos) e o relatório "IVA a rever".
+                    Route::get('/integrations/pingwin/articles/{catalogItemId}/supplier-codes', [\App\Http\Controllers\Api\V1\CompanyArticleCodesController::class, 'supplierCodes'])->whereNumber('catalogItemId');
+                    Route::get('/integrations/pingwin/catalog/vat-divergences', [\App\Http\Controllers\Api\V1\CompanyArticleCodesController::class, 'vatDivergences']);
                     // Artigos — CRIAR (escrita; exige confirm) + poll do resultado.
                     Route::post('/integrations/pingwin/articles', [CompanyPingwinController::class, 'createArticle']);
                     Route::get('/integrations/pingwin/articles/creation/{creationId}', [CompanyPingwinController::class, 'articleCreation']);
@@ -351,6 +354,9 @@ Route::prefix('v1')->group(function () {
                     Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'associate'])->whereNumber('lineId');
                     Route::delete('/ocr/invoices/{invoiceId}/lines/{lineId}/article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'unlink'])->whereNumber('lineId');
                     Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/create-article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'createArticle'])->whereNumber('lineId');
+                    // F2d: "Tornar principal no PingWin" e "Corrigir o IVA do artigo no PingWin".
+                    Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/supplier-code/principal', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'makePrincipal'])->whereNumber('lineId');
+                    Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/article-vat', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'correctVat'])->whereNumber('lineId');
                     // FB-1: "Lançar no PingWin" (rascunho 8001 → fechar 8002 / anular 8003); escritas assíncronas
                     Route::get('/ocr/invoices/{invoiceId}/pingwin-launch', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'show']);
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-launch', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'store'])->middleware('block_when_impersonating');

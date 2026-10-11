@@ -9,6 +9,9 @@ import { OcrArticleSearchResult } from "common/models/ocr.model";
  * Cada resultado mostra a unidade, a família e a última compra; os já comprados a este
  * fornecedor vêm primeiro, com selo. Teclado: ↑ ↓ para escolher, Enter para associar, Esc fecha.
  * No telemóvel abre em ecrã inteiro.
+ *
+ * F2d: os códigos deste fornecedor no artigo aparecem marcados — o principal (o do PingWin) e os
+ * alternativos (guardados na XPLENDOR).
  */
 
 type Props = {
@@ -129,7 +132,11 @@ export default function ArticlePicker({ isOpen, companyId, supplierNif, supplier
                                 </div>
                                 <div className={`fs-12 ${i === active ? "" : "text-muted"}`}>
                                     {[a.unit, a.family].filter(Boolean).join(" · ")}
-                                    {a.supplier_codes.length > 0 && <> · cód. fornecedor {a.supplier_codes.join(", ")}</>}
+                                    {(a.supplier_code_info?.length ?? 0) > 0 ? (
+                                        <> · cód. fornecedor {a.supplier_code_info!.map((c, k) => (
+                                            <span key={c.code} data-testid="picker-code">{k > 0 && ", "}<span className="font-monospace">{c.code}</span> ({c.principal ? "principal" : "alternativo"})</span>
+                                        ))}</>
+                                    ) : a.supplier_codes.length > 0 && <> · cód. fornecedor {a.supplier_codes.join(", ")}</>}
                                     {a.last_purchase && <> · última compra {eur(a.last_purchase.price)}{a.last_purchase.unit ? `/${a.last_purchase.unit}` : ""} em {fmtDay(a.last_purchase.date)}{a.last_purchase.supplier ? ` (${a.last_purchase.supplier})` : ""}</>}
                                 </div>
                             </button>

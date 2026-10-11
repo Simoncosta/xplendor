@@ -72,6 +72,12 @@ class UpdatePingwinCatalogJob implements ShouldQueue
 
             return;
         }
+        // F2d: o grupo de IVA tem de vir na releitura tal como foi enviado.
+        if (array_key_exists('taxgroup_id', $changes) && (string) ($confirm['taxgroup_id'] ?? '') !== (string) $changes['taxgroup_id']) {
+            $this->markError($write, 'O grupo de IVA não ficou como enviado (releitura ≠ pedido).', $alerts);
+
+            return;
+        }
         if ($write->saleprice_cents !== null
             && PingwinService::decimalToCents((string) ($confirm['saleprice'] ?? '0')) !== (int) $write->saleprice_cents) {
             $this->markError($write, 'O preço de venda não ficou como enviado (releitura ≠ pedido).', $alerts);
@@ -108,6 +114,14 @@ class UpdatePingwinCatalogJob implements ShouldQueue
             if (array_key_exists($k, $changes)) {
                 $col = $k === 'product_type' ? 'product_type_id' : $k;
                 $data[$col] = $changes[$k];
+            }
+        }
+        // O nome do grupo de IVA acompanha o id (o aviso de IVA das faturas lê um ou outro).
+        if (array_key_exists('taxgroup_id', $changes)) {
+            $rate = \App\Services\OcrLineArticleService::taxgroupRate((string) $changes['taxgroup_id']);
+            $name = $rate !== null ? array_search($rate, \App\Services\OcrLineArticleService::TAXGROUP_NAMES, true) : false;
+            if ($name !== false) {
+                $data['taxgroup'] = $name;
             }
         }
         foreach (['forsale', 'forpurchase', 'forproduction'] as $k) {

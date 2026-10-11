@@ -19,6 +19,7 @@ import { useArticleWritePolling } from "./useArticleWritePolling";
 import { useArticleReadPolling } from "./useArticleReadPolling";
 import { useSupplierPricesStaging } from "./useSupplierPricesStaging";
 import ArtigoComprasTab from "./ArtigoComprasTab";
+import ArticleSupplierCodes from "./faturas/ArticleSupplierCodes";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PageHeader from "Components/Common/PageHeader";
 import ActionsMenu from "Components/Common/ActionsMenu";
@@ -473,6 +474,7 @@ export default function ArtigoFormPage() {
                                             supplierTables={supplierTables}
                                             unitOptions={baseUnitOptions}
                                         />
+                                        {!isCreate && <ArticleSupplierCodes companyId={companyId} catalogItemId={catId} />}
                                     </TabPane>
                                 </TabContent>
                             </CardBody>

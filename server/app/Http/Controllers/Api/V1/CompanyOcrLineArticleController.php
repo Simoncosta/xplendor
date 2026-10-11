@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Exceptions\SupplierCodeConflict;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\OcrInvoice;
@@ -82,16 +81,53 @@ class CompanyOcrLineArticleController extends Controller
             'article_id'   => ['required', 'integer'],
             'method'       => ['nullable', 'in:manual,sugestao'],
         ]);
-        // O frontend envia multipart (axios por omissão): "true"/"false" em texto → $request->boolean().
+        // F2d: se o artigo já tiver outro código deste fornecedor no PingWin, não o substitui (o da
+        // linha fica alternativo na XPLENDOR); replace_code=true substitui. O frontend envia
+        // multipart (axios por omissão): "true"/"false" em texto → $request->boolean().
         try {
-            $this->lines->associate($inv, $line, (int) $data['article_id'], Auth::id(), $data['method'] ?? 'manual', $request->boolean('replace_code'));
-        } catch (SupplierCodeConflict $e) {
-            return ApiResponse::error($e->getMessage(), 409, ['code' => 'codigo_diferente', 'existing_code' => $e->existingCode, 'new_code' => $e->newCode]);
+            $line = $this->lines->associate($inv, $line, (int) $data['article_id'], Auth::id(), $data['method'] ?? 'manual', $request->boolean('replace_code'));
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
+        }
+        $message = 'Linha ligada ao artigo.';
+        if ($line->supplier_code_status === 'alternativo') {
+            $principal = app(\App\Services\SupplierCodesService::class)->principal($companyId, (string) $inv->supplier_nif, (int) $line->article_id);
+            $message = "Associado. No PingWin fica o código principal {$principal}; {$line->supplier_code} fica como alternativo na XPLENDOR.";
+        }
+
+        return ApiResponse::success($this->payload($inv), $message);
+    }
+
+    /** F2d — "Tornar principal no PingWin": substitui o código deste fornecedor no artigo (job + releitura). */
+    public function makePrincipal(int $companyId, int $invoiceId, int $lineId)
+    {
+        [$inv, $line, $err] = $this->resolve($companyId, $invoiceId, $lineId);
+        if ($err) {
+            return $err;
+        }
+        try {
+            $this->lines->makePrincipal($inv, $line);
         } catch (\InvalidArgumentException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         }
 
-        return ApiResponse::success($this->payload($inv), 'Linha ligada ao artigo.');
+        return ApiResponse::success($this->payload($inv), 'A gravar o código como principal no PingWin… confirmado por releitura.', 202);
+    }
+
+    /** F2d — "Corrigir o IVA do artigo no PingWin" com a taxa desta linha (escrita de artigo + releitura). */
+    public function correctVat(int $companyId, int $invoiceId, int $lineId)
+    {
+        [$inv, $line, $err] = $this->resolve($companyId, $invoiceId, $lineId);
+        if ($err) {
+            return $err;
+        }
+        try {
+            $write = $this->lines->correctArticleVat($inv, $line, Auth::id());
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
+        }
+
+        return ApiResponse::success($this->payload($inv) + ['write_id' => $write->id], 'A corrigir o IVA do artigo no PingWin… confirmado por releitura.', 202);
     }
 
     public function unlink(int $companyId, int $invoiceId, int $lineId)
@@ -184,10 +220,11 @@ class CompanyOcrLineArticleController extends Controller
     {
         $lines = $inv->lines()->orderBy('position')->get();
         $articles = OcrLineArticleService::articlesFor($lines);
+        $codes = $this->lines->codesFor($inv, $lines);
 
         return [
             'articles_summary' => OcrLineArticleService::summary($lines),
-            'line_links'       => $lines->map(fn ($l) => ['id' => $l->id] + $this->lines->presentLine($l, $articles))->values(),
+            'line_links'       => $lines->map(fn ($l) => ['id' => $l->id] + $this->lines->presentLine($l, $articles, $codes))->values(),
         ];
     }
 }

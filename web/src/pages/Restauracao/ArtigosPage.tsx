@@ -10,6 +10,7 @@ import RestFilterBar from "Components/Common/RestFilterBar";
 import { getPingwinCatalog, syncPingwinCatalog } from "helpers/laravel_helper";
 import { PingwinCatalogItem, LaravelPaginator } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import ArtigosVatReport from "./ArtigosVatReport";
 
 /**
  * XPLENDOR — Restauração › Artigos (Fase 1, só leitura). Catálogo de artigos
@@ -63,6 +64,8 @@ export default function ArtigosPage() {
     const [search, setSearch] = useState("");
     const [familyFilter, setFamilyFilter] = useState("");
     const [saleFilter, setSaleFilter] = useState<SaleFilter>("");
+    // F2d: vista "IVA a rever" (artigos com IVA faturado pelos fornecedores ≠ IVA do catálogo).
+    const [view, setView] = useState<"catalogo" | "iva">("catalogo");
     // Ordenação no servidor (CompanyPingwinController::CATALOG_SORTS). null = a de sempre (código).
     const [sort, setSort] = useState<{ key: string; desc: boolean } | null>(null);
 
@@ -175,6 +178,16 @@ export default function ArtigosPage() {
         },
     ];
     const cols = useDataColumns("restauracao.artigos", columns);
+    const viewToggle = (
+        <div className="xp-seg" role="tablist" aria-label="Vista">
+            <button type="button" role="tab" aria-selected={view === "catalogo"} className={view === "catalogo" ? "on" : ""} onClick={() => setView("catalogo")}>
+                <i className="ri-list-check me-1" />Catálogo
+            </button>
+            <button type="button" role="tab" aria-selected={view === "iva"} className={view === "iva" ? "on" : ""} onClick={() => setView("iva")}>
+                <i className="ri-percent-line me-1" />IVA a rever
+            </button>
+        </div>
+    );
 
     return (
         <div className="page-content">
@@ -188,11 +201,13 @@ export default function ArtigosPage() {
 
                 <Row>
                     <Col xs={12}>
+                        {view === "iva" ? <ArtigosVatReport companyId={companyId} viewToggle={viewToggle} /> : (
                         <PageCard
                             title="Catálogo"
                             loading={loading && rows.length > 0}
                             status={<>Última sincronização: {fmtDateTime(lastSynced)}</>}
                             actions={<>
+                                {viewToggle}
                                 {cols.selector}
                                 <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
@@ -239,6 +254,7 @@ export default function ArtigosPage() {
                                 } : undefined}
                             />
                         </PageCard>
+                        )}
                     </Col>
                 </Row>
             </Container>

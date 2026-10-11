@@ -456,6 +456,7 @@ class CompanyInvoiceOcrController extends Controller
     {
         $lineLinks = app(OcrLineArticleService::class);
         $lineArticles = OcrLineArticleService::articlesFor($inv->lines);
+        $lineCodes = $lineLinks->codesFor($inv, $inv->lines); // F2d: principal + alternativos
         // ⚠️ A Xplendor calcula a soma das linhas (mais fiável que o sumário da IA).
         $linesTotal = $inv->lines->sum(fn (OcrInvoiceLine $l) => (int) ($l->line_total_cents ?? 0)) / 100;
 
@@ -504,7 +505,7 @@ class CompanyInvoiceOcrController extends Controller
                 'discount_pct' => $l->discount_pct,
                 'line_total'   => $l->line_total_cents !== null ? $l->line_total_cents / 100 : null,
                 'vat_rate'     => $l->vat_rate,
-            ] + $lineLinks->presentLine($l, $lineArticles))->values(),
+            ] + $lineLinks->presentLine($l, $lineArticles, $lineCodes))->values(),
             // F2c: motivo para não se poder apagar (null = pode)
             'delete_block'      => app(OcrInvoiceDeleteService::class)->blockReason($inv),
             // F2b: linhas ligadas a artigos; "pronta para lançar" = todas ligadas.

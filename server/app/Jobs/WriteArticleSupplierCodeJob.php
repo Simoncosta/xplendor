@@ -26,7 +26,8 @@ use Illuminate\Support\Facades\Log;
  * espelho das linhas de fornecedor (refeito pela releitura) tem de ter o código.
  *
  *  1. lê o artigo VIVO (linhas de fornecedor + tabelas por fornecedor);
- *  2. já tem o código → ok; tem OUTRO código e não foi pedido substituir → conflito;
+ *  2. já tem o código → ok; tem OUTRO código e não foi pedido substituir → alternativo (F2d: o do
+ *     PingWin fica principal; o da linha fica só no mapa da XPLENDOR — não é um erro);
  *  3. tem linha deste fornecedor → EDIT do sup_product_code; senão → NEW na tabela do fornecedor;
  *  4. releitura → ok / erro.
  * Serializado com as outras escritas de artigos da empresa (mesmo lock). tries=1.
@@ -78,7 +79,7 @@ class WriteArticleSupplierCodeJob implements ShouldQueue
             }
             $withCode = $mine->first(fn ($l) => trim((string) ($l['sup_product_code'] ?? '')) !== '');
             if ($withCode && ! $this->replace) {
-                $this->done($line, 'conflito', "O artigo já tem o código «{$withCode['sup_product_code']}» para este fornecedor.");
+                $this->done($line, 'alternativo', null);
 
                 return;
             }

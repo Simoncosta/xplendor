@@ -179,15 +179,40 @@ export interface OcrLineArticle {
     unit: string | null;
 }
 
+// F2d: validação GS1 do código do fornecedor (null = código interno, não se valida).
+export interface OcrCodeCheck {
+    kind: "EAN-8" | "UPC-A" | "EAN-13" | "GTIN-14";
+    valid: boolean; // false = "código provavelmente mal lido"
+}
+
+// F2d: um código deste fornecedor para o artigo — principal (no PingWin) ou alternativo (na XPLENDOR).
+export interface OcrSupplierCode {
+    code: string;
+    principal: boolean;
+    uses: number;                  // linhas reais (F4) + aprendizagens das faturas
+    suggested_principal?: boolean; // o mais usado, quando não é o principal
+    check?: OcrCodeCheck | null;
+}
+
+// F2d: caixa / unidade do mesmo produto (GTIN-14 ↔ EAN-13): sugestão, nunca ligação automática.
+export type OcrSuggestionReason = "gtin_caixa" | "gtin_unidade";
+
 export interface OcrLineLink {
     article: OcrLineArticle | null;
     link_state: OcrLineLinkState;
     link_method: OcrLineLinkMethod | null;
     link_confidence: number | null;
-    suggestions: (OcrLineArticle & { score: number })[];
+    suggestions: (OcrLineArticle & { score: number; reason?: OcrSuggestionReason | null; via_code?: string | null })[];
     creating: { write_id: number; status: string; error: string | null } | null; // "Criar artigo" em curso
-    supplier_code_status: "pendente" | "ok" | "erro" | "conflito" | null;        // código do fornecedor no artigo (PingWin)
+    // código do fornecedor no artigo (PingWin); "alternativo" = o artigo já tem outro (principal), este fica na XPLENDOR
+    supplier_code_status: "pendente" | "ok" | "erro" | "alternativo" | null;
     supplier_code_error: string | null;
+    supplier_code_check?: OcrCodeCheck | null;
+    principal_code?: string | null;
+    supplier_codes?: OcrSupplierCode[];
+    // F2d: IVA da fatura ≠ IVA do artigo no catálogo
+    vat_check?: { invoice_rate: number; article_rate: number; invoice_taxgroup: string } | null;
+    vat_write?: { write_id: number; status: string; error: string | null } | null; // "Corrigir o IVA do artigo" em curso
 }
 
 export interface OcrArticlesSummary {
@@ -212,7 +237,34 @@ export interface OcrArticleSearchResult {
     last_purchase: { price: number; unit: string | null; date: string; supplier: string | null } | null;
     bought_from_supplier: boolean;
     supplier_codes: string[];
+    supplier_code_info?: OcrSupplierCode[]; // F2d: principal (PingWin) e alternativos (XPLENDOR)
     approximate: boolean; // nenhum artigo tinha todas as palavras: são os mais parecidos
+}
+
+// F2d: relatório "IVA a rever" (IVA faturado pelos fornecedores ≠ IVA do artigo; linhas da F4)
+export interface ArticleVatDivergence {
+    article_id: number;
+    pingwin_id: string | null;
+    code: string | null;
+    description: string | null;
+    family: string | null;
+    is_active: boolean;
+    article_rate: number;
+    invoiced_rates: { rate: number; lines: number }[];
+    divergent_lines: number;
+    total_lines: number;
+    suppliers: { name: string; lines: number }[];
+    last_date: string | null;
+    last_supplier: string | null;
+}
+
+export interface ArticleVatReport {
+    summary: { articles_checked: number; articles_divergent: number; lines_divergent: number; articles_no_rate: number };
+    articles: ArticleVatDivergence[];
+}
+
+export interface ArticleSupplierCodes {
+    suppliers: { nif: string; supplier: string | null; codes: OcrSupplierCode[] }[];
 }
 
 export interface OcrArticleFormOptions {

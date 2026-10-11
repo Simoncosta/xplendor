@@ -1148,3 +1148,13 @@ export const saveFileToFolder = (companyId: number, id: number, folderId: number
 export const deleteFileShortcut = (companyId: number, id: number) => api.delete(FL(companyId) + `/shortcuts/${id}`);
 export const restoreFileShortcut = (companyId: number, id: number) => api.create(FL(companyId) + `/shortcuts/${id}/restore`, {}, FL_JSON);
 
+
+// F2d — vários códigos do fornecedor por artigo (principal no PingWin + alternativos), IVA da linha ≠ IVA do artigo.
+export const makeOcrLineCodePrincipal = (companyId: number, invoiceId: number, lineId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/supplier-code/principal`, {});
+export const correctOcrLineArticleVat = (companyId: number, invoiceId: number, lineId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article-vat`, {});
+export const getArticleSupplierCodes = (companyId: number, catalogItemId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/supplier-codes`);
+export const getArticleVatDivergences = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog/vat-divergences`);

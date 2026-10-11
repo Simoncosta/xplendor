@@ -3090,6 +3090,7 @@ class MyCloudPieClient:
                 "code":        m2.get("code"),
                 "description": m2.get("description"),
                 "status":      m2.get("status"),
+                "taxgroup_id": m2.get("taxgroup_id"),   # F2d: confirmar a correção do IVA
                 "saleprice":   p2.get("saleprice"),
                 "purchaseprice": p2.get("purchaseprice"),
             }

@@ -24,7 +24,7 @@ class OcrInvoiceLine extends Model
         'ocr_invoice_id', 'company_id', 'position', 'supplier_code', 'item', 'quantity', 'unit',
         'unit_price', 'discount_pct', 'line_total_cents', 'vat_rate',
         'article_id', 'link_state', 'link_method', 'link_confidence', 'link_suggestions', 'linked_by', 'linked_at',
-        'article_write_id', 'supplier_code_status', 'supplier_code_error', 'supplier_code_write_id',
+        'article_write_id', 'supplier_code_status', 'supplier_code_error', 'supplier_code_write_id', 'vat_write_id',
         'launch_unit_id', // FB-1
     ];
 

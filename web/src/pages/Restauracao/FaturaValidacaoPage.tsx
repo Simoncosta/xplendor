@@ -16,7 +16,7 @@ import {
     getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice,
     searchOcrPingwinLink, confirmOcrPingwinLink, unlinkOcrPingwinLink,
     associateOcrLineArticle, unlinkOcrLineArticle, createOcrLineArticle, acceptOcrLineSuggestions,
-    deleteOcrInvoice,
+    deleteOcrInvoice, makeOcrLineCodePrincipal, correctOcrLineArticleVat,
 } from "helpers/laravel_helper";
 import {
     OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption,
@@ -80,7 +80,8 @@ export default function FaturaValidacaoPage() {
     const [creating, setCreating] = useState<number | null>(null);   // índice da linha
     const [createBusy, setCreateBusy] = useState(false);
     const [lineBusy, setLineBusy] = useState<number | null>(null);   // id da linha
-    const [codeConflict, setCodeConflict] = useState<{ lineId: number; articleId: number; method: string; existing: string; newCode: string } | null>(null);
+    // F2d: confirmações das ações da linha ("Tornar principal", IVA da fatura, corrigir o IVA do artigo).
+    const [lineAction, setLineAction] = useState<{ kind: "principal" | "vat_info" | "vat_fix"; lineId: number } | null>(null);
     const [acceptOpen, setAcceptOpen] = useState(false);
     const [minConf, setMinConf] = useState(0.8);
 
@@ -149,7 +150,8 @@ export default function FaturaValidacaoPage() {
     }, [pingwin?.search_pending, refreshPingwin]);
 
     // F2b: acompanha as escritas no PingWin (artigo a criar, código do fornecedor) sem mexer no formulário.
-    const linksPending = Object.values(links).some((l) => (l.creating && !["ok", "erro"].includes(l.creating.status)) || l.supplier_code_status === "pendente");
+    const linksPending = Object.values(links).some((l) => (l.creating && !["ok", "erro"].includes(l.creating.status)) || l.supplier_code_status === "pendente"
+        || l.vat_write?.status === "a_editar");
     useEffect(() => {
         if (!linksPending || !companyId || !invoiceId) return;
         const t = setInterval(async () => {
@@ -168,21 +170,35 @@ export default function FaturaValidacaoPage() {
         setArtSummary(p.articles_summary);
     };
 
-    const associate = async (lineId: number, articleId: number, method = "manual", replace = false) => {
+    // F2d: se o artigo já tiver outro código deste fornecedor, não há pergunta: o do PingWin fica
+    // principal e o da linha fica alternativo (a mensagem do servidor diz quais).
+    const associate = async (lineId: number, articleId: number, method = "manual") => {
         setLineBusy(lineId);
         try {
-            const r: any = await associateOcrLineArticle(companyId, invoiceId, lineId, { article_id: articleId, method, replace_code: replace });
+            const r: any = await associateOcrLineArticle(companyId, invoiceId, lineId, { article_id: articleId, method });
             applyLinks(r?.data);
             setPicker(null);
-            setCodeConflict(null);
-            toast.success("Linha ligada ao artigo.");
+            toast.success(r?.message ?? "Linha ligada ao artigo.");
         } catch (e: any) {
-            if (e?.__status === 409 && e?.errors?.code === "codigo_diferente") {
-                setPicker(null);
-                setCodeConflict({ lineId, articleId, method, existing: e.errors.existing_code, newCode: e.errors.new_code });
-            } else {
-                toast.error(e?.message ?? "Não foi possível ligar a linha.");
-            }
+            toast.error(e?.message ?? "Não foi possível ligar a linha.");
+        } finally {
+            setLineBusy(null);
+        }
+    };
+
+    const runLineAction = async () => {
+        if (!lineAction || lineAction.kind === "vat_info") { setLineAction(null); return; }
+        const { kind, lineId } = lineAction;
+        setLineBusy(lineId);
+        try {
+            const r: any = kind === "principal"
+                ? await makeOcrLineCodePrincipal(companyId, invoiceId, lineId)
+                : await correctOcrLineArticleVat(companyId, invoiceId, lineId);
+            applyLinks(r?.data);
+            toast.info(r?.message ?? "Pedido enviado ao PingWin.");
+            setLineAction(null);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível pedir a alteração no PingWin.");
         } finally {
             setLineBusy(null);
         }
@@ -594,6 +610,9 @@ export default function FaturaValidacaoPage() {
                                                         onAssociate={() => setPicker(i)}
                                                         onCreate={() => setCreating(i)}
                                                         onUnlink={() => l.id && unlinkLine(l.id)}
+                                                        onMakePrincipal={() => l.id && setLineAction({ kind: "principal", lineId: l.id })}
+                                                        onVatInfo={() => l.id && setLineAction({ kind: "vat_info", lineId: l.id })}
+                                                        onVatFix={() => l.id && setLineAction({ kind: "vat_fix", lineId: l.id })}
                                                     />
                                                 </td>
                                                 <td style={{ width: 40 }}><button type="button" className="btn btn-sm btn-outline-danger" aria-label={`Remover linha ${i + 1}`} onClick={() => setLines((p) => p.filter((_, idx) => idx !== i))}><i className="ri-delete-bin-line" /></button></td>
@@ -705,19 +724,51 @@ export default function FaturaValidacaoPage() {
                     onSubmit={createArticle}
                     onClose={() => setCreating(null)}
                 />
-                <Modal isOpen={!!codeConflict} toggle={() => setCodeConflict(null)} centered>
-                    <ModalHeader toggle={() => setCodeConflict(null)}>Substituir o código do fornecedor?</ModalHeader>
-                    <ModalBody>
-                        O artigo já tem o código <strong>{codeConflict?.existing}</strong> para este fornecedor. A fatura diz <strong>{codeConflict?.newCode}</strong>.
-                        Ao substituir, o código passa a ser <strong>{codeConflict?.newCode}</strong> no PingWin.
-                    </ModalBody>
-                    <ModalFooter>
-                        <Button color="light" onClick={() => setCodeConflict(null)}>Cancelar</Button>
-                        <Button color="primary" disabled={lineBusy !== null} onClick={() => codeConflict && associate(codeConflict.lineId, codeConflict.articleId, codeConflict.method, true)}>
-                            Substituir e ligar
-                        </Button>
-                    </ModalFooter>
-                </Modal>
+                {/* F2d — ações da linha */}
+                {(() => {
+                    const la = lineAction ? links[lineAction.lineId] : null;
+                    const ln = lineAction ? lines.find((x) => x.id === lineAction.lineId) : null;
+                    const vat = la?.vat_check;
+                    const title = lineAction?.kind === "principal" ? "Tornar principal no PingWin?"
+                        : lineAction?.kind === "vat_fix" ? "Corrigir o IVA do artigo no PingWin?" : "IVA da fatura nesta linha";
+                    return (
+                        <Modal isOpen={!!lineAction} toggle={() => setLineAction(null)} centered data-testid="line-action-modal">
+                            <ModalHeader toggle={() => setLineAction(null)}>{title}</ModalHeader>
+                            <ModalBody>
+                                {lineAction?.kind === "principal" && (
+                                    <>
+                                        <p className="mb-2">O artigo <strong>{la?.article?.code} {la?.article?.description}</strong> passa a ter, no PingWin, o código <strong className="font-monospace">{ln?.supplier_code}</strong> para este fornecedor.</p>
+                                        <p className="mb-0 fs-13 text-muted">O código atual (<span className="font-monospace">{la?.principal_code ?? "—"}</span>) continua na XPLENDOR como alternativo: as faturas com ele continuam a ligar-se. A gravação é confirmada pela releitura do artigo.</p>
+                                    </>
+                                )}
+                                {lineAction?.kind === "vat_info" && vat && (
+                                    <>
+                                        <p className="mb-2">Ao lançar no PingWin, esta linha vai com o IVA <strong>da fatura ({vat.invoice_rate}%)</strong>: o lançamento troca o grupo de IVA do artigo ({vat.article_rate}%) só nesta linha do documento.</p>
+                                        <p className="mb-0 fs-13 text-muted">É o que o "Lançar no PingWin" já faz; o artigo no catálogo fica como está.</p>
+                                    </>
+                                )}
+                                {lineAction?.kind === "vat_fix" && vat && (
+                                    <>
+                                        <p className="mb-2">O artigo <strong>{la?.article?.code} {la?.article?.description}</strong> passa de <strong>{vat.article_rate}%</strong> para <strong>{vat.invoice_rate}%</strong> no catálogo do PingWin.</p>
+                                        <p className="mb-0 fs-13 text-muted">Vale para todas as vendas e compras deste artigo daqui em diante. A alteração só fica confirmada se a releitura do artigo mostrar o novo IVA.</p>
+                                    </>
+                                )}
+                            </ModalBody>
+                            <ModalFooter>
+                                {lineAction?.kind === "vat_info" ? (
+                                    <Button color="primary" onClick={() => setLineAction(null)}>Entendido</Button>
+                                ) : (
+                                    <>
+                                        <Button color="light" onClick={() => setLineAction(null)} disabled={lineBusy !== null}>Cancelar</Button>
+                                        <Button color="primary" onClick={runLineAction} disabled={lineBusy !== null}>
+                                            {lineBusy !== null ? <Spinner size="sm" /> : lineAction?.kind === "principal" ? "Tornar principal" : `Mudar para ${vat?.invoice_rate}%`}
+                                        </Button>
+                                    </>
+                                )}
+                            </ModalFooter>
+                        </Modal>
+                    );
+                })()}
                 <Modal isOpen={acceptOpen} toggle={() => setAcceptOpen(false)} centered>
                     <ModalHeader toggle={() => setAcceptOpen(false)}>Aceitar as sugestões?</ModalHeader>
                     <ModalBody>

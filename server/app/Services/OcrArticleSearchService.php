@@ -42,6 +42,10 @@ class OcrArticleSearchService
             return $c !== 0 ? $c : strcmp($y['_rank'][4], $x['_rank'][4]); // compra mais recente primeiro
         });
 
+        $hits = array_slice($hits, 0, $limit);
+        // F2d: os códigos deste fornecedor em cada artigo — principal (PingWin) e alternativos (XPLENDOR).
+        $codes = $nif !== '' ? app(SupplierCodesService::class)->forArticles($companyId, $nif, array_column($hits, 'id')) : [];
+
         return array_map(fn ($a) => [
             'id'                   => $a['id'],
             'code'                 => $a['code'],
@@ -51,8 +55,9 @@ class OcrArticleSearchService
             'last_purchase'        => $a['last'],
             'bought_from_supplier' => $a['bought_from_supplier'],
             'supplier_codes'       => $nif !== '' ? array_values($a['codes_by_nif'][$nif] ?? []) : [],
+            'supplier_code_info'   => array_map(fn ($c) => ['code' => $c['code'], 'principal' => $c['principal'], 'uses' => $c['uses']], $codes[$a['id']] ?? []),
             'approximate'          => $approximate,
-        ], array_slice($hits, 0, $limit));
+        ], $hits);
     }
 
     /**
