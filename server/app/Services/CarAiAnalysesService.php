@@ -390,17 +390,17 @@ class CarAiAnalysesService extends BaseService
             'publico_alvo' => [
                 'faixa_etaria'            => '35-50 anos',
                 'genero_predominante'     => 'Masculino',
-                'perfil_profissional'     => 'Quadro medio ou empresario',
-                'estilo_de_vida'          => 'Familia e deslocacoes frequentes',
-                'comportamento_de_compra' => 'Pesquisa, compara e decide apos test drive',
+                'perfil_profissional'     => 'Quadro médio ou empresário',
+                'estilo_de_vida'          => 'Família e deslocações frequentes',
+                'comportamento_de_compra' => 'Pesquisa, compara e decide após test drive',
             ],
             'canal_principal' => [
                 'canal'        => 'Meta Ads',
-                'justificacao' => 'Boa combinacao entre apelo visual e publico-alvo.',
+                'justificacao' => 'Boa combinação entre apelo visual e público-alvo.',
             ],
             'canal_secundario' => [
                 'canal'        => 'Google Ads',
-                'justificacao' => 'Capta procura ativa de quem ja esta a comparar.',
+                'justificacao' => 'Capta procura ativa de quem já está a comparar.',
             ],
             'criativo' => [
                 'formato_principal'  => 'Reels 9:16',
@@ -411,12 +411,12 @@ class CarAiAnalysesService extends BaseService
             'sugestao_conteudo' => [
                 'titulo_anuncio' => 'Peugeot 3008 GT Line pronto a usar',
                 'hook_video'     => 'Abrir no detalhe mais forte da viatura nos primeiros segundos.',
-                'copy_curto'     => "Revisoes em dia.\nTest drive disponivel esta semana.",
+                'copy_curto'     => "Revisões em dia.\nTest drive disponível esta semana.",
             ],
             'argumentos_de_venda' => [
                 'Consumo competitivo no segmento',
                 'Equipamento valorizado pelo comprador',
-                'Historico e estado ajudam a reduzir objecoes',
+                'Histórico e estado ajudam a reduzir objeções',
             ],
             'recomendacao_urgencia' => [
                 'nivel'            => 'Alta',
@@ -426,15 +426,15 @@ class CarAiAnalysesService extends BaseService
                 'probabilidade_venda_7d'  => 35,
                 'probabilidade_venda_14d' => 58,
                 'probabilidade_venda_30d' => 76,
-                'condicao'                => 'Ajustes de preco ou distribuicao podem acelerar a venda.',
+                'condicao'                => 'Ajustes de preço ou distribuição podem acelerar a venda.',
             ],
             'audience_analysis' => [
                 'status' => 'too_narrow',
                 'issues' => [
-                    'Segmentacao por genero limita alcance.',
+                    'Segmentação por género limita o alcance.',
                     'Interesses demasiado restritivos para este tipo de viatura.',
                 ],
-                'recommendation' => 'Alargar publico, remover interesses e manter Advantage+ para ganhar distribuicao.',
+                'recommendation' => 'Alargar o público, remover interesses e manter Advantage+ para ganhar distribuição.',
             ],
             'campaign_diagnosis' => [
                 'main_problem' => 'targeting',
@@ -500,7 +500,7 @@ class CarAiAnalysesService extends BaseService
             'raw' => $this->truncateForLog($rawJson, 1000),
         ]);
 
-        throw new \RuntimeException('A IA devolveu uma resposta invalida e nao foi possivel interpreta-la.');
+        throw new \RuntimeException('A IA devolveu uma resposta inválida e não foi possível interpretá-la.');
     }
 
     // -------------------------------------------------------------------------
@@ -531,8 +531,8 @@ class CarAiAnalysesService extends BaseService
         if ($sessions >= 40 && $interactions === 0) {
             if ($mainProblem !== 'offer') {
                 $parsed['campaign_diagnosis']['main_problem'] = 'offer';
-                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e sessoes relevantes, mas nao esta a gerar contactos. O problema esta na oferta, preco ou friccao pos-clique.';
-                $parsed['campaign_diagnosis']['action']       = 'Rever preco, melhorar proposta de valor e reduzir friccao no processo de contacto.';
+                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e sessões relevantes, mas não está a gerar contactos. O problema está na oferta, no preço ou na fricção pós-clique.';
+                $parsed['campaign_diagnosis']['action']       = 'Rever o preço, melhorar a proposta de valor e reduzir a fricção no processo de contacto.';
             }
             return;
         }
@@ -541,12 +541,12 @@ class CarAiAnalysesService extends BaseService
         if ($mainProblem === 'targeting') {
             if ($interactions >= 1) {
                 $parsed['campaign_diagnosis']['main_problem'] = 'mixed';
-                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e ja gerou interacoes reais. Ha margem para optimizar, mas o targeting nao e o problema principal.';
-                $parsed['campaign_diagnosis']['action']       = 'Manter campanha ativa e focar na qualidade da proposta e do anuncio.';
+                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e já gerou interações reais. Há margem para otimizar, mas o targeting não é o problema principal.';
+                $parsed['campaign_diagnosis']['action']       = 'Manter a campanha ativa e focar na qualidade da proposta e do anúncio.';
             } else {
                 $parsed['campaign_diagnosis']['main_problem'] = 'offer';
-                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e cliques relevantes, mas nao esta a converter. O problema esta na oferta ou friccao pos-clique.';
-                $parsed['campaign_diagnosis']['action']       = 'Rever preco, melhorar proposta de valor e analisar a experiencia pos-clique.';
+                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e cliques relevantes, mas não está a converter. O problema está na oferta ou na fricção pós-clique.';
+                $parsed['campaign_diagnosis']['action']       = 'Rever o preço, melhorar a proposta de valor e analisar a experiência pós-clique.';
             }
         }
     }

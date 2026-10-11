@@ -384,10 +384,10 @@ class CarDecisionEngineService
     {
         return match ($decision) {
             'scale_ads' => 'Escalar investimento nesta viatura',
-            'test_campaign' => 'Testar campanha com contexto favoravel',
+            'test_campaign' => 'Testar campanha com contexto favorável',
             'test_campaign_seed' => 'Testar para gerar procura',
             'review_campaign' => 'Rever campanha antes de investir mais',
-            default => 'Nao investir em ads nesta fase',
+            default => 'Não investir em ads nesta fase',
         };
     }
 
@@ -399,22 +399,22 @@ class CarDecisionEngineService
         return match ($decision) {
             'scale_ads' => 'A viatura combina procura suficiente, fit de mercado competitivo e sinais robustos para acelerar investimento.',
             'test_campaign' => !empty($context['data_quality']['has_cold_start'])
-                ? 'Ainda ha poucos dados proprios, mas benchmark e contexto de mercado justificam um teste prudente.'
-                : 'Ha sinais suficientes para validar investimento com budget controlado e ganhar mais aprendizagem.',
+                ? 'Ainda há poucos dados próprios, mas benchmark e contexto de mercado justificam um teste prudente.'
+                : 'Há sinais suficientes para validar investimento com budget controlado e ganhar mais aprendizagem.',
             'test_campaign_seed' => 'Gerar procura inicial para validar interesse.',
             'review_campaign' => ($market['market_position'] ?? null) === 'above_market'
-                ? 'Existe interesse, mas o preco acima do mercado esta a reduzir a capacidade de conversao.'
-                : 'O veículo precisa de correccoes em proposta, criativo ou segmentacao antes de receber novo investimento.',
+                ? 'Existe interesse, mas o preço acima do mercado está a reduzir a capacidade de conversão.'
+                : 'O veículo precisa de correções em proposta, criativo ou segmentação antes de receber novo investimento.',
             default => StockThresholds::isStale($context['car']['vehicle_type'] ?? null, $days)
-                ? 'O contexto atual e demasiado fraco para justificar investimento pago enquanto o veículo nao for reposicionado.'
-                : 'Ainda nao existem sinais suficientes para recomendar investimento imediato.',
+                ? 'O contexto atual é demasiado fraco para justificar investimento pago enquanto o veículo não for reposicionado.'
+                : 'Ainda não existem sinais suficientes para recomendar investimento imediato.',
         };
     }
 
     private function buildReason(string $decision, array $context, array $breakdown): string
     {
         if ($decision === 'test_campaign_seed') {
-            return 'Viatura sem dados suficientes — necessario testar mercado para gerar sinais reais.';
+            return 'Viatura sem dados suficientes: é necessário testar o mercado para gerar sinais reais.';
         }
 
         $market = $context['market_intelligence'];
@@ -428,19 +428,19 @@ class CarDecisionEngineService
         }
 
         if (($breakdown['conversion_score'] ?? 0) <= 40 && (int) ($context['performance']['views_30d'] ?? 0) >= 60) {
-            $reasons[] = 'interesse sem conversao suficiente';
+            $reasons[] = 'interesse sem conversão suficiente';
         }
 
         if (($market['market_position'] ?? null) === 'above_market' && $delta !== null) {
-            $reasons[] = sprintf('preco %.1f%% acima da mediana do mercado', $delta);
+            $reasons[] = sprintf('preço %.1f%% acima da mediana do mercado', $delta);
         } elseif (($market['market_position'] ?? null) === 'below_market') {
-            $reasons[] = 'preco competitivo face ao mercado';
+            $reasons[] = 'preço competitivo face ao mercado';
         }
 
         if (($trend['trend_views'] ?? null) === 'rising') {
-            $reasons[] = 'procura recente em aceleracao';
+            $reasons[] = 'procura recente em aceleração';
         } elseif (($trend['trend_views'] ?? null) === 'falling') {
-            $reasons[] = 'procura recente a perder forca';
+            $reasons[] = 'procura recente a perder força';
         }
 
         if (empty($reasons)) {
@@ -453,25 +453,25 @@ class CarDecisionEngineService
     private function buildWhyNow(string $decision, array $context): string
     {
         if ($decision === 'test_campaign_seed') {
-            return 'Sem investimento, este veículo nao vai gerar dados nem leads.';
+            return 'Sem investimento, este veículo não vai gerar dados nem leads.';
         }
 
         $trend = $context['historical_trend'];
 
         return match ($decision) {
             'scale_ads' => ($trend['trend_views'] ?? null) === 'rising'
-                ? 'Tracao crescente nos ultimos dias e janela favoravel para converter.'
+                ? 'Tração crescente nos últimos dias e janela favorável para converter.'
                 : 'Existe procura real suficiente para acelerar investimento agora.',
             'test_campaign' => 'O contexto atual justifica um teste curto para validar resposta comercial.',
-            'review_campaign' => 'Primeiro corrigir friccao comercial para nao desperdiçar budget.',
-            default => 'Sem sinais suficientes para investir com confianca neste momento.',
+            'review_campaign' => 'Primeiro corrigir a fricção comercial para não desperdiçar budget.',
+            default => 'Sem sinais suficientes para investir com confiança neste momento.',
         };
     }
 
     private function buildRiskNote(string $decision, array $context, int $confidenceScore): ?string
     {
         if ($decision === 'test_campaign_seed') {
-            return 'Baixa previsibilidade — campanha usada apenas para aprendizagem.';
+            return 'Baixa previsibilidade: campanha usada apenas para aprendizagem.';
         }
 
         if ($decision === 'do_not_invest') {
@@ -479,7 +479,7 @@ class CarDecisionEngineService
         }
 
         if ($confidenceScore < 45) {
-            return 'Decisao com base de dados ainda limitada.';
+            return 'Decisão com base de dados ainda limitada.';
         }
 
         return null;
@@ -491,22 +491,22 @@ class CarDecisionEngineService
 
         return match ($decision) {
             'scale_ads' => 'Aumentar investimento e ativar criativo orientado a resposta imediata.',
-            'test_campaign' => 'Lancar teste curto com budget controlado e medir resposta comercial.',
+            'test_campaign' => 'Lançar teste curto com budget controlado e medir resposta comercial.',
             'test_campaign_seed' => 'Iniciar campanha com budget reduzido para recolher dados.',
             'review_campaign' => ($market['market_position'] ?? null) === 'above_market' && !empty($market['recommended_price'])
-                ? 'Rever preco e criativo antes de novo spend.'
+                ? 'Rever preço e criativo antes de novo spend.'
                 : 'Rever criativo, CTA e proposta antes de reinvestir.',
-            default => 'Rever posicionamento, preco e proposta comercial antes de considerar ads.',
+            default => 'Rever posicionamento, preço e proposta comercial antes de considerar ads.',
         };
     }
 
     private function buildCreativeDirection(string $decision, array $context): ?string
     {
         return match ($decision) {
-            'scale_ads' => 'Criativo comercial direto, com foco em conversao e urgencia real.',
-            'test_campaign' => 'Criativo de validacao com gancho forte e proposta clara.',
-            'test_campaign_seed' => 'Criativo de exploracao leve, focado em gerar primeiras respostas e aprendizagem.',
-            'review_campaign' => 'Criativo de revisao orientado a remover friccao e recuperar atencao.',
+            'scale_ads' => 'Criativo comercial direto, com foco em conversão e urgência real.',
+            'test_campaign' => 'Criativo de validação com gancho forte e proposta clara.',
+            'test_campaign_seed' => 'Criativo de exploração leve, focado em gerar primeiras respostas e aprendizagem.',
+            'review_campaign' => 'Criativo de revisão orientado a remover fricção e recuperar atenção.',
             default => null,
         };
     }

@@ -34,7 +34,7 @@ interface KpiItem {
 const KPIS: KpiItem[] = [
     { end: 47, label: 'Leads (mês)', staticText: '47' },
     { end: 8.2, label: 'Custo/lead', prefix: '€', decimals: 2, staticText: '€8,20' },
-    { end: 32, label: 'Viaturas activas', staticText: '32' },
+    { end: 32, label: 'Viaturas ativas', staticText: '32' },
 ];
 
 const prefersReducedMotion = (): boolean =>

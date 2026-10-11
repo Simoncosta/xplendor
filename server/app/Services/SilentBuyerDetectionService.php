@@ -143,14 +143,14 @@ class SilentBuyerDetectionService
     protected function buildExecutiveAlert($buyers, $topAffectedCars, int $days): string
     {
         if ($buyers->isEmpty()) {
-            return "Sem compradores silenciosos relevantes nos ultimos {$days} dias.";
+            return "Sem compradores silenciosos relevantes nos últimos {$days} dias.";
         }
 
         $topCar = $topAffectedCars->first();
 
         if ($topCar) {
             return sprintf(
-                '%d compradores silenciosos detetados nos ultimos %d dias. O veículo mais afetado e %s com %d sinais fortes.',
+                '%d compradores silenciosos detetados nos últimos %d dias. O veículo mais afetado é %s, com %d sinais fortes.',
                 $buyers->count(),
                 $days,
                 $topCar['car_name'],
@@ -158,7 +158,7 @@ class SilentBuyerDetectionService
             );
         }
 
-        return sprintf('%d compradores silenciosos detetados nos ultimos %d dias.', $buyers->count(), $days);
+        return sprintf('%d compradores silenciosos detetados nos últimos %d dias.', $buyers->count(), $days);
     }
 
     protected function buildRecommendedFocus($buyers): string
@@ -173,11 +173,11 @@ class SilentBuyerDetectionService
     protected function buildCarSummaryText($buyers, int $days): string
     {
         if ($buyers->isEmpty()) {
-            return "Nao foram encontrados compradores silenciosos para esta viatura nos ultimos {$days} dias.";
+            return "Não foram encontrados compradores silenciosos para esta viatura nos últimos {$days} dias.";
         }
 
         return sprintf(
-            '%d visitantes silenciosos com score medio de %d/100 e forte sinal de intencao sem lead formal.',
+            '%d visitantes silenciosos com score médio de %d/100 e forte sinal de intenção sem lead formal.',
             $buyers->count(),
             round($buyers->avg('intent_score'))
         );

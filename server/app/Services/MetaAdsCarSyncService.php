@@ -30,12 +30,12 @@ class MetaAdsCarSyncService
             ->first();
 
         if (!$integration) {
-            throw new \DomainException('A empresa nao tem uma integracao Meta Ads ativa.');
+            throw new \DomainException('A empresa não tem uma integração Meta Ads ativa.');
         }
 
         if ($integration->isTokenExpired()) {
             $integration->update(['status' => 'expired']);
-            throw new \DomainException('O token da integracao Meta Ads expirou. Reconecta a conta para continuar.');
+            throw new \DomainException('O token da integração Meta Ads expirou. Reconecta a conta para continuar.');
         }
 
         // Empresa com a tag [id:N] nos anúncios: o mapeamento manual está só de leitura
@@ -51,7 +51,7 @@ class MetaAdsCarSyncService
             ->get();
 
         if ($mappings->isEmpty()) {
-            throw new \DomainException('Esta viatura ainda nao tem uma campanha Meta Ads associada.');
+            throw new \DomainException('Esta viatura ainda não tem uma campanha Meta Ads associada.');
         }
 
         $processed = [];
@@ -84,7 +84,7 @@ class MetaAdsCarSyncService
         }
 
         if (empty($processed)) {
-            throw new \RuntimeException($errors[0]['message'] ?? 'Nao foi possivel atualizar os dados Meta Ads desta viatura.');
+            throw new \RuntimeException($errors[0]['message'] ?? 'Não foi possível atualizar os dados Meta Ads desta viatura.');
         }
 
         $integration->update(['last_synced_at' => now(), 'error_message' => null]);

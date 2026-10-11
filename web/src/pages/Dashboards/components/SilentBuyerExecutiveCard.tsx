@@ -37,7 +37,7 @@ export default function SilentBuyerExecutiveCard({ summary }: Props) {
                             Silent Buyer
                         </p>
                         <h5 className="mb-1 fw-semibold">Alerta inteligente</h5>
-                        <p className="text-muted fs-13 mb-0">Visitantes com intencao real sem lead formal nos ultimos {recentWindowDays} dias.</p>
+                        <p className="text-muted fs-13 mb-0">Visitantes com intenção real sem lead formal nos últimos {recentWindowDays} dias.</p>
                     </div>
                     <Link
                         to={targetCar ? `/cars/${targetCar.car_id}/marketing` : "/cars"}
@@ -54,11 +54,11 @@ export default function SilentBuyerExecutiveCard({ summary }: Props) {
                         <div className="fw-semibold fs-4">{totalDetected}</div>
                     </div>
                     <div>
-                        <div className="text-muted fs-12 text-uppercase fw-semibold mb-1">Score medio</div>
+                        <div className="text-muted fs-12 text-uppercase fw-semibold mb-1">Score médio</div>
                         <div className="fw-semibold fs-4">{averageIntentScore.toFixed(0)}/100</div>
                     </div>
                     <div className="text-muted fs-13">
-                        {summary?.recommended_focus || summary?.executive_alert || "Monitorizar os veículos com maior recorrencia e interacao."}
+                        {summary?.recommended_focus || summary?.executive_alert || "Monitorizar os veículos com maior recorrência e interação."}
                     </div>
                 </div>
             </section>

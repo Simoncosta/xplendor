@@ -21,12 +21,12 @@ const metrics = (summary: ISummaryDashboard) => [
         icon: "ri-car-line",
     },
     {
-        label: "Stock proprio",
+        label: "Stock próprio",
         value: Number(summary?.own_stock || 0).toLocaleString("pt-PT"),
         icon: "ri-archive-drawer-line",
     },
     {
-        label: "Preco medio",
+        label: "Preço médio",
         value: Number(summary?.avg_price || 0).toLocaleString("pt-PT", {
             style: "currency",
             currency: "EUR",
@@ -35,7 +35,7 @@ const metrics = (summary: ISummaryDashboard) => [
         icon: "ri-money-euro-circle-line",
     },
     {
-        label: "Tempo medio em stock",
+        label: "Tempo médio em stock",
         value: `${Number(summary?.avg_days_in_stock || 0)} dias`,
         icon: "ri-time-line",
     },

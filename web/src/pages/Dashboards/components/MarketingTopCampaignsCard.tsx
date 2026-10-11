@@ -25,7 +25,7 @@ export default function MarketingTopCampaignsCard({ campaigns }: MarketingTopCam
                                     <th>Plataforma</th>
                                     <th>Investimento</th>
                                     <th>Leads</th>
-                                    <th>Conversao</th>
+                                    <th>Conversão</th>
                                     <th>CPL</th>
                                 </tr>
                             </thead>
@@ -44,7 +44,7 @@ export default function MarketingTopCampaignsCard({ campaigns }: MarketingTopCam
                         </table>
                     </div>
                 ) : (
-                    <p className="text-muted mb-0">Ainda nao existem campanhas com dados suficientes para ranking.</p>
+                    <p className="text-muted mb-0">Ainda não existem campanhas com dados suficientes para ranking.</p>
                 )}
             </section>
         </Col>

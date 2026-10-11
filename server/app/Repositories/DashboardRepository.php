@@ -911,9 +911,9 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
     private function normalizeMarketingChannelLabel(string $channel): string
     {
         return match ($channel) {
-            'paid' => 'Trafego pago',
-            'organic_search' => 'Pesquisa organica',
-            'organic_social' => 'Social organico',
+            'paid' => 'Tráfego pago',
+            'organic_search' => 'Pesquisa orgânica',
+            'organic_social' => 'Social orgânico',
             'direct' => 'Direto',
             'referral' => 'Referral',
             'email' => 'Email',

@@ -167,7 +167,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
     const pausedBadgeStyle = { background: "#dc3545", color: "#fff", border: "1px solid #b02a37" };
 
     const getLevelLabel = (level: "campaign" | "adset" | "ad") => {
-        if (level === "ad") return "Anuncio";
+        if (level === "ad") return "Anúncio";
         if (level === "adset") return "Conjunto";
         return "Campanha";
     };
@@ -294,7 +294,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                 <div className="text-center py-4 text-muted" style={dashed}>
                     <i className="ri-advertisement-line fs-1 d-block mb-2" />
                     <p className="fs-13 mb-0">Nenhuma campanha mapeada a este veículo.</p>
-                    <p className="fs-12 mb-0 mt-1">Mapeia uma campanha, conjunto ou anuncio para que o spend chegue automaticamente.</p>
+                    <p className="fs-12 mb-0 mt-1">Mapeia uma campanha, conjunto ou anúncio para que o spend chegue automaticamente.</p>
                 </div>
             )}
 
@@ -306,7 +306,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                     </p>
 
                     {loading ? (
-                        <p className="text-muted fs-13">A carregar campanhas, conjuntos e anuncios do Meta...</p>
+                        <p className="text-muted fs-13">A carregar campanhas, conjuntos e anúncios do Meta...</p>
                     ) : (
                         <Row className="g-2">
                             {campaignTree.map((campaign) => (
@@ -350,7 +350,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                                                         status: ad.status,
                                                     },
                                                     ad.name || ad.id,
-                                                    `Anuncio do conjunto ${adset.name || adset.id}`,
+                                                    `Anúncio do conjunto ${adset.name || adset.id}`,
                                                     44
                                                 )
                                             ))}

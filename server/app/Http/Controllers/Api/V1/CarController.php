@@ -238,7 +238,7 @@ class CarController extends Controller
         } catch (\RuntimeException $exception) {
             return ApiResponse::error($exception->getMessage(), 503);
         } catch (Throwable $exception) {
-            return ApiResponse::error('Nao foi possivel gerar a analise IA desta viatura.', 500);
+            return ApiResponse::error('Não foi possível gerar a análise IA desta viatura.', 500);
         }
     }
 
@@ -257,7 +257,7 @@ class CarController extends Controller
         } catch (\DomainException $exception) {
             return ApiResponse::error($exception->getMessage(), 422);
         } catch (Throwable $exception) {
-            return ApiResponse::error('Nao foi possivel atualizar os dados Meta Ads desta viatura.', 500);
+            return ApiResponse::error('Não foi possível atualizar os dados Meta Ads desta viatura.', 500);
         }
     }
 
@@ -272,11 +272,11 @@ class CarController extends Controller
 
             $analysis = $this->carService->generateAiAnalyses($car);
 
-            return ApiResponse::success($analysis, 'Analise regenerada com sucesso.');
+            return ApiResponse::success($analysis, 'Análise regenerada com sucesso.');
         } catch (\RuntimeException $exception) {
             return ApiResponse::error($exception->getMessage(), 503);
         } catch (Throwable $exception) {
-            return ApiResponse::error('Nao foi possivel regenerar a analise desta viatura.', 500);
+            return ApiResponse::error('Não foi possível regenerar a análise desta viatura.', 500);
         }
     }
 
@@ -292,9 +292,9 @@ class CarController extends Controller
 
             return ApiResponse::success([
                 'interests' => $interests,
-            ], 'Publico recomendado carregado com sucesso.');
+            ], 'Público recomendado carregado com sucesso.');
         } catch (Throwable $exception) {
-            return ApiResponse::error('Nao foi possivel carregar o publico recomendado desta viatura.', 500);
+            return ApiResponse::error('Não foi possível carregar o público recomendado desta viatura.', 500);
         }
     }
 
@@ -308,9 +308,9 @@ class CarController extends Controller
             $car = $this->resolveCarForCompany($companyId, $carId);
             $analysis = $this->audienceGapAnalysisService->analyze($car);
 
-            return ApiResponse::success($analysis, 'Analise do publico carregada com sucesso.');
+            return ApiResponse::success($analysis, 'Análise do público carregada com sucesso.');
         } catch (Throwable $exception) {
-            return ApiResponse::error('Nao foi possivel carregar a analise do publico desta viatura.', 500);
+            return ApiResponse::error('Não foi possível carregar a análise do público desta viatura.', 500);
         }
     }
 
@@ -407,7 +407,7 @@ class CarController extends Controller
         $cacheKey = "market_refresh:car:{$carId}";
 
         if (Cache::has($cacheKey)) {
-            return response()->json(['message' => 'Aguarda alguns minutos antes de actualizar novamente.'], 429);
+            return response()->json(['message' => 'Aguarde alguns minutos antes de atualizar novamente.'], 429);
         }
 
         Cache::put($cacheKey, true, 300);
@@ -546,7 +546,7 @@ class CarController extends Controller
 
         if (empty($image->original_path)) {
             return ApiResponse::error(
-                'Esta imagem não tem original disponível para re-corte. Apenas imagens enviadas após a actualização suportam re-corte.',
+                'Esta imagem não tem original disponível para re-corte. Apenas imagens enviadas após a atualização suportam re-corte.',
                 422
             );
         }
@@ -617,7 +617,7 @@ class CarController extends Controller
         );
 
         if ((int) $car->company_id !== $companyId) {
-            throw new \DomainException('Viatura nao encontrada.');
+            throw new \DomainException('Viatura não encontrada.');
         }
 
         return $car;

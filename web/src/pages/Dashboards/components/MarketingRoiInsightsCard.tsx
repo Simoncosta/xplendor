@@ -13,7 +13,7 @@ export default function MarketingRoiInsightsCard({ insights }: MarketingRoiInsig
                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                     ROI insights
                 </p>
-                <h6 className="mb-3 fw-semibold">Leitura rapida</h6>
+                <h6 className="mb-3 fw-semibold">Leitura rápida</h6>
 
                 {safeInsights.length > 0 ? (
                     <div className="vstack gap-2">
@@ -25,7 +25,7 @@ export default function MarketingRoiInsightsCard({ insights }: MarketingRoiInsig
                         ))}
                     </div>
                 ) : (
-                    <p className="text-muted mb-0 fs-13">Assim que houver historico suficiente, os insights aparecem aqui automaticamente.</p>
+                    <p className="text-muted mb-0 fs-13">Assim que houver histórico suficiente, os insights aparecem aqui automaticamente.</p>
                 )}
             </section>
         </Col>

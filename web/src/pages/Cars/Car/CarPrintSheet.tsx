@@ -232,7 +232,7 @@ const buildExterior = (va: VA): Group => {
     if (ext.has_parabolic_antenna)  items.push("Antena parabólica");
     if (ext.has_bike_rack)          items.push("Porta-bicicletas");
     if (ext.has_motorbike_rack)     items.push("Porta-motos");
-    if (ext.has_electric_step)      items.push("Degrau eléctrico");
+    if (ext.has_electric_step)      items.push("Degrau elétrico");
     if (ext.has_manual_step)        items.push("Degrau manual");
     if (ext.has_stabilizers)        items.push("Macacos estabilizadores");
     if (ext.has_spare_wheel)        items.push("Pneu suplente");
@@ -275,7 +275,7 @@ const buildChassis = (va: VA): Group => {
     if (cs.has_cabin_blackouts) {
         items.push(cs.cabin_blackout_type ? `Tapa-luz cabine (${cs.cabin_blackout_type})` : "Tapa-luz cabine");
     }
-    return { title: "Chassis e claraboias", items: capAll(items) };
+    return { title: "Chassis e clarabóias", items: capAll(items) };
 };
 
 const buildInterior = (va: VA): Group => {

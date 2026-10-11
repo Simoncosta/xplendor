@@ -344,7 +344,7 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Antena parabólica", name: "vehicle_attributes.exterior.has_parabolic_antenna", loc: HAB_EXTERIOR },
     { label: "Suporte de bicicletas", name: "vehicle_attributes.exterior.has_bike_rack", loc: HAB_EXTERIOR },
     { label: "Suporte de mota",   name: "vehicle_attributes.exterior.has_motorbike_rack", loc: HAB_EXTERIOR },
-    { label: "Degrau eléctrico",  name: "vehicle_attributes.exterior.has_electric_step", loc: HAB_EXTERIOR },
+    { label: "Degrau elétrico",  name: "vehicle_attributes.exterior.has_electric_step", loc: HAB_EXTERIOR },
     { label: "Degrau manual",     name: "vehicle_attributes.exterior.has_manual_step", loc: HAB_EXTERIOR },
     { label: "Pneu suplente",     name: "vehicle_attributes.exterior.has_spare_wheel", loc: HAB_EXTERIOR },
     { label: "Kit Fix&Go",        name: "vehicle_attributes.exterior.has_fix_n_go_kit", loc: HAB_EXTERIOR },

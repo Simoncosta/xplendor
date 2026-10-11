@@ -14,7 +14,7 @@ type SourceOpt = { value: WaterHeaterSource | AmbientHeatingSource; label: strin
 type InverterOpt = { value: InverterType; label: string };
 
 const heatingSourceOptions: SourceOpt[] = [
-    { value: "electric", label: "Eléctrico" },
+    { value: "electric", label: "Elétrico" },
     { value: "gas",      label: "Gás" },
     { value: "diesel",   label: "Gasóleo" },
     { value: "none",     label: "Nenhum" },

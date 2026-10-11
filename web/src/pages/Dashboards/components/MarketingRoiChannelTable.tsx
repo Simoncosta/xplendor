@@ -33,7 +33,7 @@ export default function MarketingRoiChannelTable({ channels }: MarketingRoiChann
                                     <th className="ps-0">Canal</th>
                                     <th>Views</th>
                                     <th>Leads</th>
-                                    <th>Conversao</th>
+                                    <th>Conversão</th>
                                     <th>Investimento</th>
                                     <th>CPL</th>
                                     <th>Estado</th>
@@ -55,7 +55,7 @@ export default function MarketingRoiChannelTable({ channels }: MarketingRoiChann
                         </table>
                     </div>
                 ) : (
-                    <p className="text-muted mb-0">Ainda nao existem dados suficientes para avaliar os canais dos ultimos 7 dias.</p>
+                    <p className="text-muted mb-0">Ainda não existem dados suficientes para avaliar os canais dos últimos 7 dias.</p>
                 )}
             </section>
         </Col>

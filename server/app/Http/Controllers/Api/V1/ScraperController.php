@@ -102,7 +102,7 @@ class ScraperController extends Controller
             ->first();
 
         if (!$execution) {
-            return ApiResponse::error('Execucao nao encontrada.', 404);
+            return ApiResponse::error('Execução não encontrada.', 404);
         }
 
         $duration = ($execution->started_at && $execution->finished_at)

@@ -76,7 +76,7 @@ export default function MarketingTrafficDonutChart({
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                             Performance
                         </p>
-                        <h5 className="mb-1 fw-semibold">Leitura rapida de marketing</h5>
+                        <h5 className="mb-1 fw-semibold">Leitura rápida de marketing</h5>
                     </div>
                 </div>
 
@@ -100,7 +100,7 @@ export default function MarketingTrafficDonutChart({
                                 <Metric label="Leads" value={leads.toLocaleString("pt-PT")} />
                             </div>
                             <div className="col-md-4">
-                                <Metric label="Conversao" value={`${conversion.toFixed(2)}%`} />
+                                <Metric label="Conversão" value={`${conversion.toFixed(2)}%`} />
                             </div>
                         </div>
                         {hasMarketingSignals && (

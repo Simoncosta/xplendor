@@ -27,7 +27,7 @@ export const labelOf = (
 // "hibride-diesel") e variantes pt já em uso na BD (Carmine sync, imports).
 // Lookup por slug normalizado lowercase.
 export const FUEL_TYPE_LABELS: Record<string, string> = {
-    "electric":        "Eléctrico",
+    "electric":        "Elétrico",
     "petrol":          "Gasolina",
     "gaz":             "Gasolina",
     "gasoline":        "Gasolina",
@@ -45,8 +45,8 @@ export const FUEL_TYPE_LABELS: Record<string, string> = {
     // Variantes pt já em uso na BD
     "gasolina":        "Gasolina",
     "hibrido":         "Híbrido",
-    "eletrico":        "Eléctrico",
-    "electrico":       "Eléctrico",
+    "eletrico":        "Elétrico",
+    "electrico":       "Elétrico",
 };
 
 export const TRANSMISSION_LABELS: Record<string, string> = {

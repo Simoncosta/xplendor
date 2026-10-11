@@ -43,7 +43,7 @@ export default function MarketingWorkspaceTabs({ marketingPerformance, marketing
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                             Marketing
                         </p>
-                        <h5 className="mb-1 fw-semibold">Execucao e prioridade comercial</h5>
+                        <h5 className="mb-1 fw-semibold">Execução e prioridade comercial</h5>
                         <p className="text-muted fs-13 mb-0">
                             Alterna entre a leitura global de marketing e a fila de veículos com melhor potencial para investimento.
                         </p>

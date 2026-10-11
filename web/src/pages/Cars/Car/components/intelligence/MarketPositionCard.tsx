@@ -468,7 +468,7 @@ function Body({
                                 className="ms-2 badge bg-light text-muted"
                                 style={{ cursor: "help" }}
                                 title={
-                                    "Não há anúncios suficientes deste modelo exacto à venda. " +
+                                    "Não há anúncios suficientes deste modelo exato à venda. " +
                                     "A análise usa autocaravanas semelhantes da mesma marca e " +
                                     "categoria (ex.: outras perfiladas/capucines da mesma marca " +
                                     "em anos próximos). Útil para posicionar o preço no mercado, " +

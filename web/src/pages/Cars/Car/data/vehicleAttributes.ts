@@ -32,7 +32,7 @@ export const BED_LABELS: Record<BedType, string> = {
     cama_garagem:            "Cama de garagem",
     beliche:                 "Beliche",
     cama_transversal:        "Cama transversal",
-    cama_elevatoria_eletrica: "Cama elevatória eléctrica",
+    cama_elevatoria_eletrica: "Cama elevatória elétrica",
     cama_suspensa:           "Cama suspensa",
     cama_convertivel:        "Cama convertível de mesa",
     cama_sofa:               "Cama de sofá",

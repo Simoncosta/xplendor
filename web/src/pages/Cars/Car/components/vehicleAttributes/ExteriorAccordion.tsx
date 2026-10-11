@@ -70,7 +70,7 @@ export default function ExteriorAccordion({ accordionId }: AccordionProps) {
                     <Col lg={2}>
                         <XInputCheckbox
                             name="vehicle_attributes.exterior.has_electric_step"
-                            label="Degrau eléctrico"
+                            label="Degrau elétrico"
                             className="mb-3"
                         />
                     </Col>

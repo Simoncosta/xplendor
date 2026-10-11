@@ -30,7 +30,7 @@ const compactText = (text: string) => {
         .replaceAll("SUV_TT", "SUV / TT")
         .replaceAll("CITY_CAR", "Citadino")
         .replaceAll("GASOLINE", "Gasolina")
-        .replaceAll("ELECTRIC", "Eletrico")
+        .replaceAll("ELECTRIC", "Elétrico")
         .replaceAll("DIESEL", "Diesel");
 
     return normalized.length > 110 ? `${normalized.slice(0, 107)}...` : normalized;
@@ -49,7 +49,7 @@ export default function DashboardInsightsCard({ insights }: DashboardInsightsCar
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                             Insights automaticos
                         </p>
-                        <h5 className="mb-1 fw-semibold">O que merece leitura rapida</h5>
+                        <h5 className="mb-1 fw-semibold">O que merece leitura rápida</h5>
                     </div>
                 </div>
 
@@ -66,7 +66,7 @@ export default function DashboardInsightsCard({ insights }: DashboardInsightsCar
                         ))}
                     </div>
                 ) : (
-                    <div className="text-muted fs-13">Ainda nao ha insights suficientes para destacar padroes fiaveis.</div>
+                    <div className="text-muted fs-13">Ainda não há insights suficientes para destacar padrões fiáveis.</div>
                 )}
             </section>
         </Col>

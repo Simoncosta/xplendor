@@ -75,7 +75,7 @@ export const tvdeAuthorization: SaleDocumentDef = {
 
             <div className="doc-signatures">
                 <span className="doc-sign-date">{v.empresa_localidade}, {v.data}</span>
-                <span className="doc-sign-line">Pelo Proprietario: ___________________________________________</span>
+                <span className="doc-sign-line">Pelo Proprietário: ___________________________________________</span>
                 <span className="doc-sign-line">Pelo Motorista: ___________________________________________</span>
             </div>
 

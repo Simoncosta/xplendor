@@ -176,6 +176,6 @@ class CarAdCampaignController extends Controller
 
         $campaign->update(['is_active' => !$campaign->is_active]);
 
-        return ApiResponse::success($campaign, 'Estado actualizado.');
+        return ApiResponse::success($campaign, 'Estado atualizado.');
     }
 }

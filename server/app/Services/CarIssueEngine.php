@@ -133,15 +133,15 @@ class CarIssueEngine
 
         return [
             'issue_type' => 'price_above_market',
-            'problem' => 'Preco acima do mercado',
+            'problem' => 'Preço acima do mercado',
             'diagnosis' => sprintf(
-                'Esta %.1f%% acima da mediana e isso pode estar a travar contacto.',
+                'Está %.1f%% acima da mediana e isso pode estar a travar contactos.',
                 $delta
             ),
-            'action_label' => 'Rever preco',
+            'action_label' => 'Rever preço',
             'action_suggestion' => $recommendedPrice
                 ? 'Apontar para cerca de ' . $this->formatMoney($recommendedPrice)
-                : 'Ajustar preco para recuperar competitividade',
+                : 'Ajustar o preço para recuperar competitividade',
             'priority_score' => min(100, $priority),
         ];
     }
@@ -173,13 +173,13 @@ class CarIssueEngine
             'issue_type' => 'dead_stock',
             'problem' => 'Stock parado',
             'diagnosis' => sprintf(
-                'Tem %d dias em stock e continua sem tracao comercial suficiente.',
+                'Tem %d dias em stock e continua sem tração comercial suficiente.',
                 $days
             ),
-            'action_label' => 'Desbloquear rotacao',
+            'action_label' => 'Desbloquear a rotação',
             'action_suggestion' => ($market['market_position'] ?? null) === 'above_market'
-                ? 'Rever preco e relancar o anuncio'
-                : 'Criar novo destaque e refresh ao anuncio',
+                ? 'Rever o preço e relançar o anúncio'
+                : 'Criar novo destaque e refresh ao anúncio',
             'priority_score' => min(100, $priority),
         ];
     }
@@ -203,9 +203,9 @@ class CarIssueEngine
         return [
             'issue_type' => 'low_demand',
             'problem' => 'Procura baixa',
-            'diagnosis' => 'Esta a gerar pouca procura face ao resto do stock ativo.',
+            'diagnosis' => 'Está a gerar pouca procura face ao resto do stock ativo.',
             'action_label' => 'Ganhar visibilidade',
-            'action_suggestion' => 'Melhorar destaque e reforcar distribuicao do anuncio',
+            'action_suggestion' => 'Melhorar o destaque e reforçar a distribuição do anúncio',
             'priority_score' => min(100, $priority),
         ];
     }
@@ -235,7 +235,7 @@ class CarIssueEngine
         }
 
         if ($descriptionLength < 180) {
-            $issues[] = 'descricao fraca';
+            $issues[] = 'descrição fraca';
         }
 
         if ($interactions < max(1, (int) floor($avgInteractions * 0.45))) {
@@ -244,10 +244,10 @@ class CarIssueEngine
 
         return [
             'issue_type' => 'poor_listing',
-            'problem' => 'Anuncio pouco convincente',
+            'problem' => 'Anúncio pouco convincente',
             'diagnosis' => ucfirst(implode(', ', array_slice($issues, 0, 2))) . '.',
-            'action_label' => 'Melhorar anuncio',
-            'action_suggestion' => 'Atualizar fotos, titulo e descricao para aumentar resposta',
+            'action_label' => 'Melhorar o anúncio',
+            'action_suggestion' => 'Atualizar fotos, título e descrição para aumentar a resposta',
             'priority_score' => min(100, 44 + (count($issues) * 8)),
         ];
     }

@@ -16,7 +16,7 @@ const executiveCards = (marketingRoi: IMarketingRoi) => [
         value: marketingRoi.summary.total_leads.toLocaleString("pt-PT"),
     },
     {
-        label: "CPL medio",
+        label: "CPL médio",
         value: formatCurrencyWithFallback(marketingRoi.summary.avg_cost_per_lead),
     },
     {
@@ -36,7 +36,7 @@ export default function MarketingRoiSummaryCards({ marketingRoi }: MarketingRoiS
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                             Marketing intelligence
                         </p>
-                        <h5 className="mb-1 fw-semibold">ROI e decisao de investimento</h5>
+                        <h5 className="mb-1 fw-semibold">ROI e decisão de investimento</h5>
                     </div>
                     <span className="badge bg-light text-body px-3 py-2">
                         {marketingRoi.summary.best_campaign || "Sem campanha vencedora"}
