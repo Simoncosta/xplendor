@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 // Components
 import { Container, Nav, NavItem, NavLink, Row } from 'reactstrap';
 import AutomotiveMarketingBlock from './components/AutomotiveMarketingBlock';
+import StandBussolaDashboard from 'pages/Marketing/bussola/stand/StandBussolaDashboard';
 import AutomotiveHubStock from './components/AutomotiveHubStock';
 import { useRecommendations } from './components/RecommendationsCard';
 import { countHighPriority } from './components/automotiveMarketingText';
@@ -161,6 +162,7 @@ const CarStockTab = ({ companyId, onHighCount }: { companyId: number; onHighCoun
 /** Dashboard do automóvel com separadores: "Stock" (por defeito) e "Marketing e resultados". */
 const CarDashboardTabs = () => {
     const companyId = useWorkingCompanyId();
+    const { can: canSee } = useModules();
 
     const [searchParams] = useSearchParams();
     const tab = tabFromSearch(searchParams.get("tab"));
@@ -191,6 +193,8 @@ const CarDashboardTabs = () => {
             {opened.marketing && companyId > 0 && (
                 <div className={tab === "marketing" ? "pb-5 mb-5" : "d-none"}>
                     <AutomotiveMarketingBlock companyId={companyId} />
+                    {/* Bússola do stand: "As 3 jogadas da semana", no fim do separador (só aparece com o interruptor ligado). */}
+                    {canSee("bussola.ver") && <div className="mt-4"><StandBussolaDashboard companyId={companyId} /></div>}
                 </div>
             )}
         </>

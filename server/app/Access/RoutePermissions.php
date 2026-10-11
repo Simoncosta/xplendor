@@ -210,6 +210,14 @@ final class RoutePermissions
         'POST {id}/marketing/bussola/caption' => 'bussola.criar',
         'GET {id}/marketing/bussola/caption/{requestId}' => 'bussola.ver',
         'POST {id}/marketing/bussola/post' => 'bussola.criar',
+        // Bússola do stand (no módulo de stock).
+        'GET {id}/marketing/bussola-stand' => 'bussola.ver',
+        'POST {id}/marketing/bussola-stand/post' => 'bussola.criar',
+        'POST {id}/marketing/bussola-stand/caption' => 'bussola.criar',
+        'GET {id}/marketing/bussola-stand/caption/{requestId}' => 'bussola.ver',
+        'POST {id}/marketing/bussola-stand/ignore' => 'bussola.editar',
+        'POST {id}/marketing/bussola-stand/restore' => 'bussola.editar',
+        'POST {id}/marketing/bussola-stand/exclude' => 'bussola.editar',
         // ── resultados ──
         'GET {id}/analytics/automotive/marketing' => 'resultados.ver',
         'GET {id}/analytics/ga4/traffic' => 'resultados.ver',

@@ -84,6 +84,8 @@ class Company extends Model
             // Interruptor da sincronização nova do PingWin (vendas por artigo). NÃO está no
             // fillable: só o comando pingwin:item-sales-switch o muda.
             'pingwin_item_sales_enabled' => 'boolean',
+            // Bússola do stand: nasce desligada; só o root a liga (bussola:stand-switch).
+            'bussola_stand_enabled' => 'boolean',
             'billing_reminders_enabled' => 'boolean',
         ];
     }

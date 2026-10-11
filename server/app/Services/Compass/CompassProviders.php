@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Compass;
 
 use App\Services\CompanyModuleService;
+use App\Services\Compass\Stand\StandCompassProvider;
 use App\Services\Restaurant\RestaurantCompassProvider;
 
 /**
@@ -14,7 +15,7 @@ use App\Services\Restaurant\RestaurantCompassProvider;
 final class CompassProviders
 {
     /** @var list<class-string<CompassProvider>> pela ordem de preferência */
-    public const PROVIDERS = [RestaurantCompassProvider::class];
+    public const PROVIDERS = [RestaurantCompassProvider::class, StandCompassProvider::class];
 
     public function __construct(private readonly CompanyModuleService $modules) {}
 

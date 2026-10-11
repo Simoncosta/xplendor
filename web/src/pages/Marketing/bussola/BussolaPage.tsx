@@ -1,4 +1,6 @@
+import { useState } from "react";
 import RestaurantBussola from "./RestaurantBussola";
+import StandBussola from "./stand/StandBussola";
 import { useAccess } from "contexts/ModulesContext";
 
 /**
@@ -16,9 +18,19 @@ export const compassProviders = (modules: string[] | null, isRoot: boolean): Com
     return out.length ? out : ["restauracao"];
 };
 
+const LABELS: Record<CompassProviderKey, string> = { restauracao: "Restauração", stand: "Stand" };
+
 export default function BussolaPage() {
     const { modules, isRoot } = useAccess();
-    compassProviders(modules, isRoot); // o stand entra na parte 3
+    const providers = compassProviders(modules, isRoot);
+    const [chosen, setChosen] = useState<CompassProviderKey | null>(null);
+    const current = chosen && providers.includes(chosen) ? chosen : providers[0];
+    // Com os dois ramos, um seletor nos filtros da página.
+    const providerSwitch = providers.length > 1 ? (
+        <div className="xp-seg flex-shrink-0" role="radiogroup" aria-label="Ramo" data-testid="compass-provider">
+            {providers.map((p) => <button key={p} type="button" role="radio" aria-checked={current === p} className={current === p ? "on" : ""} onClick={() => setChosen(p)}>{LABELS[p]}</button>)}
+        </div>
+    ) : undefined;
 
-    return <RestaurantBussola />;
+    return current === "stand" ? <StandBussola providerSwitch={providerSwitch} /> : <RestaurantBussola providerSwitch={providerSwitch} />;
 }

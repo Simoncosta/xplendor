@@ -43,6 +43,7 @@ class TenancyArchitectureTest extends TestCase
         'PlanController.php' => 1,                        // planos da plataforma (rota sem empresa no endereço)
         'RestaurantCompassController.php' => 1,           // agir na Bússola exige a Linha Editorial ativa e produção (regra transversal)
         'RestaurantSignalsController.php' => 1,           // idem
+        'StandCompassController.php' => 1,                // idem (a Bússola do stand)
         'UserController.php' => 1,                        // utilizador de outra empresa
     ];
 

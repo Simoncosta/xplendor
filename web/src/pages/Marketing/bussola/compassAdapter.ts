@@ -1,4 +1,5 @@
-import { createPostFromPlay, excludeRestaurantItem, getPlayCaption, ignoreRestaurantSignal, requestPlayCaption } from "helpers/laravel_helper";
+import { createPostFromPlay, excludeRestaurantItem, getPlayCaption, ignoreRestaurantSignal, requestPlayCaption,
+    createPostFromStandPlay, excludeStandVehicle, getStandPlayCaption, ignoreStandSignals, requestStandPlayCaption } from "helpers/laravel_helper";
 import type { CompassPlay } from "common/models/bussola.model";
 
 /**
@@ -40,4 +41,22 @@ export const restaurantAdapter: CompassAdapter = {
         can: isSingleItem,
     },
     empty: "Esta semana não há jogadas: nenhum sinal das vendas e das reservas destas lojas pede uma ação.",
+};
+
+/** O stand: as rotas da Bússola do stand; "Não voltar a sugerir este veículo" nas jogadas de um só veículo. */
+export const standAdapter: CompassAdapter = {
+    key: "stand",
+    api: { createPost: createPostFromStandPlay, requestCaption: (c, d) => requestStandPlayCaption(c, { play_key: d.play_key, networks: d.networks }), getCaption: getStandPlayCaption },
+    ignore: async (companyId, play, permanent) => {
+        if (permanent) await excludeStandVehicle(companyId, play.signal_keys[0]);
+        else await ignoreStandSignals(companyId, play.signal_keys);
+    },
+    exclude: {
+        label: "Não voltar a sugerir este veículo",
+        confirmTitle: "Não voltar a sugerir este veículo?",
+        confirmText: "O veículo deixa de entrar nas jogadas da Bússola. Os blocos e o resto da plataforma continuam a mostrá-lo.",
+        done: "O veículo não volta a ser sugerido.",
+        can: (p) => !!p.car_id,
+    },
+    empty: "Esta semana não há jogadas: nenhum sinal do stock, dos preços, dos anúncios ou da procura pede uma ação.",
 };

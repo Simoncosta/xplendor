@@ -2,6 +2,7 @@ import { compassProviders } from "./BussolaPage";
 
 jest.mock("contexts/ModulesContext", () => ({ useAccess: () => ({ modules: [], isRoot: false }) }));
 jest.mock("./RestaurantBussola", () => () => null);
+jest.mock("./stand/StandBussola", () => () => null);
 
 describe("Bússola comum: o fornecedor pelos módulos", () => {
     it("o PingWin dá a restauração e o stock dá o stand", () => {

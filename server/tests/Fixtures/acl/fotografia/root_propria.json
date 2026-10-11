@@ -1,6 +1,6 @@
 {
     "ator": "root_propria",
-    "rotas": 388,
+    "rotas": 395,
     "proibidas": [],
     "motivos": [],
     "estados": {
@@ -171,6 +171,8 @@
         "GET api/v1/companies/{id}/management": 200,
         "GET api/v1/companies/{id}/management/requests": 200,
         "GET api/v1/companies/{id}/marketing/bussola": 200,
+        "GET api/v1/companies/{id}/marketing/bussola-stand": 200,
+        "GET api/v1/companies/{id}/marketing/bussola-stand/caption/{requestId}": 404,
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}": 404,
         "GET api/v1/companies/{id}/marketing/bussola/heatmap": 200,
         "GET api/v1/companies/{id}/my-access": 200,
@@ -323,6 +325,11 @@
         "POST api/v1/companies/{id}/management/first-admin": 200,
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept": 404,
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline": 404,
+        "POST api/v1/companies/{id}/marketing/bussola-stand/caption": 422,
+        "POST api/v1/companies/{id}/marketing/bussola-stand/exclude": 422,
+        "POST api/v1/companies/{id}/marketing/bussola-stand/ignore": 422,
+        "POST api/v1/companies/{id}/marketing/bussola-stand/post": 422,
+        "POST api/v1/companies/{id}/marketing/bussola-stand/restore": 422,
         "POST api/v1/companies/{id}/marketing/bussola/caption": 422,
         "POST api/v1/companies/{id}/marketing/bussola/post": 422,
         "POST api/v1/companies/{id}/ocr/invoices": 422,

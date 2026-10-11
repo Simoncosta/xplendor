@@ -362,6 +362,17 @@ Schedule::command('files:catalog --execute')
     ->name('files-catalog-nightly')
     ->withoutOverlapping();
 
+// 05:20 (Lisboa): Bússola do stand, os sinais das empresas com o interruptor ligado (interna,
+// só com os dados já guardados; as frases da IA vão a seguir, como na restauração).
+Schedule::call(function () {
+    \App\Models\Company::where('bussola_stand_enabled', true)->pluck('id')
+        ->each(fn ($id) => \App\Jobs\RecomputeStandCompassJob::dispatch((int) $id));
+})
+    ->dailyAt('05:20')
+    ->timezone('Europe/Lisbon')
+    ->name('bussola-stand-nightly')
+    ->withoutOverlapping();
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

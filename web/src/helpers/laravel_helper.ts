@@ -654,6 +654,16 @@ export const createPostFromPlay = (companyId: number, data: any) => api.create(u
 export const requestPlayCaption = (companyId: number, data: { play_key: string; location_id?: number | null; networks: string[] }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/caption`, data);
 export const getPlayCaption = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola/caption/${id}`);
+// Bússola do stand (veículos): a página, criar publicação, sugerir texto, ignorar e não voltar a sugerir um veículo.
+export const getBussolaStand = (companyId: number, type: "all" | "car" | "motorhome" = "all", playsOnly?: boolean) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand`, { type, ...(playsOnly ? { plays_only: 1 } : {}) });
+export const createPostFromStandPlay = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/post`, data, JSON_BODY);
+export const requestStandPlayCaption = (companyId: number, data: { play_key: string; networks: string[] }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/caption`, data, JSON_BODY);
+export const getStandPlayCaption = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/caption/${id}`);
+export const ignoreStandSignals = (companyId: number, keys: string[]) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/ignore`, { keys }, JSON_BODY);
+export const restoreStandSignal = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/restore`, { key }, JSON_BODY);
+export const excludeStandVehicle = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/exclude`, { key }, JSON_BODY);
 // F3: "O que publicar e quando".
 export const getRestaurantSignals = (companyId: number, locationId?: number | null, showIgnored?: boolean) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals`, { ...(locationId ? { location_id: locationId } : {}), ...(showIgnored ? { show_ignored: 1 } : {}) });

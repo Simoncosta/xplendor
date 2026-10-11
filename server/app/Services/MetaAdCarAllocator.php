@@ -113,6 +113,9 @@ class MetaAdCarAllocator
             return $n;
         });
 
+        // Bússola do stand: o gasto por veículo mudou.
+        \App\Services\Compass\Stand\StandCompassTriggers::dispatch($companyId);
+
         return ['changed_ads' => count($changed), 'rows' => $rows];
     }
 

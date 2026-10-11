@@ -71,7 +71,7 @@ return [
         'car_description' => ['label' => 'Descrição de viaturas', 'hint' => 'Gerar descrição da viatura', 'default_effort' => 'low', 'max_tokens' => 800],
         'car_analysis' => ['label' => 'Análise de viaturas', 'hint' => 'Análise de mercado e público da viatura', 'default_effort' => 'medium', 'max_tokens' => 2500],
         'family_categories' => ['label' => 'Categorias das famílias', 'hint' => 'Sugerir a categoria das famílias da restauração (as que as regras não reconhecem)', 'default_effort' => 'low', 'max_tokens' => 1500],
-        'bussola_jogadas' => ['label' => 'Jogadas da Bússola', 'hint' => 'O que fazer em cada jogada da semana (restauração)', 'default_effort' => 'low', 'max_tokens' => 1200],
+        'bussola_jogadas' => ['label' => 'Jogadas da Bússola', 'hint' => 'O que fazer em cada jogada da semana (restauração e stand)', 'default_effort' => 'low', 'max_tokens' => 1200],
         'ocr_text' => ['label' => 'OCR das faturas: PDF com texto', 'hint' => 'Ler as faturas de fornecedor em PDF com texto, enviadas como documento (o QR da AT é lido antes, sem IA)',
             'default_effort' => 'medium', 'max_tokens' => 16000, 'group' => 'ocr', 'reserve_model' => 'services.openai.ocr.model_text', 'providers' => ['anthropic']],
         'ocr_image' => ['label' => 'OCR das faturas: digitalizadas e fotografias', 'hint' => 'Ler as faturas em PDF sem texto e as fotografias; também a 2.ª tentativa quando as linhas não conferem com o QR',

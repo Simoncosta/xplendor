@@ -162,6 +162,16 @@ Route::prefix('v1')->group(function () {
                 // Dashboard do automóvel: bloco "Marketing e resultados" (GA4 + Meta + leads).
                 Route::get('analytics/automotive/marketing', [\App\Http\Controllers\Api\V1\AutomotiveMarketingController::class, 'show'])
                     ->middleware('ensure_module:stock');
+                // Bússola do stand (veículos): só com o módulo de stock; permissões da área bussola.
+                Route::middleware('ensure_module:stock')->group(function () {
+                    Route::get('/marketing/bussola-stand', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'show']);
+                    Route::post('/marketing/bussola-stand/post', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'createPost']);
+                    Route::post('/marketing/bussola-stand/caption', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'caption'])->middleware('throttle:20,1');
+                    Route::get('/marketing/bussola-stand/caption/{requestId}', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'captionStatus'])->whereNumber('requestId');
+                    Route::post('/marketing/bussola-stand/ignore', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'ignore']);
+                    Route::post('/marketing/bussola-stand/restore', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'restore']);
+                    Route::post('/marketing/bussola-stand/exclude', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'exclude']);
+                });
 
                 Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);

@@ -180,6 +180,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Bússola do stand: recalcular quando o stock, os preços ou o mercado mudam.
+        \App\Services\Compass\Stand\StandCompassTriggers::register();
+
         // ────────────────────────────────────────────────────────────────────
         // Blindagem contra wipe acidental da BD (incidente 2026-06-09,
         // CLAUDE.md sec 14.3).

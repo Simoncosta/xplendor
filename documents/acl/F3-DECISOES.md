@@ -157,6 +157,21 @@ As pastas do sistema seguem, além disto, a permissão da sua área (`App\Servic
 
 **Na F4 (a Linha Editorial nos dois sentidos):** mais uma rota, `POST {id}/editorial/media/from-file` ("Escolher dos Ficheiros"), com a permissão `editorial.criar` (como o envio de media da Linha Editorial) e, dentro, o módulo "Ficheiros" e `ficheiros.ver`. Na fotografia comporta-se como `editorial/media/uploads`, ator a ator: 403 só na empresa sem módulos; os restantes recebem 422 (o pedido da fotografia vai vazio).
 
+## 6d. Bússola do stand (noite da Bússola do stand)
+
+**Rotas novas:** 7, todas dentro de `ensure_module:stock`, com as permissões da área `bussola` (as da restauração):
+- `GET {id}/marketing/bussola-stand` (`bussola.ver`);
+- `POST {id}/marketing/bussola-stand/post` e `/caption` (`bussola.criar`);
+- `GET {id}/marketing/bussola-stand/caption/{requestId}` (`bussola.ver`);
+- `POST {id}/marketing/bussola-stand/ignore`, `/restore` e `/exclude` (`bussola.editar`).
+
+Não exigem a área automóvel, porque a Bússola não mostra dados pessoais. Criar, sugerir e ignorar exigem ainda a Linha Editorial ativa e a pessoa produzir nela (o mesmo "pode agir" da restauração, na lista dos 403 permitidos de `TenancyArchitectureTest`).
+
+**Diferença na fotografia:**
+- Só as 7 rotas novas (de 388 para 395 em cada ator). Nenhum ator ganha nem perde acesso a rotas que já existiam.
+- Nas rotas novas, só o administrador da empresa sem módulos recebe 403, nas 7 (sem o módulo de stock).
+- Os outros 10 atores não recebem 403: a página dá 200; as escritas dão 422 e o estado das propostas 404, porque o pedido da fotografia vai vazio, como nas rotas da Bússola da restauração.
+
 ## 7. Antes e depois (rotas com 403 por ator)
 
 | Ator | Antes | Depois (com o pré-deploy e o complemento) |
@@ -171,6 +186,6 @@ As pastas do sistema seguem, além disto, a permissão da sua área (`App\Servic
 | Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 65 |
 | Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
 | Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 76 |
-| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 242 |
+| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 249 |
 
 Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.
