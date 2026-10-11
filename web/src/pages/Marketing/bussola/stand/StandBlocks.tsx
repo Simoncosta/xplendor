@@ -95,33 +95,35 @@ export function PriceCard({ block }: { block: Blocks["price"] }) {
     );
 }
 
-function Money({ row, field, seed }: { row: AdRow; field: "spend" | "cost_per_contact"; seed: number }) {
+function Money({ row, field, seed }: { row: AdRow; field: "spend" | "cost_per_paid_lead"; seed: number }) {
     if (row.hidden) return <HiddenMoney seed={seed} />;
-    return <>{row[field] === null ? "Sem contactos" : fmtEuro(row[field])}</>;
+    return <>{row[field] === null ? "Sem leads pagas" : fmtEuro(row[field])}</>;
 }
 
 export function AdsCard({ block }: { block: Blocks["ads"] }) {
     return (
         <PageCard className="h-100" data-testid="stand-ads" title="O que os anúncios estão a render" flush={false}
-            info="Últimas 4 semanas. Gasto dos anúncios com a etiqueta [id:N] do veículo; contactos: WhatsApp, chamadas e telefone visto ou copiado no site do stand.">
+            info="Últimas 4 semanas. Gasto dos anúncios com a etiqueta [id:N] do veículo; leads pagas: as leads com origem nos anúncios; contactos: WhatsApp, chamadas e telefone visto ou copiado no site do stand, de todas as origens.">
             <Headline text={block.headline} />
             {block.rows.length > 0 && (
                 <div className="table-responsive">
                     <Table className="table-sm table-borderless align-middle mb-0 fs-13">
-                        <thead className="text-muted"><tr><th>Veículo</th><th className="text-end">Gasto</th><th className="text-end">Contactos</th><th className="text-end">Por contacto</th></tr></thead>
+                        <thead className="text-muted"><tr><th>Veículo</th><th className="text-end">Gasto</th><th className="text-end">Leads pagas</th><th className="text-end">Por lead paga</th><th className="text-end">Contactos</th></tr></thead>
                         <tbody>
                             {block.rows.map((r, i) => (
                                 <tr key={r.car_id}>
                                     <td><Vehicle id={r.car_id} label={r.label} />{r.sold && <Badge color="light" className="text-body fw-normal ms-2">Vendido</Badge>}</td>
                                     <td className="text-end text-nowrap"><Money row={r} field="spend" seed={i} /></td>
+                                    <td className="text-end">{r.paid_leads}</td>
+                                    <td className="text-end text-nowrap"><Money row={r} field="cost_per_paid_lead" seed={i + 3} /></td>
                                     <td className="text-end">{r.contacts}</td>
-                                    <td className="text-end text-nowrap"><Money row={r} field="cost_per_contact" seed={i + 3} /></td>
                                 </tr>
                             ))}
                         </tbody>
                     </Table>
                 </div>
             )}
+            {block.note && block.rows.length > 0 && <p className="text-muted fs-12 mt-3 mb-0" data-testid="stand-ads-note"><i className="ri-information-line me-1" aria-hidden />{block.note}</p>}
         </PageCard>
     );
 }

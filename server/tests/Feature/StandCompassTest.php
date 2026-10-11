@@ -337,12 +337,12 @@ class StandCompassTest extends TestCase
         $page = $this->page($marketing);
         $this->assertSame(['visible' => false, 'note' => 'Sem acesso aos valores financeiros'], $page['financial']);
         $top = collect($page['top']['numbers'])->keyBy('kind');
-        foreach (['stock_value', 'ad_spend', 'cost_per_contact'] as $kind) {
+        foreach (['stock_value', 'ad_spend', 'cost_per_paid_lead'] as $kind) {
             $this->assertSame([null, true], [$top[$kind]['value'], $top[$kind]['hidden']], $kind);
         }
         $this->assertNotNull($top['stock_count']['value']);
         foreach (array_merge($page['blocks']['ads']['rows'], $page['blocks']['ads']['without_contacts']) as $row) {
-            $this->assertSame([null, null, true], [$row['spend'], $row['cost_per_contact'], $row['hidden']]);
+            $this->assertSame([null, null, true], [$row['spend'], $row['cost_per_paid_lead'], $row['hidden']]);
         }
         $json = json_encode($page, JSON_UNESCAPED_UNICODE);
         $this->assertStringNotContainsString('40 €', $json, 'sem o gasto do anúncio');
@@ -357,7 +357,18 @@ class StandCompassTest extends TestCase
         $admin = $this->page();
         $this->assertSame(true, $admin['financial']['visible']);
         $this->assertSame(12000, collect($admin['top']['numbers'])->firstWhere('kind', 'ad_spend')['value'], '120 € em cêntimos');
-        $this->assertSame(12000, collect($admin['top']['numbers'])->firstWhere('kind', 'cost_per_contact')['value'], 'um contacto nos veículos com gasto (os vendidos contam no gasto)');
+        // Custo por lead paga (sem leads pagas: sem valor) e, ao lado, os contactos de todas as origens, sem divisão.
+        $cpl = collect($admin['top']['numbers'])->firstWhere('kind', 'cost_per_paid_lead');
+        $this->assertSame([null, 0, 1], [$cpl['value'], $cpl['paid_leads'], $cpl['contacts']]);
+        $this->assertSame('0 leads pagas; 1 contacto de todas as origens nos veículos com gasto', $cpl['caption']);
+        $this->assertStringContainsString('não guardam a origem', implode(' ', $admin['top']['notes']));
+        $this->assertNull(collect($admin['top']['numbers'])->firstWhere('kind', 'cost_per_contact'), 'o custo por contacto saiu');
+        DB::table('car_leads')->insert(['name' => 'Cliente', 'email' => 'c@exemplo.pt', 'car_id' => $withAd->id, 'company_id' => $this->company->id, 'status' => 'new',
+            'channel' => 'paid', 'created_at' => now()->subDay(), 'updated_at' => now()->subDay()]);
+        $admin = $this->page();
+        $this->assertSame(12000, collect($admin['top']['numbers'])->firstWhere('kind', 'cost_per_paid_lead')['value'], '120 € para 1 lead paga');
+        $row = collect($admin['blocks']['ads']['rows'])->firstWhere('car_id', $withAd->id);
+        $this->assertSame([80.0, 1, 80.0, 1], [(float) $row['spend'], $row['paid_leads'], (float) $row['cost_per_paid_lead'], $row['contacts']]);
     }
 
     public function test_no_personal_data_in_the_answer(): void

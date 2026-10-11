@@ -23,3 +23,12 @@ A regra das Recomendações `SpendWithoutLeadRule` e a jogada "Parar o anúncio"
 - **depois:** não aparece, porque o anúncio já não está ativo.
 
 Os veículos vendidos continuam na regra "anúncio de viatura vendida ainda ativo", que não mudou.
+
+## 2. Custo por lead paga em vez do custo por contacto (pergunta 2)
+
+- **Topo:** o número "Custo por contacto" deu lugar a "Custo por lead paga": o gasto das 4 semanas a dividir pelas leads pagas (as leads guardam a origem).
+  - Na legenda ficam, ao lado, as leads pagas e os contactos de todas as origens nos veículos com gasto, sem divisão.
+  - Sem leads pagas, o número fica sem valor.
+- **Bloco dos anúncios:** as colunas passam a ser Gasto, Leads pagas, Por lead paga e Contactos (de todas as origens).
+- **Nota curta, no topo e no bloco:** as interações (WhatsApp, chamadas, telefone) não guardam a origem.
+- **Sem Finanças:** o custo por lead paga não vem do servidor. As contagens de leads e de contactos ficam.

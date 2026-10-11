@@ -11,7 +11,7 @@ use App\Services\Compass\CompassProvider;
 
 /**
  * Bússola comum: o fornecedor do stand (veículos: carros e autocaravanas). Sem Finanças, sem o
- * valor do stock, o gasto em anúncios e o custo por contacto (o servidor não os envia).
+ * valor do stock, o gasto em anúncios e o custo por lead paga (o servidor não os envia).
  */
 final class StandCompassProvider implements CompassProvider
 {

@@ -48,7 +48,7 @@ const data = (over: Partial<StandCompassData> = {}): StandCompassData => ({
             oldest: [{ car_id: 11, label: "Peugeot 208 (2019)", days: 80, threshold: 45, stale: true }] },
         price: { headline: "4 de 10 veículos com comparação exata estão acima do mercado.", eligible: 10, counts: { below: 2, aligned: 4, above: 4 },
             top_above: [{ car_id: 11, label: "Peugeot 208 (2019)", diff_pct: 12, price: 22400, median: 20000, comparables: 12, days: 80 }], outside: { sem_tipologia: 2, sem_mercado: 1 } },
-        ads: { headline: "Nas últimas 4 semanas, 1 veículo teve gasto em anúncios; 0 sem nenhum contacto.", rows: [{ car_id: 13, label: "Renault Clio (2020)", sold: true, contacts: 2, spend: 120, cost_per_contact: 60 }], without_contacts: [] },
+        ads: { headline: "Nas últimas 4 semanas, 1 veículo teve gasto em anúncios; 0 sem nenhum contacto.", note: "As interações (WhatsApp, chamadas, telefone) não guardam a origem: o custo é por lead paga.", rows: [{ car_id: 13, label: "Renault Clio (2020)", sold: true, contacts: 2, paid_leads: 1, spend: 120, cost_per_paid_lead: 120 }], without_contacts: [] },
         demand: { headline: "Os veículos mais vistos.", rows: [{ car_id: 12, label: "Citroën C3 (2021)", views: 340, contacts: 3 }] },
         forgotten: { headline: "1 veículo à venda há mais de 30 dias está sem anúncio nem publicação.", items: [{ car_id: 14, label: "Fiat 500 (2018)", days: 40 }], total: 1 },
         footer: ["A Bússola nunca mostra nomes, telefones nem e-mails dos contactos, só contagens."],
@@ -80,6 +80,10 @@ describe("Bússola do stand", () => {
         expect(screen.getByTestId("stand-price-outside")).toHaveTextContent("2 sem tipologia, 1 sem mercado (caravanas)");
         expect(screen.getByTestId("stand-forgotten")).toHaveTextContent("Fiat 500 (2018)");
         expect(screen.getByTestId("stand-footer")).toHaveTextContent("só contagens");
+        const ads = screen.getByTestId("stand-ads");
+        expect(within(ads).getByText("Por lead paga")).toBeInTheDocument();
+        expect(within(ads).queryByText("Por contacto")).not.toBeInTheDocument();
+        expect(screen.getByTestId("stand-ads-note")).toHaveTextContent("não guardam a origem");
     });
 
     it("o seletor de tipo pede as jogadas do tipo escolhido", async () => {
@@ -92,7 +96,7 @@ describe("Bússola do stand", () => {
         (getBussolaStand as jest.Mock).mockResolvedValue({ data: data({
             financial: { visible: false, note: "Sem acesso aos valores financeiros" },
             top: { ...data().top!, numbers: [{ kind: "stock_value", label: "Valor do stock", value: null, hidden: true, format: "eur", caption: "", icon: "ri-money-euro-circle-line" }] },
-            blocks: { ...data().blocks!, ads: { headline: "x", rows: [{ car_id: 13, label: "Renault Clio (2020)", sold: false, contacts: 2, spend: null, cost_per_contact: null, hidden: true }], without_contacts: [] } },
+            blocks: { ...data().blocks!, ads: { headline: "x", rows: [{ car_id: 13, label: "Renault Clio (2020)", sold: false, contacts: 2, paid_leads: 1, spend: null, cost_per_paid_lead: null, hidden: true }], without_contacts: [] } },
         }) });
         render(<StandBussola />);
         expect(await screen.findByTestId("financial-note")).toHaveTextContent("Sem acesso aos valores financeiros");

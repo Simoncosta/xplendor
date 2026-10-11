@@ -4,7 +4,7 @@ import type { CompassPlay } from "common/models/bussola.model";
 export type StandType = "all" | "car" | "motorhome";
 
 export interface StandNumber {
-    kind: "stock_count" | "stock_value" | "avg_days" | "above_market" | "ad_spend" | "cost_per_contact";
+    kind: "stock_count" | "stock_value" | "avg_days" | "above_market" | "ad_spend" | "cost_per_paid_lead";
     label: string;
     value: number | null;
     format: "int" | "pct" | "eur";
@@ -35,14 +35,15 @@ export interface StandCompassData {
         price: { headline: string; eligible: number; counts: { below: number; aligned: number; above: number };
             top_above: { car_id: number; label: string; diff_pct: number; price: number | null; median: number; comparables: number; days: number | null }[];
             outside: Partial<Record<"sem_tipologia" | "sem_mercado" | "sem_comparaveis" | "aproximada" | "confianca_baixa", number>> };
-        ads: { headline: string; rows: AdRow[]; without_contacts: AdRow[] };
+        ads: { headline: string; note?: string; rows: AdRow[]; without_contacts: AdRow[] };
         demand: { headline: string; rows: { car_id: number; label: string; views: number; contacts: number }[] };
         forgotten: { headline: string; items: { car_id: number; label: string; days: number | null }[]; total: number };
         footer: string[];
     };
 }
 
-export interface AdRow { car_id: number; label: string; sold: boolean; contacts: number; spend: number | null; cost_per_contact: number | null; hidden?: boolean }
+/** Por veículo com gasto: o gasto, as leads pagas e o custo por lead paga (com origem) e os contactos de todas as origens (sem divisão). */
+export interface AdRow { car_id: number; label: string; sold: boolean; contacts: number; paid_leads: number; spend: number | null; cost_per_paid_lead: number | null; hidden?: boolean }
 
 export const OUTSIDE_LABELS: Record<string, string> = {
     sem_tipologia: "sem tipologia", sem_mercado: "sem mercado (caravanas)", sem_comparaveis: "sem comparáveis",

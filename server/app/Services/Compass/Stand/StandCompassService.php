@@ -349,6 +349,7 @@ final class StandCompassService
         $above = array_filter($eligible, fn ($f) => $f['position'] === 'above_market');
         $spend = array_sum(array_column($adRows, 'spend'));
         $contacts = array_sum(array_column($adRows, 'contacts'));
+        $paidLeads = array_sum(array_column($adRows, 'paid_leads'));
         $estimated = count(array_filter($facts, fn ($f) => $f['entry_estimated']));
         $outside = $count - count($eligible);
 
@@ -359,10 +360,15 @@ final class StandCompassService
             ['kind' => 'above_market', 'label' => 'Acima do mercado', 'value' => $eligible ? round(count($above) / count($eligible) * 100, 1) : null, 'format' => 'pct',
                 'caption' => 'de ' . count($eligible) . ' ' . (count($eligible) === 1 ? 'veículo' : 'veículos') . ' com comparação exata', 'icon' => 'ri-scales-3-line'],
             $this->money(['kind' => 'ad_spend', 'label' => 'Gasto em anúncios', 'value' => (int) round($spend * 100), 'format' => 'eur', 'caption' => 'últimas 4 semanas', 'icon' => 'ri-megaphone-line'], $fin),
-            $this->money(['kind' => 'cost_per_contact', 'label' => 'Custo por contacto', 'value' => $contacts > 0 ? (int) round($spend / $contacts * 100) : null, 'format' => 'eur',
-                'caption' => $contacts > 0 ? $contacts . ($contacts === 1 ? ' contacto' : ' contactos') . ' dos veículos com gasto' : 'sem contactos nos veículos com gasto', 'icon' => 'ri-chat-1-line'], $fin),
+            // Custo por lead paga (as leads guardam a origem); ao lado, os contactos de todas as origens, sem divisão.
+            $this->money(['kind' => 'cost_per_paid_lead', 'label' => 'Custo por lead paga', 'value' => $paidLeads > 0 ? (int) round($spend / $paidLeads * 100) : null, 'format' => 'eur',
+                'caption' => ($paidLeads === 1 ? '1 lead paga' : "{$paidLeads} leads pagas") . '; ' . ($contacts === 1 ? '1 contacto' : "{$contacts} contactos") . ' de todas as origens nos veículos com gasto',
+                'icon' => 'ri-chat-1-line', 'paid_leads' => $paidLeads, 'contacts' => $contacts], $fin),
         ];
         $notes = [];
+        if ($spend > 0) {
+            $notes[] = 'As interações (WhatsApp, chamadas, telefone) não guardam a origem: o custo é por lead paga, e os contactos de todas as origens mostram-se ao lado, sem divisão.';
+        }
         if ($estimated > 0) {
             $notes[] = $estimated === 1 ? 'Num veículo, a data de entrada é estimada (a data em que entrou na XPLENDOR).'
                 : "Em {$estimated} veículos, a data de entrada é estimada (a data em que entraram na XPLENDOR).";
@@ -465,13 +471,14 @@ final class StandCompassService
     {
         $noContacts = array_filter($rows, fn ($f) => $f['contacts'] === 0);
         $n = count($rows);
-        $row = fn ($f) => ['car_id' => $f['car_id'], 'label' => $f['label'], 'sold' => $f['sold'], 'contacts' => $f['contacts']]
-            + ($fin ? ['spend' => $f['spend'], 'cost_per_contact' => $f['contacts'] > 0 ? round($f['spend'] / $f['contacts'], 2) : null]
-                : ['spend' => null, 'cost_per_contact' => null, 'hidden' => true]);
+        $row = fn ($f) => ['car_id' => $f['car_id'], 'label' => $f['label'], 'sold' => $f['sold'], 'contacts' => $f['contacts'], 'paid_leads' => $f['paid_leads']]
+            + ($fin ? ['spend' => $f['spend'], 'cost_per_paid_lead' => $f['paid_leads'] > 0 ? round($f['spend'] / $f['paid_leads'], 2) : null]
+                : ['spend' => null, 'cost_per_paid_lead' => null, 'hidden' => true]);
 
         return [
             'headline' => $n === 0 ? 'Sem gasto em anúncios atribuído a veículos nas últimas 4 semanas.'
                 : sprintf('Nas últimas 4 semanas, %d %s gasto em anúncios; %d sem nenhum contacto.', $n, $n === 1 ? 'veículo teve' : 'veículos tiveram', count($noContacts)),
+            'note' => 'As interações (WhatsApp, chamadas, telefone) não guardam a origem: o custo é por lead paga; os contactos são de todas as origens, sem divisão.',
             'rows' => array_map($row, array_slice($rows, 0, 8)),
             'without_contacts' => array_map($row, array_values($noContacts)),
         ];

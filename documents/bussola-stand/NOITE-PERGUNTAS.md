@@ -25,6 +25,8 @@ Não existe hoje um "custo por contacto". Só existe o custo por lead paga. Alé
 
 **Alternativa:** custo por lead paga, que já existe e tem a origem.
 
+**Resposta: retirar o custo por contacto.** No topo e no bloco dos anúncios fica o custo por lead paga (com origem) e, ao lado, o número de contactos de todas as origens nos veículos com gasto, sem divisão, com uma nota curta: as interações não têm origem. Feito no pré-deploy (`AJUSTES-PRE-DEPLOY.md`, ponto 2).
+
 ## 3. Caravanas e motos no seletor
 
 O seletor do pedido é "Todos, Carros, Autocaravanas".

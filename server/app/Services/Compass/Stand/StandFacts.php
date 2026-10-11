@@ -152,7 +152,7 @@ final class StandFacts
      * O gasto das últimas 4 semanas por veículo, de TODOS os veículos da empresa (também os já
      * vendidos: o dinheiro foi gasto), com os contactos de cada um no mesmo período.
      *
-     * @return list<array{car_id: int, label: string, group: ?string, spend: float, contacts: int}>
+     * @return list<array{car_id: int, label: string, group: ?string, spend: float, contacts: int, paid_leads: int}>
      */
     public function adRows(int $companyId, ?CarbonImmutable $today = null): array
     {
@@ -167,6 +167,9 @@ final class StandFacts
         }
         $contacts = DB::table('car_funnel_metrics_daily')->where('company_id', $companyId)->whereIn('car_id', array_keys($spend))
             ->whereBetween('date', [$from, $to])->groupBy('car_id')->selectRaw('car_id, COALESCE(SUM(contacts), 0) as contacts')->pluck('contacts', 'car_id');
+        // As leads pagas (as leads guardam a origem; as interações não).
+        $paidLeads = DB::table('car_leads')->where('company_id', $companyId)->whereIn('car_id', array_keys($spend))->where('channel', 'paid')
+            ->whereBetween('created_at', [$from . ' 00:00:00', $to . ' 23:59:59'])->groupBy('car_id')->selectRaw('car_id, COUNT(*) as n')->pluck('n', 'car_id');
         $cars = Car::with(['brand', 'model'])->where('company_id', $companyId)->whereIn('id', array_keys($spend))->get()->keyBy('id');
         $out = [];
         foreach ($spend as $carId => $value) {
@@ -175,7 +178,7 @@ final class StandFacts
                 continue;
             }
             $out[] = ['car_id' => (int) $carId, 'label' => self::label($car), 'group' => self::typeGroup($car->vehicle_type), 'sold' => $car->status === 'sold',
-                'spend' => $value, 'contacts' => (int) ($contacts[$carId] ?? 0)];
+                'spend' => $value, 'contacts' => (int) ($contacts[$carId] ?? 0), 'paid_leads' => (int) ($paidLeads[$carId] ?? 0)];
         }
         usort($out, fn ($a, $b) => $b['spend'] <=> $a['spend']);
 
