@@ -19,9 +19,10 @@ use Illuminate\Support\Facades\Log;
 /**
  * Bússola do stand: os sinais, calculados e guardados em compass_signals (fornecedor "stand").
  * Usa as regras que já existem, tal como estão, para nunca dizer uma coisa diferente das
- * Recomendações do dashboard: as regras da 2D (vendido com anúncio ativo, gasto sem leads,
+ * Recomendações do dashboard: as regras da 2D (vendido com anúncio ativo, gasto sem contactos,
  * muitas vistas e zero contactos, com as definições de cada empresa) e a comparação exata.
- *  · stop_ad:{id}       "Parar o anúncio" (as regras da 2D);
+ *  · stop_ad:{id}       "Parar o anúncio" (as regras da 2D: vendido com anúncio ativo, e gasto
+ *                       dos anúncios ativos sem nenhum contacto em 14 dias);
  *  · review_price:{id}  à venda, no limiar de dias ou acima, e acima do mercado (comparação
  *                       exata, confiança média ou alta, mais de 5%, a regra PriceAboveMarketRule);
  *  · stale:{id}         à venda, no limiar de dias ou acima (para "Renovar o stock parado");
@@ -79,12 +80,12 @@ final class StandSignalService
         };
 
         // 1. Parar o anúncio: as regras da 2D (inclui os vendidos, que já não estão no stock).
-        foreach ([SoldCarAdStillActiveRule::class => 'sold_active', SpendWithoutLeadRule::class => 'spend_no_lead'] as $rule => $reason) {
+        foreach ([SoldCarAdStillActiveRule::class => 'sold_active', SpendWithoutLeadRule::class => 'spend_no_contacts'] as $rule => $reason) {
             foreach ($this->rule($rule, $company, $now) as $e) {
                 $carId = (int) $e['car_id'];
                 $key = "stop_ad:{$carId}";
                 if (isset($rows[$key])) {
-                    continue; // vendido com anúncio ganha a gasto sem leads
+                    continue; // vendido com anúncio ganha a gasto sem contactos
                 }
                 $car = \App\Models\Car::with(['brand', 'model'])->find($carId);
                 if (! $car) {

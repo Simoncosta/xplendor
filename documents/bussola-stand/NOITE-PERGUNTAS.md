@@ -12,6 +12,11 @@ Um veículo com WhatsApps e chamadas, mas sem leads, entra na regra.
 
 **Até decidir:** a regra da 2D, tal como está, para a Bússola e as Recomendações dizerem o mesmo. O texto da jogada diz "sem leads pagas".
 
+**Resposta (com a 8): "gasto sem contactos", igual na Bússola e nas Recomendações.**
+- Só entram os anúncios ainda ativos.
+- Conta como resultado qualquer contacto nos mesmos 14 dias: leads de qualquer origem e interações (WhatsApp, chamada, ver telefone).
+- Feito no pré-deploy (`AJUSTES-PRE-DEPLOY.md`, ponto 1).
+
 ## 2. Custo por contacto
 
 Não existe hoje um "custo por contacto". Só existe o custo por lead paga. Além disso, as interações (WhatsApp, chamada, ver telefone) não guardam se vieram de um anúncio.
@@ -65,3 +70,5 @@ A regra da 2D do gasto sem leads (`SpendWithoutLeadRule`) conta o gasto dos últ
 **Até decidir:** a regra tal como está, igual nas Recomendações.
 
 **Alternativa:** a Bússola, e a regra, só contam os anúncios ainda ativos.
+
+**Resposta:** só os anúncios ainda ativos (ver a resposta da pergunta 1).

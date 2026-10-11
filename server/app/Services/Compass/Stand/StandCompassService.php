@@ -276,7 +276,7 @@ final class StandCompassService
 
         return match ($g['type']) {
             'stop_ad' => ['value' => (string) $n,
-                'caption' => ($n === 1 ? 'veículo ' : 'veículos ') . ($m->contains(fn ($s) => ($s->numbers['reason'] ?? '') === 'sold_active') ? 'vendidos com anúncio ativo, ou com gasto sem leads pagas' : 'com gasto e sem leads pagas')],
+                'caption' => ($n === 1 ? 'veículo ' : 'veículos ') . ($m->contains(fn ($s) => ($s->numbers['reason'] ?? '') === 'sold_active') ? 'vendidos com anúncio ativo, ou com gasto sem contactos' : 'com gasto e sem contactos')],
             'review_price' => ['value' => '+' . $this->num((float) $first['diff_pct']) . '%',
                 'caption' => $n === 1 ? 'acima da mediana dos comparáveis' : "o maior desvio, entre {$n} veículos"],
             'renew_stock' => ['value' => (string) $n, 'caption' => 'veículos à venda no limiar de dias do seu tipo ou acima'],
@@ -293,7 +293,7 @@ final class StandCompassService
         return match ($s->type) {
             'stop_ad' => ($n['reason'] === 'sold_active'
                 ? 'vendido' . ($n['sold_at'] ? ' a ' . CarbonImmutable::parse($n['sold_at'])->format('d/m') : '') . ($n['active_ads'] > 0 ? ', anúncio ativo' : '')
-                : 'sem leads pagas em ' . (int) $n['window_days'] . ' dias') . ($fin && (float) $n['spend'] > 0 ? ', gasto de ' . $this->eur((float) $n['spend']) : ''),
+                : 'sem contactos em ' . (int) $n['window_days'] . ' dias') . ($fin && (float) $n['spend'] > 0 ? ', gasto de ' . $this->eur((float) $n['spend']) : ''),
             'review_price' => (int) $n['days'] . ' dias, +' . $this->num((float) $n['diff_pct']) . '%, mediana de ' . $this->eur((float) $n['median']) . ' (' . (int) $n['comparables'] . ' comparáveis)',
             'stale' => (int) $n['days'] . ' dias (limiar de ' . (int) $n['threshold'] . ')',
             'interest' => $this->num((int) $n['views']) . ' vistas, 0 contactos',
@@ -314,7 +314,7 @@ final class StandCompassService
                 ? sprintf('O veículo %s está vendido%s e %s.', $label, $n['sold_at'] ? ' desde ' . CarbonImmutable::parse($n['sold_at'])->format('d/m') : '',
                     $n['active_ads'] > 0 ? 'tem ' . ($n['active_ads'] === 1 ? 'um anúncio ativo' : $n['active_ads'] . ' anúncios ativos') . ' com a etiqueta'
                     : 'registou gasto em anúncios depois da venda') . ($fin && (float) $n['spend'] > 0 ? ' (' . $this->eur((float) $n['spend']) . ' depois da venda).' : '')
-                : sprintf('Os anúncios com a etiqueta do veículo %s registaram gasto nos últimos %d dias e nenhuma lead com origem paga%s.', $label, (int) $n['window_days'],
+                : sprintf('Os anúncios ativos com a etiqueta do veículo %s registaram gasto nos últimos %d dias e nenhum contacto (nem leads, nem cliques no WhatsApp, chamadas ou telefone visto)%s.', $label, (int) $n['window_days'],
                     $fin ? ' (' . $this->eur((float) $n['spend']) . ')' : ''),
             'review_price' => sprintf('O veículo %s está há %d dias em stock (o limiar do seu tipo é de %d dias) e o preço está %s%% acima da mediana de %d veículos comparáveis (%s)%s.',
                 $label, (int) $n['days'], (int) $n['threshold'], $this->num((float) $n['diff_pct']), (int) $n['comparables'], $this->eur((float) $n['median']),

@@ -158,6 +158,13 @@ class StandCompassTest extends TestCase
         $this->assertSame($cars['sold']->id, $stop['car_id']);
         $this->assertSame(['view_car'], $stop['actions']);
         $this->assertStringContainsString('Gestor de Anúncios', $stop['where']['ad']);
+        // Gasto sem contactos (a mesma regra das Recomendações): só anúncios ativos; qualquer contacto conta.
+        $silent = $this->car(25);
+        $this->adSpend('A9', "Peugeot 208 [id:{$silent->id}]", 45.0, now()->subDay()->toDateString());
+        $this->compute();
+        $stop = collect($this->page()['plays'])->firstWhere('type', 'stop_ad');
+        $this->assertSame('sem contactos em 14 dias, gasto de 45 €', collect($stop['items'])->firstWhere('car_id', $silent->id)['detail']);
+        $this->assertStringContainsString('nenhum contacto (nem leads, nem cliques no WhatsApp, chamadas ou telefone visto)', implode(' ', $stop['detail']['sentences']));
         $price = $plays[1];
         $this->assertSame(['+12%', 'acima da mediana dos comparáveis'], [$price['number']['value'], $price['number']['caption']]);
         $this->assertSame('50 dias, +12%, mediana de 20 000 € (12 comparáveis)', $price['items'][0]['detail'], 'os dias, a % acima e a mediana com os comparáveis');

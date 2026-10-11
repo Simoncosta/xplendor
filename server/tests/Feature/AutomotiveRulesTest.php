@@ -28,7 +28,8 @@ use Tests\TestCase;
  *   1. Anúncio de viatura vendida ainda ativo (prioridade máxima);
  *   2. Acima do mercado e parada (fundida na regra de preço migrada);
  *   3. Muitas vistas, zero contactos (p75 da empresa e ≥ 30, 14 dias);
- *   4. Gasto sem lead (gasto com tag ≥ 30 € em 14 dias, 0 leads pagas).
+ *   4. Gasto sem contactos (gasto dos anúncios ativos com tag ≥ 30 € em 14 dias, nenhum contacto:
+ *      nem leads de qualquer origem, nem WhatsApp, chamada ou telefone visto).
  * Cada regra: dispara e não dispara, limiares por tipo, exata vs aproximada,
  * p75 relativo, sem duplicados, configuração por empresa e tenancy.
  */
@@ -303,21 +304,42 @@ class AutomotiveRulesTest extends TestCase
         $this->assertSame([], $this->recs('automotive_high_views_no_contacts'));
     }
 
-    // ── 4. Gasto sem lead ───────────────────────────────────────────────────
+    // ── 4. Gasto sem contactos ──────────────────────────────────────────────
 
-    public function test_spend_without_paid_lead_fires_above_threshold(): void
+    public function test_spend_without_contacts_fires_above_threshold(): void
     {
         $car = $this->car(20);
         $this->adSpend('A1', "Golf [id:{$car->id}]", 20.0, '2026-09-30');
         $this->adSpend('A1', "Golf [id:{$car->id}]", 15.0, '2026-10-01');
-        $this->lead($car, 2, 'direct');   // não é paga
+        $this->interaction($car, 'scroll');   // não é um contacto
 
         $r = $this->recs('automotive_spend_without_lead');
 
         $this->assertCount(1, $r);
-        $this->assertSame(35.0, $r[0]['evidence']['tag_spend']);
-        $this->assertStringContainsString('registaram 35,00 € de gasto nos últimos 14 dias e nenhuma lead com origem paga', $r[0]['why']);
+        $this->assertSame(['Gasto sem contactos', 35.0, 'spend_without_contacts', 0], [$r[0]['title'], $r[0]['evidence']['tag_spend'], $r[0]['evidence']['issue_type'], $r[0]['evidence']['contacts']]);
+        $this->assertStringContainsString('Os anúncios ativos com a etiqueta desta viatura registaram 35,00 € de gasto nos últimos 14 dias e nenhum contacto no mesmo período', $r[0]['why']);
         $this->assertStringContainsString('selected_ad_ids=A1', $r[0]['action']['url']);
+    }
+
+    public function test_spend_without_contacts_ignores_paused_ads_and_any_contact_counts(): void
+    {
+        // Anúncio já pausado: o gasto dele não conta (antes contava).
+        $paused = $this->car(20);
+        $this->adSpend('P1', "Polo [id:{$paused->id}]", 60.0, '2026-10-01', 'PAUSED');
+        // Uma lead de qualquer origem (antes só as pagas contavam).
+        $organicLead = $this->car(20);
+        $this->adSpend('O1', "Up [id:{$organicLead->id}]", 60.0, '2026-10-01');
+        $this->lead($organicLead, 1, 'organic_social');
+        // Um clique no WhatsApp, sem lead (antes disparava).
+        $whatsapp = $this->car(20);
+        $this->adSpend('W1', "Golf [id:{$whatsapp->id}]", 60.0, '2026-10-01');
+        $this->interaction($whatsapp, 'whatsapp_click');
+        // Ver o telefone também conta.
+        $phone = $this->car(20);
+        $this->adSpend('T1', "Taigo [id:{$phone->id}]", 60.0, '2026-10-01');
+        $this->interaction($phone, 'show_phone');
+
+        $this->assertSame([], $this->recs('automotive_spend_without_lead'));
     }
 
     public function test_spend_without_lead_does_not_fire_with_paid_lead_low_spend_or_old_spend(): void
