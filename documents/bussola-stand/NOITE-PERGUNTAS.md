@@ -51,6 +51,8 @@ As publicações da Linha Editorial não sabem a que veículo se referem.
 
 **Mais tarde:** um campo "veículo" na publicação da Linha Editorial, para ligar também as criadas à mão.
 
+**Resposta:** além das criadas pela Bússola, uma publicação que usa fotografias da pasta de um veículo (pelos Ficheiros) fica ligada a esse veículo automaticamente e conta para o "sem publicação nos últimos 30 dias". O campo manual fica para mais tarde. Feito no pré-deploy (`AJUSTES-PRE-DEPLOY.md`, ponto 3).
+
 ## 6. Empresa com restauração e stand
 
 Uma empresa com os módulos PingWin e stock teria as duas Bússolas.

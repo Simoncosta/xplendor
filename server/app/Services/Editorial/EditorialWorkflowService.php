@@ -540,7 +540,7 @@ class EditorialWorkflowService
             throw ValidationException::withMessages(['cover' => ['A capa tem de ser uma imagem.']]);
         }
 
-        return DB::transaction(function () use ($post, $user, $itemIds, $coverId) {
+        $version = DB::transaction(function () use ($post, $user, $itemIds, $coverId) {
             $version = $this->draftVersion($post, $user);
             DB::table('editorial_post_version_media')->where('version_id', $version->id)->delete();
             $now = now();
@@ -555,6 +555,10 @@ class EditorialWorkflowService
 
             return $version->fresh();
         });
+        // Bússola do stand: as fotografias da pasta de um veículo ligam a publicação a esse veículo.
+        app(\App\Services\Compass\Stand\StandPostLinks::class)->syncFromMedia($post, array_values(array_filter([...$itemIds, $coverId])));
+
+        return $version;
     }
 
     /**

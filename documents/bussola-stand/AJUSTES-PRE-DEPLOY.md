@@ -32,3 +32,16 @@ Os veículos vendidos continuam na regra "anúncio de viatura vendida ainda ativ
 - **Bloco dos anúncios:** as colunas passam a ser Gasto, Leads pagas, Por lead paga e Contactos (de todas as origens).
 - **Nota curta, no topo e no bloco:** as interações (WhatsApp, chamadas, telefone) não guardam a origem.
 - **Sem Finanças:** o custo por lead paga não vem do servidor. As contagens de leads e de contactos ficam.
+
+## 3. Publicação ligada ao veículo pelas fotografias (pergunta 5)
+
+- **A ligação:** quando os ficheiros de uma publicação mudam (`EditorialWorkflowService::setMedia`), a publicação fica ligada a cada veículo de cuja pasta nos Ficheiros ("Veículos") vem uma fotografia.
+  - A ligação refaz-se a cada mudança: se a fotografia sair, a ligação sai.
+  - As ligações criadas pela Bússola ficam como estão.
+  - O veículo passa a contar como "com publicação nos últimos 30 dias": sai de "Dar palco" e dos "Esquecidos". A Bússola recalcula.
+- **Migração aditiva** `2026_12_31_100000_add_source_to_compass_post_subjects`: a coluna `source` diz de onde vem a ligação ("bussola" ou "ficheiros"). As ligações que já existiam ficam "bussola".
+- **O campo manual** ("veículo" na publicação) fica para mais tarde.
+- **Defeito encontrado e corrigido** (Ficheiros, F4): o registo dos Ficheiros (de noite e ao abrir a página) apagava a ligação entre a imagem de um veículo e a sua media, depois de "Escolher dos Ficheiros".
+  - Com isso, perdia-se o "Em uso" e esta ligação deixava de ser encontrada.
+  - Agora, nas fontes que não trazem a media, o registo mantém a que lá está.
+  - Há um teste que o confirma.

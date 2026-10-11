@@ -500,4 +500,39 @@ class StandCompassTest extends TestCase
         $this->assertSame(['renew_stock'], array_column($plays['plays'], 'type'), 'as caravanas contam como autocaravanas');
         $this->assertContains($mh->id, array_column($plays['plays'][0]['items'], 'car_id'));
     }
+
+    public function test_a_post_with_photos_from_a_vehicle_folder_is_linked_to_the_vehicle(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \Illuminate\Support\Facades\Storage::fake('media');
+        Queue::fake();
+        app(CompanyModuleService::class)->enable($this->company->id, 'ficheiros');
+        $stage = $this->car(12, ['price_gross' => 19000]);
+        $this->aggregate($stage, 20000);
+        $img = imagecreatetruecolor(40, 30);
+        ob_start();
+        imagejpeg($img);
+        \Illuminate\Support\Facades\Storage::disk('public')->put("company_{$this->company->id}/cars/x-{$stage->id}/images/1.jpg", (string) ob_get_clean());
+        DB::table('car_images')->insert(['car_id' => $stage->id, 'company_id' => $this->company->id, 'image' => "/storage/company_{$this->company->id}/cars/x-{$stage->id}/images/1.jpg",
+            'order' => 0, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()]);
+        app(\App\Services\Files\SystemFileCatalog::class)->sync($this->company->id, true);
+        $this->compute();
+        $this->assertSame(1, CompassSignal::where('type', 'stage')->count(), 'sem publicação: dá palco');
+
+        // Uma publicação criada à mão na Linha Editorial, com a fotografia escolhida da pasta do veículo.
+        $file = \App\Models\StoredFile::where('source', 'viatura')->firstOrFail();
+        $asset = app(\App\Services\Files\FilesService::class)->mediaFor($this->admin, $this->company->id, $file->id);
+        $post = EditorialPost::create(['company_id' => $this->company->id, 'publish_date' => '2026-10-15', 'title' => 'Seat em destaque', 'format' => 'post',
+            'status' => 'planned', 'stage' => EditorialPost::STAGE_IDEA, 'channel' => EditorialPost::CHANNEL_SOCIAL]);
+        app(\App\Services\Editorial\EditorialWorkflowService::class)->setMedia($post, $this->admin, [$asset->id], null);
+
+        $this->assertSame([[$stage->id, 'ficheiros']], CompassPostSubject::where('editorial_post_id', $post->id)->get()->map(fn ($l) => [$l->subject_id, $l->source])->all());
+        Queue::assertPushed(RecomputeStandCompassJob::class);
+        $this->compute();
+        $this->assertSame(0, CompassSignal::where('type', 'stage')->count(), 'com publicação nos últimos 30 dias: já não dá palco');
+
+        // Sem a fotografia, a ligação sai.
+        app(\App\Services\Editorial\EditorialWorkflowService::class)->setMedia($post->fresh(), $this->admin, [], null);
+        $this->assertSame(0, CompassPostSubject::where('editorial_post_id', $post->id)->count());
+    }
 }

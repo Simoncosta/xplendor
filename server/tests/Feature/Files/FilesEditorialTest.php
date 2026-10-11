@@ -109,6 +109,10 @@ class FilesEditorialTest extends TestCase
         $this->assertNotEmpty(Storage::disk('media')->allFiles($asset->dir));
         $this->assertSame($publicBefore, Storage::disk('public')->allFiles());
 
+        // O registo noturno dos Ficheiros mantém a ligação à media (antes apagava-a).
+        app(SystemFileCatalog::class)->sync($this->c->id, true);
+        $this->assertSame($asset->id, $file->fresh()->media_asset_id, 'o registo não desfaz o "Escolher dos Ficheiros"');
+
         // Escolher outra vez devolve a mesma media.
         $this->actingAs($this->admin, 'sanctum')->postJson($this->url('editorial/media/from-file'), ['stored_file_id' => $file->id])->assertJsonPath('data.id', $asset->id);
 

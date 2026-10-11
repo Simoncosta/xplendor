@@ -84,7 +84,7 @@ class SystemFileCatalog
             }
             $folderId = $execute ? $this->folder($companyId, $item['folder']) : $row->folder_id;
             $changed = $row->path !== $item['path'] || $row->disk !== $item['disk'] || $row->name !== $item['name'] || (int) $row->folder_id !== (int) $folderId
-                || $row->missing_at !== null || ($item['media_asset_id'] ?? null) !== $row->media_asset_id;
+                || $row->missing_at !== null || (array_key_exists('media_asset_id', $item) && $item['media_asset_id'] !== $row->media_asset_id);
             if ($changed) {
                 $stats[$source]['atualizados']++;
                 if ($execute) {
@@ -115,7 +115,10 @@ class SystemFileCatalog
         return [
             'folder_id' => $this->folder($companyId, $item['folder']), 'name' => mb_substr($item['name'], 0, 200), 'extension' => $ext ?: null,
             'mime' => $item['mime'] ?? (self::MIME[$ext] ?? null), 'size_bytes' => $size, 'disk' => $item['disk'], 'path' => $item['path'],
-            'source' => $item['source'], 'source_id' => $item['source_id'] ?? null, 'media_asset_id' => $item['media_asset_id'] ?? null,
+            'source' => $item['source'], 'source_id' => $item['source_id'] ?? null,
+            // Só a fonte "media" traz a media; nas outras (ex.: a imagem de um veículo escolhida para uma
+            // publicação, com "Escolher dos Ficheiros"), fica a que lá está.
+            'media_asset_id' => array_key_exists('media_asset_id', $item) ? $item['media_asset_id'] : $row?->media_asset_id,
         ];
     }
 
