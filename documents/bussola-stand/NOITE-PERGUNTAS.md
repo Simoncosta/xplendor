@@ -57,3 +57,11 @@ A área `bussola` está ligada ao módulo PingWin. Numa empresa só de stand, o 
 **Até decidir:** fica como está. O aviso é só informativo e não muda nenhum acesso, porque o acesso usa o módulo de cada rota.
 
 **Para corrigir:** a área passa a valer para os dois módulos. Isto muda o catálogo das áreas que o editor de perfis recebe.
+
+## 8. "Parar o anúncio" quando o anúncio já está pausado
+
+A regra da 2D do gasto sem leads (`SpendWithoutLeadRule`) conta o gasto dos últimos 14 dias sem olhar ao estado do anúncio. Na verificação no ecrã, um veículo com o anúncio já pausado (mas com gasto nos 14 dias) entrou em "Parar o anúncio".
+
+**Até decidir:** a regra tal como está, igual nas Recomendações.
+
+**Alternativa:** a Bússola, e a regra, só contam os anúncios ainda ativos.
