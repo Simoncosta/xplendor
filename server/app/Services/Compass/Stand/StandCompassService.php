@@ -160,6 +160,18 @@ final class StandCompassService
         return [10 - (int) $rank, $this->memberStrength($group['members']->first())];
     }
 
+    /**
+     * A chave da frase da IA de uma jogada: a chave da jogada e os veículos do grupo. Se o grupo
+     * mudar (um veículo ignorado ou excluído), a frase antiga deixa de servir (falaria de outro
+     * veículo) e fica o modelo de frase até ao próximo recálculo.
+     */
+    public static function textKey(array $group): string
+    {
+        $keys = $group['members']->pluck('signal_key')->sort()->values()->all();
+
+        return $group['key'] . '#' . substr(md5(implode('|', $keys)), 0, 12);
+    }
+
     public function choose(array $groups): array
     {
         return CompassPlayChooser::choose($groups, fn (array $g) => $this->strength($g));
@@ -190,7 +202,7 @@ final class StandCompassService
             default => "Dar palco a {$label}",
         };
         $publish = in_array($type, ['renew_stock', 'use_interest', 'give_stage'], true);
-        $ai = $texts[$g['key']] ?? null;
+        $ai = $texts[self::textKey($g)] ?? null;
         $whenPlay = match ($type) {
             'stop_ad' => CompassWhen::present($today, $today, null, 'Fazer'),
             'review_price' => CompassWhen::present($today->addDay(), $today, null, 'Rever'),
@@ -263,11 +275,11 @@ final class StandCompassService
         $n = $m->count();
 
         return match ($g['type']) {
-            'stop_ad' => ['value' => $n === 1 ? '1 veículo' : "{$n} veículos",
-                'caption' => $m->contains(fn ($s) => ($s->numbers['reason'] ?? '') === 'sold_active') ? 'vendido com anúncio ativo ou gasto depois da venda' : 'com gasto e sem leads pagas'],
+            'stop_ad' => ['value' => (string) $n,
+                'caption' => ($n === 1 ? 'veículo ' : 'veículos ') . ($m->contains(fn ($s) => ($s->numbers['reason'] ?? '') === 'sold_active') ? 'vendidos com anúncio ativo, ou com gasto sem leads pagas' : 'com gasto e sem leads pagas')],
             'review_price' => ['value' => '+' . $this->num((float) $first['diff_pct']) . '%',
                 'caption' => $n === 1 ? 'acima da mediana dos comparáveis' : "o maior desvio, entre {$n} veículos"],
-            'renew_stock' => ['value' => "{$n} veículos", 'caption' => 'no limiar de dias do seu tipo ou acima'],
+            'renew_stock' => ['value' => (string) $n, 'caption' => 'veículos à venda no limiar de dias do seu tipo ou acima'],
             'use_interest' => ['value' => $this->num((int) $first['views']) . ' vistas', 'caption' => 'em ' . (int) $first['window_days'] . ' dias, sem contactos'],
             default => ['value' => ($first['position'] ?? '') === 'below_market' ? $this->signedPct((float) $first['diff_pct']) : 'Alinhado',
                 'caption' => ($first['position'] ?? '') === 'below_market' ? 'abaixo da mediana dos comparáveis' : 'com a mediana dos comparáveis'],
@@ -494,6 +506,8 @@ final class StandCompassService
 
     private function num(int|float $v): string
     {
+        $v = is_float($v) ? round($v, 1) : $v;
+
         return number_format($v, is_float($v) && fmod($v, 1.0) !== 0.0 ? 1 : 0, ',', ' ');
     }
 

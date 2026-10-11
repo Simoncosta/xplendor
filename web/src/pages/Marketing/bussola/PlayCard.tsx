@@ -77,11 +77,11 @@ export default function PlayCard({ companyId, play, canAct, canActReason, onCrea
                 ))}
             </div>
             {play.items && play.items.length > 0 && (
-                <ul className="list-unstyled vstack gap-1 fs-13 mb-3" data-testid="play-items">
+                <ul className="list-unstyled vstack gap-2 fs-13 mb-3" data-testid="play-items">
                     {play.items.map((it) => (
-                        <li key={it.car_id} className="d-flex justify-content-between gap-2">
-                            <span className="text-truncate">{it.label}</span>
-                            {it.detail && <span className="text-muted text-nowrap">{it.detail}</span>}
+                        <li key={it.car_id}>
+                            <span className="d-block fw-medium text-truncate">{it.label}</span>
+                            {it.detail && <span className="d-block text-muted fs-12">{it.detail}</span>}
                         </li>
                     ))}
                 </ul>

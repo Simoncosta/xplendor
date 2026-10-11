@@ -26,6 +26,7 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\Concerns\FakesAi;
 use Tests\TestCase;
@@ -419,8 +420,8 @@ class StandCompassTest extends TestCase
         $this->aggregate($a, 20000);
         \App\Models\CompanyBrandProfile::create(['company_id' => $this->company->id, 'tone_of_voice' => 'Próximo e direto.', 'words_to_avoid' => ['imperdível']]);
         $this->fakeAi(['jogadas' => [
-            ['chave' => 'review_price:all', 'o_que' => 'Reveja o preço do Peugeot face aos veículos semelhantes no mercado.'],
-            ['chave' => 'review_price:car', 'o_que' => 'Baixe o preço em 2000 euros.'], // números: recusada
+            ['chave' => "review_price:all#{$this->textHash(["review_price:{$a->id}"])}", 'o_que' => 'Reveja o preço do Peugeot face aos veículos semelhantes no mercado.'],
+            ['chave' => "review_price:car#{$this->textHash(["review_price:{$a->id}"])}", 'o_que' => 'Baixe o preço em 2000 euros.'], // números: recusada
         ]]);
         $this->compute();
 
@@ -432,6 +433,22 @@ class StandCompassTest extends TestCase
         $this->assertSame(['ai', 'Reveja o preço do Peugeot face aos veículos semelhantes no mercado.'], [$all['what']['source'], $all['what']['text']]);
         $car = collect($this->page(null, '?type=car')['plays'])->firstWhere('type', 'review_price');
         $this->assertSame(['template', StandCompassService::TEMPLATES['review_price']], [$car['what']['source'], $car['what']['text']]);
+
+        // Com outro veículo no grupo (sem recalcular as frases), a frase antiga não serve: falaria de um só veículo.
+        $b = $this->car(60, ['price_gross' => 25000]);
+        $this->aggregate($b, 20000);
+        \App\Models\CompassText::query()->update(['generated_at' => now()]); // as frases ficam; os sinais mudam
+        Http::fake();
+        app(StandSignalService::class)->compute($this->company->id);
+        $all = collect($this->page()['plays'])->firstWhere('type', 'review_price');
+        $this->assertSame([2, 'template'], [count($all['items']), $all['what']['source']]);
+    }
+
+    private function textHash(array $keys): string
+    {
+        sort($keys);
+
+        return substr(md5(implode('|', $keys)), 0, 12);
     }
 
     public function test_the_signals_are_recomputed_when_stock_prices_or_market_change(): void

@@ -36,7 +36,7 @@ final class StandCompassTexts
         $plays = [];
         foreach (array_keys(StandCompassService::TYPES) as $scope) {
             foreach ($this->compass->choose($this->compass->candidateGroups($this->compass->visibleSignals($companyId, $scope, $today), $scope)) as $g) {
-                $plays[$g['key']] = $g;
+                $plays[StandCompassService::textKey($g)] = $g;
             }
         }
         if ($plays === []) {
