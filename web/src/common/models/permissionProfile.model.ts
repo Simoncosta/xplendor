@@ -19,7 +19,7 @@ export interface PermissionProfile {
     summary: AreaSummary[];
 }
 
-export interface CatalogArea { area: string; label: string; module: string | null; actions: string[] }
+export interface CatalogArea { area: string; label: string; module: string | string[] | null; actions: string[] }
 
 export interface ProfilesPayload {
     catalog: CatalogArea[];

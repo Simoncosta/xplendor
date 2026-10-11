@@ -121,8 +121,8 @@ class PermissionProfileController extends Controller
         $ignored = array_values(array_diff($data['permissions'], $allowed));
         $inactive = [];
         foreach (array_unique(array_map(fn ($p) => Permissions::area($p), $kept)) as $area) {
-            $module = Permissions::AREAS[$area]['module'] ?? null;
-            if ($module && ! $modules->isEnabled($companyId, $module)) {
+            $areaModules = Permissions::areaModules($area);
+            if ($areaModules !== [] && ! collect($areaModules)->contains(fn ($m) => $modules->isEnabled($companyId, $m))) {
                 $inactive[] = Permissions::areaLabel($area);
             }
         }

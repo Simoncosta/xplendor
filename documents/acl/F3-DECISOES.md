@@ -172,6 +172,13 @@ Não exigem a área automóvel, porque a Bússola não mostra dados pessoais. Cr
 - Nas rotas novas, só o administrador da empresa sem módulos recebe 403, nas 7 (sem o módulo de stock).
 - Os outros 10 atores não recebem 403: a página dá 200; as escritas dão 422 e o estado das propostas 404, porque o pedido da fotografia vai vazio, como nas rotas da Bússola da restauração.
 
+**No pré-deploy da Bússola do stand (a área "Bússola" vale para os dois módulos):**
+- A área `bussola` passa a ter dois módulos, PingWin ou stock (`'module' => ['pingwin', 'stock']`; basta um ativo; `Permissions::areaModules`).
+- Muda só o editor de perfis:
+  - a pré-visualização deixa de dizer "Bússola: módulo inativo" numa empresa só de stand;
+  - o catálogo das áreas envia os dois módulos.
+- **Diferença na fotografia: nenhuma.** A fotografia reescrita é igual à anterior: o acesso usa o módulo de cada rota (`ensure_module`), não o da área. Nenhum ator ganha nem perde acesso.
+
 ## 7. Antes e depois (rotas com 403 por ator)
 
 | Ator | Antes | Depois (com o pré-deploy e o complemento) |

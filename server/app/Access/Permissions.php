@@ -29,7 +29,7 @@ final class Permissions
         'configurar' => 'configurar',
     ];
 
-    /** área => [rótulo, módulo (null = base), ações possíveis] */
+    /** área => [rótulo, módulo (null = base; uma lista = vale para qualquer um deles), ações possíveis] */
     public const AREAS = [
         'empresa' => ['label' => 'Empresa', 'module' => null, 'actions' => ['ver', 'editar', 'aprovar']],
         'utilizadores' => ['label' => 'Utilizadores e equipa', 'module' => null, 'actions' => ['ver', 'criar', 'editar', 'apagar', 'configurar']],
@@ -40,7 +40,8 @@ final class Permissions
         'editorial' => ['label' => 'Linha Editorial', 'module' => 'linha_editorial', 'actions' => ['ver', 'criar', 'editar', 'aprovar', 'apagar', 'configurar']],
         'blog' => ['label' => 'Blog', 'module' => null, 'actions' => ['ver', 'criar', 'editar', 'aprovar', 'apagar']],
         'marca' => ['label' => 'Marca', 'module' => null, 'actions' => ['ver', 'criar', 'editar']],
-        'bussola' => ['label' => 'Bússola', 'module' => 'pingwin', 'actions' => ['ver', 'criar', 'editar']],
+        // A Bússola da restauração (PingWin) e a do stand (stock).
+        'bussola' => ['label' => 'Bússola', 'module' => ['pingwin', 'stock'], 'actions' => ['ver', 'criar', 'editar']],
         'resultados' => ['label' => 'Resultados', 'module' => 'marketing_analytics', 'actions' => ['ver']],
         'financas' => ['label' => 'Finanças', 'module' => 'finance', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'restauracao' => ['label' => 'Restauração', 'module' => 'pingwin', 'actions' => ['ver', 'criar', 'editar', 'apagar', 'configurar']],
@@ -117,6 +118,12 @@ final class Permissions
     public static function isValid(string $permission): bool
     {
         return in_array($permission, self::all(), true);
+    }
+
+    /** @return string[] os módulos de que a área depende (vazio = base); basta um ativo. */
+    public static function areaModules(string $area): array
+    {
+        return array_values(array_filter((array) (self::AREAS[$area]['module'] ?? null)));
     }
 
     public static function area(string $permission): string

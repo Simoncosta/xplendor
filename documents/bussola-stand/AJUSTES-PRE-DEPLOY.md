@@ -45,3 +45,20 @@ Os veículos vendidos continuam na regra "anúncio de viatura vendida ainda ativ
   - Com isso, perdia-se o "Em uso" e esta ligação deixava de ser encontrada.
   - Agora, nas fontes que não trazem a media, o registo mantém a que lá está.
   - Há um teste que o confirma.
+
+## 4. A área "Bússola" vale para o PingWin ou para o stock (pergunta 7)
+
+- **A área:** `Permissions::AREAS['bussola']` passa a ter dois módulos, `['pingwin', 'stock']`; basta um ativo (`Permissions::areaModules`).
+- **O editor de perfis:**
+  - a pré-visualização só avisa "módulo inativo" quando nenhum dos dois está ativo;
+  - o catálogo das áreas envia a lista dos dois módulos (o tipo no frontend aceita a lista).
+- **O acesso não muda:** as rotas continuam a verificar o seu módulo (`ensure_module:pingwin` na restauração, `ensure_module:stock` no stand).
+  - A fotografia da ACL, reescrita, ficou igual.
+  - Registado em `documents/acl/F3-DECISOES.md`, secção 6d.
+- **Teste:** `PermissionProfilesTest::test_the_compass_area_counts_as_active_with_pingwin_or_with_stock`.
+
+## 5. Confirmadas sem alterações (perguntas 3, 4 e 6)
+
+- Caravanas como autocaravanas; motos só em "Todos".
+- As jogadas no fim de "Marketing e resultados".
+- O seletor "Restauração / Stand".

@@ -35,6 +35,8 @@ O seletor do pedido é "Todos, Carros, Autocaravanas".
 - as caravanas contam como "Autocaravanas", porque têm o mesmo limiar de 120 dias;
 - as motos (nenhuma em dev) só contam em "Todos".
 
+**Resposta:** confirmado, sem alterações.
+
 ## 4. Onde ficam "As 3 jogadas da semana" no dashboard
 
 O pedido diz "no FIM do separador Marketing e resultados, junto às recomendações". No dashboard do stand, as Recomendações estão no separador **Stock**.
@@ -42,6 +44,8 @@ O pedido diz "no FIM do separador Marketing e resultados, junto às recomendaç�
 **Até decidir:** no fim do separador "Marketing e resultados", como diz a instrução explícita.
 
 **Alternativa:** no separador Stock, logo a seguir às Recomendações.
+
+**Resposta:** confirmado, sem alterações (no fim de "Marketing e resultados").
 
 ## 5. "Sem publicação nos últimos 30 dias"
 
@@ -59,6 +63,8 @@ Uma empresa com os módulos PingWin e stock teria as duas Bússolas.
 
 **Até decidir:** a página mostra a da restauração e, por baixo do título, um seletor "Restauração / Stand"; o dashboard de cada ramo mostra a sua. Em dev não há nenhuma empresa assim.
 
+**Resposta:** confirmado, sem alterações.
+
 ## 7. A área de permissão "Bússola" no editor de perfis
 
 A área `bussola` está ligada ao módulo PingWin. Numa empresa só de stand, o editor de perfis avisa "Bússola: módulo inativo" ao dar a permissão, o que deixa de ser verdade.
@@ -66,6 +72,8 @@ A área `bussola` está ligada ao módulo PingWin. Numa empresa só de stand, o 
 **Até decidir:** fica como está. O aviso é só informativo e não muda nenhum acesso, porque o acesso usa o módulo de cada rota.
 
 **Para corrigir:** a área passa a valer para os dois módulos. Isto muda o catálogo das áreas que o editor de perfis recebe.
+
+**Resposta:** a área "Bússola" passa a valer para o módulo do PingWin ou para o de stock; o editor de perfis deixa de avisar "módulo inativo" numa empresa só de stand. Feito no pré-deploy (`AJUSTES-PRE-DEPLOY.md`, ponto 4). Sem diferença na fotografia da ACL.
 
 ## 8. "Parar o anúncio" quando o anúncio já está pausado
 

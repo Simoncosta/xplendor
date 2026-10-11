@@ -113,6 +113,23 @@ class PermissionProfilesTest extends TestCase
         $this->assertNotNull($res->json('data.note'));
     }
 
+    public function test_the_compass_area_counts_as_active_with_pingwin_or_with_stock(): void
+    {
+        $preview = fn () => $this->actingAs($this->admin, 'sanctum')->postJson($this->url('permission-profiles/preview'), [
+            'side' => 'cliente', 'permissions' => ['bussola.ver', 'restauracao.ver'],
+        ])->assertOk()->json('data.inactive_modules');
+
+        $modules = app(\App\Services\CompanyModuleService::class);
+        $this->assertFalse($modules->isEnabled($this->client->id, 'pingwin'));
+        \App\Models\CompanyModule::where('company_id', $this->client->id)->where('module_key', 'stock')->delete();
+        $this->assertSame(['Bússola', 'Restauração'], $preview(), 'sem nenhum dos dois módulos');
+        $modules->enable($this->client->id, 'stock');
+        $this->assertSame(['Restauração'], $preview(), 'numa empresa só de stand, a Bússola não é um módulo inativo');
+
+        $catalog = collect($this->actingAs($this->admin, 'sanctum')->getJson($this->url('permission-profiles'))->assertOk()->json('data.catalog'));
+        $this->assertSame(['pingwin', 'stock'], $catalog->firstWhere('area', 'bussola')['module']);
+    }
+
     public function test_d12_the_administrator_profile_is_a_system_profile_and_cannot_be_edited(): void
     {
         $adminProfile = PermissionProfile::system(PermissionProfile::ADMIN);
