@@ -1,0 +1,572 @@
+{
+    "success": true,
+    "message": "Bússola do stand.",
+    "data": {
+        "enabled": true,
+        "provider": "stand",
+        "company": "Stand Golden",
+        "type": "all",
+        "types": [
+            {
+                "key": "all",
+                "label": "Todos"
+            },
+            {
+                "key": "car",
+                "label": "Carros"
+            },
+            {
+                "key": "motorhome",
+                "label": "Autocaravanas"
+            }
+        ],
+        "computed_at": "2026-10-08T10:00:00+00:00",
+        "data_until": "2026-10-08",
+        "window": {
+            "from": "2026-09-11",
+            "to": "2026-10-08"
+        },
+        "top": {
+            "title": "Esta semana em Stand Golden",
+            "context": "Stock de hoje; anúncios, vistas e contactos das últimas 4 semanas.",
+            "numbers": [
+                {
+                    "kind": "stock_count",
+                    "label": "Veículos em stock",
+                    "value": 8,
+                    "format": "int",
+                    "caption": "stock próprio, sem retomas",
+                    "icon": "ri-car-line"
+                },
+                {
+                    "kind": "stock_value",
+                    "label": "Valor do stock",
+                    "value": 19640000,
+                    "format": "eur",
+                    "caption": "a soma dos preços em stock",
+                    "icon": "ri-money-euro-circle-line"
+                },
+                {
+                    "kind": "avg_days",
+                    "label": "Dias médios em stock",
+                    "value": 51,
+                    "format": "int",
+                    "caption": "desde a entrada no stock",
+                    "icon": "ri-time-line"
+                },
+                {
+                    "kind": "above_market",
+                    "label": "Acima do mercado",
+                    "value": 66.7,
+                    "format": "pct",
+                    "caption": "de 3 veículos com comparação exata",
+                    "icon": "ri-scales-3-line"
+                },
+                {
+                    "kind": "ad_spend",
+                    "label": "Gasto em anúncios",
+                    "value": 8500,
+                    "format": "eur",
+                    "caption": "últimas 4 semanas",
+                    "icon": "ri-megaphone-line"
+                },
+                {
+                    "kind": "cost_per_paid_lead",
+                    "label": "Custo por lead paga",
+                    "value": null,
+                    "format": "eur",
+                    "caption": "0 leads pagas; 0 contactos de todas as origens nos veículos com gasto",
+                    "icon": "ri-chat-1-line",
+                    "paid_leads": 0,
+                    "contacts": 0
+                }
+            ],
+            "notes": [
+                "As interações (WhatsApp, chamadas, telefone) não guardam a origem: o custo é por lead paga, e os contactos de todas as origens mostram-se ao lado, sem divisão.",
+                "Em 8 veículos, a data de entrada é estimada (a data em que entraram na XPLENDOR).",
+                "5 veículos ficam fora das comparações de preço (sem tipologia, sem comparáveis ou com comparação aproximada)."
+            ]
+        },
+        "plays": [
+            {
+                "key": "stop_ad:all",
+                "type": "stop_ad",
+                "type_label": "Anúncio a rever",
+                "icon": "ri-pause-circle-line",
+                "color": "danger",
+                "locations": [],
+                "location_id": 0,
+                "title": "Parar o anúncio de 2 veículos",
+                "confidence": "alta",
+                "number": {
+                    "value": "2",
+                    "caption": "veículos vendidos com anúncio ativo, ou com gasto sem contactos"
+                },
+                "bars": [],
+                "items": [
+                    {
+                        "car_id": 990101,
+                        "label": "Peugeot 208 (2019)",
+                        "detail": "vendido a 03/10, anúncio ativo, gasto de 40 €"
+                    },
+                    {
+                        "car_id": 990107,
+                        "label": "Peugeot 208 (2019)",
+                        "detail": "sem contactos em 14 dias, gasto de 45 €"
+                    }
+                ],
+                "what": {
+                    "text": "Frase simulada da IA número 1 para esta jogada, sem números nem causas.",
+                    "source": "ai"
+                },
+                "where": {
+                    "networks": [],
+                    "connected": true,
+                    "ad": "Anúncio: no Gestor de Anúncios da Meta (pausar é à mão; a XPLENDOR só tem leitura)"
+                },
+                "when": {
+                    "date": "2026-10-08",
+                    "is_today": true,
+                    "label": "Fazer hoje",
+                    "target": null
+                },
+                "detail": {
+                    "sentences": [
+                        "O veículo Peugeot 208 (2019) está vendido desde 03/10 e tem um anúncio ativo com a etiqueta. (40 € depois da venda).",
+                        "Os anúncios ativos com a etiqueta do veículo Peugeot 208 (2019) registaram gasto nos últimos 14 dias e nenhum contacto (nem leads, nem cliques no WhatsApp, chamadas ou telefone visto) (45 €)."
+                    ],
+                    "sample": "O gasto vem da fonte única do gasto por veículo (a etiqueta [id:N] nos anúncios); a regra é a das Recomendações.",
+                    "confidence": [
+                        {
+                            "title": "Peugeot 208 (2019)",
+                            "confidence": "alta"
+                        },
+                        {
+                            "title": "Peugeot 208 (2019)",
+                            "confidence": "alta"
+                        }
+                    ]
+                },
+                "signal_keys": [
+                    "stop_ad:990101",
+                    "stop_ad:990107"
+                ],
+                "theme": "Parar o anúncio de 2 veículos",
+                "format": "Carrossel",
+                "car_id": null,
+                "actions": [
+                    "view_car"
+                ],
+                "post_note": null
+            },
+            {
+                "key": "review_price:all",
+                "type": "review_price",
+                "type_label": "Preço acima do mercado",
+                "icon": "ri-price-tag-3-line",
+                "color": "warning",
+                "locations": [],
+                "location_id": 0,
+                "title": "Rever o preço de 2 veículos",
+                "confidence": "alta",
+                "number": {
+                    "value": "+12%",
+                    "caption": "o maior desvio, entre 2 veículos"
+                },
+                "bars": [],
+                "items": [
+                    {
+                        "car_id": 990102,
+                        "label": "Peugeot 208 (2019)",
+                        "detail": "50 dias, +12%, mediana de 20 000 € (12 comparáveis)"
+                    },
+                    {
+                        "car_id": 990108,
+                        "label": "Knaus Sky (2021)",
+                        "detail": "130 dias, +9,1%, mediana de 55 000 € (8 comparáveis)"
+                    }
+                ],
+                "what": {
+                    "text": "Frase simulada da IA número 2 para esta jogada, sem números nem causas.",
+                    "source": "ai"
+                },
+                "where": {
+                    "networks": [],
+                    "connected": true,
+                    "ad": "Na ficha do veículo"
+                },
+                "when": {
+                    "date": "2026-10-09",
+                    "is_today": false,
+                    "label": "Rever na sexta-feira, 09/10",
+                    "target": null
+                },
+                "detail": {
+                    "sentences": [
+                        "O veículo Peugeot 208 (2019) está há 50 dias em stock (o limiar do seu tipo é de 45 dias) e o preço está 12% acima da mediana de 12 veículos comparáveis (20 000 €).",
+                        "O veículo Knaus Sky (2021) está há 130 dias em stock (o limiar do seu tipo é de 120 dias) e o preço está 9,1% acima da mediana de 8 veículos comparáveis (55 000 €)."
+                    ],
+                    "sample": "Só com comparação exata e confiança média ou alta; comparáveis do mercado já guardados.",
+                    "confidence": [
+                        {
+                            "title": "Peugeot 208 (2019)",
+                            "confidence": "alta"
+                        },
+                        {
+                            "title": "Knaus Sky (2021)",
+                            "confidence": "media"
+                        }
+                    ]
+                },
+                "signal_keys": [
+                    "review_price:990102",
+                    "review_price:990108"
+                ],
+                "theme": "Rever o preço de 2 veículos",
+                "format": "Carrossel",
+                "car_id": null,
+                "actions": [
+                    "review_price",
+                    "view_car"
+                ],
+                "post_note": null
+            },
+            {
+                "key": "renew_stock:all",
+                "type": "renew_stock",
+                "type_label": "Stock parado",
+                "icon": "ri-time-line",
+                "color": "info",
+                "locations": [],
+                "location_id": 0,
+                "title": "Renovar o stock parado",
+                "confidence": "alta",
+                "number": {
+                    "value": "2",
+                    "caption": "veículos à venda no limiar de dias do seu tipo ou acima"
+                },
+                "bars": [],
+                "items": [
+                    {
+                        "car_id": 990103,
+                        "label": "Peugeot 208 (2019)",
+                        "detail": "70 dias (limiar de 45)"
+                    },
+                    {
+                        "car_id": 990104,
+                        "label": "Peugeot 208 (2019)",
+                        "detail": "60 dias (limiar de 45)"
+                    }
+                ],
+                "what": {
+                    "text": "Frase simulada da IA número 3 para esta jogada, sem números nem causas.",
+                    "source": "ai"
+                },
+                "where": {
+                    "networks": [
+                        {
+                            "network": "instagram",
+                            "label": "Instagram",
+                            "format_key": "ig_feed_image",
+                            "format_label": "Imagem (feed)",
+                            "format_source": null
+                        },
+                        {
+                            "network": "facebook",
+                            "label": "Facebook",
+                            "format_key": "fb_photos",
+                            "format_label": "Fotografias",
+                            "format_source": null
+                        }
+                    ],
+                    "connected": false,
+                    "ad": null
+                },
+                "when": {
+                    "date": "2026-10-09",
+                    "is_today": false,
+                    "label": "Publicar na sexta-feira, 09/10",
+                    "target": null
+                },
+                "detail": {
+                    "sentences": [
+                        "O veículo Peugeot 208 (2019) está há 70 dias em stock; o limiar do seu tipo é de 45 dias.",
+                        "O veículo Peugeot 208 (2019) está há 60 dias em stock; o limiar do seu tipo é de 45 dias."
+                    ],
+                    "sample": "Os dias contam desde a entrada no stock (a data do DMS ou, sem ela, a entrada na XPLENDOR).",
+                    "confidence": [
+                        {
+                            "title": "Peugeot 208 (2019)",
+                            "confidence": "alta"
+                        },
+                        {
+                            "title": "Peugeot 208 (2019)",
+                            "confidence": "alta"
+                        }
+                    ]
+                },
+                "signal_keys": [
+                    "stale:990103",
+                    "stale:990104"
+                ],
+                "theme": "Veículos à espera de novo dono",
+                "format": "Carrossel",
+                "car_id": null,
+                "actions": [
+                    "create",
+                    "suggest"
+                ],
+                "post_note": "Escolha as fotografias dos veículos na Linha Editorial, depois de criar a ideia."
+            }
+        ],
+        "blocks": {
+            "aging": {
+                "headline": "4 veículos à venda estão no limiar de dias do seu tipo ou acima.",
+                "groups": [
+                    {
+                        "group": "car",
+                        "label": "Carros",
+                        "threshold": 45,
+                        "total": 6,
+                        "bands": [
+                            {
+                                "label": "Até 15 dias",
+                                "count": 2
+                            },
+                            {
+                                "label": "De 16 a 30 dias",
+                                "count": 1
+                            },
+                            {
+                                "label": "De 31 a 60 dias",
+                                "count": 2
+                            },
+                            {
+                                "label": "Mais de 60 dias",
+                                "count": 1
+                            }
+                        ]
+                    },
+                    {
+                        "group": "motorhome",
+                        "label": "Autocaravanas",
+                        "threshold": 120,
+                        "total": 2,
+                        "bands": [
+                            {
+                                "label": "Até 40 dias",
+                                "count": 0
+                            },
+                            {
+                                "label": "De 41 a 80 dias",
+                                "count": 1
+                            },
+                            {
+                                "label": "De 81 a 160 dias",
+                                "count": 1
+                            },
+                            {
+                                "label": "Mais de 160 dias",
+                                "count": 0
+                            }
+                        ]
+                    }
+                ],
+                "oldest": [
+                    {
+                        "car_id": 990108,
+                        "label": "Knaus Sky (2021)",
+                        "days": 130,
+                        "threshold": 120,
+                        "stale": true
+                    },
+                    {
+                        "car_id": 990103,
+                        "label": "Peugeot 208 (2019)",
+                        "days": 70,
+                        "threshold": 45,
+                        "stale": true
+                    },
+                    {
+                        "car_id": 990104,
+                        "label": "Peugeot 208 (2019)",
+                        "days": 60,
+                        "threshold": 45,
+                        "stale": true
+                    },
+                    {
+                        "car_id": 990102,
+                        "label": "Peugeot 208 (2019)",
+                        "days": 50,
+                        "threshold": 45,
+                        "stale": true
+                    },
+                    {
+                        "car_id": 990109,
+                        "label": "Knaus Sky (2020)",
+                        "days": 50,
+                        "threshold": 120,
+                        "stale": false
+                    }
+                ]
+            },
+            "price": {
+                "headline": "2 de 3 veículos com comparação exata estão acima do mercado.",
+                "eligible": 3,
+                "counts": {
+                    "below": 0,
+                    "aligned": 1,
+                    "above": 2
+                },
+                "top_above": [
+                    {
+                        "car_id": 990102,
+                        "label": "Peugeot 208 (2019)",
+                        "diff_pct": 12,
+                        "price": 22400,
+                        "median": 20000,
+                        "comparables": 12,
+                        "days": 50
+                    },
+                    {
+                        "car_id": 990108,
+                        "label": "Knaus Sky (2021)",
+                        "diff_pct": 9.09,
+                        "price": 60000,
+                        "median": 55000,
+                        "comparables": 8,
+                        "days": 130
+                    }
+                ],
+                "outside": {
+                    "sem_mercado": 1,
+                    "sem_comparaveis": 4
+                }
+            },
+            "ads": {
+                "headline": "Nas últimas 4 semanas, 2 veículos tiveram gasto em anúncios; 2 sem nenhum contacto.",
+                "note": "As interações (WhatsApp, chamadas, telefone) não guardam a origem: o custo é por lead paga; os contactos são de todas as origens, sem divisão.",
+                "rows": [
+                    {
+                        "car_id": 990107,
+                        "label": "Peugeot 208 (2019)",
+                        "sold": false,
+                        "contacts": 0,
+                        "paid_leads": 0,
+                        "spend": 45,
+                        "cost_per_paid_lead": null
+                    },
+                    {
+                        "car_id": 990101,
+                        "label": "Peugeot 208 (2019)",
+                        "sold": true,
+                        "contacts": 0,
+                        "paid_leads": 0,
+                        "spend": 40,
+                        "cost_per_paid_lead": null
+                    }
+                ],
+                "without_contacts": [
+                    {
+                        "car_id": 990107,
+                        "label": "Peugeot 208 (2019)",
+                        "sold": false,
+                        "contacts": 0,
+                        "paid_leads": 0,
+                        "spend": 45,
+                        "cost_per_paid_lead": null
+                    },
+                    {
+                        "car_id": 990101,
+                        "label": "Peugeot 208 (2019)",
+                        "sold": true,
+                        "contacts": 0,
+                        "paid_leads": 0,
+                        "spend": 40,
+                        "cost_per_paid_lead": null
+                    }
+                ]
+            },
+            "demand": {
+                "headline": "Os veículos mais vistos nas últimas 4 semanas, com os contactos de cada um.",
+                "rows": [
+                    {
+                        "car_id": 990105,
+                        "label": "Peugeot 208 (2019)",
+                        "views": 70,
+                        "contacts": 0
+                    },
+                    {
+                        "car_id": 990102,
+                        "label": "Peugeot 208 (2019)",
+                        "views": 0,
+                        "contacts": 1
+                    }
+                ]
+            },
+            "forgotten": {
+                "headline": "5 veículos à venda há mais de 30 dias estão sem anúncio nem publicação.",
+                "items": [
+                    {
+                        "car_id": 990108,
+                        "label": "Knaus Sky (2021)",
+                        "days": 130
+                    },
+                    {
+                        "car_id": 990103,
+                        "label": "Peugeot 208 (2019)",
+                        "days": 70
+                    },
+                    {
+                        "car_id": 990104,
+                        "label": "Peugeot 208 (2019)",
+                        "days": 60
+                    },
+                    {
+                        "car_id": 990102,
+                        "label": "Peugeot 208 (2019)",
+                        "days": 50
+                    },
+                    {
+                        "car_id": 990109,
+                        "label": "Knaus Sky (2020)",
+                        "days": 50
+                    }
+                ],
+                "total": 5
+            },
+            "footer": [
+                "Os veículos em stock são o stock próprio (sem retomas); \"à venda\" são os ativos.",
+                "O preço face ao mercado só conta com comparação exata e confiança média ou alta: os veículos sem tipologia, sem comparáveis ou com comparação aproximada ficam de fora.",
+                "O gasto vem dos anúncios com a etiqueta [id:N] (e dos mapeamentos antigos); os contactos são os cliques no WhatsApp, as chamadas e o telefone visto ou copiado no site do stand.",
+                "A Bússola nunca mostra nomes, telefones nem e-mails dos contactos, só contagens."
+            ]
+        },
+        "financial": {
+            "visible": true,
+            "note": null
+        },
+        "can_act": true,
+        "can_act_reason": null,
+        "formats": [
+            "Carrossel",
+            "Imagem única",
+            "Reels",
+            "Stories",
+            "Vídeo",
+            "Live",
+            "Infográfico",
+            "Citação",
+            "Checklist",
+            "Tutorial",
+            "Antes e depois",
+            "Bastidores",
+            "Enquete/Interativo",
+            "Depoimento",
+            "Dica de expert",
+            "Notícia",
+            "Institucional",
+            "Sazonal"
+        ]
+    }
+}
