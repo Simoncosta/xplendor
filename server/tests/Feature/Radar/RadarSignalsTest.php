@@ -208,6 +208,19 @@ class RadarSignalsTest extends TestCase
         $this->assertSame(['Concurso de vinhos do Douro'], RadarSignal::with('topic')->get()->pluck('topic.title')->all());
     }
 
+    /** Encontrado na verificação no ecrã: os pilares do perfil da marca são objetos (nome e descrição). */
+    public function test_brand_pillars_and_words_to_use_add_points_to_the_order(): void
+    {
+        CompanyBrandProfile::create(['company_id' => $this->company->id, 'pillars' => [['name' => 'Queijos da serra', 'description' => 'x']], 'words_to_use' => ['vinhos']]);
+        $this->relevant($this->topic('Concurso de vinhos'), 60);
+        $this->relevant($this->topic('Feira dos queijos da serra'), 55);
+        $this->relevant($this->topic('Mercado de outono'), 66);
+        $this->relevant($this->topic('Festa da vila'), 64);
+        $this->fit();
+        // 60 + 10 (palavra a usar), 66, 55 + 10 (pilar); a "Festa da vila" (64) fica de fora (3 por dia).
+        $this->assertSame(['Concurso de vinhos', 'Mercado de outono', 'Feira dos queijos da serra'], RadarSignal::with('topic')->orderByDesc('score')->get()->pluck('topic.title')->all());
+    }
+
     public function test_the_why_comes_from_the_simulated_ai_and_falls_back_to_the_template_on_a_cause(): void
     {
         $this->configureAi();

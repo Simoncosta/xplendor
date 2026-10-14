@@ -28,10 +28,11 @@ class FakeAiResponses
     private static function answer(string $function, AiPrompt $prompt): array
     {
         if ($function === 'radar_relevancia') {
-            // O prompt traz as tendências como JSON com "id"; todas avaliadas, metade relevante.
+            // O prompt traz as tendências como JSON com "id"; todas avaliadas e relevantes, com pontuações diferentes
+            // (o filtro, o desporto e os temas da marca continuam a decidir no encaixe).
             preg_match_all('/"id"\s*:\s*(\d+)/', $prompt->text, $m);
             $rows = array_map(fn ($id) => [
-                'id' => (int) $id, 'relevante' => (int) $id % 2 === 0, 'pontuacao' => 50 + ((int) $id * 7) % 45,
+                'id' => (int) $id, 'relevante' => true, 'pontuacao' => 50 + ((int) $id * 7) % 45,
                 'tema' => 'atualidade', 'frase' => 'Avaliação simulada para a verificação no ecrã.',
             ], array_values(array_unique($m[1])));
             $json = ['avaliacoes' => $rows];

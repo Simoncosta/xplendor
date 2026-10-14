@@ -113,5 +113,32 @@ $stand->forceFill(['bussola_stand_enabled' => true])->save();
 app(\App\Services\Compass\Stand\StandSignalService::class)->compute($stand->id);
 if (class_exists(\App\Services\Compass\Imoveis\ImoveisSignalService::class)) { app(\App\Services\Compass\Imoveis\ImoveisSignalService::class)->compute($imobiliaria->id); }
 
+// 7) Radar: a relevância e o encaixe com a IA simulada (AI_FAKE), sem recolhas novas (usa as tendências já guardadas).
+config(['queue.default' => 'sync', 'ai.fake' => true, 'radar.enabled' => true]);
+if (class_exists(\App\Services\Radar\Relevance\RadarRelevanceService::class)) {
+    app(\App\Services\Radar\Relevance\RadarRelevanceService::class)->evaluate();
+    foreach ([1, $restaurante->id, $stand->id, $imobiliaria->id] as $cid) { app(\App\Services\Radar\Fit\RadarFitService::class)->fit($cid); }
+    // Sem nomes de pessoas nas capturas: tira os sinais com a marca nome_pessoa.
+    \App\Models\RadarSignal::whereIn('company_id', [1, $restaurante->id, $stand->id, $imobiliaria->id])->get()
+        ->filter(fn ($s) => in_array('nome_pessoa', (array) $s->flags, true))->each->delete();
+}
+
+// 8) Imobiliário: os sinais, uma ideia de um imóvel sem classe energética (o aviso) e uma ideia do Radar (o gancho e as fontes).
+if (class_exists(\App\Services\Compass\Imoveis\ImoveisCompassService::class)) {
+    app(\App\Services\Compass\Imoveis\ImoveisSignalService::class)->compute($imobiliaria->id);
+    $adminImob = $pessoas['admin_imob'];
+    $plays = app(\App\Services\Compass\Imoveis\ImoveisCompassService::class)->payload($imobiliaria->id, $adminImob, 'all', true)['plays'];
+    $play = collect($plays)->firstWhere('type', 'publish_new');
+    if ($play) {
+        app(\App\Services\Compass\Imoveis\ImoveisCompassActions::class)->createPost($imobiliaria, $adminImob, $play,
+            ['title' => 'T2 renovado em Benfica', 'publish_date' => now()->addDay()->toDateString(), 'networks' => ['instagram'], 'format' => 'Carrossel']);
+    }
+    $sig = \App\Models\RadarSignal::with('topic')->where('company_id', $stand->id)->where('status', 'new')->first();
+    if ($sig) {
+        app(\App\Services\Radar\RadarSignalActions::class)->react($stand, $pessoas['admin_stand'], $sig,
+            ['title' => 'Está a subir: ' . $sig->topic->title, 'publish_date' => now()->addDay()->toDateString(), 'networks' => ['instagram'], 'format' => 'Carrossel']);
+    }
+}
+
 echo "===EMPRESAS===" . json_encode(['restaurante' => $restaurante->id, 'stand' => $stand->id, 'imobiliaria' => $imobiliaria->id]) . PHP_EOL;
 echo "===SESSOES===" . json_encode($sessoes, JSON_UNESCAPED_UNICODE) . PHP_EOL;

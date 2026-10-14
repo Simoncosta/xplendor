@@ -8,7 +8,8 @@ $ids = Company::withTrashed()->where('fiscal_name', 'like', '%(fictício)%')->pl
 if (array_intersect($ids, [1, 2, 3, 4, 5])) { throw new RuntimeException('Uma empresa real tem (fictício) no nome: parar.'); }
 $carIds  = Car::whereIn('company_id', $ids)->pluck('id')->all();
 $userIds = User::withTrashed()->where(fn ($q) => $q->whereIn('company_id', $ids)->orWhere('email', 'like', '%.invalid'))->pluck('id')->all();
-$tables  = array_map(fn ($t) => array_values((array) $t)[0], DB::select('SHOW TABLES'));
+// Só as tabelas base (as vistas, como car_funnel_metrics_daily, não se apagam).
+$tables  = array_map(fn ($t) => array_values((array) $t)[0], DB::select("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"));
 
 DB::statement('SET FOREIGN_KEY_CHECKS=0');
 DB::table('personal_access_tokens')->whereIn('tokenable_id', $userIds)->delete();

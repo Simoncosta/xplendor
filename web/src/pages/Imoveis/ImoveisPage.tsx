@@ -176,8 +176,8 @@ export default function ImoveisPage() {
         { id: "interest", header: "Interesse (manual)", value: (p) => p.contacts_30, cell: (p) => <>{p.contacts_30} contactos · {p.visits_30} visitas{p.interest_updated_at ? <div className="text-muted fs-12">a {day(p.interest_updated_at)}</div> : null}</> },
         { id: "actions", header: "", hideable: false, cell: (p) => (
             <div className="d-flex gap-1 justify-content-end">
-                {canEdit && <Button size="sm" color="light" outline className="border" onClick={() => setEditing(p)} aria-label={`Editar ${p.reference}`}><i className="ri-pencil-line" /></Button>}
-                {canDelete && <Button size="sm" color="light" outline className="border text-danger" onClick={() => void remove(p)} aria-label={`Apagar ${p.reference}`}><i className="ri-delete-bin-line" /></Button>}
+                {canEdit && <Button size="sm" color="secondary" outline onClick={() => setEditing(p)} aria-label={`Editar ${p.reference}`}><i className="ri-pencil-line" /></Button>}
+                {canDelete && <Button size="sm" color="danger" outline onClick={() => void remove(p)} aria-label={`Apagar ${p.reference}`}><i className="ri-delete-bin-line" /></Button>}
             </div>
         ) },
     ] as DTColumn<Property>[]);

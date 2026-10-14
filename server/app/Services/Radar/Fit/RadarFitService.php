@@ -147,10 +147,12 @@ class RadarFitService
         return false;
     }
 
-    /** @return list<string> */
+    /** @return list<string> os termos normalizados (os pilares do perfil da marca são objetos com o nome) */
     private static function terms(array $words): array
     {
-        return array_values(array_unique(array_filter(array_map(fn ($w) => RadarText::normalize((string) $w), $words), fn ($w) => mb_strlen($w) >= 3)));
+        $text = fn ($w) => is_array($w) ? (string) ($w['name'] ?? '') : (string) $w;
+
+        return array_values(array_unique(array_filter(array_map(fn ($w) => RadarText::normalize($text($w)), $words), fn ($w) => mb_strlen($w) >= 3)));
     }
 
     /** @return array{0: string, 1: string} a frase e a origem (ai | template) */

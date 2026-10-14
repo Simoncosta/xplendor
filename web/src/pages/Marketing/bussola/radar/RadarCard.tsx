@@ -66,8 +66,8 @@ export function RadarSignalCard({ signal, canAct, canActReason, compact, onReact
             <div className="text-muted fs-12">{signal.attribution}</div>
             <div className="d-flex flex-wrap gap-2 mt-auto pt-1">
                 <ReasonButton size="sm" color="primary" reason={reactReason} onClick={() => onReact(signal)} data-testid="radar-react">Reagir</ReasonButton>
-                <ReasonButton size="sm" color="light" outline className="border" reason={editBlock} onClick={() => onIgnore(signal)} data-testid="radar-ignore">Ignorar</ReasonButton>
-                {onMute && <ReasonButton size="sm" color="light" outline className="border" reason={editBlock} onClick={() => onMute(signal)} data-testid="radar-mute">Não mostrar temas como este</ReasonButton>}
+                <ReasonButton size="sm" color="secondary" outline reason={editBlock} onClick={() => onIgnore(signal)} data-testid="radar-ignore">Ignorar</ReasonButton>
+                {onMute && <ReasonButton size="sm" color="secondary" outline reason={editBlock} onClick={() => onMute(signal)} data-testid="radar-mute">Não mostrar temas como este</ReasonButton>}
             </div>
         </div>
     );
@@ -214,7 +214,7 @@ function RadarSettingsModal({ companyId, settings, isOpen, onClose, onSaved }: {
                         {settings.muted.map((m) => (
                             <li key={m.index} className="d-flex align-items-center justify-content-between gap-2 py-1 border-bottom">
                                 <span className="fs-13 text-truncate">{m.title}{m.theme ? <span className="text-muted"> · {m.theme}</span> : null}</span>
-                                <Button size="sm" color="light" outline className="border flex-shrink-0" onClick={() => unmute(m.index)}>Voltar a mostrar</Button>
+                                <Button size="sm" color="secondary" outline className="flex-shrink-0" onClick={() => unmute(m.index)}>Voltar a mostrar</Button>
                             </li>
                         ))}
                     </ul>
