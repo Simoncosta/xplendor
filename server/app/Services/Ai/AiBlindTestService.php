@@ -23,7 +23,8 @@ class AiBlindTestService
 
     public function create(string $function, User $actor): int
     {
-        if (! array_key_exists($function, (array) config('ai.functions'))) {
+        // Só as funções sem grupo: o OCR e o Radar não têm casos de teste.
+        if (! array_key_exists($function, (array) config('ai.functions')) || config("ai.functions.{$function}.group") !== null) {
             throw ValidationException::withMessages(['function' => ['Escolha uma função válida.']]);
         }
         $testId = DB::transaction(function () use ($function, $actor) {

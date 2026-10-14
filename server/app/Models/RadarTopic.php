@@ -30,4 +30,9 @@ class RadarTopic extends Model
     {
         return $this->hasMany(RadarItem::class, 'topic_id');
     }
+
+    public function relevances(): HasMany
+    {
+        return $this->hasMany(RadarRelevance::class, 'topic_id');
+    }
 }

@@ -29,7 +29,8 @@ class AiFunctionSettings
         if ($reserve = self::reserve($function)) {
             return $reserve;
         }
-        $model = (string) config('ai.default_model');
+        // O modelo inicial da função (as do Radar têm o seu), senão o comum.
+        $model = (string) (config("ai.functions.{$function}.default_model") ?: config('ai.default_model'));
 
         return ['provider' => self::providerOf($model), 'model' => $model, 'effort' => (string) config("ai.functions.{$function}.default_effort", 'low')];
     }
@@ -56,12 +57,12 @@ class AiFunctionSettings
         });
     }
 
-    /** "Aplicar a todas as funções": o mesmo modelo e esforço em todas, exceto as do OCR (escolhem-se à parte). */
+    /** "Aplicar a todas as funções": o mesmo modelo e esforço em todas, exceto as de um grupo (o OCR e o Radar escolhem-se à parte). */
     public static function applyAll(string $model, string $effort, User $actor): void
     {
         self::assertChoice($model, $effort);
         foreach ((array) config('ai.functions') as $function => $def) {
-            if (($def['group'] ?? null) !== 'ocr') {
+            if (($def['group'] ?? null) === null) {
                 self::set($function, $model, $effort, $actor, true);
             }
         }

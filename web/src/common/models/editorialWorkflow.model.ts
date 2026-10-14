@@ -138,6 +138,12 @@ export interface PostWorkflow {
         networks: PostNetworkDetail[];
         anchor_id: number | null; own_anchor_id: number | null; blog_id: number | null;
         blog: { id: number; title: string; status: string } | null;
+        /** Radar (Bússola Master): o gancho, as fontes e até quando vale; vazio nas outras publicações. */
+        brief?: string | null;
+        sources?: { title: string | null; source_name: string; url: string | null; published_at: string | null }[] | null;
+        valid_until?: string | null;
+        origin?: string | null;
+        origin_ref?: string | null;
     };
     /** F3d: publicação por rede e resultados à mão por rede. */
     publishing: { due_at: string; can_mark: boolean; published_count: number; active_count: number };

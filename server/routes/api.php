@@ -172,6 +172,16 @@ Route::prefix('v1')->group(function () {
                     Route::post('/marketing/bussola-stand/restore', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'restore']);
                     Route::post('/marketing/bussola-stand/exclude', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'exclude']);
                 });
+                // Radar de oportunidade: só com o módulo radar; permissões da área bussola.
+                Route::middleware('ensure_module:radar')->group(function () {
+                    Route::get('/marketing/radar', [\App\Http\Controllers\Api\V1\RadarController::class, 'show']);
+                    Route::post('/marketing/radar/react', [\App\Http\Controllers\Api\V1\RadarController::class, 'react']);
+                    Route::post('/marketing/radar/ignore', [\App\Http\Controllers\Api\V1\RadarController::class, 'ignore']);
+                    Route::post('/marketing/radar/mute', [\App\Http\Controllers\Api\V1\RadarController::class, 'mute']);
+                    Route::post('/marketing/radar/unmute', [\App\Http\Controllers\Api\V1\RadarController::class, 'unmute']);
+                    Route::get('/marketing/radar/settings', [\App\Http\Controllers\Api\V1\RadarController::class, 'settings']);
+                    Route::put('/marketing/radar/settings', [\App\Http\Controllers\Api\V1\RadarController::class, 'updateSettings']);
+                });
 
                 Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);
@@ -744,6 +754,8 @@ Route::prefix('v1')->group(function () {
             // Radar de oportunidade (R1): o que entrou dos feeds públicos, o que o filtro tirou e porquê.
             Route::get('/radar', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'summary']);
             Route::get('/radar/items', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'items']);
+            Route::get('/radar/relevances', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'relevances']);
+            Route::post('/radar/companies/{company}/switch', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'switchCompany'])->whereNumber('company');
 
             // IMPERSONATION — INICIAR (só root). Emite token de impersonation p/ o user-alvo.
             Route::post('/impersonation/start', [\App\Http\Controllers\Api\V1\ImpersonationController::class, 'start']);

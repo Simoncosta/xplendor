@@ -161,7 +161,7 @@ const authProtectedRoutes = [
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).
     { path: "/restauracao/categorias", component: <RequireModule module="pingwin" permission="restauracao.ver"><CategoriasFamiliasPage /></RequireModule> },
     // F3 do marketing: "O que publicar e quando" (módulo pingwin, como o backend).
-    { path: "/marketing/bussola", component: <RequireModule anyModule={["pingwin", "stock"]} permission="bussola.ver"><BussolaPage /></RequireModule> },
+    { path: "/marketing/bussola", component: <RequireModule anyModule={["pingwin", "stock", "radar"]} permission="bussola.ver"><BussolaPage /></RequireModule> },
     // Endereço antigo da Bússola ("O que publicar e quando").
     { path: "/marketing/o-que-publicar", component: <Navigate to="/marketing/bussola" replace /> },
     { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores" permission="restauracao.ver"><FornecedoresPage /></RequireModule> },

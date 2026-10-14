@@ -179,8 +179,8 @@ export default function AiModelsPage() {
             </Container>
 
             {data && <ApplyAllModal isOpen={applyOpen} onClose={() => setApplyOpen(false)} models={models} modelOptions={modelOptions} effortOptions={effortOptions}
-                count={data.functions.filter((f) => f.group !== "ocr").length} missingKey={missingKey} onApplied={(d) => { setData(d); setApplyOpen(false); }} />}
-            {data && <NewBlindTestModal isOpen={newTestOpen} onClose={() => setNewTestOpen(false)} functions={data.functions.filter((f) => f.group !== "ocr")} onCreated={() => { setNewTestOpen(false); setView("blind"); }} />}
+                count={data.functions.filter((f) => !f.group).length} missingKey={missingKey} onApplied={(d) => { setData(d); setApplyOpen(false); }} />}
+            {data && <NewBlindTestModal isOpen={newTestOpen} onClose={() => setNewTestOpen(false)} functions={data.functions.filter((f) => !f.group)} onCreated={() => { setNewTestOpen(false); setView("blind"); }} />}
         </div>
     );
 }
@@ -216,7 +216,7 @@ function ApplyAllModal({ isOpen, onClose, models, modelOptions, effortOptions, c
                 <XSelect id="apply-all-effort" options={model ? effortOptions(model) : []} value={effort || null} onChange={setEffort} disabled={!model} />
                 {model && effort && (
                     <div className="alert alert-warning fs-13 mt-3 mb-0" role="alert">
-                        As {count} funções passam a usar o {label}, com raciocínio {(EFFORT_LABEL[effort] ?? effort).toLowerCase()}, a partir do pedido seguinte (o OCR das faturas escolhe-se à parte). Fica registado no histórico.
+                        As {count} funções passam a usar o {label}, com raciocínio {(EFFORT_LABEL[effort] ?? effort).toLowerCase()}, a partir do pedido seguinte (o OCR das faturas e o Radar escolhem-se à parte). Fica registado no histórico.
                         {missing && <> A chave da {missing.label} não está configurada: os pedidos vão falhar até ser configurada.</>}
                     </div>
                 )}

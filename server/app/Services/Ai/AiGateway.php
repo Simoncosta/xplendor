@@ -24,10 +24,27 @@ class AiGateway
         return $this->generateWith($function, $prompt, $s['model'], $s['effort']);
     }
 
+    /** AI_FAKE: respostas simuladas, nunca em produção (a opção é ignorada em production). */
+    public static function fake(): bool
+    {
+        return (bool) config('ai.fake', false) && ! app()->isProduction();
+    }
+
+    /** A função pode ser pedida: a chave do fornecedor está configurada, ou a IA é simulada. */
+    public static function available(string $function): bool
+    {
+        $s = AiFunctionSettings::for($function);
+
+        return self::fake() || (string) config("ai.providers.{$s['provider']}.key") !== '';
+    }
+
     /** Com um modelo e esforço explícitos (o teste às cegas). */
     public function generateWith(string $function, AiPrompt $prompt, string $model, string $effort): AiResult
     {
         $provider = AiFunctionSettings::providerOf($model);
+        if (self::fake()) {
+            return FakeAiResponses::result($function, $prompt, $provider, $model, $effort);
+        }
         $client = $this->client($provider);
         $maxTokens = (int) config("ai.functions.{$function}.max_tokens", 3000) + (int) config("ai.reasoning_headroom.{$effort}", 8000);
         $full = new AiPrompt(trim(config('ai.pt_pt_instruction') . "\n\n" . $prompt->system), $prompt->text, $prompt->images, $prompt->schema, $prompt->schemaName, $prompt->json);

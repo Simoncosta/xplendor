@@ -6,14 +6,21 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Models\AiRequest;
+use App\Models\Company;
+use App\Models\CompanyModuleEvent;
 use App\Models\RadarItem;
+use App\Models\RadarRelevance;
+use App\Models\RadarSignal;
 use App\Models\RadarRun;
 use App\Models\RadarTopic;
 use App\Services\Radar\Filter\Lexicon;
 use App\Services\Radar\RadarCollector;
 use App\Services\Radar\Sources\RadarSources;
 use Carbon\CarbonInterface;
+use App\Services\CompanyModuleService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -110,6 +117,9 @@ class RadarAdminController extends Controller
             'blocked_by_reason' => collect($reasons)->map(fn ($n, $r) => ['reason' => $r, 'label' => Lexicon::LABELS[$r] ?? $r, 'count' => $n])->values()->all(),
             'flags' => collect($flags)->map(fn ($n, $f) => ['flag' => $f, 'label' => Lexicon::LABELS[$f] ?? $f, 'count' => $n])->values()->all(),
             'topics' => $topics,
+            'relevance' => $this->relevanceBySector(),
+            'signals' => $this->signalsByCompany(),
+            'companies' => $this->companies(),
             'labels' => Lexicon::LABELS,
             'limits' => [
                 'max_requests_per_hour' => (int) config('radar.max_requests_per_hour', 4),
@@ -161,6 +171,73 @@ class RadarAdminController extends Controller
             ],
             'labels' => Lexicon::LABELS,
         ], 'Radar: itens.');
+    }
+
+    // GET /admin/radar/relevances?sector=&days=
+    public function relevances(Request $request)
+    {
+        $data = $request->validate(['sector' => ['nullable', 'string', 'max:40'], 'days' => ['nullable', 'integer', 'min:1', 'max:30']]);
+        $rows = RadarRelevance::with('topic:id,kind,title,first_seen_at')
+            ->when($data['sector'] ?? null, fn ($q, $v) => $q->where('sector_slug', $v))
+            ->where('created_at', '>=', now()->subDays((int) ($data['days'] ?? 1)))
+            ->orderByDesc('id')->limit(200)->get()
+            ->map(fn (RadarRelevance $r) => [
+                'id' => $r->id, 'sector' => $r->sector_slug, 'topic' => $r->topic?->title, 'kind' => $r->topic?->kind,
+                'relevant' => $r->relevant, 'score' => $r->score, 'theme' => $r->theme, 'reason' => $r->reason,
+                'model' => $r->model, 'cost_usd' => round($r->cost_usd, 6), 'created_at' => self::iso($r->created_at),
+            ])->all();
+
+        return ApiResponse::success(['rows' => $rows], 'Radar: relevância.');
+    }
+
+    // POST /admin/radar/companies/{company}/switch {enabled}
+    public function switchCompany(Request $request, int $company)
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+        Company::findOrFail($company);
+        $modules = app(CompanyModuleService::class);
+        $data['enabled'] ? $modules->enable($company, 'radar', CompanyModuleEvent::SOURCE_MANUAL, $request->user()->id)
+            : $modules->disable($company, 'radar', CompanyModuleEvent::SOURCE_MANUAL, $request->user()->id);
+
+        return ApiResponse::success(['companies' => $this->companies()], $data['enabled'] ? 'Radar ligado nesta empresa.' : 'Radar desligado nesta empresa.');
+    }
+
+    /** Por ramo: tendências avaliadas e relevantes (30 dias) e o custo da IA do mês. */
+    private function relevanceBySector(): array
+    {
+        $since = now()->subDays((int) config('radar.retention_days', 30));
+
+        return RadarRelevance::where('created_at', '>=', $since)
+            ->selectRaw('sector_slug, count(*) as evaluated, sum(case when relevant then 1 else 0 end) as relevant')
+            ->groupBy('sector_slug')->orderBy('sector_slug')->get()
+            ->map(fn ($r) => ['sector' => $r->sector_slug, 'evaluated' => (int) $r->evaluated, 'relevant' => (int) $r->relevant,
+                'cost_month_usd' => round((float) RadarRelevance::where('sector_slug', $r->sector_slug)->where('created_at', '>=', now()->startOfMonth())->sum('cost_usd'), 4)])
+            ->all();
+    }
+
+    /** Por empresa com sinais: criados hoje e em 30 dias, por estado, e o custo do "porque lhe interessa" no mês. */
+    private function signalsByCompany(): array
+    {
+        $today = now('Europe/Lisbon')->startOfDay()->utc();
+        $rows = RadarSignal::selectRaw('company_id, status, count(*) as n')->groupBy('company_id', 'status')->get()->groupBy('company_id');
+        $names = Company::whereIn('id', $rows->keys())->get()->mapWithKeys(fn ($c) => [$c->id => $c->trade_name ?: $c->fiscal_name]);
+
+        return $rows->map(fn ($g, $id) => [
+            'company_id' => (int) $id, 'company' => $names[$id] ?? null,
+            'today' => RadarSignal::where('company_id', $id)->where('created_at', '>=', $today)->count(),
+            'by_status' => $g->pluck('n', 'status')->map(fn ($n) => (int) $n)->all(),
+            'cost_month_usd' => round((float) AiRequest::where('company_id', $id)->where('mode', 'radar_porque')->where('created_at', '>=', now()->startOfMonth())->sum('cost_usd'), 4),
+        ])->values()->all();
+    }
+
+    /** Todas as empresas, com o ramo e o interruptor do Radar (o módulo radar). */
+    private function companies(): array
+    {
+        $on = DB::table('company_modules')->where('module_key', 'radar')->pluck('company_id')->flip();
+
+        return Company::with('contentSector:id,name')->orderBy('id')->get(['id', 'trade_name', 'fiscal_name', 'content_sector_id'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->trade_name ?: $c->fiscal_name, 'sector' => $c->contentSector?->name, 'radar_enabled' => $on->has($c->id)])
+            ->all();
     }
 
     private static function iso(?CarbonInterface $at): ?string

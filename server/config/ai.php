@@ -43,6 +43,12 @@ return [
             'label' => 'Claude Sonnet 5.5', 'provider' => 'anthropic', 'efforts' => ['low', 'medium', 'high'],
             'prices' => ['input' => 2.00, 'cached_input' => 0.10, 'output' => 10.00],
         ],
+        // Preços da referência da API (0,10 e 0,50 USD por milhão, contexto até 100 mil tokens);
+        // sem preço de cache conhecido, e a XPLENDOR não usa a cache. Usado pela relevância do Radar.
+        'claude-haiku-5-5' => [
+            'label' => 'Claude Haiku 5.5', 'provider' => 'anthropic', 'efforts' => ['low', 'medium', 'high'],
+            'prices' => ['input' => 0.10, 'output' => 0.50],
+        ],
         'gpt-6.1-sol' => [
             'label' => 'GPT-6.1 Sol', 'provider' => 'openai', 'efforts' => ['low', 'medium', 'high'],
             'prices' => ['input' => 2.00, 'cached_input' => 0.10, 'output' => 10.00],
@@ -50,6 +56,10 @@ return [
     ],
 
     'default_model' => 'claude-opus-5-5',
+
+    // AI_FAKE (Bússola Master): respostas simuladas, sem rede, para a verificação no ecrã em dev.
+    // Só é lida fora de produção (AiGateway::fake): em production a IA real corre sempre.
+    'fake' => (bool) env('AI_FAKE', false),
 
     // OCR: o modelo quando a reserva do .env não é da Anthropic, e a espera crescente (segundos)
     // entre as novas tentativas da fila nos erros temporários (sobrecarga, 5xx, limite de pedidos).
@@ -76,6 +86,12 @@ return [
             'default_effort' => 'medium', 'max_tokens' => 16000, 'group' => 'ocr', 'reserve_model' => 'services.openai.ocr.model_text', 'providers' => ['anthropic']],
         'ocr_image' => ['label' => 'OCR das faturas: digitalizadas e fotografias', 'hint' => 'Ler as faturas em PDF sem texto e as fotografias; também a 2.ª tentativa quando as linhas não conferem com o QR',
             'default_effort' => 'medium', 'max_tokens' => 16000, 'group' => 'ocr', 'reserve_model' => 'services.openai.ocr.model_image', 'providers' => ['anthropic']],
+        // Radar de oportunidade (group "radar"): cada uma com o seu modelo inicial (default_model);
+        // ficam fora do "Aplicar a todas as funções" e do teste às cegas, e mudam-se aqui uma a uma.
+        'radar_relevancia' => ['label' => 'Radar: relevância por ramo', 'hint' => 'Uma vez por tendência e por ramo, em lote: se a tendência interessa ao ramo, com uma pontuação e um tema',
+            'default_model' => 'claude-haiku-5-5', 'default_effort' => 'low', 'max_tokens' => 2000, 'group' => 'radar'],
+        'radar_porque' => ['label' => 'Radar: porque lhe interessa', 'hint' => 'Uma frase descritiva por sinal escolhido (até 240 caracteres), com a zona e o perfil da marca',
+            'default_model' => 'claude-opus-5-5', 'default_effort' => 'medium', 'max_tokens' => 600, 'group' => 'radar'],
     ],
 
     // Instrução de sistema comum a TODA a IA (antes da instrução de cada função).

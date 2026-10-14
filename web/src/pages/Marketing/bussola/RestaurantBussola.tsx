@@ -21,7 +21,7 @@ import { ChangesCard, ChannelsCard, DaysCard, DecideCard, ForgottenCard, StarsCa
  * UI-2a: o subtítulo e o antigo rodapé (como ler os números e a confiança) passaram para o (i)
  * da página; o seletor de loja ficou nos filtros do PageHeader (vale para a página inteira).
  */
-export default function RestaurantBussola({ providerSwitch }: { providerSwitch?: React.ReactNode }) {
+export default function RestaurantBussola({ providerSwitch, radar }: { providerSwitch?: React.ReactNode; radar?: React.ReactNode }) {
     document.title = "Bússola | Xplendor";
     const companyId = getWorkingCompanyId();
     const [locationId, setLocationId] = useState(0);
@@ -74,7 +74,10 @@ export default function RestaurantBussola({ providerSwitch }: { providerSwitch?:
                 />
                 {!data && loading && <div className="text-center py-5"><Spinner color="primary" /></div>}
                 {data && !data.enabled && (
-                    <Card><CardBody className="text-muted">A leitura das vendas por artigo está desligada nesta empresa. Quando for ligada, a Bússola aparece aqui.</CardBody></Card>
+                    <>
+                        <Card><CardBody className="text-muted">A leitura das vendas por artigo está desligada nesta empresa. Quando for ligada, a Bússola aparece aqui.</CardBody></Card>
+                        {radar}
+                    </>
                 )}
                 {data && data.enabled && (
                     <>
@@ -86,6 +89,7 @@ export default function RestaurantBussola({ providerSwitch }: { providerSwitch?:
                         <div className={loading ? "opacity-50" : undefined}>
                             <BussolaTop data={data} />
                             <BussolaPlays companyId={companyId} data={data} onChanged={load} />
+                            {radar}
                             {data.blocks && (
                                 <>
                                     <DaysCard companyId={companyId} block={data.blocks.days} key={`days-${data.location_id}`} />

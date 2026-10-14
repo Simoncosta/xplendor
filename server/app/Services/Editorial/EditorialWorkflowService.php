@@ -763,6 +763,9 @@ class EditorialWorkflowService
                 'current_version_id' => $post->current_version_id, 'approved_version_id' => $post->approved_version_id,
                 'account_name' => $company->trade_name ?: $company->fiscal_name,
                 'publish_time' => $post->publish_time, 'pillar' => $post->pillar, 'overdue' => $post->isOverdue(),
+                // Radar (Bússola Master): o gancho, as fontes e até quando vale ("Gancho e fontes" no Planeamento).
+                'brief' => $post->brief, 'sources' => $post->sources, 'valid_until' => optional($post->valid_until)->toDateString(),
+                'origin' => $post->origin, 'origin_ref' => $post->origin_ref,
             ],
             'versions' => $versions->map(fn (EditorialPostVersion $v) => [
                 'id' => $v->id, 'number' => $v->number, 'status' => $v->status, 'frozen' => $v->isFrozen(),

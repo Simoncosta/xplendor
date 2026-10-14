@@ -218,6 +218,14 @@ final class RoutePermissions
         'POST {id}/marketing/bussola-stand/ignore' => 'bussola.editar',
         'POST {id}/marketing/bussola-stand/restore' => 'bussola.editar',
         'POST {id}/marketing/bussola-stand/exclude' => 'bussola.editar',
+        // Radar de oportunidade (no módulo radar).
+        'GET {id}/marketing/radar' => 'bussola.ver',
+        'POST {id}/marketing/radar/react' => 'bussola.criar',
+        'POST {id}/marketing/radar/ignore' => 'bussola.editar',
+        'POST {id}/marketing/radar/mute' => 'bussola.editar',
+        'POST {id}/marketing/radar/unmute' => 'bussola.editar',
+        'GET {id}/marketing/radar/settings' => 'bussola.ver',
+        'PUT {id}/marketing/radar/settings' => 'bussola.editar',
         // ── resultados ──
         'GET {id}/analytics/automotive/marketing' => 'resultados.ver',
         'GET {id}/analytics/ga4/traffic' => 'resultados.ver',

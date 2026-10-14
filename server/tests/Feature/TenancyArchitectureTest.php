@@ -44,6 +44,7 @@ class TenancyArchitectureTest extends TestCase
         'RestaurantCompassController.php' => 1,           // agir na Bússola exige a Linha Editorial ativa e produção (regra transversal)
         'RestaurantSignalsController.php' => 1,           // idem
         'StandCompassController.php' => 1,                // idem (a Bússola do stand)
+        'RadarController.php' => 1,                       // idem (o Radar: reagir, ignorar e silenciar pedem quem produz na Linha Editorial)
         'UserController.php' => 1,                        // utilizador de outra empresa
     ];
 

@@ -32,6 +32,12 @@ class CollectRadarFeedsJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(RadarCollector $collector): array
     {
-        return $collector->collect(null, true, ['scheduled' => true]);
+        $results = $collector->collect(null, true, ['scheduled' => true]);
+        if ($results !== []) {
+            // A seguir, a relevância por ramo e o encaixe nas empresas (sem IA se não houver nada novo).
+            EvaluateRadarRelevanceJob::dispatch();
+        }
+
+        return $results;
     }
 }

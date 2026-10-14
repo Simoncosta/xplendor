@@ -5,8 +5,10 @@ import PageCard from "Components/Common/PageCard";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import XSelect from "Components/Common/Select";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
-import { getAdminRadar, getAdminRadarItems } from "helpers/laravel_helper";
-import type { RadarItem, RadarItemsPage, RadarSourceSummary, RadarSummary, RadarTopicKind, RadarTopicSummary, RadarVerdict } from "common/models/radar.model";
+import { getAdminRadar, getAdminRadarItems, switchAdminRadarCompany } from "helpers/laravel_helper";
+import { toast } from "react-toastify";
+import { confirmAction } from "helpers/swal";
+import type { RadarAdminCompany, RadarAdminCompanySignals, RadarAdminSector, RadarItem, RadarItemsPage, RadarSourceSummary, RadarSummary, RadarTopicKind, RadarTopicSummary, RadarVerdict } from "common/models/radar.model";
 
 /**
  * Administração › Radar (só o root): tudo o que entrou dos feeds públicos (Google Trends, jornais,
@@ -16,6 +18,7 @@ import type { RadarItem, RadarItemsPage, RadarSourceSummary, RadarSummary, Radar
  */
 
 type View = "entradas" | "retiradas";
+const STATUS_LABEL: Record<string, string> = { new: "Por tratar", reacted: "Reagidos", ignored: "Ignorados", muted: "Silenciados" };
 type FilterRow = { key: string; label: string; kind: "motivo" | "marca"; count: number };
 
 const PER_PAGE = 25;
@@ -53,6 +56,9 @@ export default function AdminRadarPage() {
     const [items, setItems] = useState<RadarItemsPage | null>(null);
     const [loadingItems, setLoadingItems] = useState(true);
     const [failed, setFailed] = useState(false);
+    // R2: relevância por ramo, sinais por empresa e o interruptor do Radar por empresa.
+    const [panel, setPanel] = useState<"relevancia" | "sinais" | "empresas">("relevancia");
+    const [switching, setSwitching] = useState<number | null>(null);
 
     useEffect(() => {
         getAdminRadar()
@@ -159,6 +165,45 @@ export default function AdminRadarPage() {
         { id: "count", header: "Itens (30 dias)", align: "end", value: (r) => r.count },
     ] as DTColumn<FilterRow>[]);
 
+    const toggleCompany = async (c: RadarAdminCompany) => {
+        const on = !c.radar_enabled;
+        if (!(await confirmAction({ title: on ? `Ligar o Radar em ${c.name}?` : `Desligar o Radar em ${c.name}?`,
+            text: on ? "A empresa passa a receber até 3 sinais por dia (com RADAR_ENABLED ligado)." : "A empresa deixa de receber sinais novos.", confirmText: on ? "Ligar" : "Desligar" }))) return;
+        setSwitching(c.id);
+        try {
+            const res: any = await switchAdminRadarCompany(c.id, on);
+            toast.success(res?.message ?? "Feito.");
+            setSummary((s) => (s ? { ...s, companies: res?.data?.companies ?? s.companies } : s));
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível mudar o Radar desta empresa.");
+        } finally {
+            setSwitching(null);
+        }
+    };
+    const sectorCols = useDataColumns<RadarAdminSector>("admin.radar.relevancia", [
+        { id: "sector", header: "Ramo", value: (r) => r.sector, hideable: false, mobile: "title" },
+        { id: "evaluated", header: "Avaliadas (30 dias)", align: "end", value: (r) => r.evaluated },
+        { id: "relevant", header: "Relevantes", align: "end", value: (r) => r.relevant },
+        { id: "cost", header: "Custo da IA este mês", align: "end", value: (r) => r.cost_month_usd, cell: (r) => `${r.cost_month_usd.toFixed(4)} USD`, nowrap: true },
+    ] as DTColumn<RadarAdminSector>[]);
+    const signalCols = useDataColumns<RadarAdminCompanySignals>("admin.radar.sinais", [
+        { id: "company", header: "Empresa", value: (r) => r.company ?? String(r.company_id), hideable: false, mobile: "title" },
+        { id: "today", header: "Hoje", align: "end", value: (r) => r.today },
+        { id: "status", header: "Por estado (30 dias)", value: (r) => Object.entries(r.by_status).map(([k, n]) => `${STATUS_LABEL[k] ?? k}: ${n}`).join(", ") },
+        { id: "cost", header: "Custo da IA este mês", align: "end", value: (r) => r.cost_month_usd, cell: (r) => `${r.cost_month_usd.toFixed(4)} USD`, nowrap: true },
+    ] as DTColumn<RadarAdminCompanySignals>[]);
+    const companyCols = useDataColumns<RadarAdminCompany>("admin.radar.empresas", [
+        { id: "name", header: "Empresa", value: (r) => r.name, hideable: false, mobile: "title" },
+        { id: "sector", header: "Ramo", value: (r) => r.sector ?? "", cell: (r) => r.sector ?? <span className="text-muted">Sem ramo</span> },
+        { id: "radar", header: "Radar", value: (r) => (r.radar_enabled ? 1 : 0), cell: (r) => (
+            <div className="form-check form-switch mb-0">
+                <input className="form-check-input" type="checkbox" role="switch" id={`radar-co-${r.id}`} checked={r.radar_enabled} disabled={switching === r.id}
+                    onChange={() => void toggleCompany(r)} aria-label={`Radar em ${r.name}`} data-testid={`radar-switch-${r.id}`} />
+                <label className="form-check-label fs-12" htmlFor={`radar-co-${r.id}`}>{r.radar_enabled ? "Ligado" : "Desligado"}</label>
+            </div>
+        ) },
+    ] as DTColumn<RadarAdminCompany>[]);
+
     const viewToggle = (
         <div className="xp-seg" role="tablist" aria-label="Vista">
             <button type="button" role="tab" aria-selected={view === "entradas"} className={view === "entradas" ? "on" : ""} onClick={() => setView("entradas")}>Entradas</button>
@@ -247,6 +292,23 @@ export default function AdminRadarPage() {
                     actions={topicCols.selector} loading={loadingSummary && !!summary}>
                     <DataTable columns={topicCols} data={summary?.topics ?? []} rowKey={(r) => r.id} loading={loadingSummary} caption="Tendências recentes"
                         pageSize={10} empty={{ message: "Ainda não há tendências." }} />
+                </PageCard>
+
+                <PageCard title="Relevância, sinais e empresas" data-testid="radar-r2"
+                    info="A relevância é avaliada uma vez por tendência e por ramo (Haiku 5.5, em lotes). Cada empresa com o Radar ligado recebe no máximo 3 sinais por dia. O interruptor de cada empresa é o módulo radar."
+                    actions={
+                        <div className="xp-seg" role="tablist" aria-label="Painel">
+                            {([["relevancia", "Relevância"], ["sinais", "Sinais"], ["empresas", "Empresas"]] as const).map(([k, l]) => (
+                                <button key={k} type="button" role="tab" aria-selected={panel === k} className={panel === k ? "on" : ""} onClick={() => setPanel(k)}>{l}</button>
+                            ))}
+                        </div>
+                    }>
+                    {panel === "relevancia" && <DataTable columns={sectorCols} data={summary?.relevance ?? []} rowKey={(r) => r.sector} loading={loadingSummary} caption="Relevância por ramo"
+                        paginate={false} empty={{ message: "Ainda nenhuma tendência foi avaliada." }} />}
+                    {panel === "sinais" && <DataTable columns={signalCols} data={summary?.signals ?? []} rowKey={(r) => r.company_id} loading={loadingSummary} caption="Sinais por empresa"
+                        paginate={false} empty={{ message: "Ainda não há sinais." }} />}
+                    {panel === "empresas" && <DataTable columns={companyCols} data={summary?.companies ?? []} rowKey={(r) => r.id} loading={loadingSummary} caption="Radar por empresa"
+                        pageSize={25} empty={{ message: "Sem empresas." }} />}
                 </PageCard>
 
                 <Row className="g-3">

@@ -14,7 +14,7 @@ import { AdsCard, AgingCard, DemandCard, FooterCard, ForgottenCard, PriceCard } 
  * semana e os blocos, a partir do stock, dos preços face ao mercado, dos anúncios e da procura
  * já guardados. Nunca mostra dados pessoais dos contactos, só contagens.
  */
-export default function StandBussola({ providerSwitch }: { providerSwitch?: React.ReactNode }) {
+export default function StandBussola({ providerSwitch, radar }: { providerSwitch?: React.ReactNode; radar?: React.ReactNode }) {
     document.title = "Bússola | Xplendor";
     const companyId = getWorkingCompanyId();
     const [type, setType] = useState<StandType>("all");
@@ -50,12 +50,16 @@ export default function StandBussola({ providerSwitch }: { providerSwitch?: Reac
                 />
                 {!data && loading && <div className="text-center py-5"><Spinner color="primary" /></div>}
                 {data && !data.enabled && (
-                    <Card><CardBody className="text-muted">A Bússola do stand está desligada nesta empresa. Quando a equipa XPLENDOR a ligar, aparece aqui.</CardBody></Card>
+                    <>
+                        <Card><CardBody className="text-muted">A Bússola do stand está desligada nesta empresa. Quando a equipa XPLENDOR a ligar, aparece aqui.</CardBody></Card>
+                        {radar}
+                    </>
                 )}
                 {data && data.enabled && (
                     <div className={loading ? "opacity-50" : undefined} data-testid="stand-bussola">
                         <StandTop data={data} />
                         <StandPlays companyId={companyId} data={data} onChanged={load} />
+                        {radar}
                         {data.blocks && (
                             <>
                                 <AgingCard block={data.blocks.aging} />

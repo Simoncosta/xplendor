@@ -86,6 +86,7 @@ return [
             'creative'      => (int) env('CREATIVE_AI_MONTHLY_CAP', 40),       // "Sugerir criativo"
             'ideas'         => (int) env('IDEAS_AI_MONTHLY_CAP', 3),           // "Gerar ideias do mês"
             'caption'       => (int) env('CAPTION_AI_MONTHLY_CAP', 60),        // "Gerar legenda"
+            'radar_porque'  => (int) env('RADAR_PORQUE_AI_MONTHLY_CAP', 100),  // Radar: "porque lhe interessa" (3 por dia no máximo)
         ],
     ],
 

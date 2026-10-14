@@ -246,6 +246,7 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                                 busy={busy} onSubmit={() => void savePlan()} onDelete={!creating && editable ? () => void remove() : undefined} errors={errors}
                                 writeArticleUrl={p && p.channel === "site" ? `/blogs/create?${new URLSearchParams({ editorial_post_id: String(p.id), title: p.title, ...(p.keyword ? { keyword: p.keyword } : {}) }).toString()}` : null} />
                         )}
+                        {tab === "planning" && p && (p.brief || (p.sources && p.sources.length > 0)) && <HookBox post={p} />}
                         {tab === "planning" && !editable && !creating && <p className="text-muted fs-12 mt-2"><i className="ri-lock-2-line me-1" />{canProduce ? "O mês desta publicação está fechado: só consulta." : `A produção é feita ${byProducer(producer)}.`}</p>}
                         {/* O Conteúdo fica montado ao trocar de separador: o texto por gravar não se perde. */}
                         {data && p && p.channel !== "site" && (
@@ -286,5 +287,24 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                     onSaved={() => { void load(postId, "content"); onChanged(); }} />
             )}
         </Offcanvas>
+    );
+}
+
+/** Radar e calendário (Bússola Master): "Gancho e fontes", só de leitura; as ligações abrem noutro separador. */
+function HookBox({ post }: { post: PostWorkflow["post"] }) {
+    const day = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return (
+        <div className="border rounded p-3 mt-3 bg-light-subtle" data-testid="post-hook">
+            <h6 className="fs-13 mb-2"><i className="ri-radar-line me-1 text-primary" aria-hidden />Gancho e fontes{post.origin === "calendario" ? " (calendário)" : post.origin === "radar" ? " (Radar)" : ""}</h6>
+            {post.brief && <p className="fs-13 mb-2" style={{ whiteSpace: "pre-line" }}>{post.brief}</p>}
+            {post.valid_until && <p className="fs-12 text-muted mb-2"><i className="ri-time-line me-1" aria-hidden />Vale até {day(post.valid_until)}</p>}
+            {post.sources && post.sources.length > 0 && (
+                <ul className="list-unstyled fs-12 mb-0">
+                    {post.sources.filter((s) => s.url).map((s, i) => (
+                        <li key={`${s.url}-${i}`} className="text-truncate"><a href={s.url ?? undefined} target="_blank" rel="noopener noreferrer">{s.title || s.source_name}</a>{s.title ? <span className="text-muted"> · {s.source_name}</span> : null}</li>
+                    ))}
+                </ul>
+            )}
+        </div>
     );
 }

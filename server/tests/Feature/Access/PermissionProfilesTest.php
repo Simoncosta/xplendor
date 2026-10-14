@@ -127,7 +127,7 @@ class PermissionProfilesTest extends TestCase
         $this->assertSame(['Restauração'], $preview(), 'numa empresa só de stand, a Bússola não é um módulo inativo');
 
         $catalog = collect($this->actingAs($this->admin, 'sanctum')->getJson($this->url('permission-profiles'))->assertOk()->json('data.catalog'));
-        $this->assertSame(['pingwin', 'stock'], $catalog->firstWhere('area', 'bussola')['module']);
+        $this->assertSame(['pingwin', 'stock', 'radar'], $catalog->firstWhere('area', 'bussola')['module'], 'a Bússola vale também com o Radar (Bússola Master)');
     }
 
     public function test_d12_the_administrator_profile_is_a_system_profile_and_cannot_be_edited(): void

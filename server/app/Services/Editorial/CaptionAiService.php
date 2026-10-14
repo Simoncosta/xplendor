@@ -176,7 +176,7 @@ class CaptionAiService
                 'keyword' => $post->keyword,
                 'content_type' => $post->format,
                 'formats' => $post->networks->pluck('media_format', 'network')->filter()->all(),
-            ],
+            ] + ($post->brief ? ['brief' => self::radarBrief($post)] : []),
             'networks' => $networks,
             'anchor'   => $anchor ? ['title' => $anchor->title, 'notes' => $anchor->notes] : null,
             'company'  => ['name' => (string) ($company->trade_name ?: $company->fiscal_name), 'sector' => $company->contentSector?->name],
@@ -185,6 +185,15 @@ class CaptionAiService
                 : null,
             'media_asset_ids' => $assetIds,
         ];
+    }
+
+    /** O gancho do Radar ou do calendário, com as fontes (nome e hora), para a legenda pedida. */
+    private static function radarBrief(EditorialPost $post): string
+    {
+        $sources = array_map(fn ($s) => trim(($s['source_name'] ?? '') . (empty($s['published_at']) ? '' : ', ' . \Carbon\CarbonImmutable::parse($s['published_at'])->setTimezone('Europe/Lisbon')->format('d/m H:i'))),
+            array_slice((array) $post->sources, 0, 6));
+
+        return trim((string) $post->brief . ($sources ? "\nFontes: " . implode('; ', array_filter($sources)) : ''));
     }
 
     /** O contexto de uma proposta sem publicação (a jogada da Bússola). */

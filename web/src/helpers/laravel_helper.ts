@@ -364,6 +364,9 @@ export const getAdminStorageUsage = () => api.get(url.GET_ADMIN + `/storage-usag
 // Radar de oportunidade (R1, só o root): o resumo da recolha e a lista do que entrou e do que o filtro tirou.
 export const getAdminRadar = () => api.get(url.GET_ADMIN + `/radar`);
 export const getAdminRadarItems = (params: RadarItemsQuery = {}) => api.get(url.GET_ADMIN + `/radar/items`, params);
+// R2: a relevância por ramo e o interruptor do Radar por empresa (o módulo radar).
+export const getAdminRadarRelevances = (params: { sector?: string; days?: number } = {}) => api.get(url.GET_ADMIN + `/radar/relevances`, params);
+export const switchAdminRadarCompany = (companyId: number, enabled: boolean) => api.create(url.GET_ADMIN + `/radar/companies/${companyId}/switch`, { enabled }, JSON_BODY);
 export const getAdminCharges = (params?: { status?: string; company_id?: number; overdue?: 1 }) => api.get(url.GET_ADMIN + `/charges`, params);
 export const createAdminCharge = (data: FormData) => api.create(url.GET_ADMIN + `/charges`, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const adminChargeAction = (id: number, action: "paid" | "cancel" | "refuse" | "send", body: Record<string, unknown> = {}) =>
@@ -668,6 +671,13 @@ export const getStandPlayCaption = (companyId: number, id: number) => api.get(ur
 export const ignoreStandSignals = (companyId: number, keys: string[]) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/ignore`, { keys }, JSON_BODY);
 export const restoreStandSignal = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/restore`, { key }, JSON_BODY);
 export const excludeStandVehicle = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/exclude`, { key }, JSON_BODY);
+// Radar de oportunidade (Bússola Master, R2): os cartões, "Reagir" (ideia sem texto), "Ignorar", "Não mostrar temas como este" e as definições.
+export const getRadar = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/radar`);
+export const reactRadar = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/radar/react`, data, JSON_BODY);
+export const ignoreRadar = (companyId: number, signalId: number) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/radar/ignore`, { signal_id: signalId }, JSON_BODY);
+export const muteRadar = (companyId: number, signalId: number) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/radar/mute`, { signal_id: signalId }, JSON_BODY);
+export const unmuteRadar = (companyId: number, index: number) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/radar/unmute`, { index }, JSON_BODY);
+export const updateRadarSettings = (companyId: number, data: { sports_enabled: boolean; sports_clubs: string[] }) => api.put(url.GET_COMPANIES + `/${companyId}/marketing/radar/settings`, data);
 // F3: "O que publicar e quando".
 export const getRestaurantSignals = (companyId: number, locationId?: number | null, showIgnored?: boolean) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals`, { ...(locationId ? { location_id: locationId } : {}), ...(showIgnored ? { show_ignored: 1 } : {}) });

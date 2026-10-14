@@ -179,20 +179,38 @@ Não exigem a área automóvel, porque a Bússola não mostra dados pessoais. Cr
   - o catálogo das áreas envia os dois módulos.
 - **Diferença na fotografia: nenhuma.** A fotografia reescrita é igual à anterior: o acesso usa o módulo de cada rota (`ensure_module`), não o da área. Nenhum ator ganha nem perde acesso.
 
+## 6e. Radar de oportunidade (Bússola Master, R2)
+
+**Antes, a correção da contagem:** o commit `f869922` (trabalho F2d de outra pessoa, OCR da restauração) acrescentou 4 rotas (`GET .../integrations/pingwin/articles/{catalogItemId}/supplier-codes`, `GET .../integrations/pingwin/catalog/vat-divergences`, `POST .../ocr/invoices/{invoiceId}/lines/{lineId}/article-vat` e `POST .../ocr/invoices/{invoiceId}/lines/{lineId}/supplier-code/principal`) e reescreveu a fotografia (395 para 399 rotas; `sem_modulos_admin` de 249 para 253) sem atualizar a tabela da secção 7. A tabela passa a ter a coluna "Depois do F2d" com os valores reais.
+
+**Rotas novas:** 7, todas dentro de `ensure_module:radar`, com as permissões da área `bussola`:
+- `GET {id}/marketing/radar` e `GET {id}/marketing/radar/settings` (`bussola.ver`);
+- `POST {id}/marketing/radar/react` (`bussola.criar`);
+- `POST {id}/marketing/radar/ignore`, `/mute` e `/unmute`, e `PUT {id}/marketing/radar/settings` (`bussola.editar`).
+
+Reagir, ignorar e silenciar exigem ainda a Linha Editorial ativa e a pessoa produzir nela (o mesmo "pode agir" da Bússola, `RadarController` na lista dos 403 permitidos de `TenancyArchitectureTest`). A área `bussola` passa a valer também com o módulo `radar` (`'module' => ['pingwin', 'stock', 'radar']`), só para o editor de perfis não dizer "módulo inativo" numa empresa que só tem o Radar; o acesso de cada rota continua a ser o do seu `ensure_module`.
+
+Rotas de administração novas (fora do varrimento `/companies/{id}`, no grupo `ensure_super_admin`): `GET /admin/radar`, `GET /admin/radar/items` (do R1), `GET /admin/radar/relevances` e `POST /admin/radar/companies/{company}/switch`.
+
+**Diferença na fotografia:**
+- Só as 7 rotas novas (de 399 para 406 em cada ator). Nenhum ator ganha nem perde acesso a rotas que já existiam: o conjunto das rotas proibidas que já existiam é igual em todos os atores.
+- Nas rotas novas, só o administrador da empresa sem módulos recebe 403, nas 7 (sem o módulo `radar`): de 253 para 260.
+- Os outros 10 atores não recebem 403 nas rotas novas (o módulo `radar` está ligado nas empresas do varrimento, que ligam todos os módulos): a página e as definições dão 200; as escritas dão 422, porque o pedido da fotografia vai vazio.
+
 ## 7. Antes e depois (rotas com 403 por ator)
 
-| Ator | Antes | Depois (com o pré-deploy e o complemento) |
-|---|---|---|
-| Administrador do cliente (`cliente_admin`) | 3 | 3 |
-| Utilizador do cliente (`cliente_utilizador`) | 54 | 82 |
-| Utilizador aprovador (`cliente_aprovador`) | 51 | 76 |
-| Root na própria empresa (`root_propria`) | 9 | 0 |
-| Root noutra empresa (`root_outra`) | 19 | 21 |
-| Administrador da agência (`agencia_admin`) | 28 | 42 |
-| Membro da agência (`agencia_membro`) | 52 | 66 |
-| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 65 |
-| Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
-| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 76 |
-| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 249 |
+| Ator | Antes | Depois (com o pré-deploy e o complemento; 395 rotas) | Depois do F2d (`f869922`; 399 rotas) | Depois do Radar (6e; 406 rotas) |
+|---|---|---|---|---|
+| Administrador do cliente (`cliente_admin`) | 3 | 3 | 3 | 3 |
+| Utilizador do cliente (`cliente_utilizador`) | 54 | 82 | 82 | 82 |
+| Utilizador aprovador (`cliente_aprovador`) | 51 | 76 | 76 | 76 |
+| Root na própria empresa (`root_propria`) | 9 | 0 | 0 | 0 |
+| Root noutra empresa (`root_outra`) | 19 | 21 | 21 | 21 |
+| Administrador da agência (`agencia_admin`) | 28 | 42 | 42 | 42 |
+| Membro da agência (`agencia_membro`) | 52 | 66 | 66 | 66 |
+| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 65 | 65 | 65 |
+| Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 | 61 | 61 |
+| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 76 | 76 | 76 |
+| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 249 | 253 | 260 |
 
 Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.

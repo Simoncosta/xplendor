@@ -33,6 +33,8 @@ import "./editorial.css";
 import { BLOG_STATUS_STAGE, FormatTable, STAGE_META, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { confirmAction } from "helpers/swal";
+import { useAccess } from "contexts/ModulesContext";
+import RadarNowPanel from "pages/Marketing/bussola/radar/RadarNowPanel";
 
 // O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
 const HowItWorksModal = lazy(() => import("./HowItWorksModal"));
@@ -123,6 +125,10 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
     const [phone] = useState(isPhone);
 
     const [loading, setLoading] = useState(true);
+    // Radar (Bússola Master): o painel lateral "Agora", só com o módulo radar.
+    const { modules } = useAccess();
+    const hasRadar = !!modules?.includes("radar");
+    const [nowOpen, setNowOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [hasSector, setHasSector] = useState<boolean | null>(null);
     const [sectorName, setSectorName] = useState<string>("");
@@ -423,6 +429,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                             {canProduce && (ideasReason
                                 ? reasonButton("ideas", ideasReason, <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")
                                 : <Button color="outline-primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</Button>)}
+                            {hasRadar && <Button color="outline-primary" size="sm" onClick={() => setNowOpen(true)} data-testid="editorial-now"><i className="ri-radar-line me-1" />Agora</Button>}
                             <ActionsMenu size="sm" label="Mais ações: Linha Editorial" items={[
                                 { label: "Aprovação por link", icon: "ri-links-line", onClick: () => setReviewOpen(true) },
                                 { label: "Âncora própria", icon: "ri-calendar-event-line", onClick: openCreate, hidden: !(selected && monthIsOpen) },
@@ -543,6 +550,8 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                     })()}
                 </OffcanvasBody>
             </Offcanvas>
+
+            {hasRadar && companyId ? <RadarNowPanel companyId={companyId} isOpen={nowOpen} onClose={() => setNowOpen(false)} onChanged={() => void load()} /> : null}
 
             {/* O painel único da publicação */}
             <PostPanel target={panel} onClose={() => setPanel(null)} companyId={companyId} anchors={anchorLinkOptions} pillars={pillars} range={range}

@@ -201,7 +201,7 @@ const Navdata = () => {
                 // Linha Editorial — transversal (qualquer ramo). Gated pelo SEU módulo.
                 { id: "linha-editorial", label: "Linha Editorial", link: "/editorial", parentId: "analytics", module: "linha_editorial", permission: "editorial.ver" },
                 // Bússola comum: com o PingWin (restauração) ou com o stock (stand), pelos módulos da empresa.
-                { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", anyModule: ["pingwin", "stock"], permission: "bussola.ver" },
+                { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", anyModule: ["pingwin", "stock", "radar"], permission: "bussola.ver" },
             ],
         },
         // ── Restauração — OPERAÇÃO (dia-a-dia). O grupo aparece se a empresa tem

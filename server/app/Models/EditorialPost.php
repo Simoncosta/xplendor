@@ -84,6 +84,8 @@ class EditorialPost extends Model
         'company_id', 'publish_date', 'publish_time', 'title', 'format', 'media_format', 'status',
         'channel', 'keyword', 'pillar', 'anchor_id', 'own_anchor_id', 'blog_id',
         'stage', 'stage_changed_at', 'changes_requested_at', 'current_version_id', 'approved_version_id', 'assignee_user_id',
+        // Radar (Bússola Master): o gancho, as fontes, até quando vale e de onde veio a ideia.
+        'brief', 'sources', 'valid_until', 'origin', 'origin_ref',
     ];
 
     protected $casts = [
@@ -96,6 +98,8 @@ class EditorialPost extends Model
         'current_version_id' => 'integer',
         'approved_version_id' => 'integer',
         'overdue_alerted_at' => 'datetime',
+        'sources' => 'array',
+        'valid_until' => 'date',
     ];
 
     /** Compatibilidade (ver CHANNELS): rede indicada pelo canal antigo e formato pendente. */

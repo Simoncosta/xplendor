@@ -60,6 +60,9 @@ export interface RadarSummary {
     /** RADAR_ENABLED: desligado, nada é recolhido nem avaliado. */
     radar_enabled: boolean;
     sources: RadarSourceSummary[];
+    relevance?: RadarAdminSector[];
+    signals?: RadarAdminCompanySignals[];
+    companies?: RadarAdminCompany[];
     totals: { items_24h: number; blocked_24h: number; items_30d: number; blocked_30d: number; topics_open: number; topics_open_passed: number };
     blocked_by_reason: { reason: RadarReason; label: string; count: number }[];
     flags: { flag: RadarFlag; label: string; count: number }[];
@@ -98,3 +101,78 @@ export interface RadarItemsQuery {
     page?: number;
     per_page?: number;
 }
+
+// ── R2: o cartão do Radar na Bússola e o painel "Agora" da Linha Editorial ──
+
+export interface RadarSource {
+    title: string | null;
+    source_name: string;
+    url: string | null;
+    published_at: string | null;
+}
+
+export interface RadarWhen {
+    date: string;
+    is_today: boolean;
+    label: string;
+    target: string | null;
+}
+
+export interface RadarSignal {
+    id: number;
+    title: string;
+    kind: "trend" | "news" | "bce" | "weather";
+    since: string | null;
+    since_label: string | null;
+    volume_label: string | null;
+    why: string;
+    why_source: "ai" | "template";
+    valid_until: string;
+    when: RadarWhen;
+    sources: RadarSource[];
+    flags: string[];
+    notices: string[];
+    status: string;
+    editorial_post_id: number | null;
+    attribution: string;
+}
+
+/** Camada 2 (R3): uma data do calendário com a fonte oficial. */
+export interface RadarCalendarEntry {
+    key: string;
+    occurrence: string;
+    title: string;
+    starts_on: string;
+    ends_on: string;
+    note: string | null;
+    source: { name: string; url: string; format?: string };
+    confirmed_on: string;
+    confirmed_by: "machine" | "person";
+    when: RadarWhen;
+    reacted?: boolean;
+}
+
+export interface RadarSettings {
+    sports_enabled: boolean;
+    sports_clubs: string[];
+    muted: { index: number; title: string | null; theme: string | null; muted_at: string | null }[];
+}
+
+export interface RadarPageData {
+    enabled: boolean;
+    company: string;
+    sector: { slug: string; name: string } | null;
+    sector_missing: boolean;
+    signals: RadarSignal[];
+    calendar: RadarCalendarEntry[];
+    settings: RadarSettings;
+    can_act: boolean;
+    can_act_reason: string | null;
+    formats: string[];
+    refreshed_at: string | null;
+}
+
+/** Painel do root (R2): relevância por ramo, sinais por empresa e o interruptor de cada empresa. */
+export interface RadarAdminSector { sector: string; evaluated: number; relevant: number; cost_month_usd: number }
+export interface RadarAdminCompanySignals { company_id: number; company: string | null; today: number; by_status: Record<string, number>; cost_month_usd: number }
+export interface RadarAdminCompany { id: number; name: string; sector: string | null; radar_enabled: boolean }
