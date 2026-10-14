@@ -373,6 +373,27 @@ Schedule::call(function () {
     ->name('bussola-stand-nightly')
     ->withoutOverlapping();
 
+// A cada 15 minutos: Radar de oportunidade, a recolha dos feeds públicos (Google Trends, jornais,
+// BCE). Externa (lê fontes na Internet): desligada no dev pelo SCHEDULE_EXTERNAL_JOBS. O teto de
+// 4 pedidos por fonte e por hora é do próprio Radar (RadarCollector).
+Schedule::job(new \App\Jobs\CollectRadarFeedsJob())
+    ->everyFifteenMinutes()
+    ->name('radar-collect-feeds')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Radar] Recolha dos feeds falhou no scheduler');
+    });
+
+// 03:20 (Lisboa): Radar, apaga os itens, as tendências e as recolhas com mais de 30 dias (interna).
+Schedule::job(new \App\Jobs\PurgeRadarItemsJob())
+    ->dailyAt('03:20')
+    ->timezone('Europe/Lisbon')
+    ->name('radar-purge-items')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Radar] Apagamento aos 30 dias falhou no scheduler');
+    });
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

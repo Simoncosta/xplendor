@@ -37,7 +37,7 @@ class ScheduledExternalJobsTest extends TestCase
         foreach (config('scheduler.external_job_names') as $name) {
             $this->assertFalse($events[$name]->filtersPass($this->app), "{$name} não devia correr");
         }
-        foreach (['media-retention', 'ocr-purge-deleted-files', 'blogs-publish-scheduled', 'quotes-expire'] as $name) {
+        foreach (['media-retention', 'ocr-purge-deleted-files', 'blogs-publish-scheduled', 'quotes-expire', 'radar-purge-items'] as $name) {
             $this->assertTrue($events[$name]->filtersPass($this->app), "{$name} (interna) devia correr");
         }
     }

@@ -61,6 +61,7 @@ import QuotePublicPage from "pages/QuotePublic";
 import ChargePublicPage from "pages/ChargePublic";
 import AdminChargesPage from "pages/Admin/AdminChargesPage";
 import StorageUsagePage from "pages/Admin/StorageUsagePage";
+import AdminRadarPage from "pages/Admin/AdminRadarPage";
 import FilesPage from "pages/Files/FilesPage";
 import ContentReviewPage from "pages/ContentReview";
 import ContentReviewPreview from "pages/ContentReview/Preview";
@@ -265,6 +266,8 @@ const authProtectedRoutes = [
     // Cobranças da XPLENDOR (todas as empresas).
     { path: "/admin/charges", component: <RequireSuperAdmin><AdminChargesPage /></RequireSuperAdmin> },
     { path: "/admin/espaco", component: <RequireSuperAdmin><StorageUsagePage /></RequireSuperAdmin> },
+    // Radar de oportunidade (R1): o que entrou dos feeds públicos e o que o filtro tirou.
+    { path: "/admin/radar", component: <RequireSuperAdmin><AdminRadarPage /></RequireSuperAdmin> },
     { path: "/admin/quotes/new", component: <RequireSuperAdmin><QuoteEditor /></RequireSuperAdmin> },
     { path: "/admin/quotes/:id", component: <RequireSuperAdmin><QuoteEditor /></RequireSuperAdmin> },
     { path: "/admin/service-catalog", component: <RequireSuperAdmin><ServiceCatalogPage /></RequireSuperAdmin> },

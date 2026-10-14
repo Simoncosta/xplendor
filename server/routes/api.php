@@ -741,6 +741,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/platform/summary', [AdminController::class, 'platformSummary']);
             // Espaço usado por cada empresa (por tipo e total), somado na base de dados.
             Route::get('/storage-usage', [\App\Http\Controllers\Api\V1\Admin\StorageUsageController::class, 'index']);
+            // Radar de oportunidade (R1): o que entrou dos feeds públicos, o que o filtro tirou e porquê.
+            Route::get('/radar', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'summary']);
+            Route::get('/radar/items', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'items']);
 
             // IMPERSONATION — INICIAR (só root). Emite token de impersonation p/ o user-alvo.
             Route::post('/impersonation/start', [\App\Http\Controllers\Api\V1\ImpersonationController::class, 'start']);

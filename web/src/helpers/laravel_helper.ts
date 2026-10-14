@@ -1,6 +1,7 @@
 import { APIClient } from "./api_helper";
 
 import * as url from "./url_helper";
+import type { RadarItemsQuery } from "common/models/radar.model";
 
 const api = new APIClient();
 
@@ -360,6 +361,9 @@ export const setAgencyCeiling = (companyId: number, profileId: number) =>
 // Cobranças da XPLENDOR. Root: todas as empresas; empresa: as suas (sem o módulo de Finanças).
 // Espaço usado por cada empresa (por tipo e total), somado na base de dados.
 export const getAdminStorageUsage = () => api.get(url.GET_ADMIN + `/storage-usage`);
+// Radar de oportunidade (R1, só o root): o resumo da recolha e a lista do que entrou e do que o filtro tirou.
+export const getAdminRadar = () => api.get(url.GET_ADMIN + `/radar`);
+export const getAdminRadarItems = (params: RadarItemsQuery = {}) => api.get(url.GET_ADMIN + `/radar/items`, params);
 export const getAdminCharges = (params?: { status?: string; company_id?: number; overdue?: 1 }) => api.get(url.GET_ADMIN + `/charges`, params);
 export const createAdminCharge = (data: FormData) => api.create(url.GET_ADMIN + `/charges`, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const adminChargeAction = (id: number, action: "paid" | "cancel" | "refuse" | "send", body: Record<string, unknown> = {}) =>

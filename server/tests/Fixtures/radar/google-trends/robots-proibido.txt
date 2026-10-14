@@ -1,0 +1,6 @@
+# trends.google.com/robots.txt (fixture: /trending passou a Disallow)
+
+User-agent: *
+Disallow: /explore?
+Disallow: /trends/explore?
+Disallow: /trending

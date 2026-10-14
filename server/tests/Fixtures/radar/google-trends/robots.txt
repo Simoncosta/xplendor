@@ -1,0 +1,5 @@
+# trends.google.com/robots.txt
+
+User-agent: *
+Disallow: /explore?
+Disallow: /trends/explore?
