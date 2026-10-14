@@ -386,8 +386,9 @@ Schedule::call(function () {
     ->withoutOverlapping();
 
 // Dia 25 de cada mês, 04:50 (Lisboa): a referência do INE do imobiliário (valor mediano das vendas
-// por m²; trimestral, o comando não repete um período já gravado). Externa (lê o INE).
-Schedule::command('ine:housing-prices --execute')
+// por m²; trimestral, o comando não repete um período já gravado). Externa (lê o INE) e só com
+// alguma empresa com o módulo imoveis (--if-used): sem imóveis, não há pedidos.
+Schedule::command('ine:housing-prices --execute --if-used')
     ->monthlyOn(25, '04:50')
     ->timezone('Europe/Lisbon')
     ->name('ine-housing-prices-monthly')

@@ -21,13 +21,14 @@ use Illuminate\Support\Facades\Http;
  *   php artisan ine:housing-prices                         diz o que faria (sem pedidos)
  *   php artisan ine:housing-prices --execute               lê o INE e grava
  *   php artisan ine:housing-prices --fixture=caminho.json  lê uma amostra gravada (com --execute grava)
+ *   php artisan ine:housing-prices --execute --if-used     a tarefa agendada: só lê se alguma empresa tiver o módulo imoveis
  */
 class IneHousingPricesCommand extends Command
 {
     public const META_URL = 'https://www.ine.pt/ine/json_indicador/pindicaMeta.jsp?varcd=0012234&lang=PT';
     public const DATA_URL = 'https://www.ine.pt/ine/json_indicador/pindica.jsp?op=2&varcd=0012234&Dim1=%s&lang=PT';
 
-    protected $signature = 'ine:housing-prices {--execute : Lê e grava (sem isto, só diz o que faria)} {--fixture= : Lê esta amostra gravada (os dados de um período)} {--force : Lê de novo um período já gravado}';
+    protected $signature = 'ine:housing-prices {--execute : Lê e grava (sem isto, só diz o que faria)} {--fixture= : Lê esta amostra gravada (os dados de um período)} {--force : Lê de novo um período já gravado} {--if-used : Só lê se alguma empresa tiver o módulo imoveis ligado (a tarefa agendada)}';
 
     protected $description = 'Imobiliário: a referência do INE (valor mediano das vendas por m², por freguesia e concelho).';
 
@@ -35,6 +36,11 @@ class IneHousingPricesCommand extends Command
     {
         $execute = (bool) $this->option('execute');
         $fixture = $this->option('fixture');
+        if ($this->option('if-used') && ! DB::table('company_modules')->where('module_key', 'imoveis')->exists()) {
+            $this->info('Nenhuma empresa tem o módulo imoveis ligado: nada a ler.');
+
+            return self::SUCCESS;
+        }
         if ($fixture === null && ! $execute) {
             $this->line('SIMULAÇÃO: nenhum pedido. Com --execute, lê:');
             $this->line('  1. ' . self::META_URL . ' (o último período)');

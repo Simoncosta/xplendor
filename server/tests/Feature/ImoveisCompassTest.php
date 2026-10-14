@@ -271,6 +271,12 @@ class ImoveisCompassTest extends TestCase
         $this->assertSame(5082, IneHousingPrice::where('official_code', '1106')->value('median_m2'));
         $this->assertTrue(IneHousingPrice::where('has_value', false)->exists(), 'sem valor publicado: nunca zero');
 
+        // A tarefa agendada (--if-used) não lê nada sem nenhuma empresa com o módulo imoveis.
+        app(CompanyModuleService::class)->disable($this->company->id, 'imoveis');
+        $this->artisan('ine:housing-prices', ['--execute' => true, '--if-used' => true])->expectsOutputToContain('nada a ler')->assertSuccessful();
+        Http::assertNothingSent();
+        app(CompanyModuleService::class)->enable($this->company->id, 'imoveis');
+
         // Com o INE (simulado): a metainformação dá o último período; um período já gravado não se repete.
         Http::fake(['www.ine.pt/ine/json_indicador/pindicaMeta.jsp*' => Http::response(file_get_contents(base_path('tests/Fixtures/ine/pindicaMeta-0012234.json')), 200)]);
         $this->artisan('ine:housing-prices', ['--execute' => true])->expectsOutputToContain('já está gravado')->assertSuccessful();
