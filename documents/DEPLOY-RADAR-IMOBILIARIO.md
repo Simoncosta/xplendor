@@ -30,7 +30,7 @@ Este código vem depois do de `documents/DEPLOY-FICHEIROS-BUSSOLA.md` (até `ca0
 | `bb84df3` | R2: relevância, encaixe e cartão do Radar |
 | `aa42d8b` | R3: imobiliário, DICOFRE e calendário oficial |
 | `7dab10c` | R4: verificação no ecrã e correções |
-| (este) | Fecho: permissões `imoveis` nos perfis que já existem, a leitura do INE só com imóveis, relatórios |
+| `d3e9c31` | Fecho: permissões `imoveis` nos perfis que já existem, a leitura do INE só com imóveis, relatórios |
 
 ### b1. Variáveis do `.env` (antes do `deploy.sh`, que faz o `config:cache`)
 

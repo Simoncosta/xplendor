@@ -19,7 +19,7 @@ Garantias:
 | R2 | `bb84df3` | Relevância, encaixe e cartão do Radar |
 | R3 | `aa42d8b` | Imobiliário, DICOFRE e calendário oficial |
 | R4 | `7dab10c` | Verificação no ecrã, capturas e as correções que saíram dela |
-| Fecho | (este commit) | A permissão `imoveis` nos perfis que já existem, a leitura do INE só com imóveis (`--if-used`), este relatório, a lista das freguesias e a lista de deploy |
+| Fecho | `d3e9c31` | A permissão `imoveis` nos perfis que já existem, a leitura do INE só com imóveis (`--if-used`), este relatório, a lista das freguesias e a lista de deploy |
 
 ### P1. Radar desligado por omissão
 - `RADAR_ENABLED` em `config/radar.php`, falso por omissão. Desligado: a recolha não faz nenhum pedido (nem a tarefa de 15 em 15 minutos, nem `radar:collect` sem `--force`), a relevância e o encaixe não correm, e Administração › Radar diz "Radar desligado". O módulo `radar` de cada empresa continua desligado até o root o ligar.
