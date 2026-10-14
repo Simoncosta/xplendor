@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  */
 class CompanyModuleService
 {
-    private const PRESET_LABELS = ['automotive' => 'Automotivo', 'restaurant' => 'Restauração', 'base' => 'Base'];
+    private const PRESET_LABELS = ['automotive' => 'Automotivo', 'restaurant' => 'Restauração', 'real_estate' => 'Imobiliário', 'base' => 'Base'];
 
     /** @return string[] chaves dos módulos ativos da empresa. */
     public function enabledKeys(int $companyId): array

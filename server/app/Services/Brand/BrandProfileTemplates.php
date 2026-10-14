@@ -16,7 +16,7 @@ use App\Models\ContentSector;
 final class BrandProfileTemplates
 {
     // v2: + Software (SaaS) e Agência de comunicação.
-    public const VERSION = 'brand-templates-v2';
+    public const VERSION = 'brand-templates-v3';
     public const FALLBACK = 'universal';
 
     private const TEMPLATES = [
@@ -122,6 +122,25 @@ final class BrandProfileTemplates
             'topics_to_avoid' => ['clientes sem autorização', 'críticas a outras agências'],
             'hashtags_default' => ['#comunicacao', '#marketingdigital', '#agencia'],
             'cta_default' => 'Fale connosco sobre o seu projeto.',
+            'emoji_policy' => 'light',
+        ],
+        // Bússola Master (R3): o consultor imobiliário. Nunca prometer valorização nem dar conselhos
+        // sobre taxas de juro; a classe energética é obrigatória em qualquer anúncio.
+        'imobiliario' => [
+            'label' => 'Imobiliário',
+            'tone_of_voice' => 'Próximo, rigoroso e calmo. Mostra os imóveis e a zona com factos verificáveis e acompanha a pessoa em cada passo da compra, da venda ou do arrendamento.',
+            'audience' => 'Pessoas e famílias que querem comprar, vender ou arrendar casa na zona onde o consultor trabalha, e proprietários que procuram quem os represente.',
+            'pillars' => [
+                ['name' => 'A zona', 'description' => 'O que a zona tem: serviços, transportes, escolas, comércio e o dia a dia.'],
+                ['name' => 'Os imóveis', 'description' => 'Os imóveis em carteira, com as características verificáveis e a classe energética.'],
+                ['name' => 'O processo', 'description' => 'Como funciona comprar, vender ou arrendar, passo a passo.'],
+                ['name' => 'A confiança', 'description' => 'Testemunhos de quem fechou negócio, sempre com autorização, e a forma de trabalhar do consultor.'],
+            ],
+            'words_to_use' => ['zona', 'visita', 'acompanhamento', 'classe energética'],
+            'words_to_avoid' => ['oportunidade única', 'imperdível', 'garantido', 'valorização certa'],
+            'topics_to_avoid' => ['promessas de valorização', 'conselhos sobre taxas de juro', 'dados de proprietários', 'clientes sem autorização'],
+            'hashtags_default' => ['#imobiliario', '#casa', '#imoveis'],
+            'cta_default' => 'Marque uma visita.',
             'emoji_policy' => 'light',
         ],
         'universal' => [

@@ -671,6 +671,19 @@ export const getStandPlayCaption = (companyId: number, id: number) => api.get(ur
 export const ignoreStandSignals = (companyId: number, keys: string[]) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/ignore`, { keys }, JSON_BODY);
 export const restoreStandSignal = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/restore`, { key }, JSON_BODY);
 export const excludeStandVehicle = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-stand/exclude`, { key }, JSON_BODY);
+// Bússola do imobiliário e a carteira de imóveis (Bússola Master, R3).
+export const getBussolaImoveis = (companyId: number, type: "all" | "venda" | "arrendamento" = "all", playsOnly?: boolean) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola-imoveis`, { type, ...(playsOnly ? { plays_only: 1 } : {}) });
+export const createPostFromImoveisPlay = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-imoveis/post`, data, JSON_BODY);
+export const requestImoveisPlayCaption = (companyId: number, data: { play_key: string; networks: string[] }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-imoveis/caption`, data, JSON_BODY);
+export const getImoveisPlayCaption = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola-imoveis/caption/${id}`);
+export const ignoreImoveisSignals = (companyId: number, keys: string[]) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-imoveis/ignore`, { keys }, JSON_BODY);
+export const excludeImoveisProperty = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola-imoveis/exclude`, { key }, JSON_BODY);
+export const getProperties = (companyId: number, params: { status?: string; listing?: string } = {}) => api.get(url.GET_COMPANIES + `/${companyId}/properties`, params);
+export const createProperty = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/properties`, data, JSON_BODY);
+export const updateProperty = (companyId: number, id: number, data: any) => api.put(url.GET_COMPANIES + `/${companyId}/properties/${id}`, data);
+export const deleteProperty = (companyId: number, id: number) => api.delete(url.GET_COMPANIES + `/${companyId}/properties/${id}`);
 // Radar de oportunidade (Bússola Master, R2): os cartões, "Reagir" (ideia sem texto), "Ignorar", "Não mostrar temas como este" e as definições.
 export const getRadar = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/radar`);
 export const reactRadar = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/radar/react`, data, JSON_BODY);

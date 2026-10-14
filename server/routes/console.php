@@ -374,6 +374,25 @@ Schedule::call(function () {
     ->name('bussola-stand-nightly')
     ->withoutOverlapping();
 
+// 05:25 (Lisboa): Bússola do imobiliário, os sinais das empresas com o módulo imoveis (as frases
+// da IA vão a seguir). Externa (P2 do fecho): chega à IA, por isso fica desligada no dev.
+Schedule::call(function () {
+    \Illuminate\Support\Facades\DB::table('company_modules')->where('module_key', 'imoveis')->pluck('company_id')
+        ->each(fn ($id) => \App\Jobs\RecomputeImoveisCompassJob::dispatch((int) $id));
+})
+    ->dailyAt('05:25')
+    ->timezone('Europe/Lisbon')
+    ->name('bussola-imoveis-nightly')
+    ->withoutOverlapping();
+
+// Dia 25 de cada mês, 04:50 (Lisboa): a referência do INE do imobiliário (valor mediano das vendas
+// por m²; trimestral, o comando não repete um período já gravado). Externa (lê o INE).
+Schedule::command('ine:housing-prices --execute')
+    ->monthlyOn(25, '04:50')
+    ->timezone('Europe/Lisbon')
+    ->name('ine-housing-prices-monthly')
+    ->withoutOverlapping();
+
 // A cada 15 minutos: Radar de oportunidade, a recolha dos feeds públicos (Google Trends, jornais,
 // BCE). Externa (lê fontes na Internet): desligada no dev pelo SCHEDULE_EXTERNAL_JOBS. O teto de
 // 4 pedidos por fonte e por hora é do próprio Radar (RadarCollector).

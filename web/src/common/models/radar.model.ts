@@ -63,6 +63,7 @@ export interface RadarSummary {
     relevance?: RadarAdminSector[];
     signals?: RadarAdminCompanySignals[];
     companies?: RadarAdminCompany[];
+    ine?: RadarAdminIne;
     totals: { items_24h: number; blocked_24h: number; items_30d: number; blocked_30d: number; topics_open: number; topics_open_passed: number };
     blocked_by_reason: { reason: RadarReason; label: string; count: number }[];
     flags: { flag: RadarFlag; label: string; count: number }[];
@@ -176,3 +177,15 @@ export interface RadarPageData {
 export interface RadarAdminSector { sector: string; evaluated: number; relevant: number; cost_month_usd: number }
 export interface RadarAdminCompanySignals { company_id: number; company: string | null; today: number; by_status: Record<string, number>; cost_month_usd: number }
 export interface RadarAdminCompany { id: number; name: string; sector: string | null; radar_enabled: boolean }
+
+/** Painel do root (R3): a referência do INE e a ligação das freguesias pelo DICOFRE. */
+export interface RadarAdminIne {
+    period: string | null; ine_updated_on: string | null; fetched_at: string | null; records: number; parishes_with_value: number;
+    platform_parishes_with_reference: number; attribution: string;
+    parishes: {
+        platform: number; with_code: number; official: number;
+        without_code: { id: number; name: string; municipality: string | null }[];
+        official_missing_count: number;
+        official_missing: { dicofre: string; name: string; municipality: string }[];
+    };
+}

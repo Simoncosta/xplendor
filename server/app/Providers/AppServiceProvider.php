@@ -182,6 +182,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Bússola do stand: recalcular quando o stock, os preços ou o mercado mudam.
         \App\Services\Compass\Stand\StandCompassTriggers::register();
+        \App\Services\Compass\Imoveis\ImoveisCompassTriggers::register();
 
         // ────────────────────────────────────────────────────────────────────
         // Blindagem contra wipe acidental da BD (incidente 2026-06-09,

@@ -18,10 +18,12 @@ return [
         // P2 do fecho: tarefas internas cujo trabalho chama a IA (as frases da Bússola do stand).
         // Contam como externas: no dev ficam desligadas, como as outras. A restauração já chegava
         // à IA pela restaurant-daily-sync, que já era externa.
-        'bussola-stand-nightly',
+        'bussola-stand-nightly', 'bussola-imoveis-nightly',
+        // Bússola Master (R3): a referência do INE do imobiliário (lê o INE).
+        'ine-housing-prices-monthly',
     ],
 
     // As tarefas agendadas que chegam à IA (pelos trabalhos que põem na fila). Todas têm de estar
     // em external_job_names; o teste ScheduledExternalJobsTest confirma-o.
-    'ai_job_names' => ['restaurant-daily-sync', 'bussola-stand-nightly', 'radar-collect-feeds'],
+    'ai_job_names' => ['restaurant-daily-sync', 'bussola-stand-nightly', 'bussola-imoveis-nightly', 'radar-collect-feeds'],
 ];

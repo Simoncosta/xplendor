@@ -231,6 +231,7 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                                     {TAB_LABELS[t]}
                                     {t === "approval" && p?.stage === "client_review" && <Badge color="warning" className="ms-1">À espera</Badge>}
                                     {t === "publish" && p?.overdue && <Badge color="danger" className="ms-1">!</Badge>}
+                                    {t === "content" && (data?.compliance?.warnings.length ?? 0) > 0 && <Badge color="warning" className="ms-1" data-testid="post-compliance-badge" title="Aviso de conformidade">!</Badge>}
                                 </NavLink>
                             </NavItem>
                         ))}
@@ -251,6 +252,12 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                         {/* O Conteúdo fica montado ao trocar de separador: o texto por gravar não se perde. */}
                         {data && p && p.channel !== "site" && (
                             <div className={tab === "content" ? undefined : "d-none"}>
+                                {(data.compliance?.warnings.length ?? 0) > 0 && (
+                                    <div className="alert alert-warning fs-13 mb-3" role="status" data-testid="post-compliance">
+                                        <i className="ri-error-warning-line me-1" aria-hidden />
+                                        {data.compliance!.warnings.map((w) => <div key={w}>{w}</div>)}
+                                    </div>
+                                )}
                                 <ContentSection key={p.id} ref={contentRef} companyId={companyId} data={data} onChanged={changed} onCreative={() => setCreative(true)} onDirty={setContentDirty} />
                             </div>
                         )}

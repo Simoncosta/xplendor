@@ -3,6 +3,7 @@ import { Container } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 import RestaurantBussola from "./RestaurantBussola";
 import StandBussola from "./stand/StandBussola";
+import ImoveisBussola from "./imoveis/ImoveisBussola";
 import RadarCard from "./radar/RadarCard";
 import PageHeader from "Components/Common/PageHeader";
 import { useAccess } from "contexts/ModulesContext";
@@ -14,19 +15,20 @@ import { getWorkingCompanyId } from "helpers/workingCompany";
  * dois mostra a da restauração e um seletor para a do stand. Com o módulo radar, o bloco
  * "Radar" aparece logo a seguir às jogadas (ou sozinho, numa empresa sem fornecedor).
  */
-export type CompassProviderKey = "restauracao" | "stand";
+export type CompassProviderKey = "restauracao" | "stand" | "imobiliario";
 
 /** Os fornecedores que a empresa tem, pela ordem de preferência (o root na própria empresa vê a restauração). */
 export const compassProviders = (modules: string[] | null, isRoot: boolean): CompassProviderKey[] => {
     const out: CompassProviderKey[] = [];
-    if (modules?.includes("pingwin") || (isRoot && !modules?.includes("stock"))) out.push("restauracao");
+    if (modules?.includes("pingwin") || (isRoot && !modules?.includes("stock") && !modules?.includes("imoveis"))) out.push("restauracao");
     if (modules?.includes("stock")) out.push("stand");
+    if (modules?.includes("imoveis")) out.push("imobiliario");
     // Só o Radar (sem PingWin nem stock): nenhum fornecedor, a página mostra só o Radar.
     if (!out.length && modules?.includes("radar")) return [];
     return out.length ? out : ["restauracao"];
 };
 
-const LABELS: Record<CompassProviderKey, string> = { restauracao: "Restauração", stand: "Stand" };
+const LABELS: Record<CompassProviderKey, string> = { restauracao: "Restauração", stand: "Stand", imobiliario: "Imobiliário" };
 
 export default function BussolaPage() {
     const { modules, isRoot } = useAccess();
@@ -54,5 +56,6 @@ export default function BussolaPage() {
         </div>
     ) : undefined;
 
+    if (current === "imobiliario") return <ImoveisBussola providerSwitch={providerSwitch} radar={radar} />;
     return current === "stand" ? <StandBussola providerSwitch={providerSwitch} radar={radar} /> : <RestaurantBussola providerSwitch={providerSwitch} radar={radar} />;
 }

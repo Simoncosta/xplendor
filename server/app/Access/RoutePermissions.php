@@ -218,6 +218,20 @@ final class RoutePermissions
         'POST {id}/marketing/bussola-stand/ignore' => 'bussola.editar',
         'POST {id}/marketing/bussola-stand/restore' => 'bussola.editar',
         'POST {id}/marketing/bussola-stand/exclude' => 'bussola.editar',
+        // Bússola do imobiliário (no módulo imoveis).
+        'GET {id}/marketing/bussola-imoveis' => 'bussola.ver',
+        'POST {id}/marketing/bussola-imoveis/post' => 'bussola.criar',
+        'POST {id}/marketing/bussola-imoveis/caption' => 'bussola.criar',
+        'GET {id}/marketing/bussola-imoveis/caption/{requestId}' => 'bussola.ver',
+        'POST {id}/marketing/bussola-imoveis/ignore' => 'bussola.editar',
+        'POST {id}/marketing/bussola-imoveis/restore' => 'bussola.editar',
+        'POST {id}/marketing/bussola-imoveis/exclude' => 'bussola.editar',
+        // A carteira de imóveis (área imoveis, no módulo imoveis).
+        'GET {id}/properties' => 'imoveis.ver',
+        'POST {id}/properties' => 'imoveis.criar',
+        'GET {id}/properties/{propertyId}' => 'imoveis.ver',
+        'PUT {id}/properties/{propertyId}' => 'imoveis.editar',
+        'DELETE {id}/properties/{propertyId}' => 'imoveis.apagar',
         // Radar de oportunidade (no módulo radar).
         'GET {id}/marketing/radar' => 'bussola.ver',
         'POST {id}/marketing/radar/react' => 'bussola.criar',

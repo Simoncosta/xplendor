@@ -13,6 +13,7 @@ use App\Models\RadarTopic;
 use App\Models\User;
 use App\Services\Compass\CompassAccess;
 use App\Services\Compass\CompassWhen;
+use App\Services\Radar\Calendar\OfficialDates;
 use Carbon\CarbonImmutable;
 
 /**
@@ -50,7 +51,7 @@ class RadarPage
             'sector' => $sector ? ['slug' => $sector->slug, 'name' => $sector->name] : null,
             'sector_missing' => $sector === null,
             'signals' => $signals,
-            'calendar' => [], // a camada 2 (calendário) entra no R3
+            'calendar' => OfficialDates::upcomingFor($companyId, $now),
             'settings' => [
                 'sports_enabled' => $settings['sports_enabled'], 'sports_clubs' => $settings['sports_clubs'],
                 'muted' => array_map(fn ($m, $i) => ['index' => $i, 'title' => $m['title'] ?? null, 'theme' => $m['theme'] ?? null, 'muted_at' => $m['muted_at'] ?? null],

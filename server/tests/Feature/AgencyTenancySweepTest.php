@@ -129,6 +129,11 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/files/shortcuts/{shortcutId}/restore',
     ];
 
+    /** Imóveis (Bússola Master): o teto da agência convidada dá ver, criar e editar, sem apagar (o padrão dos Ficheiros). */
+    private const IMOVEIS_ABOVE_CEILING = [
+        'DELETE api/v1/companies/{id}/properties/{propertyId}',
+    ];
+
     /** Só o root (a agência recebe sempre 403, mesmo os administradores). */
     private const ROOT_ONLY = [
         // Postos de venda do relatório anual do PingWin (início de cada loja).
@@ -294,12 +299,12 @@ class AgencyTenancySweepTest extends TestCase
 
     public function test_agency_member_with_an_active_relation_works_everywhere_except_client_decisions_and_integrations(): void
     {
-        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING]);
+        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING]);
     }
 
     public function test_agency_admin_with_an_active_relation_also_connects_integrations_but_never_decides_for_the_client(): void
     {
-        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING]);
+        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING]);
     }
 
     /** Com relação ativa: 403 exatamente nas rotas indicadas e em nenhuma outra. */

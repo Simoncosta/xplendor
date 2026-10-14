@@ -78,4 +78,20 @@ describe("Radar: o bloco da Bússola", () => {
         render(<RadarCard companyId={7} />);
         expect(await screen.findByTestId("radar-sector-missing")).toHaveTextContent("Escolha o ramo da sua marca na Linha Editorial");
     });
+
+    it("o \"Vem aí\" mostra a data com a fonte oficial e reage com a chave do calendário", async () => {
+        (getRadar as jest.Mock).mockResolvedValue({ data: page({ signals: [], calendar: [{
+            key: "ine.precos_habitacao_local", occurrence: "2026-10-23", title: "INE: Estatísticas de Preços da Habitação ao nível local", starts_on: "2026-10-23", ends_on: "2026-10-23",
+            note: "2.º trimestre de 2026.", source: { name: "INE, calendário de difusão", url: "https://www.ine.pt/x" }, confirmed_on: "2026-10-14", confirmed_by: "machine",
+            when: { date: "2026-10-23", is_today: false, label: "Publicar a 23/10", target: null }, reacted: false,
+        }] }) });
+        render(<RadarCard companyId={7} />);
+        const list = await screen.findByTestId("radar-upcoming");
+        expect(within(list).getByText("Fonte: INE, calendário de difusão")).toHaveAttribute("rel", "noopener noreferrer");
+        fireEvent.click(within(list).getByText("Reagir"));
+        fireEvent.change(await screen.findByLabelText("Data de publicação"), { target: { value: "2099-10-23" } });
+        fireEvent.click(screen.getByTestId("radar-react-submit"));
+        await waitFor(() => expect(reactRadar).toHaveBeenCalled());
+        expect((reactRadar as jest.Mock).mock.calls[0][1]).toMatchObject({ calendar_key: "ine.precos_habitacao_local", occurrence: "2026-10-23" });
+    });
 });

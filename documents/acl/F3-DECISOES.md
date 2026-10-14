@@ -197,20 +197,33 @@ Rotas de administração novas (fora do varrimento `/companies/{id}`, no grupo `
 - Nas rotas novas, só o administrador da empresa sem módulos recebe 403, nas 7 (sem o módulo `radar`): de 253 para 260.
 - Os outros 10 atores não recebem 403 nas rotas novas (o módulo `radar` está ligado nas empresas do varrimento, que ligam todos os módulos): a página e as definições dão 200; as escritas dão 422, porque o pedido da fotografia vai vazio.
 
+## 6f. Imobiliário e calendário (Bússola Master, R3)
+
+**Rotas novas:** 12, todas dentro de `ensure_module:imoveis`:
+- a Bússola do imobiliário, com as permissões da área `bussola` (as do stand): `GET {id}/marketing/bussola-imoveis` e `GET .../caption/{requestId}` (`bussola.ver`); `POST .../post` e `/caption` (`bussola.criar`); `POST .../ignore`, `/restore` e `/exclude` (`bussola.editar`);
+- a carteira, na área nova `imoveis`: `GET {id}/properties` e `GET {id}/properties/{propertyId}` (`imoveis.ver`), `POST {id}/properties` (`imoveis.criar`), `PUT {id}/properties/{propertyId}` (`imoveis.editar`) e `DELETE {id}/properties/{propertyId}` (`imoveis.apagar`).
+
+A área `imoveis` segue o padrão dos Ficheiros (resposta à pergunta 7): o Administrador tudo; o Utilizador ver, criar e editar; a agência (teto da agência convidada) ver, criar e editar, sem apagar (`CompatibilityProfiles::NEW_AREAS`; a sugestão "Agência convidada" ganha `imoveis.ver`, `imoveis.criar` e `imoveis.editar`). A área `bussola` passa a valer também com o módulo `imoveis`. Criar, sugerir e ignorar na Bússola do imobiliário exigem ainda a Linha Editorial ativa e a pessoa produzir nela (`ImoveisCompassController` na lista dos 403 permitidos). O "Reagir" a uma data do calendário usa a rota do Radar que já existe (`POST {id}/marketing/radar/react`).
+
+**Diferença na fotografia:**
+- Só as 12 rotas novas (de 406 para 418 em cada ator). Nenhum ator ganha nem perde acesso a rotas que já existiam.
+- Nas rotas novas: o administrador da empresa sem módulos recebe 403 nas 12 (sem o módulo `imoveis`): de 260 para 272. Quem não tem `imoveis.apagar` recebe 403 só em `DELETE {id}/properties/{propertyId}`: o utilizador do cliente (82 para 83), o aprovador (76 para 77), os três atores da agência (42 para 43, 66 para 67 e 65 para 66) e o root a impersonar um utilizador (76 para 77). O administrador do cliente, o root e o root a impersonar o administrador não recebem 403 nas rotas novas.
+- No varrimento da agência (`AgencyTenancySweepTest`), a rota de apagar um imóvel junta-se às dos Ficheiros acima do teto (`IMOVEIS_ABOVE_CEILING`).
+
 ## 7. Antes e depois (rotas com 403 por ator)
 
-| Ator | Antes | Depois (com o pré-deploy e o complemento; 395 rotas) | Depois do F2d (`f869922`; 399 rotas) | Depois do Radar (6e; 406 rotas) |
-|---|---|---|---|---|
-| Administrador do cliente (`cliente_admin`) | 3 | 3 | 3 | 3 |
-| Utilizador do cliente (`cliente_utilizador`) | 54 | 82 | 82 | 82 |
-| Utilizador aprovador (`cliente_aprovador`) | 51 | 76 | 76 | 76 |
-| Root na própria empresa (`root_propria`) | 9 | 0 | 0 | 0 |
-| Root noutra empresa (`root_outra`) | 19 | 21 | 21 | 21 |
-| Administrador da agência (`agencia_admin`) | 28 | 42 | 42 | 42 |
-| Membro da agência (`agencia_membro`) | 52 | 66 | 66 | 66 |
-| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 65 | 65 | 65 |
-| Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 | 61 | 61 |
-| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 76 | 76 | 76 |
-| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 249 | 253 | 260 |
+| Ator | Antes | Depois (com o pré-deploy e o complemento; 395 rotas) | Depois do F2d (`f869922`; 399 rotas) | Depois do Radar (6e; 406 rotas) | Depois do imobiliário (6f; 418 rotas) |
+|---|---|---|---|---|---|
+| Administrador do cliente (`cliente_admin`) | 3 | 3 | 3 | 3 | 3 |
+| Utilizador do cliente (`cliente_utilizador`) | 54 | 82 | 82 | 82 | 83 |
+| Utilizador aprovador (`cliente_aprovador`) | 51 | 76 | 76 | 76 | 77 |
+| Root na própria empresa (`root_propria`) | 9 | 0 | 0 | 0 | 0 |
+| Root noutra empresa (`root_outra`) | 19 | 21 | 21 | 21 | 21 |
+| Administrador da agência (`agencia_admin`) | 28 | 42 | 42 | 42 | 43 |
+| Membro da agência (`agencia_membro`) | 52 | 66 | 66 | 66 | 67 |
+| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 65 | 65 | 65 | 66 |
+| Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 | 61 | 61 | 61 |
+| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 76 | 76 | 76 | 77 |
+| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 249 | 253 | 260 | 272 |
 
 Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.

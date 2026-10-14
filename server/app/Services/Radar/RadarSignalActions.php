@@ -12,6 +12,7 @@ use App\Models\RadarSignal;
 use App\Models\User;
 use App\Services\Editorial\EditorialWorkflowService;
 use App\Services\EditorialPostService;
+use App\Services\Radar\Calendar\OfficialDates;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -101,10 +102,23 @@ class RadarSignalActions
         return $post;
     }
 
-    /** A camada 2 (o calendário) entra no R3. */
+    /** Camada 2: "Reagir" a uma data do calendário (uma ideia por data e por empresa). */
     public function reactToDate(Company $company, User $user, string $key, string $occurrence, array $data): EditorialPost
     {
-        throw ValidationException::withMessages(['calendar_key' => ['Esta data não está no calendário.']]);
+        $entry = OfficialDates::find($key, $occurrence);
+        if ($entry === null) {
+            throw ValidationException::withMessages(['calendar_key' => ['Esta data não está no calendário.']]);
+        }
+        if (EditorialPost::where('company_id', $company->id)->where('origin', 'calendario')->where('origin_ref', "{$key}@{$occurrence}")->exists()) {
+            throw ValidationException::withMessages(['calendar_key' => ['Já existe uma ideia para esta data.']]);
+        }
+        $lines = array_filter([$entry['title'] . '.', $entry['note'], 'Fonte: ' . $entry['source']['name'] . ' (confirmada a ' . CarbonImmutable::parse($entry['confirmed_on'])->format('d/m/Y') . ').']);
+
+        return $this->createIdea($company, $user, $data, [
+            'brief' => implode("\n", $lines),
+            'sources' => [['title' => $entry['title'], 'source_name' => $entry['source']['name'], 'url' => $entry['source']['url'], 'published_at' => null]],
+            'valid_until' => $entry['ends_on'], 'origin' => 'calendario', 'origin_ref' => "{$key}@{$occurrence}",
+        ]);
     }
 
     public function ignore(RadarSignal $signal, User $user): void

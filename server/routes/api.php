@@ -172,6 +172,21 @@ Route::prefix('v1')->group(function () {
                     Route::post('/marketing/bussola-stand/restore', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'restore']);
                     Route::post('/marketing/bussola-stand/exclude', [\App\Http\Controllers\Api\V1\StandCompassController::class, 'exclude']);
                 });
+                // Bússola do imobiliário e a carteira de imóveis: só com o módulo imoveis.
+                Route::middleware('ensure_module:imoveis')->group(function () {
+                    Route::get('/marketing/bussola-imoveis', [\App\Http\Controllers\Api\V1\ImoveisCompassController::class, 'show']);
+                    Route::post('/marketing/bussola-imoveis/post', [\App\Http\Controllers\Api\V1\ImoveisCompassController::class, 'createPost']);
+                    Route::post('/marketing/bussola-imoveis/caption', [\App\Http\Controllers\Api\V1\ImoveisCompassController::class, 'caption'])->middleware('throttle:20,1');
+                    Route::get('/marketing/bussola-imoveis/caption/{requestId}', [\App\Http\Controllers\Api\V1\ImoveisCompassController::class, 'captionStatus'])->whereNumber('requestId');
+                    Route::post('/marketing/bussola-imoveis/ignore', [\App\Http\Controllers\Api\V1\ImoveisCompassController::class, 'ignore']);
+                    Route::post('/marketing/bussola-imoveis/restore', [\App\Http\Controllers\Api\V1\ImoveisCompassController::class, 'restore']);
+                    Route::post('/marketing/bussola-imoveis/exclude', [\App\Http\Controllers\Api\V1\ImoveisCompassController::class, 'exclude']);
+                    Route::get('/properties', [\App\Http\Controllers\Api\V1\PropertyController::class, 'index']);
+                    Route::post('/properties', [\App\Http\Controllers\Api\V1\PropertyController::class, 'store']);
+                    Route::get('/properties/{propertyId}', [\App\Http\Controllers\Api\V1\PropertyController::class, 'show'])->whereNumber('propertyId');
+                    Route::put('/properties/{propertyId}', [\App\Http\Controllers\Api\V1\PropertyController::class, 'update'])->whereNumber('propertyId');
+                    Route::delete('/properties/{propertyId}', [\App\Http\Controllers\Api\V1\PropertyController::class, 'destroy'])->whereNumber('propertyId');
+                });
                 // Radar de oportunidade: só com o módulo radar; permissões da área bussola.
                 Route::middleware('ensure_module:radar')->group(function () {
                     Route::get('/marketing/radar', [\App\Http\Controllers\Api\V1\RadarController::class, 'show']);

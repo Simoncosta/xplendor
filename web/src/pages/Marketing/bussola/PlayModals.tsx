@@ -210,7 +210,7 @@ export function PlayCaptionModal({ companyId, locationId, play, onClose, onUse, 
 }
 
 /** "Ver detalhe": as frases descritivas completas, a amostra e a confiança. */
-export function PlayDetailModal({ play, onClose }: { play: CompassPlay | null; onClose: () => void }) {
+export function PlayDetailModal({ play, onClose, itemsHeading = "Veículos" }: { play: CompassPlay | null; onClose: () => void; itemsHeading?: string }) {
     return (
         <Modal isOpen={!!play} toggle={onClose} size="lg" centered scrollable data-testid="play-detail-modal">
             <ModalHeader toggle={onClose}>{play?.title}</ModalHeader>
@@ -223,9 +223,9 @@ export function PlayDetailModal({ play, onClose }: { play: CompassPlay | null; o
                         </ul>
                         {play.items && play.items.length > 0 && (
                             <>
-                                <h6 className="text-uppercase text-muted fs-12 mb-2">Veículos</h6>
+                                <h6 className="text-uppercase text-muted fs-12 mb-2">{itemsHeading}</h6>
                                 <ul className="list-unstyled vstack gap-1 fs-14 mb-3">
-                                    {play.items.map((it) => <li key={it.car_id}>{it.label}{it.detail ? <span className="text-muted">, {it.detail}</span> : null}</li>)}
+                                    {play.items.map((it) => <li key={it.car_id ?? it.property_id ?? it.label}>{it.label}{it.detail ? <span className="text-muted">, {it.detail}</span> : null}</li>)}
                                 </ul>
                             </>
                         )}

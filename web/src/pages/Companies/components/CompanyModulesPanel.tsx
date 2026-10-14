@@ -36,6 +36,7 @@ interface Props {
 const PRESET_LABELS: Record<string, string> = {
     automotive: "Automotivo",
     restaurant: "Restauração",
+    real_estate: "Imobiliário",
     base: "Base (marketing e Linha Editorial)",
 };
 

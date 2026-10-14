@@ -794,6 +794,8 @@ class EditorialWorkflowService
                     'created_at' => optional($e->created_at)->toIso8601String(),
                 ])->all(),
             'media_validation' => self::mediaValidation($cv = $versions->firstWhere('id', $post->current_version_id), self::formatsFor($post, $cv)),
+            // Bússola Master: os avisos de conformidade (a classe energética nos imóveis); nunca bloqueiam.
+            'compliance' => ComplianceWarnings::for($post, $cv),
             'creative' => $creative ? ['caption' => $creative->caption, 'hashtags' => $creative->hashtags ?? [], 'cta' => $creative->cta, 'media_format' => $creative->media_format] : null,
             'moves' => $this->moves($post, $user, $company),
             // F3d: publicação (link, hora real e quem marcou) e resultados à mão.

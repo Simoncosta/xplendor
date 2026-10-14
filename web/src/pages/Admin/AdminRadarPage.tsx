@@ -8,7 +8,7 @@ import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable
 import { getAdminRadar, getAdminRadarItems, switchAdminRadarCompany } from "helpers/laravel_helper";
 import { toast } from "react-toastify";
 import { confirmAction } from "helpers/swal";
-import type { RadarAdminCompany, RadarAdminCompanySignals, RadarAdminSector, RadarItem, RadarItemsPage, RadarSourceSummary, RadarSummary, RadarTopicKind, RadarTopicSummary, RadarVerdict } from "common/models/radar.model";
+import type { RadarAdminCompany, RadarAdminCompanySignals, RadarAdminIne, RadarAdminSector, RadarItem, RadarItemsPage, RadarSourceSummary, RadarSummary, RadarTopicKind, RadarTopicSummary, RadarVerdict } from "common/models/radar.model";
 
 /**
  * Administração › Radar (só o root): tudo o que entrou dos feeds públicos (Google Trends, jornais,
@@ -57,7 +57,7 @@ export default function AdminRadarPage() {
     const [loadingItems, setLoadingItems] = useState(true);
     const [failed, setFailed] = useState(false);
     // R2: relevância por ramo, sinais por empresa e o interruptor do Radar por empresa.
-    const [panel, setPanel] = useState<"relevancia" | "sinais" | "empresas">("relevancia");
+    const [panel, setPanel] = useState<"relevancia" | "sinais" | "empresas" | "ine">("relevancia");
     const [switching, setSwitching] = useState<number | null>(null);
 
     useEffect(() => {
@@ -298,7 +298,7 @@ export default function AdminRadarPage() {
                     info="A relevância é avaliada uma vez por tendência e por ramo (Haiku 5.5, em lotes). Cada empresa com o Radar ligado recebe no máximo 3 sinais por dia. O interruptor de cada empresa é o módulo radar."
                     actions={
                         <div className="xp-seg" role="tablist" aria-label="Painel">
-                            {([["relevancia", "Relevância"], ["sinais", "Sinais"], ["empresas", "Empresas"]] as const).map(([k, l]) => (
+                            {([["relevancia", "Relevância"], ["sinais", "Sinais"], ["empresas", "Empresas"], ["ine", "Freguesias e INE"]] as const).map(([k, l]) => (
                                 <button key={k} type="button" role="tab" aria-selected={panel === k} className={panel === k ? "on" : ""} onClick={() => setPanel(k)}>{l}</button>
                             ))}
                         </div>
@@ -309,6 +309,7 @@ export default function AdminRadarPage() {
                         paginate={false} empty={{ message: "Ainda não há sinais." }} />}
                     {panel === "empresas" && <DataTable columns={companyCols} data={summary?.companies ?? []} rowKey={(r) => r.id} loading={loadingSummary} caption="Radar por empresa"
                         pageSize={25} empty={{ message: "Sem empresas." }} />}
+                    {panel === "ine" && <IneBlock ine={summary?.ine} />}
                 </PageCard>
 
                 <Row className="g-3">
@@ -327,6 +328,29 @@ export default function AdminRadarPage() {
                     </Col>
                 </Row>
             </Container>
+        </div>
+    );
+}
+
+/** R3: a referência do INE e as freguesias (pelo DICOFRE); as que não casam e as diferenças com a lista oficial. Nada é apagado. */
+function IneBlock({ ine }: { ine?: RadarAdminIne }) {
+    if (!ine) return <p className="text-muted p-3 mb-0">Sem dados.</p>;
+    const p = ine.parishes;
+    return (
+        <div className="p-3" data-testid="radar-ine">
+            <p className="mb-1"><strong>Referência do INE:</strong> {ine.period ? `${ine.period}, ${ine.records.toLocaleString("pt-PT")} registos, ${ine.parishes_with_value.toLocaleString("pt-PT")} freguesias com valor; ${ine.platform_parishes_with_reference.toLocaleString("pt-PT")} freguesias da plataforma com referência.` : "ainda não foi lida."}</p>
+            <p className="text-muted fs-12">{ine.attribution}</p>
+            <p className="mb-2"><strong>Freguesias:</strong> {p.with_code.toLocaleString("pt-PT")} de {p.platform.toLocaleString("pt-PT")} da plataforma com o código oficial (DICOFRE); a lista oficial tem {p.official.toLocaleString("pt-PT")}.</p>
+            <Row className="g-3">
+                <Col lg={6}>
+                    <h6 className="fs-13">Sem código ({p.without_code.length})</h6>
+                    <ul className="list-unstyled fs-13 mb-0" data-testid="radar-ine-without-code">{p.without_code.map((x) => <li key={x.id}>{x.name}<span className="text-muted">{x.municipality ? `, ${x.municipality}` : ""}</span></li>)}</ul>
+                </Col>
+                <Col lg={6}>
+                    <h6 className="fs-13">Na lista oficial e não na plataforma ({p.official_missing_count.toLocaleString("pt-PT")}; uniões e desagregações)</h6>
+                    <ul className="list-unstyled fs-13 mb-0" style={{ maxHeight: 320, overflowY: "auto" }}>{p.official_missing.map((x) => <li key={x.dicofre}>{x.name}<span className="text-muted">, {x.municipality} ({x.dicofre})</span></li>)}</ul>
+                </Col>
+            </Row>
         </div>
     );
 }

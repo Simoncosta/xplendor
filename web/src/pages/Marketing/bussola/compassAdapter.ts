@@ -1,5 +1,6 @@
 import { createPostFromPlay, excludeRestaurantItem, getPlayCaption, ignoreRestaurantSignal, requestPlayCaption,
-    createPostFromStandPlay, excludeStandVehicle, getStandPlayCaption, ignoreStandSignals, requestStandPlayCaption } from "helpers/laravel_helper";
+    createPostFromStandPlay, excludeStandVehicle, getStandPlayCaption, ignoreStandSignals, requestStandPlayCaption,
+    createPostFromImoveisPlay, excludeImoveisProperty, getImoveisPlayCaption, ignoreImoveisSignals, requestImoveisPlayCaption } from "helpers/laravel_helper";
 import type { CompassPlay } from "common/models/bussola.model";
 
 /**
@@ -14,12 +15,14 @@ export interface CompassApi {
 }
 
 export interface CompassAdapter {
-    key: "restauracao" | "stand";
+    key: "restauracao" | "stand" | "imobiliario";
     api: CompassApi;
     /** Ignorar durante 4 semanas (todas as chaves da jogada) ou não voltar a sugerir (o sujeito). */
     ignore: (companyId: number, play: CompassPlay, permanent: boolean) => Promise<void>;
     exclude: { label: string; confirmTitle: string; confirmText: string; done: string; can: (p: CompassPlay) => boolean };
     empty: string;
+    /** O título da lista dos sujeitos no "Ver detalhe" (omissão: "Veículos"). */
+    itemsHeading?: string;
 }
 
 /** A jogada é de um só artigo (pode ser excluído das sugestões). */
@@ -59,4 +62,23 @@ export const standAdapter: CompassAdapter = {
         can: (p) => !!p.car_id,
     },
     empty: "Esta semana não há jogadas: nenhum sinal do stock, dos preços, dos anúncios ou da procura pede uma ação.",
+};
+
+/** O imobiliário (Bússola Master): as rotas da Bússola do imobiliário; "Não voltar a sugerir este imóvel" nas jogadas de um só imóvel. */
+export const imoveisAdapter: CompassAdapter = {
+    key: "imobiliario",
+    api: { createPost: createPostFromImoveisPlay, requestCaption: (c, d) => requestImoveisPlayCaption(c, { play_key: d.play_key, networks: d.networks }), getCaption: getImoveisPlayCaption },
+    ignore: async (companyId, play, permanent) => {
+        if (permanent) await excludeImoveisProperty(companyId, play.signal_keys[0]);
+        else await ignoreImoveisSignals(companyId, play.signal_keys);
+    },
+    exclude: {
+        label: "Não voltar a sugerir este imóvel",
+        confirmTitle: "Não voltar a sugerir este imóvel?",
+        confirmText: "O imóvel deixa de entrar nas jogadas da Bússola. Os blocos e a carteira continuam a mostrá-lo.",
+        done: "O imóvel não volta a ser sugerido.",
+        can: (p) => !!p.property_id,
+    },
+    empty: "Esta semana não há jogadas: nenhum sinal da carteira, da zona ou do calendário pede uma ação.",
+    itemsHeading: "Imóveis",
 };

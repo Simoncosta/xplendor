@@ -80,7 +80,7 @@ export default function BussolaPlays({ companyId, data, onLocation, onChanged, a
                 onClose={() => setCreating(null)} onCreated={(msg) => { setCreating(null); toast.success(msg); onChanged?.(); }} />
             <PlayCaptionModal companyId={companyId} locationId={locationId} play={suggesting} api={adapter.api} onClose={() => setSuggesting(null)}
                 onUse={(play, prefill) => { setSuggesting(null); setCreating({ play, prefill }); }} />
-            <PlayDetailModal play={detail} onClose={() => setDetail(null)} />
+            <PlayDetailModal play={detail} onClose={() => setDetail(null)} itemsHeading={adapter.itemsHeading} />
         </PageCard>
     );
 }

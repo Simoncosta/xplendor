@@ -15,7 +15,7 @@ use App\Services\Restaurant\RestaurantCompassProvider;
 final class CompassProviders
 {
     /** @var list<class-string<CompassProvider>> pela ordem de preferência */
-    public const PROVIDERS = [RestaurantCompassProvider::class, StandCompassProvider::class];
+    public const PROVIDERS = [RestaurantCompassProvider::class, StandCompassProvider::class, \App\Services\Compass\Imoveis\ImoveisCompassProvider::class];
 
     public function __construct(private readonly CompanyModuleService $modules) {}
 

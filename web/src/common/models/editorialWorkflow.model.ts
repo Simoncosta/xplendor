@@ -153,6 +153,8 @@ export interface PostWorkflow {
     comments: { id: number; author: string | null; body: string; visibility: "internal" | "shared"; version_number: number | null; mine: boolean; created_at: string | null }[];
     events: { type: string; from_stage: Stage | null; to_stage: Stage | null; message: string | null; who: string | null; created_at: string | null }[];
     creative: { caption: string | null; hashtags: string[]; cta: string | null; media_format: string | null } | null;
+    /** Bússola Master: os avisos de conformidade (a classe energética dos imóveis); nunca bloqueiam. */
+    compliance?: { warnings: string[] };
     media_validation: { errors: string[]; warnings: string[]; by_network: Partial<Record<import("./editorialPost.model").Network, { errors: string[]; warnings: string[] }>> };
     /** etapa → motivo (null = permitido) */
     moves: Partial<Record<Stage, string | null>>;

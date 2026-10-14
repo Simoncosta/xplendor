@@ -120,6 +120,7 @@ class RadarAdminController extends Controller
             'relevance' => $this->relevanceBySector(),
             'signals' => $this->signalsByCompany(),
             'companies' => $this->companies(),
+            'ine' => $this->ineAndParishes(),
             'labels' => Lexicon::LABELS,
             'limits' => [
                 'max_requests_per_hour' => (int) config('radar.max_requests_per_hour', 4),
@@ -228,6 +229,38 @@ class RadarAdminController extends Controller
             'by_status' => $g->pluck('n', 'status')->map(fn ($n) => (int) $n)->all(),
             'cost_month_usd' => round((float) AiRequest::where('company_id', $id)->where('mode', 'radar_porque')->where('created_at', '>=', now()->startOfMonth())->sum('cost_usd'), 4),
         ])->values()->all();
+    }
+
+    /**
+     * R3: a referência do INE e a ligação das freguesias pelo DICOFRE (resposta à pergunta 10):
+     * as freguesias da plataforma sem código e as da lista oficial que a plataforma não tem
+     * (uniões e desagregações). Nada é apagado.
+     */
+    private function ineAndParishes(): array
+    {
+        $last = DB::table('ine_housing_prices')->orderByDesc('period_code')->first();
+        $period = $last?->period_code;
+        $withValue = $period ? DB::table('ine_housing_prices')->where('period_code', $period)->where('geo_level', 'freguesia')->where('has_value', true)->pluck('official_code') : collect();
+        $platformCodes = DB::table('parishes')->whereNotNull('dicofre')->pluck('dicofre');
+
+        return [
+            'period' => $last?->period_label, 'ine_updated_on' => $last?->ine_updated_on, 'fetched_at' => $last?->fetched_at,
+            'records' => $period ? DB::table('ine_housing_prices')->where('period_code', $period)->count() : 0,
+            'parishes_with_value' => $withValue->count(),
+            'platform_parishes_with_reference' => $withValue->intersect($platformCodes)->count(),
+            'attribution' => \App\Models\IneHousingPrice::ATTRIBUTION . ($last ? ", {$last->period_label}." : '.'),
+            'parishes' => [
+                'platform' => DB::table('parishes')->count(),
+                'with_code' => $platformCodes->count(),
+                'official' => DB::table('official_parishes')->count(),
+                'without_code' => DB::table('parishes')->leftJoin('municipalities', 'municipalities.id', '=', 'parishes.municipality_id')->whereNull('parishes.dicofre')
+                    ->orderBy('municipalities.name')->orderBy('parishes.name')->limit(100)->get(['parishes.id', 'parishes.name', 'municipalities.name as municipality'])
+                    ->map(fn ($r) => ['id' => $r->id, 'name' => $r->name, 'municipality' => $r->municipality])->all(),
+                'official_missing_count' => DB::table('official_parishes')->whereNotIn('dicofre', $platformCodes)->count(),
+                'official_missing' => DB::table('official_parishes')->whereNotIn('dicofre', $platformCodes)->orderBy('municipality_name')->orderBy('name')->limit(100)
+                    ->get(['dicofre', 'name', 'municipality_name'])->map(fn ($r) => ['dicofre' => $r->dicofre, 'name' => $r->name, 'municipality' => $r->municipality_name])->all(),
+            ],
+        ];
     }
 
     /** Todas as empresas, com o ramo e o interruptor do Radar (o módulo radar). */

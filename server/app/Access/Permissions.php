@@ -41,7 +41,7 @@ final class Permissions
         'blog' => ['label' => 'Blog', 'module' => null, 'actions' => ['ver', 'criar', 'editar', 'aprovar', 'apagar']],
         'marca' => ['label' => 'Marca', 'module' => null, 'actions' => ['ver', 'criar', 'editar']],
         // A Bússola da restauração (PingWin) e a do stand (stock).
-        'bussola' => ['label' => 'Bússola', 'module' => ['pingwin', 'stock', 'radar'], 'actions' => ['ver', 'criar', 'editar']],
+        'bussola' => ['label' => 'Bússola', 'module' => ['pingwin', 'stock', 'radar', 'imoveis'], 'actions' => ['ver', 'criar', 'editar']],
         'resultados' => ['label' => 'Resultados', 'module' => 'marketing_analytics', 'actions' => ['ver']],
         'financas' => ['label' => 'Finanças', 'module' => 'finance', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'restauracao' => ['label' => 'Restauração', 'module' => 'pingwin', 'actions' => ['ver', 'criar', 'editar', 'apagar', 'configurar']],
@@ -53,6 +53,8 @@ final class Permissions
         // Ficheiros: criar = enviar e criar pastas; editar = mudar o nome e mover. As pastas do sistema
         // seguem, além disto, a permissão da sua área (App\Services\Files\SystemFolders).
         'ficheiros' => ['label' => 'Ficheiros', 'module' => 'ficheiros', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
+        // Bússola Master (R3): a carteira de imóveis do consultor imobiliário.
+        'imoveis' => ['label' => 'Imóveis', 'module' => 'imoveis', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'agencia' => ['label' => 'Agência gestora', 'module' => null, 'actions' => ['configurar']],
         'plataforma' => ['label' => 'Plataforma', 'module' => null, 'actions' => ['configurar']],
     ];

@@ -72,3 +72,11 @@ R4 | 2026-10-12 19:25:35 WEST | https://www.ine.pt/ine/json_indicador/pindica.js
 2026-10-12 19:22:06 WEST | https://info.portaldasfinancas.gov.pt/pt/apoio_contribuinte/calendario_fiscal/Pages/obrigacoes.aspx | HTTP 200
 2026-10-12 19:22:07 WEST | https://files.diariodarepublica.pt/1s/2009/02/03000/0092601029.pdf | HTTP 200
 2026-10-12 19:22:34 WEST | https://www.dgaep.gov.pt/index.cfm?OBJID=C3D90263-E275-4B47-A59B-E956A5007C89 | HTTP 200
+
+## Fecho (14 de outubro de 2026): INE, 3 pedidos (condições da API, calendário ICS, lista oficial das freguesias)
+
+2026-10-14T18:30:40Z | GET https://www.ine.pt/xportal/xmain?xpid=INE&xpgid=ine_api_v2&xlang=pt | 200 redirs=0 bytes=58768
+2026-10-14T18:30:52Z | GET https://www.ine.pt/ine/calendario_ics.jsp?lang=PT | 200 redirs=0 url=https://www.ine.pt/ine/calendario_ics.jsp?lang=PT bytes=26720
+2026-10-14T18:32:22Z | GET https://www.ine.pt/ine/json_indicador/pindicaMeta.jsp?varcd=0011609&lang=PT | 200 redirs=0 bytes=805650 t=55.444518
+
+Leitura direta da página oficial do calendário do BCE na noite de 12 de outubro: 2026-10-12T18:27:22Z | https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html | 200.

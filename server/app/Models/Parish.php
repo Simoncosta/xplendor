@@ -16,4 +16,10 @@ class Parish extends Model implements AuditableContract
         'facebook',
         'municipality_id',
     ];
+
+    /** Bússola Master: o concelho (para o código DICO e a referência do INE). */
+    public function municipality(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Municipality::class);
+    }
 }

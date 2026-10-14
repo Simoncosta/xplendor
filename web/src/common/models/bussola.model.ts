@@ -1,6 +1,8 @@
 /** Bússola comum (restauração e stand): o topo, as jogadas da semana e os blocos. */
 export type PlayType = "weak_period" | "item_up" | "item_down" | "stale_item"
-    | "stop_ad" | "review_price" | "renew_stock" | "use_interest" | "give_stage";
+    | "stop_ad" | "review_price" | "renew_stock" | "use_interest" | "give_stage"
+    // Imobiliário (Bússola Master).
+    | "bce_day" | "publish_new" | "ask_testimonial" | "show_zone";
 
 export interface CompassNumber {
     kind: "store_variation" | "revenue" | "family" | "same_day";
@@ -34,11 +36,15 @@ export interface CompassPlay {
     theme: string;
     format: string;
     /** Stand: os veículos da jogada (marca, modelo e ano; sem dados pessoais). */
-    items?: { car_id: number; label: string; detail: string | null }[];
+    items?: { car_id?: number; property_id?: number; label: string; detail: string | null }[];
     /** Stand: o veículo único da jogada (para "Ver veículo" e "Rever preço"). */
     car_id?: number | null;
     /** Stand: os botões desta jogada. */
-    actions?: ("create" | "suggest" | "view_car" | "review_price")[];
+    actions?: ("create" | "suggest" | "view_car" | "review_price" | "view_property")[];
+    /** Imobiliário: o imóvel único da jogada, a freguesia (jogada da zona) e a ligação oficial (jogada do BCE). */
+    property_id?: number | null;
+    parish_id?: number | null;
+    link?: string | null;
     /** Stand: o que acontece às fotografias no "Criar publicação". */
     post_note?: string | null;
 }

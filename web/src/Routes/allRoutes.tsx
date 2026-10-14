@@ -63,6 +63,7 @@ import AdminChargesPage from "pages/Admin/AdminChargesPage";
 import StorageUsagePage from "pages/Admin/StorageUsagePage";
 import AdminRadarPage from "pages/Admin/AdminRadarPage";
 import FilesPage from "pages/Files/FilesPage";
+import ImoveisPage from "pages/Imoveis/ImoveisPage";
 import ContentReviewPage from "pages/ContentReview";
 import ContentReviewPreview from "pages/ContentReview/Preview";
 import QuotePublicPreview from "pages/Admin/QuotePublicPreview";
@@ -152,6 +153,8 @@ const authProtectedRoutes = [
     { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigosPage /></RequireModule> },
     // Linha Editorial (transversal)
     { path: "/ficheiros", component: <RequireModule module="ficheiros" permission="ficheiros.ver"><FilesPage /></RequireModule> },
+    // Bússola Master (R3): a carteira do consultor imobiliário (módulo imoveis).
+    { path: "/imoveis", component: <RequireModule module="imoveis" permission="imoveis.ver"><ImoveisPage /></RequireModule> },
     { path: "/editorial", component: <RequireModule module="linha_editorial" permission="editorial.ver"><EditorialPage /></RequireModule> },
     // Link de aprovação visto pela equipa ("Ver como o cliente"): sem ações e sem contar como abertura.
     { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial" permission="editorial.ver"><ContentReviewPreview /></RequireModule> },
@@ -161,7 +164,7 @@ const authProtectedRoutes = [
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).
     { path: "/restauracao/categorias", component: <RequireModule module="pingwin" permission="restauracao.ver"><CategoriasFamiliasPage /></RequireModule> },
     // F3 do marketing: "O que publicar e quando" (módulo pingwin, como o backend).
-    { path: "/marketing/bussola", component: <RequireModule anyModule={["pingwin", "stock", "radar"]} permission="bussola.ver"><BussolaPage /></RequireModule> },
+    { path: "/marketing/bussola", component: <RequireModule anyModule={["pingwin", "stock", "radar", "imoveis"]} permission="bussola.ver"><BussolaPage /></RequireModule> },
     // Endereço antigo da Bússola ("O que publicar e quando").
     { path: "/marketing/o-que-publicar", component: <Navigate to="/marketing/bussola" replace /> },
     { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores" permission="restauracao.ver"><FornecedoresPage /></RequireModule> },

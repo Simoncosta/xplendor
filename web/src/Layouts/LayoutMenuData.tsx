@@ -201,7 +201,7 @@ const Navdata = () => {
                 // Linha Editorial — transversal (qualquer ramo). Gated pelo SEU módulo.
                 { id: "linha-editorial", label: "Linha Editorial", link: "/editorial", parentId: "analytics", module: "linha_editorial", permission: "editorial.ver" },
                 // Bússola comum: com o PingWin (restauração) ou com o stock (stand), pelos módulos da empresa.
-                { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", anyModule: ["pingwin", "stock", "radar"], permission: "bussola.ver" },
+                { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", anyModule: ["pingwin", "stock", "radar", "imoveis"], permission: "bussola.ver" },
             ],
         },
         // ── Restauração — OPERAÇÃO (dia-a-dia). O grupo aparece se a empresa tem
@@ -270,6 +270,8 @@ const Navdata = () => {
         },
         // ── Ficheiros: o gestor de ficheiros da empresa (módulo "ficheiros") ──
         { id: "ficheiros", label: "Ficheiros", icon: "ri-folder-2-line", link: "/ficheiros", module: "ficheiros", permission: "ficheiros.ver" },
+        // ── Imóveis: a carteira do consultor imobiliário (módulo "imoveis") ──
+        { id: "imoveis", label: "Imóveis", icon: "ri-home-4-line", link: "/imoveis", module: "imoveis", permission: "imoveis.ver" },
         // ── Equipa — ferramentas transversais da equipa (qualquer ramo) ──────────
         {
             id: "equipa",

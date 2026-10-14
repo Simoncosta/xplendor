@@ -1,0 +1,695 @@
+[
+ {
+  "IndicadorCod": "0012234",
+  "IndicadorDsg": "Valor mediano das vendas de alojamentos familiares nos últimos 12 meses (Metodologia 2022 - €/ m²) por Localização geográfica (NUTS - 2024) e Categoria do alojamento familiar; Trimestral - INE, Estatísticas de preços da habitação ao nível local (Metodologia 2022)",
+  "MetaInfUrl": "https://www.ine.pt/bddXplorer/htdocs/minfo.jsp?var_cd=0012234&lingua=PT",
+  "DataExtracao": "2026-10-12T19:25:35.363+01:00",
+  "DataUltimoAtualizacao": "2026-07-17",
+  "UltimoPref": "1.º Trimestre de 2026",
+  "Sucesso": {
+   "Verdadeiro": [
+    {
+     "Msg": "OK"
+    }
+   ]
+  },
+  "Dados": {
+   "1.º Trimestre de 2026": [
+    {
+     "geocod": "PT",
+     "geodsg": "Portugal",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "2 108",
+     "valor": "2108"
+    },
+    {
+     "geocod": "PT",
+     "geodsg": "Portugal",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "2 168",
+     "valor": "2168"
+    },
+    {
+     "geocod": "PT",
+     "geodsg": "Portugal",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "2 402",
+     "valor": "2402"
+    },
+    {
+     "geocod": "11A131210",
+     "geodsg": "Paranhos",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "3 101",
+     "valor": "3101"
+    },
+    {
+     "geocod": "11A1312",
+     "geodsg": "Porto",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "3 292",
+     "valor": "3292"
+    },
+    {
+     "geocod": "11A131210",
+     "geodsg": "Paranhos",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "3 424",
+     "valor": "3424"
+    },
+    {
+     "geocod": "11A1312",
+     "geodsg": "Porto",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "3 510",
+     "valor": "3510"
+    },
+    {
+     "geocod": "1A0110664",
+     "geodsg": "Santa Clara",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "3 659",
+     "valor": "3659"
+    },
+    {
+     "geocod": "1A0110664",
+     "geodsg": "Santa Clara",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "3 733",
+     "valor": "3733"
+    },
+    {
+     "geocod": "11A131210",
+     "geodsg": "Paranhos",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "3 735",
+     "valor": "3735"
+    },
+    {
+     "geocod": "11A1312",
+     "geodsg": "Porto",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "3 904",
+     "valor": "3904"
+    },
+    {
+     "geocod": "1A0110633",
+     "geodsg": "Olivais",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 179",
+     "valor": "4179"
+    },
+    {
+     "geocod": "1A0110607",
+     "geodsg": "Beato",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 286",
+     "valor": "4286"
+    },
+    {
+     "geocod": "1A0110633",
+     "geodsg": "Olivais",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 296",
+     "valor": "4296"
+    },
+    {
+     "geocod": "1A0110663",
+     "geodsg": "Penha de França",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 417",
+     "valor": "4417"
+    },
+    {
+     "geocod": "1A0110663",
+     "geodsg": "Penha de França",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 465",
+     "valor": "4465"
+    },
+    {
+     "geocod": "1A0110656",
+     "geodsg": "Arroios",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "4 488",
+     "valor": "4488"
+    },
+    {
+     "geocod": "1A0110611",
+     "geodsg": "Carnide",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 553",
+     "valor": "4553"
+    },
+    {
+     "geocod": "1A0110611",
+     "geodsg": "Carnide",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 570",
+     "valor": "4570"
+    },
+    {
+     "geocod": "1A0110607",
+     "geodsg": "Beato",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 600",
+     "valor": "4600"
+    },
+    {
+     "geocod": "1A0110608",
+     "geodsg": "Benfica",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 631",
+     "valor": "4631"
+    },
+    {
+     "geocod": "1A01105",
+     "geodsg": "Cascais",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 633",
+     "valor": "4633"
+    },
+    {
+     "geocod": "1A0110608",
+     "geodsg": "Benfica",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 639",
+     "valor": "4639"
+    },
+    {
+     "geocod": "1A0110655",
+     "geodsg": "Areeiro",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 648",
+     "valor": "4648"
+    },
+    {
+     "geocod": "1A0110618",
+     "geodsg": "Lumiar",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 661",
+     "valor": "4661"
+    },
+    {
+     "geocod": "1A0110618",
+     "geodsg": "Lumiar",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 670",
+     "valor": "4670"
+    },
+    {
+     "geocod": "1A01105",
+     "geodsg": "Cascais",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 687",
+     "valor": "4687"
+    },
+    {
+     "geocod": "1A0110618",
+     "geodsg": "Lumiar",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "4 708",
+     "valor": "4708"
+    },
+    {
+     "geocod": "1A0110656",
+     "geodsg": "Arroios",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 776",
+     "valor": "4776"
+    },
+    {
+     "geocod": "1A0110621",
+     "geodsg": "Marvila",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 800",
+     "valor": "4800"
+    },
+    {
+     "geocod": "1A0110665",
+     "geodsg": "Santa Maria Maior",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 824",
+     "valor": "4824"
+    },
+    {
+     "geocod": "1A0110602",
+     "geodsg": "Alcântara",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 825",
+     "valor": "4825"
+    },
+    {
+     "geocod": "1A0110656",
+     "geodsg": "Arroios",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 828",
+     "valor": "4828"
+    },
+    {
+     "geocod": "1A01106",
+     "geodsg": "Lisboa",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 896",
+     "valor": "4896"
+    },
+    {
+     "geocod": "1A0110639",
+     "geodsg": "São Domingos de Benfica",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 899",
+     "valor": "4899"
+    },
+    {
+     "geocod": "1A0110602",
+     "geodsg": "Alcântara",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 938",
+     "valor": "4938"
+    },
+    {
+     "geocod": "1A0110667",
+     "geodsg": "São Vicente",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 946",
+     "valor": "4946"
+    },
+    {
+     "geocod": "1A0110667",
+     "geodsg": "São Vicente",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 954",
+     "valor": "4954"
+    },
+    {
+     "geocod": "1A0110655",
+     "geodsg": "Areeiro",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "4 963",
+     "valor": "4963"
+    },
+    {
+     "geocod": "1A0110654",
+     "geodsg": "Alvalade",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "4 990",
+     "valor": "4990"
+    },
+    {
+     "geocod": "1A0110665",
+     "geodsg": "Santa Maria Maior",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 000",
+     "valor": "5000"
+    },
+    {
+     "geocod": "1A0110621",
+     "geodsg": "Marvila",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 008",
+     "valor": "5008"
+    },
+    {
+     "geocod": "1A01105",
+     "geodsg": "Cascais",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "5 027",
+     "valor": "5027"
+    },
+    {
+     "geocod": "1A0110654",
+     "geodsg": "Alvalade",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 041",
+     "valor": "5041"
+    },
+    {
+     "geocod": "1A01106",
+     "geodsg": "Lisboa",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 082",
+     "valor": "5082"
+    },
+    {
+     "geocod": "1A0110663",
+     "geodsg": "Penha de França",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "5 124",
+     "valor": "5124"
+    },
+    {
+     "geocod": "1A0110601",
+     "geodsg": "Ajuda",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 161",
+     "valor": "5161"
+    },
+    {
+     "geocod": "1A0110601",
+     "geodsg": "Ajuda",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "5 169",
+     "valor": "5169"
+    },
+    {
+     "geocod": "1A0110639",
+     "geodsg": "São Domingos de Benfica",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 182",
+     "valor": "5182"
+    },
+    {
+     "geocod": "1A0110657",
+     "geodsg": "Avenidas Novas",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "5 274",
+     "valor": "5274"
+    },
+    {
+     "geocod": "1A0110610",
+     "geodsg": "Campolide",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "5 294",
+     "valor": "5294"
+    },
+    {
+     "geocod": "1A0110658",
+     "geodsg": "Belém",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "5 362",
+     "valor": "5362"
+    },
+    {
+     "geocod": "1A0110607",
+     "geodsg": "Beato",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "5 383",
+     "valor": "5383"
+    },
+    {
+     "geocod": "1A0110610",
+     "geodsg": "Campolide",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 486",
+     "valor": "5486"
+    },
+    {
+     "geocod": "1A0110658",
+     "geodsg": "Belém",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 498",
+     "valor": "5498"
+    },
+    {
+     "geocod": "1A0110621",
+     "geodsg": "Marvila",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "5 544",
+     "valor": "5544"
+    },
+    {
+     "geocod": "1A0110665",
+     "geodsg": "Santa Maria Maior",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "5 566",
+     "valor": "5566"
+    },
+    {
+     "geocod": "1A0110660",
+     "geodsg": "Estrela",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "5 691",
+     "valor": "5691"
+    },
+    {
+     "geocod": "1A0110602",
+     "geodsg": "Alcântara",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "5 696",
+     "valor": "5696"
+    },
+    {
+     "geocod": "1A0110659",
+     "geodsg": "Campo de Ourique",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "5 702",
+     "valor": "5702"
+    },
+    {
+     "geocod": "1A0110661",
+     "geodsg": "Misericórdia",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "5 714",
+     "valor": "5714"
+    },
+    {
+     "geocod": "1A0110662",
+     "geodsg": "Parque das Nações",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "5 750",
+     "valor": "5750"
+    },
+    {
+     "geocod": "1A0110660",
+     "geodsg": "Estrela",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 833",
+     "valor": "5833"
+    },
+    {
+     "geocod": "1A0110661",
+     "geodsg": "Misericórdia",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 913",
+     "valor": "5913"
+    },
+    {
+     "geocod": "1A0110658",
+     "geodsg": "Belém",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "5 946",
+     "valor": "5946"
+    },
+    {
+     "geocod": "1A0110659",
+     "geodsg": "Campo de Ourique",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "5 979",
+     "valor": "5979"
+    },
+    {
+     "geocod": "1A0110657",
+     "geodsg": "Avenidas Novas",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "6 000",
+     "valor": "6000"
+    },
+    {
+     "geocod": "1A0110666",
+     "geodsg": "Santo António",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "6 047",
+     "valor": "6047"
+    },
+    {
+     "geocod": "1A0110660",
+     "geodsg": "Estrela",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "6 142",
+     "valor": "6142"
+    },
+    {
+     "geocod": "1A01106",
+     "geodsg": "Lisboa",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "6 226",
+     "valor": "6226"
+    },
+    {
+     "geocod": "1A0110662",
+     "geodsg": "Parque das Nações",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "6 407",
+     "valor": "6407"
+    },
+    {
+     "geocod": "1A0110661",
+     "geodsg": "Misericórdia",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "6 646",
+     "valor": "6646"
+    },
+    {
+     "geocod": "1A0110639",
+     "geodsg": "São Domingos de Benfica",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "6 720",
+     "valor": "6720"
+    },
+    {
+     "geocod": "1A0110666",
+     "geodsg": "Santo António",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "ind_string": "6 986",
+     "valor": "6986"
+    },
+    {
+     "geocod": "1A0110659",
+     "geodsg": "Campo de Ourique",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "7 010",
+     "valor": "7010"
+    },
+    {
+     "geocod": "1A0110610",
+     "geodsg": "Campolide",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "7 109",
+     "valor": "7109"
+    },
+    {
+     "geocod": "1A0110657",
+     "geodsg": "Avenidas Novas",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "7 299",
+     "valor": "7299"
+    },
+    {
+     "geocod": "1A0110655",
+     "geodsg": "Areeiro",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "7 307",
+     "valor": "7307"
+    },
+    {
+     "geocod": "1A0110662",
+     "geodsg": "Parque das Nações",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "7 368",
+     "valor": "7368"
+    },
+    {
+     "geocod": "1A0110666",
+     "geodsg": "Santo António",
+     "dim_3": "H11",
+     "dim_3_t": "Novos",
+     "ind_string": "9 577",
+     "valor": "9577"
+    },
+    {
+     "geocod": "11D1818",
+     "geodsg": "Sernancelhe",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "260",
+     "valor": "260"
+    },
+    {
+     "geocod": "11E0408",
+     "geodsg": "Mogadouro",
+     "dim_3": "H12",
+     "dim_3_t": "Existentes",
+     "ind_string": "272",
+     "valor": "272"
+    },
+    {
+     "geocod": "112030201",
+     "geodsg": "Abade de Neiva",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "sinal_conv": "-",
+     "sinal_conv_desc": "Dado nulo ou não aplicável",
+     "ind_string": "-"
+    },
+    {
+     "geocod": "112030202",
+     "geodsg": "Aborim",
+     "dim_3": "H1",
+     "dim_3_t": "Total",
+     "sinal_conv": "-",
+     "sinal_conv_desc": "Dado nulo ou não aplicável",
+     "ind_string": "-"
+    }
+   ]
+  }
+ }
+]

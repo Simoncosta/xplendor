@@ -119,7 +119,7 @@ class BrandProfileAssistantsTest extends TestCase
         $this->assertSame('autocaravanas', BrandProfileTemplates::keyFor($leaf('autocaravanas')));
         $this->assertSame('universal', BrandProfileTemplates::keyFor($leaf('automovel')));   // agrupador
         $this->assertSame('universal', BrandProfileTemplates::keyFor(null));
-        $this->assertSame('brand-templates-v2', BrandProfileTemplates::for(null)['version']);
+        $this->assertSame('brand-templates-v3', BrandProfileTemplates::for(null)['version']);
 
         // Os dois ramos novos: escolhem-se na Linha Editorial e têm modelo próprio.
         $saas = BrandProfileTemplates::for($leaf('software-saas'));
@@ -132,7 +132,11 @@ class BrandProfileAssistantsTest extends TestCase
         $this->assertSame(['clientes sem autorização', 'críticas a outras agências'], $agency['topics_to_avoid']);
         $this->assertSame(['Trabalhos para clientes', 'Processo e bastidores', 'Dicas de comunicação', 'A equipa', 'Resultados'], array_column($agency['pillars'], 'name'));
         $selectable = collect(app(\App\Services\EditorialLineService::class)->selectableSectors())->pluck('slug')->all();
-        $this->assertSame(['carros', 'restauracao', 'autocaravanas', 'domotica', 'software-saas', 'agencia-comunicacao'], $selectable);
+        $this->assertSame(['carros', 'restauracao', 'autocaravanas', 'domotica', 'software-saas', 'agencia-comunicacao', 'imobiliario'], $selectable);
+        // Bússola Master: o ramo "Imobiliário" com modelo próprio.
+        $imob = BrandProfileTemplates::for($leaf('imobiliario'));
+        $this->assertSame(['imobiliario', 'Imobiliário', 'Marque uma visita.'], [$imob['key'], $imob['label'], $imob['cta_default']]);
+        $this->assertSame(['A zona', 'Os imóveis', 'O processo', 'A confiança'], array_column($imob['pillars'], 'name'));
         // Mesma estrutura em todos os modelos.
         $fields = array_keys(BrandProfileTemplates::for(null));
         foreach (BrandProfileTemplates::keys() as $key) {
@@ -169,7 +173,7 @@ class BrandProfileAssistantsTest extends TestCase
         $this->assertSame(['#comidaboa', '#Porto', '#porto'], $fields['hashtags_default']['value']);
         $this->assertSame([['name' => 'Bastidores', 'description' => 'A cozinha']], $fields['pillars']['value']);
         $this->assertSame('template', $fields['pillars']['source']);   // fonte inválida → modelo
-        $this->assertSame(['restauracao', 'brand-templates-v2'], [$data['result']['template'], $data['result']['template_version']]);
+        $this->assertSame(['restauracao', 'brand-templates-v3'], [$data['result']['template'], $data['result']['template_version']]);
 
         // Nunca grava o perfil.
         $profile = CompanyBrandProfile::where('company_id', $this->a->id)->first();
@@ -180,7 +184,7 @@ class BrandProfileAssistantsTest extends TestCase
         $this->assertSame(['brand_profile', 'brand-profile-v1', 800], [$row->mode, $row->prompt_version, $row->total_tokens]);
 
         $prompt = $this->sentUserPrompt();
-        foreach (['Restauração', 'brand-templates-v2', 'Quebom', '@quebom', 'Tom atual da casa', AudienceSummaryService::NO_DATA_WARNING, '<<<DADOS'] as $expected) {
+        foreach (['Restauração', 'brand-templates-v3', 'Quebom', '@quebom', 'Tom atual da casa', AudienceSummaryService::NO_DATA_WARNING, '<<<DADOS'] as $expected) {
             $this->assertStringContainsString($expected, $prompt, $expected);
         }
     }

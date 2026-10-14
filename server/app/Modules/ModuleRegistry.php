@@ -75,6 +75,13 @@ class ModuleRegistry
             'car_specific' => false,
             'depends_on' => [],
         ],
+        // Imobiliário (Bússola Master, R3): a carteira de imóveis e a Bússola do imobiliário.
+        // Nasce desligado; liga-se pelo preset real_estate (ramo Imobiliário) ou à mão.
+        'imoveis' => [
+            'label' => 'Imobiliário: Imóveis',
+            'car_specific' => false,
+            'depends_on' => [],
+        ],
         // Radar de oportunidade (Bússola Master): o interruptor por empresa. Nasce desligado em
         // todas (fora dos presets); só o root o liga. Sem RADAR_ENABLED nada chega à empresa.
         'radar' => [
@@ -158,6 +165,8 @@ class ModuleRegistry
         // Outros ramos (e empresas sem ramo): marketing, Linha Editorial e suporte.
         'base' => ['marketing_analytics', 'support_tasks', 'linha_editorial'],
         // Restauração liberta o PingWin + TODAS as secções (operação + cadastros).
+        // Imobiliário (Bússola Master): marketing, suporte, Linha Editorial e os imóveis.
+        'real_estate' => ['marketing_analytics', 'support_tasks', 'linha_editorial', 'imoveis'],
         'restaurant' => [
             'marketing_analytics', 'support_tasks', 'pingwin',
             'restauracao_lojas', 'restauracao_calendario', 'restauracao_artigos', 'restauracao_faturas',
@@ -167,7 +176,7 @@ class ModuleRegistry
     ];
 
     /** Ramo (raiz da árvore de setores) → preset. */
-    private const SECTOR_PRESETS = ['automovel' => 'automotive', 'restauracao' => 'restaurant'];
+    private const SECTOR_PRESETS = ['automovel' => 'automotive', 'restauracao' => 'restaurant', 'imobiliario' => 'real_estate'];
 
     /**
      * O preset de uma empresa nova, pelo RAMO: o setor ou um antepassado dele decide

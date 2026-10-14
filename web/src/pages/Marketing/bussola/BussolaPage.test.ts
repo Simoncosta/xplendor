@@ -4,6 +4,7 @@ jest.mock("contexts/ModulesContext", () => ({ useAccess: () => ({ modules: [], i
 jest.mock("./RestaurantBussola", () => () => null);
 jest.mock("./stand/StandBussola", () => () => null);
 jest.mock("./radar/RadarCard", () => () => null);
+jest.mock("./imoveis/ImoveisBussola", () => () => null);
 jest.mock("Components/Common/PageHeader", () => () => null);
 jest.mock("react-toastify", () => ({ ToastContainer: () => null }));
 jest.mock("helpers/workingCompany", () => ({ getWorkingCompanyId: () => 7 }));
@@ -22,5 +23,10 @@ describe("Bússola comum: o fornecedor pelos módulos", () => {
         expect(compassProviders(["radar", "linha_editorial"], false)).toEqual([]);
         expect(compassProviders(["stock", "radar"], false)).toEqual(["stand"]);
         expect(compassProviders([], false)).toEqual(["restauracao"]);
+    });
+    it("os imóveis dão o imobiliário (também com o Radar)", () => {
+        expect(compassProviders(["imoveis", "radar"], false)).toEqual(["imobiliario"]);
+        expect(compassProviders(["imoveis"], true)).toEqual(["imobiliario"]);
+        expect(compassProviders(["stock", "imoveis"], false)).toEqual(["stand", "imobiliario"]);
     });
 });
