@@ -362,8 +362,9 @@ Schedule::command('files:catalog --execute')
     ->name('files-catalog-nightly')
     ->withoutOverlapping();
 
-// 05:20 (Lisboa): Bússola do stand, os sinais das empresas com o interruptor ligado (interna,
-// só com os dados já guardados; as frases da IA vão a seguir, como na restauração).
+// 05:20 (Lisboa): Bússola do stand, os sinais das empresas com o interruptor ligado, só com os
+// dados já guardados; as frases da IA vão a seguir, como na restauração. Externa (P2 do fecho):
+// chega à IA, por isso fica desligada no dev pelo SCHEDULE_EXTERNAL_JOBS.
 Schedule::call(function () {
     \App\Models\Company::where('bussola_stand_enabled', true)->pluck('id')
         ->each(fn ($id) => \App\Jobs\RecomputeStandCompassJob::dispatch((int) $id));

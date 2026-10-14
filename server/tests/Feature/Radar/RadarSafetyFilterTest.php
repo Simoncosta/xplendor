@@ -23,6 +23,7 @@ class RadarSafetyFilterTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['radar.enabled' => true]); // RADAR_ENABLED (desligado por omissão)
         Http::preventStrayRequests();
         $this->filter = new RadarSafetyFilter();
     }

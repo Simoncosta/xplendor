@@ -31,6 +31,7 @@ class RadarAdminTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['radar.enabled' => true]); // RADAR_ENABLED (desligado por omissão)
         Http::preventStrayRequests();
         $this->travelTo(CarbonImmutable::parse('2026-10-12 18:20:00'));
         $plan = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 9, 'created_at' => now(), 'updated_at' => now()]);

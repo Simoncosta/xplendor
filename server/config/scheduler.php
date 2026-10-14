@@ -15,5 +15,13 @@ return [
         'refresh-stale-market-aggregates', 'sync-carmine-cars', 'restaurant-daily-sync',
         'pingwin-supplier-cc-nightly', 'pingwin-supplier-documents-nightly', 'pingwin-supplier-document-lines-nightly',
         'ocr-pingwin-relink-nightly', 'social-followers-daily', 'radar-collect-feeds',
+        // P2 do fecho: tarefas internas cujo trabalho chama a IA (as frases da Bússola do stand).
+        // Contam como externas: no dev ficam desligadas, como as outras. A restauração já chegava
+        // à IA pela restaurant-daily-sync, que já era externa.
+        'bussola-stand-nightly',
     ],
+
+    // As tarefas agendadas que chegam à IA (pelos trabalhos que põem na fila). Todas têm de estar
+    // em external_job_names; o teste ScheduledExternalJobsTest confirma-o.
+    'ai_job_names' => ['restaurant-daily-sync', 'bussola-stand-nightly', 'radar-collect-feeds'],
 ];

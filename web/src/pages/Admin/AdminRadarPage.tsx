@@ -183,6 +183,12 @@ export default function AdminRadarPage() {
                 <PageHeader title="Radar" breadcrumbs={[{ label: "Administração" }]}
                     info="O que entrou dos feeds públicos (Google Trends, jornais e BCE), o que o filtro de segurança tirou e porquê. De cada item guarda-se só o título, a ligação, a fonte, a hora e o volume, durante 30 dias." />
 
+                {summary && !summary.radar_enabled && (
+                    <div className="alert alert-secondary d-flex align-items-start gap-2" role="status" data-testid="radar-disabled">
+                        <i className="ri-pause-circle-line fs-18 flex-shrink-0" />
+                        <div><strong>Radar desligado.</strong> A recolha dos feeds, a relevância e o encaixe não correm (RADAR_ENABLED=false). O que está abaixo é o que ficou das recolhas anteriores.</div>
+                    </div>
+                )}
                 {failed && <div className="alert alert-warning" role="alert">Não foi possível carregar o Radar. Tente novamente dentro de momentos.</div>}
 
                 <Row className="g-3 mb-3">

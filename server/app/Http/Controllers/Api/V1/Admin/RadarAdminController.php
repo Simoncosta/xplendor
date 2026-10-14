@@ -97,6 +97,7 @@ class RadarAdminController extends Controller
         ])->all();
 
         return ApiResponse::success([
+            'radar_enabled' => RadarCollector::enabled(),
             'sources' => $sources,
             'totals' => [
                 'items_24h' => RadarItem::where('fetched_at', '>=', $day)->count(),

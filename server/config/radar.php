@@ -12,6 +12,12 @@
  * Desligar uma fonte é mudar o enabled dela aqui.
  */
 return [
+    // O interruptor geral do Radar (P1 do fecho): desligado por omissão em todos os ambientes.
+    // Desligado, a recolha não corre (nem pela tarefa, nem pelo comando sem --force), a relevância
+    // e o encaixe não correm, e o painel do root diz "Radar desligado". O módulo radar de cada
+    // empresa é outra coisa: continua desligado até o root o ligar.
+    'enabled' => (bool) env('RADAR_ENABLED', false),
+
     // Identifica a XPLENDOR junto de cada fonte (sem cookies nem autenticação).
     'user_agent' => 'XPLENDOR-Radar/1.0 (leitura de feeds; contacto no site da XPLENDOR)',
 

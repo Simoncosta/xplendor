@@ -20,6 +20,9 @@ use Illuminate\Console\Command;
  *   php artisan radar:collect jornal_eco --force       passa por cima do teto de 4 pedidos por hora
  *   php artisan radar:collect ipma_avisos --force      lê uma fonte desligada (só nomeada e com --force)
  *
+ * Com o Radar desligado (RADAR_ENABLED=false, a omissão) o comando não faz nenhum pedido, salvo
+ * com --force ou com --fixture.
+ *
  * A simulação regista a recolha (conta para o teto por hora), mas não grava itens nem tendências.
  */
 class RadarCollectCommand extends Command
@@ -58,6 +61,12 @@ class RadarCollectCommand extends Command
         $execute = (bool) $this->option('execute');
         $this->line($execute ? 'A recolher e a gravar…' : 'SIMULAÇÃO (nenhum item é gravado). Use --execute para gravar.');
         $results = $collector->collect($source !== null ? (string) $source : null, $execute, ['force' => (bool) $this->option('force'), 'fixture' => $fixture]);
+
+        if ($results === [] && ! RadarCollector::enabled()) {
+            $this->warn('Radar desligado (RADAR_ENABLED=false): nada foi recolhido. Use --force para uma recolha à mão.');
+
+            return self::SUCCESS;
+        }
 
         $rows = [];
         foreach ($results as $r) {

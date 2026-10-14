@@ -45,6 +45,12 @@ class RadarCollector
      * @return array<string, array<string, mixed>> os totais por fonte: lidos, novos, repetidos,
      *                                             fora_do_ambito, filtrados (por motivo), pedidos, estado, erro
      */
+    /** O interruptor geral (config/radar.php, RADAR_ENABLED). */
+    public static function enabled(): bool
+    {
+        return (bool) config('radar.enabled', false);
+    }
+
     public function collect(?string $source = null, bool $execute = false, array $options = []): array
     {
         $force = (bool) ($options['force'] ?? false);
@@ -52,6 +58,12 @@ class RadarCollector
         $scheduled = (bool) ($options['scheduled'] ?? false);
         if ($fixture !== null && $source === null) {
             throw new InvalidArgumentException('Uma amostra gravada (--fixture) lê-se para uma fonte de cada vez.');
+        }
+        if (! self::enabled() && ! $force && $fixture === null) {
+            // RADAR_ENABLED=false: nenhum pedido a nenhuma fonte (só o --force do comando passa).
+            Log::info('[Radar] Recolha não feita: Radar desligado (RADAR_ENABLED=false)');
+
+            return [];
         }
         $list = $source !== null ? [$source => $this->sources->get($source)] : $this->sources->all();
 

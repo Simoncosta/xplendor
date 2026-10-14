@@ -25,6 +25,7 @@ class RadarTopicsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['radar.enabled' => true]); // RADAR_ENABLED (desligado por omissão)
         Http::preventStrayRequests();
         $this->travelTo(CarbonImmutable::parse('2026-10-12 18:20:00'));
     }

@@ -57,6 +57,8 @@ export interface RadarTopicSummary {
 }
 
 export interface RadarSummary {
+    /** RADAR_ENABLED: desligado, nada é recolhido nem avaliado. */
+    radar_enabled: boolean;
     sources: RadarSourceSummary[];
     totals: { items_24h: number; blocked_24h: number; items_30d: number; blocked_30d: number; topics_open: number; topics_open_passed: number };
     blocked_by_reason: { reason: RadarReason; label: string; count: number }[];

@@ -42,6 +42,20 @@ class ScheduledExternalJobsTest extends TestCase
         }
     }
 
+    /** P2 do fecho: nenhuma tarefa agendada chega à IA real no dev sozinha. */
+    public function test_every_scheduled_task_that_reaches_the_ai_is_external(): void
+    {
+        $ai = (array) config('scheduler.ai_job_names');
+        $this->assertContains('bussola-stand-nightly', $ai);
+        $this->assertSame([], array_values(array_diff($ai, (array) config('scheduler.external_job_names'))), 'uma tarefa com IA não é externa');
+        $this->assertSame([], array_values(array_diff($ai, array_keys($this->events()))), 'uma tarefa com IA não existe no agendamento');
+
+        config(['scheduler.external_jobs' => false]);
+        foreach ($ai as $name) {
+            $this->assertFalse($this->events()[$name]->filtersPass($this->app), "{$name} chama a IA e não devia correr no dev");
+        }
+    }
+
     public function test_on_they_run(): void
     {
         config(['scheduler.external_jobs' => true]);

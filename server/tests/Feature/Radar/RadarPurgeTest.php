@@ -21,6 +21,7 @@ class RadarPurgeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['radar.enabled' => true]); // RADAR_ENABLED (desligado por omissão)
         Http::preventStrayRequests();
         $this->travelTo(CarbonImmutable::parse('2026-11-20 03:20:00'));
     }

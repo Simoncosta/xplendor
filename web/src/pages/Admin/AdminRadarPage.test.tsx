@@ -13,6 +13,7 @@ const labels = {
 };
 
 const summary: RadarSummary = {
+    radar_enabled: true,
     sources: [{
         key: "google_trends", label: "Google Trends", url: "https://trends.google.com/trending/rss?geo=PT", type: "trends", enabled: true, disabled_reason: null,
         interval_minutes: 15, attribution: "Fonte: Google Trends", terms_url: "https://policies.google.com/terms?hl=pt-PT", terms_checked_at: "2026-10-12", terms_note: null,
@@ -76,6 +77,13 @@ describe("Administração › Radar", () => {
         expect(screen.getAllByText("Fonte: Google Trends").length).toBeGreaterThan(0);
         expect(screen.getAllByText(/confirmação escrita do IPMA/).length).toBeGreaterThan(0);
         expect(screen.getAllByText("2 de 4").length).toBeGreaterThan(0);
+        expect(screen.queryByTestId("radar-disabled")).not.toBeInTheDocument();
+    });
+
+    it("com o Radar desligado (RADAR_ENABLED=false) diz que está desligado", async () => {
+        (getAdminRadar as jest.Mock).mockResolvedValue({ data: { ...summary, radar_enabled: false } });
+        render(<AdminRadarPage />);
+        expect(await screen.findByTestId("radar-disabled")).toHaveTextContent("Radar desligado.");
     });
 
     it("a vista Retiradas pelo filtro pede só os itens bloqueados e mostra o vazio", async () => {
