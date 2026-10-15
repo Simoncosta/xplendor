@@ -8,7 +8,6 @@ import {
 } from "reactstrap";
 // Models
 import { ICarUpdatePayload } from "common/models/car.model";
-import type { BedType } from "./data/vehicleAttributes";
 import { ICarSalePayload } from "common/models/car-sale.model";
 // Components
 import XButton from "Components/Common/XButton";
@@ -31,7 +30,7 @@ import CarSaleClosingModal from "./components/CarSaleClosingModal";
 import { FormikProvider, useFormik } from "formik";
 import { useMemo, useRef, useState } from "react";
 import * as Yup from "yup";
-import { DEFAULT_VEHICLE_ATTRIBUTES } from "slices/cars/car.defaults";
+import { normalizeVehicleAttributes } from "./utils/normalizeVehicleAttributes";
 
 type CarEditorProps = {
     data: ICarUpdatePayload;
@@ -94,85 +93,6 @@ const CarEditor = ({
         return map;
     };
 
-    // Fix 1.D (auditoria pós Sub-fase F, 2026-06-18): `cama_sofa` adicionado em
-    // M2.1 (1.13.3, 2026-06-15) à BD e ao seeder, mas estava em falta neste set.
-    // Sem isto, escolher "Cama sofá" no dropdown reverte para "outra" no próximo
-    // init do Formik.
-    const validBedSlugs = new Set<BedType>([
-        "camas_gemeas", "cama_central", "cama_francesa", "cama_basculante",
-        "cama_capucino", "cama_garagem", "beliche", "cama_transversal",
-        "cama_elevatoria_eletrica", "cama_suspensa", "cama_convertivel",
-        "cama_sofa",
-        "outra", "cama_rebativel_cabine",
-    ]);
-
-    // Fix 1.A (auditoria pós Sub-fase F, 2026-06-18): preserva `capacity`.
-    // Antes, esta função devolvia só `{type}` e descartava `capacity` no init
-    // dos initialValues do Formik. Combinado com `enableReinitialize: true`,
-    // a capacity desaparecia sempre depois de gravar — o input caía no
-    // fallback `value={bed?.capacity ?? 1}` e mostrava "1".
-    // Clamp 1-4 espelha as constraints da Form Request backend
-    // (`vehicle_attributes.beds.*.capacity` → min:1 max:4) e da
-    // `VehicleAttribute::normalizeBedTypes`. Fallback 1 para registos legacy
-    // sem capacity.
-    const normalizeBeds = (beds: unknown): Array<{ type: BedType; capacity: number }> => {
-        if (!Array.isArray(beds)) return [];
-
-        return beds.map((bed) => {
-            const raw = typeof bed === "string" ? bed : (bed as Record<string, unknown>)?.type;
-            const type = typeof raw === "string" && validBedSlugs.has(raw as BedType)
-                ? (raw as BedType)
-                : "outra";
-
-            const capRaw = typeof bed === "object" && bed !== null
-                ? (bed as Record<string, unknown>).capacity
-                : undefined;
-            const capNum = typeof capRaw === "number" ? capRaw : Number(capRaw);
-            const capacity = Number.isFinite(capNum)
-                ? Math.max(1, Math.min(4, Math.floor(capNum)))
-                : 1;
-
-            return { type, capacity };
-        });
-    };
-
-    const normalizeVehicleAttributes = (attributes?: ICarUpdatePayload["vehicle_attributes"]) => {
-        const { autonomy_km, ...restAttributes } = attributes ?? {};
-
-        // 2026-06-29 — Retro-compat dos depósitos de água: viaturas antigas
-        // podem ter `clean_water_litres` / `waste_water_litres` > 0 mas ainda
-        // sem as checkboxes novas. Neste caso o UI marca a checkbox como
-        // true automaticamente (litros > 0 implica "tem depósito"). O JSON
-        // gravado a partir do próximo save fica com a checkbox explícita.
-        const hb = attributes?.habitation_basics ?? {};
-        const b = (hb as any).bathroom ?? {};
-        const cleanLitres = Number(b.clean_water_litres) || 0;
-        const wasteLitres = Number(b.waste_water_litres) || 0;
-        const bathroomWithRetroCompat = {
-            ...b,
-            has_clean_water_tank: b.has_clean_water_tank === true || cleanLitres > 0,
-            has_waste_water_tank: b.has_waste_water_tank === true || wasteLitres > 0,
-        };
-
-        return {
-            ...DEFAULT_VEHICLE_ATTRIBUTES,
-            ...restAttributes,
-            autonomy: restAttributes.autonomy ?? autonomy_km ?? "",
-            beds: normalizeBeds(restAttributes.beds),
-            has_bathroom:
-                attributes?.has_bathroom === true
-                || attributes?.has_bathroom === 1
-                || String(attributes?.has_bathroom ?? "") === "1",
-            has_kitchen:
-                attributes?.has_kitchen === true
-                || attributes?.has_kitchen === 1
-                || String(attributes?.has_kitchen ?? "") === "1",
-            habitation_basics: {
-                ...hb,
-                bathroom: bathroomWithRetroCompat,
-            },
-        };
-    };
 
     const validationSchema = Yup.object({
         // car_brand_id: Yup.number().min(1, "Marca é obrigatória").required(),
