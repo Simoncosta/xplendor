@@ -10,7 +10,6 @@ import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Button, Col, 
 
 // Components
 import XInput from "Components/Common/XInput";
-import XSelect from "Components/Common/Select";
 import FieldLabelWithHint from "Components/Common/FieldLabelWithHint";
 
 // Forms
@@ -31,29 +30,10 @@ import ChassisStructureAccordion from "./vehicleAttributes/ChassisStructureAccor
 import CabinAccordion from "./vehicleAttributes/CabinAccordion";
 import InteriorFurnitureAccordion from "./vehicleAttributes/InteriorFurnitureAccordion";
 import LivingRoomAccordion from "./vehicleAttributes/LivingRoomAccordion";
+import KitchenFields from "./vehicleAttributes/KitchenFields";
+import BathroomFields from "./vehicleAttributes/BathroomFields";
+import MotorhomeSections, { MOTORHOME_SECTION } from "./vehicleAttributes/MotorhomeSections";
 import { BED_LABELS, BedType } from "../data/vehicleAttributes";
-
-const fridgeTypeOptions = [
-    { value: "trivalent", label: "Trivalente" },
-    { value: "compressor", label: "Compressor" },
-    { value: "absorption", label: "Absorção" },
-    { value: "none", label: "Nenhum" },
-];
-
-// Ficha das autocaravanas (B). "Sem indicação" limpa o valor.
-const stoveTypeOptions: { value: string; label: string }[] = [
-    { value: "", label: "Sem indicação" },
-    { value: "gas", label: "Gás" },
-    { value: "electric", label: "Elétrico" },
-    { value: "mixed", label: "Misto (gás e elétrico)" },
-    { value: "induction", label: "Indução" },
-];
-
-const showerTypeOptions = [
-    { value: "separate", label: "Separado" },
-    { value: "independent", label: "Independente" },
-    { value: "combined", label: "Combinado" },
-];
 
 // 12 options shown by default; cama_rebativel_cabine is legacy and only injected
 // dynamically when the current bed already has that value (see getBedOptions below).
@@ -228,13 +208,23 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
         ? values.vehicle_attributes.beds
         : [];
 
+    const isMotorhome = values.vehicle_type === "motorhome";
     const [attrAccordion, setAttrAccordion] = useState<string>("1");
     const toggleAttrAccordion = (id: string) => setAttrAccordion(attrAccordion === id ? "" : id);
+    // Autocaravanas: "Outros equipamentos", dentro da "Cabine de condução e segurança".
+    const [othersOpen, setOthersOpen] = useState(false);
 
     // Busca universal — expõe abrir programaticamente. `setAttrAccordion(id)`
     // FORÇA aberto (não toggla); fechar é responsabilidade do pai (`""`).
     useImperativeHandle(ref, () => ({
-        openAccordion: (id: string) => setAttrAccordion(id),
+        openAccordion: (id: string) => {
+            if (id === MOTORHOME_SECTION.others) {
+                setAttrAccordion(MOTORHOME_SECTION.cabin);
+                setOthersOpen(true);
+                return;
+            }
+            setAttrAccordion(id);
+        },
     }), []);
 
     return (
@@ -407,14 +397,17 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                             className="mb-3"
                                         />
                                     </Col>
-                                    <Col lg={2}>
-                                        <XInput
-                                            type="number"
-                                            name="vehicle_attributes.autonomy_km"
-                                            label="Autonomia (km)"
-                                            className="mb-3"
-                                        />
-                                    </Col>
+                                    {/* Nas autocaravanas, a autonomia está em "Energia e autonomia". */}
+                                    {!isMotorhome && (
+                                        <Col lg={2}>
+                                            <XInput
+                                                type="number"
+                                                name="vehicle_attributes.autonomy_km"
+                                                label="Autonomia (km)"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                    )}
                                 </Row>
 
                                 <div className="border rounded-3 p-3 mb-1">
@@ -512,239 +505,44 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                             </AccordionBody>
                         </AccordionItem>
 
-                        <AccordionItem id="hab-acc-2">
-                            <AccordionHeader targetId="2">
-                                <strong>Cozinha</strong>
-                            </AccordionHeader>
-                            <AccordionBody accordionId="2">
-                                <Row>
-                                    <Col lg={12}>
-                                        <XInputCheckbox
-                                            name="vehicle_attributes.habitation_basics.has_kitchen"
-                                            label="Tem cozinha"
-                                            className="mb-3"
-                                        />
-                                    </Col>
-                                </Row>
-                                {values.vehicle_attributes?.habitation_basics?.has_kitchen && (
-                                    <Row>
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.kitchen.has_stove"
-                                                label="Fogão"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        {values.vehicle_attributes?.habitation_basics?.kitchen?.has_stove && (
-                                            <>
-                                                <Col lg={2}>
-                                                    <XInput
-                                                        type="number"
-                                                        name="vehicle_attributes.habitation_basics.kitchen.stove_burners"
-                                                        label="Bocas do fogão"
-                                                        className="mb-3"
-                                                    />
-                                                </Col>
-                                                <Col lg={2} className="mb-3">
-                                                    <Label for="stove_type">Tipo de fogão</Label>
-                                                    <XSelect
-                                                        id="stove_type"
-                                                        options={stoveTypeOptions}
-                                                        value={values.vehicle_attributes?.habitation_basics?.kitchen?.stove_type ?? null}
-                                                        onChange={(v) => setFieldValue("vehicle_attributes.habitation_basics.kitchen.stove_type", v || null)}
-                                                    />
-                                                </Col>
-                                            </>
-                                        )}
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.kitchen.has_oven"
-                                                label="Forno"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.kitchen.has_extending_counter"
-                                                label="Acrescento de banca"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.kitchen.has_microwave"
-                                                label="Micro-ondas"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.kitchen.has_extractor"
-                                                label="Exaustor"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        {values.vehicle_attributes?.habitation_basics?.kitchen?.has_extractor && (
-                                            <Col lg={2}>
-                                                <XInput
-                                                    name="vehicle_attributes.habitation_basics.kitchen.extractor_brand"
-                                                    label="Marca do exaustor"
-                                                    className="mb-3"
-                                                />
-                                            </Col>
-                                        )}
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.kitchen.has_fridge"
-                                                label="Frigorífico"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        {values.vehicle_attributes?.habitation_basics?.kitchen?.has_fridge && (
-                                            <>
-                                                <Col lg={2}>
-                                                    <XInput
-                                                        name="vehicle_attributes.habitation_basics.kitchen.fridge_brand"
-                                                        label="Marca do frigorífico"
-                                                        className="mb-3"
-                                                    />
-                                                </Col>
-                                                <Col lg={2}>
-                                                    <Label>Tipo de frigorífico</Label>
-                                                    <Select
-                                                        styles={reactSelectTheme}
-                                                        menuPortalTarget={document.body}
-                                                        isClearable
-                                                        placeholder="Selecionar"
-                                                        options={fridgeTypeOptions}
-                                                        value={fridgeTypeOptions.find(o => o.value === values.vehicle_attributes?.habitation_basics?.kitchen?.fridge_type) ?? null}
-                                                        onChange={(opt: any) => setFieldValue("vehicle_attributes.habitation_basics.kitchen.fridge_type", opt?.value ?? null)}
-                                                        className="mb-3"
-                                                    />
-                                                </Col>
-                                                <Col lg={2}>
-                                                    <XInput
-                                                        type="number"
-                                                        name="vehicle_attributes.habitation_basics.kitchen.fridge_litres"
-                                                        label="Capacidade (L)"
-                                                        className="mb-3"
-                                                    />
-                                                </Col>
-                                                <Col lg={2}>
-                                                    <XInput
-                                                        type="number"
-                                                        name="vehicle_attributes.habitation_basics.kitchen.fridge_shelves"
-                                                        label="Prateleiras"
-                                                        className="mb-3"
-                                                    />
-                                                </Col>
-                                            </>
-                                        )}
-                                    </Row>
-                                )}
-                            </AccordionBody>
-                        </AccordionItem>
+                        {isMotorhome ? (
+                            <MotorhomeSections
+                                othersOpen={othersOpen}
+                                onToggleOthers={() => setOthersOpen((o) => !o)}
+                            />
+                        ) : (
+                            <>
+                                <AccordionItem id="hab-acc-2">
+                                    <AccordionHeader targetId="2">
+                                        <strong>Cozinha</strong>
+                                    </AccordionHeader>
+                                    <AccordionBody accordionId="2">
+                                        <KitchenFields />
+                                    </AccordionBody>
+                                </AccordionItem>
 
-                        <AccordionItem id="hab-acc-3">
-                            <AccordionHeader targetId="3">
-                                <strong>Casa de Banho</strong>
-                            </AccordionHeader>
-                            <AccordionBody accordionId="3">
-                                <Row>
-                                    <Col lg={12}>
-                                        <XInputCheckbox
-                                            name="vehicle_attributes.habitation_basics.has_bathroom"
-                                            label="Tem casa de banho"
-                                            className="mb-3"
-                                        />
-                                    </Col>
-                                </Row>
-                                {values.vehicle_attributes?.habitation_basics?.has_bathroom && (
-                                    <Row>
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.bathroom.has_toilet"
-                                                label="Sanita"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.bathroom.has_shower"
-                                                label="Duche"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        {values.vehicle_attributes?.habitation_basics?.bathroom?.has_shower && (
-                                            <Col lg={2}>
-                                                <Label>Tipo de duche</Label>
-                                                <Select
-                                                    styles={reactSelectTheme}
-                                                    menuPortalTarget={document.body}
-                                                    isClearable
-                                                    placeholder="Selecionar"
-                                                    options={showerTypeOptions}
-                                                    value={showerTypeOptions.find(o => o.value === values.vehicle_attributes?.habitation_basics?.bathroom?.shower_type) ?? null}
-                                                    onChange={(opt: any) => setFieldValue("vehicle_attributes.habitation_basics.bathroom.shower_type", opt?.value ?? null)}
-                                                    className="mb-3"
-                                                />
-                                            </Col>
-                                        )}
-                                        {/* 2026-06-29 — Separação "tem depósito" (checkbox)
-                                            de "quantos litros". Padrão has_fridge → fridge_*.
-                                            Retro-compat: `normalizeVehicleAttributes` do
-                                            CarEditor marca as checkboxes quando os litros
-                                            > 0 e o campo ainda não existe no JSON. */}
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.bathroom.has_clean_water_tank"
-                                                label="Dep. águas limpas"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        {values.vehicle_attributes?.habitation_basics?.bathroom?.has_clean_water_tank && (
-                                            <Col lg={2}>
-                                                <XInput
-                                                    type="number"
-                                                    name="vehicle_attributes.habitation_basics.bathroom.clean_water_litres"
-                                                    label="Litros"
-                                                    className="mb-3"
-                                                />
-                                            </Col>
-                                        )}
-                                        <Col lg={2}>
-                                            <XInputCheckbox
-                                                name="vehicle_attributes.habitation_basics.bathroom.has_waste_water_tank"
-                                                label="Dep. águas residuais"
-                                                className="mb-3"
-                                            />
-                                        </Col>
-                                        {values.vehicle_attributes?.habitation_basics?.bathroom?.has_waste_water_tank && (
-                                            <Col lg={2}>
-                                                <XInput
-                                                    type="number"
-                                                    name="vehicle_attributes.habitation_basics.bathroom.waste_water_litres"
-                                                    label="Litros"
-                                                    className="mb-3"
-                                                />
-                                            </Col>
-                                        )}
-                                    </Row>
-                                )}
-                            </AccordionBody>
-                        </AccordionItem>
+                                <AccordionItem id="hab-acc-3">
+                                    <AccordionHeader targetId="3">
+                                        <strong>Casa de Banho</strong>
+                                    </AccordionHeader>
+                                    <AccordionBody accordionId="3">
+                                        <BathroomFields />
+                                    </AccordionBody>
+                                </AccordionItem>
 
-                        <EnergyClimateAccordion accordionId="4" />
-                        <ExteriorAccordion accordionId="5" />
-                        <SecurityAccordion accordionId="6" />
-                        <ChassisStructureAccordion accordionId="7" />
-                        {/* Cabine (2026-06-28) — accordionId=10 para não
-                            renumerar. Ordem visual entre Chassis e Interior:
-                            temática frontal/estrutural, antes da célula
-                            habitacional. */}
-                        <CabinAccordion accordionId="10" />
-                        <InteriorFurnitureAccordion accordionId="8" />
-                        <LivingRoomAccordion accordionId="9" />
+                                <EnergyClimateAccordion accordionId="4" />
+                                <ExteriorAccordion accordionId="5" />
+                                <SecurityAccordion accordionId="6" />
+                                <ChassisStructureAccordion accordionId="7" />
+                                {/* Cabine (2026-06-28) — accordionId=10 para não
+                                    renumerar. Ordem visual entre Chassis e Interior:
+                                    temática frontal/estrutural, antes da célula
+                                    habitacional. */}
+                                <CabinAccordion accordionId="10" />
+                                <InteriorFurnitureAccordion accordionId="8" />
+                                <LivingRoomAccordion accordionId="9" />
+                            </>
+                        )}
 
                     </Accordion>
                 </div>

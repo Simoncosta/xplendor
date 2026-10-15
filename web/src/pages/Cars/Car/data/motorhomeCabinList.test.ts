@@ -10,7 +10,7 @@ import {
     type CabinTarget,
     type ExtrasByGroup,
 } from "./motorhomeCabinList";
-import { filterIndexByVehicleType, getFormSearchIndex } from "./formSearchIndex";
+import { filterIndexByVehicleType, getEntryAvailability, getFormSearchIndex } from "./formSearchIndex";
 
 const empty = (): ExtrasByGroup => ({
     comfort_multimedia: [],
@@ -166,7 +166,8 @@ describe("Outros equipamentos", () => {
     it("o catálogo para acrescentar não repete o que a lista já tem", () => {
         const texts = otherCatalogExtras().map((o) => o.text);
         expect(texts).toContain("Android Auto");
-        expect(texts).toContain("Jantes de Liga Leve");
+        // As jantes de liga leve aparecem no Exterior das autocaravanas.
+        expect(texts).not.toContain("Jantes de Liga Leve");
         expect(texts).not.toContain("ABS");
         expect(texts).not.toContain("Bancos rotativos");
         expect(texts).not.toContain("Faróis Diurnos Em Led");
@@ -205,5 +206,45 @@ describe("pesquisa do formulário", () => {
         const caravan = filterIndexByVehicleType(index, "caravan");
         expect(at(caravan, "Alarme")).toEqual(["Segurança e Fechaduras", "Segurança & Desempenho"]);
         expect(at(caravan, "Bancos giratórios")).toEqual(["Cabine"]);
+    });
+
+    it("nas autocaravanas, os campos de habitação levam às secções novas; nas caravanas, aos acordeões de sempre", () => {
+        const index = getFormSearchIndex();
+        const motorhome = filterIndexByVehicleType(index, "motorhome");
+        const caravan = filterIndexByVehicleType(index, "caravan");
+        const at = (entries: typeof index, label: string) =>
+            entries.filter((e) => e.label === label).map((e) => (e.location.kind === "section" ? e.location.sectionLabel : e.location.accordionLabel));
+
+        const expected: [string, string, string][] = [
+            ["Comprimento (m)", "Dimensões e Pesos", "Dimensões e Pesos"],
+            ["Autonomia (km)", "Energia e autonomia", "Dimensões e Pesos"],
+            ["Painel solar", "Energia e autonomia", "Energia e Aquecimento"],
+            ["Tipo de sala", "Sala e cozinha", "Sala"],
+            ["Mesa rebatível", "Sala e cozinha", "Mobiliário Interior"],
+            ["Fogão", "Sala e cozinha", "Cozinha"],
+            ["Marca do frigorífico", "Sala e cozinha", "Cozinha"],
+            ["Tapa-luz janelas", "Sala e cozinha", "Mobiliário Interior"],
+            ["Sanita", "Duche e WC", "Casa de Banho"],
+            ["Estores Remifront", "Cabine de condução e segurança", "Cabine"],
+            ["Tapa-luz cabine", "Cabine de condução e segurança", "Mobiliário Interior"],
+            ["Tipo de chassis", "Cabine de condução e segurança", "Chassis e Estrutura"],
+            ["Fecho gás", "Cabine de condução e segurança", "Segurança e Fechaduras"],
+            ["Toldo", "Exterior", "Exterior"],
+        ];
+        for (const [label, inMotorhome, inCaravan] of expected) {
+            expect([label, at(motorhome, label)]).toEqual([label, [inMotorhome]]);
+            expect([label, at(caravan, label)]).toEqual([label, [inCaravan]]);
+        }
+        expect(at(motorhome, "Jantes de liga leve")).toEqual(["Exterior"]);
+        expect(at(motorhome, "Outros equipamentos")).toEqual(["Outros equipamentos"]);
+
+        // O campo "pai" leva à secção do tipo de viatura atual.
+        const burners = index.find((e) => e.label === "Bocas do fogão" && e.vehicleTypes?.includes("motorhome"))!;
+        const values = { vehicle_attributes: { habitation_basics: { has_kitchen: true, kitchen: { has_stove: false } } } };
+        const a = getEntryAvailability(burners, values, "motorhome");
+        expect(a.kind === "parent_off" && a.parentEntry.location.kind === "habitation" && a.parentEntry.location.accordionLabel).toBe("Sala e cozinha");
+        const burnersCaravan = index.find((e) => e.label === "Bocas do fogão" && e.vehicleTypes?.includes("caravan"))!;
+        const b = getEntryAvailability(burnersCaravan, values, "caravan");
+        expect(b.kind === "parent_off" && b.parentEntry.location.kind === "habitation" && b.parentEntry.location.accordionLabel).toBe("Cozinha");
     });
 });

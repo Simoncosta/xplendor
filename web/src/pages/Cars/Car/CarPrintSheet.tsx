@@ -11,6 +11,13 @@ import {
     EXTERIOR_COLOR_LABELS,
 } from "helpers/labels";
 import { BED_LABELS, type BedType } from "./data/vehicleAttributes";
+import {
+    MOTORHOME_CABIN_LIST,
+    MOTORHOME_JANTES,
+    isCabinItemChecked,
+    otherMarkedExtras,
+    type ExtrasByGroup,
+} from "./data/motorhomeCabinList";
 import type { CarPrintSheet as CarPrintSheetType } from "types/api";
 
 /**
@@ -270,8 +277,8 @@ const buildExterior = (va: VA): Group => {
     return { title: "Exterior", items: capAll(items) };
 };
 
-const buildChassis = (va: VA): Group => {
-    const cs = va?.chassis_structure ?? {};
+// Partes do chassis (as autocaravanas mostram-nas em secções diferentes).
+const chassisCoreItems = (cs: any): string[] => {
     const items: string[] = [];
     const type = enumLabel(cs.chassis_type, CHASSIS_TYPE_LABELS);
     if (type) items.push(`Chassis ${type}`);
@@ -279,24 +286,41 @@ const buildChassis = (va: VA): Group => {
         items.push(cs.has_air_suspension_compressor ? "Suspensão pneumática c/ compressor" : "Suspensão pneumática");
     }
     if (cs.has_dual_rear_wheel)       items.push("Rodado duplo");
-    if (cs.has_turbovent_skylight)    items.push("Clarabóia turbovent");
-    if (cs.has_panoramic_skylight)    items.push("Clarabóia panorâmica");
-    if (cs.has_40x40_skylight)        items.push("Clarabóia 40×40");
-    if (cs.other_skylights_notes)     items.push(String(cs.other_skylights_notes));
-    if (cs.chassis_notes)             items.push(String(cs.chassis_notes));
-    // 2026-06-28 — `has_remifront` movido para o grupo "Cabine" (buildCabin
-    // abaixo). Chave JSON permanece em `chassis_structure.has_remifront`,
-    // só a apresentação vive na Cabine agora. Ver CLAUDE.md sec 6.1.
-    if (cs.has_mosquito_nets)         items.push("Mosquiteiras janelas");
-    if (cs.has_door_mosquito_net)     items.push("Mosquiteira porta");
-    if (cs.has_window_blackouts)      items.push("Tapa-luz janelas");
-    if (cs.has_cabin_blackouts) {
-        items.push(cs.cabin_blackout_type ? `Tapa-luz cabine (${cs.cabin_blackout_type})` : "Tapa-luz cabine");
-    }
+    return items;
+};
+const skylightItems = (cs: any): string[] => collect(
+    cs.has_turbovent_skylight && "Clarabóia turbovent",
+    cs.has_panoramic_skylight && "Clarabóia panorâmica",
+    cs.has_40x40_skylight && "Clarabóia 40×40",
+    cs.other_skylights_notes && String(cs.other_skylights_notes),
+);
+const windowNetBlackoutItems = (cs: any): string[] => collect(
+    cs.has_mosquito_nets && "Mosquiteiras janelas",
+    cs.has_door_mosquito_net && "Mosquiteira porta",
+    cs.has_window_blackouts && "Tapa-luz janelas",
+);
+const cabinBlackoutItems = (cs: any): string[] =>
+    cs.has_cabin_blackouts
+        ? [cs.cabin_blackout_type ? `Tapa-luz cabine (${cs.cabin_blackout_type})` : "Tapa-luz cabine"]
+        : [];
+
+const buildChassis = (va: VA): Group => {
+    const cs = va?.chassis_structure ?? {};
+    const items: string[] = [
+        ...chassisCoreItems(cs),
+        ...skylightItems(cs),
+        ...collect(cs.chassis_notes && String(cs.chassis_notes)),
+        // 2026-06-28 — `has_remifront` movido para o grupo "Cabine" (buildCabin
+        // abaixo). Chave JSON permanece em `chassis_structure.has_remifront`,
+        // só a apresentação vive na Cabine agora. Ver CLAUDE.md sec 6.1.
+        ...windowNetBlackoutItems(cs),
+        ...cabinBlackoutItems(cs),
+    ];
     return { title: "Chassis e clarabóias", items: capAll(items) };
 };
 
-const buildInterior = (va: VA): Group => {
+// Sala: tipo, mesa telescópica e mesa rebatível (o estado dos estofos sai no fim).
+const livingItems = (va: VA): string[] => {
     const inf = va?.interior_furniture ?? {};
     const lr = va?.living_room ?? {};
     const items: string[] = [];
@@ -304,6 +328,18 @@ const buildInterior = (va: VA): Group => {
     if (layout) items.push(`Sala: ${layout}`);
     if (lr.has_extending_table)  items.push("Mesa telescópica");
     if (inf.has_foldable_table)  items.push("Mesa rebatível");
+    return items;
+};
+
+const buildInterior = (va: VA): Group => {
+    const items: string[] = [...livingItems(va), ...interiorItems(va)];
+    return { title: "Interior", items: capAll(items) };
+};
+
+// Cortinas, guarda-fatos, iluminação, TV, painel e estado dos estofos.
+const interiorItems = (va: VA): string[] => {
+    const inf = va?.interior_furniture ?? {};
+    const items: string[] = [];
     // 2026-06-28 — `has_rotating_seats` movido para o grupo "Cabine"
     // (buildCabin). Chave JSON `interior_furniture.has_rotating_seats`
     // permanece intacta. Ver CLAUDE.md sec 6.1.
@@ -321,20 +357,26 @@ const buildInterior = (va: VA): Group => {
     if (inf.has_command_panel)   items.push("Painel de comandos");
     const upho = enumLabel(inf.upholstery_state, UPHOLSTERY_LABELS);
     if (upho) items.push(`Estofos: ${upho}`);
-    return { title: "Interior", items: capAll(items) };
+    return items;
 };
 
 const buildSecurity = (va: VA): Group => {
     const s = va?.security ?? {};
+    const items: string[] = [...collect(s.has_alarm && "Alarme"), ...lockItems(va)];
+    return { title: "Segurança", items: capAll(items) };
+};
+
+// Fechaduras (sem o alarme: nas autocaravanas está na lista única).
+const lockItems = (va: VA): string[] => {
+    const s = va?.security ?? {};
     const items: string[] = [];
-    if (s.has_alarm)          items.push("Alarme");
     if (s.has_hatch_lock)     items.push("Fechadura escotilha");
     if (s.has_cabin_lock)     items.push("Fechadura cabine");
     if (s.has_safe_door)      items.push("Porta cofre");
     if (s.has_gas_lock)       items.push("Fechadura gás");
     if (s.has_entry_door_lock) items.push("Fechadura porta entrada");
     if (s.other_locks_notes)   items.push(String(s.other_locks_notes));
-    return { title: "Segurança", items: capAll(items) };
+    return items;
 };
 
 /** Categoria (B) — Cabine: equipamentos da cabine (não da célula).
@@ -350,6 +392,46 @@ const buildCabin = (va: VA, extraItems: string[]): Group => {
     // Extras livres do form (checkboxes marcados por grupo).
     items.push(...extraItems);
     return { title: "Cabine", items: capAll(items) };
+};
+
+/**
+ * Ficha das autocaravanas (parte A): os mesmos dados, pelas secções do formulário.
+ * Energia e autonomia; Sala e cozinha; Duche e WC; Cabine de condução e segurança (com
+ * os rótulos da lista única); Exterior (com as jantes de liga leve); Outros equipamentos.
+ */
+const buildMotorhomeGroups = (va: VA, extras: { group: string; items?: string[] }[]): Group[] => {
+    const byGroup = Object.fromEntries(extras.map((g) => [g.group, g.items ?? []])) as unknown as ExtrasByGroup;
+    const cs = va?.chassis_structure ?? {};
+    const autonomy = va?.autonomy_km ? `Autonomia ${new Intl.NumberFormat("pt-PT").format(Number(va.autonomy_km))} km` : null;
+    const hasJantes = (byGroup[MOTORHOME_JANTES.group] ?? []).includes(MOTORHOME_JANTES.text);
+
+    return [
+        { title: "Energia e autonomia", items: capAll([...collect(autonomy), ...buildEnergy(va).items, ...buildHeating(va).items]) },
+        {
+            title: "Sala e cozinha",
+            items: capAll([
+                ...livingItems(va),
+                ...buildKitchen(va).items,
+                ...interiorItems(va),
+                ...skylightItems(cs),
+                ...windowNetBlackoutItems(cs),
+            ]),
+        },
+        { title: "Duche e WC", items: buildBathroom(va).items },
+        {
+            title: "Cabine de condução e segurança",
+            items: capAll([
+                ...collect(cs.has_remifront && "Estores Remifront"),
+                ...cabinBlackoutItems(cs),
+                ...chassisCoreItems(cs),
+                ...collect(cs.chassis_notes && String(cs.chassis_notes)),
+                ...lockItems(va),
+                ...MOTORHOME_CABIN_LIST.filter((item) => isCabinItemChecked(item, byGroup, va)).map((item) => item.label),
+            ]),
+        },
+        { title: "Exterior", items: capAll([...collect(hasJantes && "Jantes de liga leve"), ...buildExterior(va).items]) },
+        { title: "Outros equipamentos", items: otherMarkedExtras(byGroup).map((o) => o.text) },
+    ];
 };
 
 const buildBeds = (va: VA): Group => {
@@ -516,6 +598,15 @@ export default function CarPrintSheet() {
         if (isHabitation) {
             // Dimensões só faz sentido para habitação (autocaravana / caravana).
             factualGroups.unshift(buildDimensions(va));
+        }
+
+        // Autocaravanas: as secções do formulário (os extras entram na Cabine de
+        // condução e segurança, no Exterior e em Outros equipamentos).
+        if (data.vehicle_type === "motorhome") {
+            return [
+                ...factualGroups,
+                ...[buildBeds(va), ...buildMotorhomeGroups(va, data.extras ?? [])].filter((g) => g.items.length > 0),
+            ];
         }
 
         // Categoria (B) — opcionais (só se tiverem items).

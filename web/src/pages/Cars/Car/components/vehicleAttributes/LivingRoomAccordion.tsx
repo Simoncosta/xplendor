@@ -19,40 +19,47 @@ const layoutOptions = [
     { value: "double_dinette",  label: "Sala dupla" },
 ];
 
-export default function LivingRoomAccordion({ accordionId }: AccordionProps) {
+/** Campos da secção, sem o acordeão (as autocaravanas compõem-nos nas suas secções). */
+export function LivingRoomFields() {
     const { values, setFieldValue } = useFormikContext<ICarUpdatePayload>();
     const lr = values.vehicle_attributes?.living_room;
 
+    return (
+        <>
+            <Row className="mb-2">
+                <Col lg={4}>
+                    <Label>Tipo de sala</Label>
+                    <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
+                        isClearable
+                        placeholder="Selecionar"
+                        options={layoutOptions}
+                        value={layoutOptions.find(o => o.value === lr?.layout) ?? null}
+                        onChange={(opt: any) => setFieldValue("vehicle_attributes.living_room.layout", opt?.value ?? null)}
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2} className="d-flex align-items-end">
+                    <XInputCheckbox
+                        name="vehicle_attributes.living_room.has_extending_table"
+                        label="Mesa telescópica"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+        </>
+    );
+}
+
+export default function LivingRoomAccordion({ accordionId }: AccordionProps) {
     return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-sofa-line me-2" />Sala</strong>
             </AccordionHeader>
             <AccordionBody accordionId={accordionId}>
-
-                <Row className="mb-2">
-                    <Col lg={4}>
-                        <Label>Tipo de sala</Label>
-                        <Select
-                            styles={reactSelectTheme}
-                            menuPortalTarget={document.body}
-                            isClearable
-                            placeholder="Selecionar"
-                            options={layoutOptions}
-                            value={layoutOptions.find(o => o.value === lr?.layout) ?? null}
-                            onChange={(opt: any) => setFieldValue("vehicle_attributes.living_room.layout", opt?.value ?? null)}
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2} className="d-flex align-items-end">
-                        <XInputCheckbox
-                            name="vehicle_attributes.living_room.has_extending_table"
-                            label="Mesa telescópica"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-
+                <LivingRoomFields />
             </AccordionBody>
         </AccordionItem>
     );

@@ -19,7 +19,8 @@ const chassisTypeOptions: ChassisOpt[] = [
     { value: "other",    label: "Outro" },
 ];
 
-export default function ChassisStructureAccordion({ accordionId }: AccordionProps) {
+/** Campos da secção, sem o acordeão (as autocaravanas compõem-nos nas suas secções). */
+export function ChassisStructureFields() {
     const { values, setFieldValue } = useFormikContext<ICarUpdatePayload>();
     const cs = values.vehicle_attributes?.chassis_structure;
 
@@ -36,85 +37,91 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
     }, [cs?.has_air_suspension, cs?.has_air_suspension_compressor, setFieldValue]);
 
     return (
+        <>
+            <Row className="mb-2">
+                <Col lg={2}>
+                    <Label>Tipo de chassis</Label>
+                    <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
+                        isClearable
+                        placeholder="Selecionar"
+                        options={chassisTypeOptions}
+                        value={chassisTypeOptions.find(o => o.value === cs?.chassis_type) ?? null}
+                        onChange={(opt: ChassisOpt | null) => setFieldValue("vehicle_attributes.chassis_structure.chassis_type", opt?.value ?? null)}
+                        className="mb-3"
+                    />
+                </Col>
+                {cs?.chassis_type && (
+                    <Col lg={4}>
+                        <XInput
+                            name="vehicle_attributes.chassis_structure.chassis_notes"
+                            label="Notas de chassis"
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
+            </Row>
+
+            {/* Lote 3 + 2026-06-22 — skylights, remifront, mosquiteiras E
+                tapa-luz movidos para Mobiliário Interior (decisão UX Matilde).
+                As CHAVES JSON permanecem em `chassis_structure.*`
+                (`has_turbovent_skylight`, `has_panoramic_skylight`,
+                `has_40x40_skylight`, `other_skylights_notes`, `has_remifront`,
+                `has_mosquito_nets`, `has_door_mosquito_net`,
+                `has_window_blackouts`, `has_cabin_blackouts`,
+                `cabin_blackout_type`) para NÃO partir dados em prod —
+                desalinhamento intencional documentado no CLAUDE.md sec 6.1. */}
+
+            {/* M2.7 — Suspensão pneumática. Compressor é sub-campo
+                condicional (só editável quando a pneumática está activa).
+                Padrão dos sub-campos da garagem (ExteriorAccordion).
+                Lote 3 — rodado duplo + estabilizadores adicionados nesta Row
+                (`has_stabilizers` permanece com chave JSON em `exterior.*`). */}
+            <Row className="mb-2">
+                <Col lg={3}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.chassis_structure.has_air_suspension"
+                        label="Suspensão pneumática"
+                        className="mb-3"
+                    />
+                </Col>
+                {cs?.has_air_suspension && (
+                    <Col lg={3}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_air_suspension_compressor"
+                            label="Com compressor"
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.chassis_structure.has_dual_rear_wheel"
+                        label="Rodado duplo"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_stabilizers"
+                        label="Macacos estabilizadores"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+        </>
+    );
+}
+
+export default function ChassisStructureAccordion({ accordionId }: AccordionProps) {
+    return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-tools-line me-2" />Chassis e Estrutura</strong>
             </AccordionHeader>
             <AccordionBody accordionId={accordionId}>
-
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <Label>Tipo de chassis</Label>
-                        <Select
-                            styles={reactSelectTheme}
-                            menuPortalTarget={document.body}
-                            isClearable
-                            placeholder="Selecionar"
-                            options={chassisTypeOptions}
-                            value={chassisTypeOptions.find(o => o.value === cs?.chassis_type) ?? null}
-                            onChange={(opt: ChassisOpt | null) => setFieldValue("vehicle_attributes.chassis_structure.chassis_type", opt?.value ?? null)}
-                            className="mb-3"
-                        />
-                    </Col>
-                    {cs?.chassis_type && (
-                        <Col lg={4}>
-                            <XInput
-                                name="vehicle_attributes.chassis_structure.chassis_notes"
-                                label="Notas de chassis"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
-                </Row>
-
-                {/* Lote 3 + 2026-06-22 — skylights, remifront, mosquiteiras E
-                    tapa-luz movidos para Mobiliário Interior (decisão UX Matilde).
-                    As CHAVES JSON permanecem em `chassis_structure.*`
-                    (`has_turbovent_skylight`, `has_panoramic_skylight`,
-                    `has_40x40_skylight`, `other_skylights_notes`, `has_remifront`,
-                    `has_mosquito_nets`, `has_door_mosquito_net`,
-                    `has_window_blackouts`, `has_cabin_blackouts`,
-                    `cabin_blackout_type`) para NÃO partir dados em prod —
-                    desalinhamento intencional documentado no CLAUDE.md sec 6.1. */}
-
-                {/* M2.7 — Suspensão pneumática. Compressor é sub-campo
-                    condicional (só editável quando a pneumática está activa).
-                    Padrão dos sub-campos da garagem (ExteriorAccordion).
-                    Lote 3 — rodado duplo + estabilizadores adicionados nesta Row
-                    (`has_stabilizers` permanece com chave JSON em `exterior.*`). */}
-                <Row className="mb-2">
-                    <Col lg={3}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_air_suspension"
-                            label="Suspensão pneumática"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {cs?.has_air_suspension && (
-                        <Col lg={3}>
-                            <XInputCheckbox
-                                name="vehicle_attributes.chassis_structure.has_air_suspension_compressor"
-                                label="Com compressor"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_dual_rear_wheel"
-                            label="Rodado duplo"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_stabilizers"
-                            label="Macacos estabilizadores"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-
+                <ChassisStructureFields />
             </AccordionBody>
         </AccordionItem>
     );

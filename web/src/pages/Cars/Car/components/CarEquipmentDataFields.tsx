@@ -4,8 +4,6 @@ import XInputCheckboxArray from "Components/Common/XInputCheckboxArray";
 import type { ICarUpdatePayload, CarExtraGroup, CarExtrasGroup } from "common/models/car.model";
 import { Accordion, AccordionBody, AccordionHeader, AccordionItem } from 'reactstrap';
 import { EXTRA_GROUPS } from "../data/extraGroups";
-import { MOTORHOME_CABIN_LIST } from "../data/motorhomeCabinList";
-import MotorhomeCabinEquipment, { countCheckedCabinItems } from "./MotorhomeCabinEquipment";
 
 type FormValues = ICarUpdatePayload & {
     // UI state (map) usado pelos checkboxes
@@ -45,13 +43,7 @@ const arrayToMap = (arr?: CarExtrasGroup[]) => {
 /**
  * Handle exposto ao pai para a busca universal abrir um dos 4 grupos
  * de extras programaticamente. Não interfere com o `toggle` manual.
- * Nas autocaravanas: "5" é a lista única "Cabine de condução e segurança"
- * e "6" é o grupo "Outros equipamentos", dentro dela.
  */
-/** Autocaravanas: ids dos acordeões da lista única e de "Outros equipamentos" (pesquisa). */
-export const MOTORHOME_CABIN_ID = "5";
-export const MOTORHOME_OTHERS_ID = "6";
-
 export interface CarEquipmentHandle {
     openAccordion: (id: string) => void;
 }
@@ -60,7 +52,6 @@ const CarEquipmentDataFields = forwardRef<CarEquipmentHandle, { isEdit: boolean 
     const { values, setFieldValue } = useFormikContext<FormValues>();
 
     const [open, setOpen] = useState<string>("");
-    const [othersOpen, setOthersOpen] = useState(false);
     const isMotorhome = values.vehicle_type === "motorhome";
 
     const toggle = (id: string) => {
@@ -69,14 +60,7 @@ const CarEquipmentDataFields = forwardRef<CarEquipmentHandle, { isEdit: boolean 
 
     // Busca universal — FORÇA aberto. Fechar via openAccordion("").
     useImperativeHandle(ref, () => ({
-        openAccordion: (id: string) => {
-            if (id === MOTORHOME_OTHERS_ID) {
-                setOpen(MOTORHOME_CABIN_ID);
-                setOthersOpen(true);
-                return;
-            }
-            setOpen(id);
-        },
+        openAccordion: (id: string) => setOpen(id),
     }), []);
 
     const isSyncingFromExtras = useRef(false);
@@ -108,31 +92,10 @@ const CarEquipmentDataFields = forwardRef<CarEquipmentHandle, { isEdit: boolean 
         return map;
     }, [values.extrasByGroup]);
 
-    if (isMotorhome) {
-        return (
-            <div className="mt-4" id="section-extras">
-                <Accordion flush open={open} toggle={toggle}>
-                    <AccordionItem id={`extras-acc-${MOTORHOME_CABIN_ID}`}>
-                        <AccordionHeader targetId={MOTORHOME_CABIN_ID}>
-                            <div className="d-flex justify-content-between w-100 pe-3">
-                                <strong>Cabine de condução e segurança</strong>
-                                <span className="text-muted">
-                                    {countCheckedCabinItems(values.extrasByGroup, values.vehicle_attributes)}/{MOTORHOME_CABIN_LIST.length}
-                                </span>
-                            </div>
-                        </AccordionHeader>
-                        <AccordionBody accordionId={MOTORHOME_CABIN_ID}>
-                            <MotorhomeCabinEquipment
-                                othersOpen={othersOpen}
-                                onToggleOthers={() => setOthersOpen((o) => !o)}
-                                othersDomId={`extras-acc-${MOTORHOME_OTHERS_ID}`}
-                            />
-                        </AccordionBody>
-                    </AccordionItem>
-                </Accordion>
-            </div>
-        );
-    }
+    // Autocaravanas: o equipamento está na secção "Cabine de condução e segurança"
+    // (MotorhomeSections). Este componente continua montado para sincronizar
+    // `extrasByGroup` com `extras`, mas não desenha os 4 grupos.
+    if (isMotorhome) return null;
 
     return (
         <div className="mt-4" id="section-extras">

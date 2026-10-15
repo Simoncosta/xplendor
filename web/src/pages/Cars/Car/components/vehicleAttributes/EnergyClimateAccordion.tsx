@@ -25,268 +25,275 @@ const inverterTypeOptions: InverterOpt[] = [
     { value: "modified_sine",  label: "Onda Modificada" },
 ];
 
-export default function EnergyClimateAccordion({ accordionId }: AccordionProps) {
+/** Campos da secção, sem o acordeão (as autocaravanas compõem-nos nas suas secções). */
+export function EnergyClimateFields() {
     const { values, setFieldValue } = useFormikContext<ICarUpdatePayload>();
     const ec = values.vehicle_attributes?.energy_climate;
     const isMotorhome = values.vehicle_type === "motorhome";
 
+    return (
+        <>
+            <Row className="mb-2">
+                <Col lg={2}>
+                    <Label>Aquecimento de água</Label>
+                    <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
+                        isClearable
+                        placeholder="Fonte"
+                        options={heatingSourceOptions}
+                        value={heatingSourceOptions.find(o => o.value === ec?.water_heater_source) ?? null}
+                        onChange={(opt: SourceOpt | null) => setFieldValue("vehicle_attributes.energy_climate.water_heater_source", opt?.value ?? null)}
+                        className="mb-3"
+                    />
+                </Col>
+                {ec?.water_heater_source && ec.water_heater_source !== "none" && (
+                    <Col lg={2}>
+                        <XInput
+                            name="vehicle_attributes.energy_climate.water_heater_brand"
+                            label="Marca (aquec. água)"
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
+                <Col lg={2}>
+                    <Label>Aquecimento ambiente</Label>
+                    <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
+                        isClearable
+                        placeholder="Fonte"
+                        options={heatingSourceOptions}
+                        value={heatingSourceOptions.find(o => o.value === ec?.ambient_heating_source) ?? null}
+                        onChange={(opt: SourceOpt | null) => setFieldValue("vehicle_attributes.energy_climate.ambient_heating_source", opt?.value ?? null)}
+                        className="mb-3"
+                    />
+                </Col>
+                {ec?.ambient_heating_source && ec.ambient_heating_source !== "none" && (
+                    <Col lg={2}>
+                        <XInput
+                            name="vehicle_attributes.energy_climate.ambient_heating_brand"
+                            label="Marca (aquec. ambiente)"
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
+            </Row>
+
+            <Row className="mb-2">
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.energy_climate.has_solar_panel"
+                        label="Painel solar"
+                        className="mb-3"
+                    />
+                </Col>
+                {ec?.has_solar_panel && (
+                    <>
+                        <Col lg={2}>
+                            <XInput
+                                type="number"
+                                name="vehicle_attributes.energy_climate.solar_panel_count"
+                                label="Quantidade"
+                                className="mb-3"
+                            />
+                        </Col>
+                        <Col lg={2}>
+                            <XInput
+                                type="number"
+                                name="vehicle_attributes.energy_climate.solar_panel_watts"
+                                label="Potência (W)"
+                                className="mb-3"
+                            />
+                        </Col>
+                    </>
+                )}
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.energy_climate.has_inverter"
+                        label="Inversor/Conversor"
+                        className="mb-3"
+                    />
+                </Col>
+                {ec?.has_inverter && (
+                    <>
+                        <Col lg={2}>
+                            <Label>Tipo de inversor</Label>
+                            <Select
+                                styles={reactSelectTheme}
+                                menuPortalTarget={document.body}
+                                isClearable
+                                placeholder="Selecionar"
+                                options={inverterTypeOptions}
+                                value={inverterTypeOptions.find(o => o.value === ec?.inverter_type) ?? null}
+                                onChange={(opt: InverterOpt | null) => setFieldValue("vehicle_attributes.energy_climate.inverter_type", opt?.value ?? null)}
+                                className="mb-3"
+                            />
+                        </Col>
+                        <Col lg={2}>
+                            <XInput
+                                type="number"
+                                name="vehicle_attributes.energy_climate.inverter_watts"
+                                label="Potência inversor (W)"
+                                className="mb-3"
+                            />
+                        </Col>
+                    </>
+                )}
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.energy_climate.has_external_power_socket"
+                        label="Tomada exterior 220V"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+
+            <Row>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.energy_climate.has_gpl"
+                        label="GPL"
+                        className="mb-3"
+                    />
+                </Col>
+                {ec?.has_gpl && (
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            name="vehicle_attributes.energy_climate.gpl_bottles_count"
+                            label="Garrafas GPL"
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.energy_climate.has_generator"
+                        label="Gerador (gasóleo)"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInput
+                        type="number"
+                        name="vehicle_attributes.energy_climate.battery_count"
+                        label="Baterias (total)"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInput
+                        type="number"
+                        name="vehicle_attributes.energy_climate.cabin_battery_count"
+                        label="Baterias cabine"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInput
+                        type="number"
+                        name="vehicle_attributes.energy_climate.cell_battery_count"
+                        label="Baterias célula"
+                        className="mb-3"
+                    />
+                </Col>
+                {/* M2.5 — corta-corrente de baterias. Acompanha o resto da
+                    gestão de bateria (cell/cabin/inversor/painel/GPL). */}
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.energy_climate.has_battery_cutoff"
+                        label="Corta-corrente"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+
+            {/* Ficha das autocaravanas (B): uma marca e uma capacidade para todas as
+                baterias de cabine (a quantidade é a "Baterias cabine" acima). Só nas
+                autocaravanas: as caravanas não têm cabine de condução. */}
+            {isMotorhome && (
+                <Row className="mb-2">
+                    <Col lg={3}>
+                        <XInput
+                            name="vehicle_attributes.energy_climate.cabin_battery_brand"
+                            label="Marca das baterias de cabine"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={3}>
+                        <XInput
+                            type="number"
+                            name="vehicle_attributes.energy_climate.cabin_battery_ah"
+                            label="Capacidade das baterias de cabine (Ah)"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+            )}
+
+            {/* 2026-06-29 — Baterias de lítio: quantidade + capacidade Ah.
+                Padrão SEM checkbox pai (igual às baterias existentes).
+                Layout lado-a-lado visualmente coerente com o solar (M2). */}
+            <Row className="mb-2">
+                <Col lg={2}>
+                    <XInput
+                        type="number"
+                        name="vehicle_attributes.energy_climate.lithium_battery_count"
+                        label="Baterias de lítio"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInput
+                        type="number"
+                        name="vehicle_attributes.energy_climate.lithium_battery_ah"
+                        label="Capacidade (Ah)"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+
+            {/* Lote 3 — A/C 220V (com marca, padrão has_awning+awning_brand)
+                e VIESA (boolean simples). Distintos do "Ar condicionado"
+                dos extras `comfort_multimedia` (esse é da cabine). */}
+            <Row>
+                <Col lg={3}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.energy_climate.has_aircon_220v"
+                        label="Ar condicionado 220V"
+                        className="mb-3"
+                    />
+                </Col>
+                {ec?.has_aircon_220v && (
+                    <Col lg={3}>
+                        <XInput
+                            name="vehicle_attributes.energy_climate.aircon_220v_brand"
+                            label="Marca (A/C 220V)"
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.energy_climate.has_viesa"
+                        label="VIESA"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+        </>
+    );
+}
+
+export default function EnergyClimateAccordion({ accordionId }: AccordionProps) {
     return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-flashlight-line me-2" />Energia e Aquecimento</strong>
             </AccordionHeader>
             <AccordionBody accordionId={accordionId}>
-
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <Label>Aquecimento de água</Label>
-                        <Select
-                            styles={reactSelectTheme}
-                            menuPortalTarget={document.body}
-                            isClearable
-                            placeholder="Fonte"
-                            options={heatingSourceOptions}
-                            value={heatingSourceOptions.find(o => o.value === ec?.water_heater_source) ?? null}
-                            onChange={(opt: SourceOpt | null) => setFieldValue("vehicle_attributes.energy_climate.water_heater_source", opt?.value ?? null)}
-                            className="mb-3"
-                        />
-                    </Col>
-                    {ec?.water_heater_source && ec.water_heater_source !== "none" && (
-                        <Col lg={2}>
-                            <XInput
-                                name="vehicle_attributes.energy_climate.water_heater_brand"
-                                label="Marca (aquec. água)"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
-                    <Col lg={2}>
-                        <Label>Aquecimento ambiente</Label>
-                        <Select
-                            styles={reactSelectTheme}
-                            menuPortalTarget={document.body}
-                            isClearable
-                            placeholder="Fonte"
-                            options={heatingSourceOptions}
-                            value={heatingSourceOptions.find(o => o.value === ec?.ambient_heating_source) ?? null}
-                            onChange={(opt: SourceOpt | null) => setFieldValue("vehicle_attributes.energy_climate.ambient_heating_source", opt?.value ?? null)}
-                            className="mb-3"
-                        />
-                    </Col>
-                    {ec?.ambient_heating_source && ec.ambient_heating_source !== "none" && (
-                        <Col lg={2}>
-                            <XInput
-                                name="vehicle_attributes.energy_climate.ambient_heating_brand"
-                                label="Marca (aquec. ambiente)"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
-                </Row>
-
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.energy_climate.has_solar_panel"
-                            label="Painel solar"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {ec?.has_solar_panel && (
-                        <>
-                            <Col lg={2}>
-                                <XInput
-                                    type="number"
-                                    name="vehicle_attributes.energy_climate.solar_panel_count"
-                                    label="Quantidade"
-                                    className="mb-3"
-                                />
-                            </Col>
-                            <Col lg={2}>
-                                <XInput
-                                    type="number"
-                                    name="vehicle_attributes.energy_climate.solar_panel_watts"
-                                    label="Potência (W)"
-                                    className="mb-3"
-                                />
-                            </Col>
-                        </>
-                    )}
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.energy_climate.has_inverter"
-                            label="Inversor/Conversor"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {ec?.has_inverter && (
-                        <>
-                            <Col lg={2}>
-                                <Label>Tipo de inversor</Label>
-                                <Select
-                                    styles={reactSelectTheme}
-                                    menuPortalTarget={document.body}
-                                    isClearable
-                                    placeholder="Selecionar"
-                                    options={inverterTypeOptions}
-                                    value={inverterTypeOptions.find(o => o.value === ec?.inverter_type) ?? null}
-                                    onChange={(opt: InverterOpt | null) => setFieldValue("vehicle_attributes.energy_climate.inverter_type", opt?.value ?? null)}
-                                    className="mb-3"
-                                />
-                            </Col>
-                            <Col lg={2}>
-                                <XInput
-                                    type="number"
-                                    name="vehicle_attributes.energy_climate.inverter_watts"
-                                    label="Potência inversor (W)"
-                                    className="mb-3"
-                                />
-                            </Col>
-                        </>
-                    )}
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.energy_climate.has_external_power_socket"
-                            label="Tomada exterior 220V"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-
-                <Row>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.energy_climate.has_gpl"
-                            label="GPL"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {ec?.has_gpl && (
-                        <Col lg={2}>
-                            <XInput
-                                type="number"
-                                name="vehicle_attributes.energy_climate.gpl_bottles_count"
-                                label="Garrafas GPL"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.energy_climate.has_generator"
-                            label="Gerador (gasóleo)"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            name="vehicle_attributes.energy_climate.battery_count"
-                            label="Baterias (total)"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            name="vehicle_attributes.energy_climate.cabin_battery_count"
-                            label="Baterias cabine"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            name="vehicle_attributes.energy_climate.cell_battery_count"
-                            label="Baterias célula"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {/* M2.5 — corta-corrente de baterias. Acompanha o resto da
-                        gestão de bateria (cell/cabin/inversor/painel/GPL). */}
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.energy_climate.has_battery_cutoff"
-                            label="Corta-corrente"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-
-                {/* Ficha das autocaravanas (B): uma marca e uma capacidade para todas as
-                    baterias de cabine (a quantidade é a "Baterias cabine" acima). Só nas
-                    autocaravanas: as caravanas não têm cabine de condução. */}
-                {isMotorhome && (
-                    <Row className="mb-2">
-                        <Col lg={3}>
-                            <XInput
-                                name="vehicle_attributes.energy_climate.cabin_battery_brand"
-                                label="Marca das baterias de cabine"
-                                className="mb-3"
-                            />
-                        </Col>
-                        <Col lg={3}>
-                            <XInput
-                                type="number"
-                                name="vehicle_attributes.energy_climate.cabin_battery_ah"
-                                label="Capacidade das baterias de cabine (Ah)"
-                                className="mb-3"
-                            />
-                        </Col>
-                    </Row>
-                )}
-
-                {/* 2026-06-29 — Baterias de lítio: quantidade + capacidade Ah.
-                    Padrão SEM checkbox pai (igual às baterias existentes).
-                    Layout lado-a-lado visualmente coerente com o solar (M2). */}
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            name="vehicle_attributes.energy_climate.lithium_battery_count"
-                            label="Baterias de lítio"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            name="vehicle_attributes.energy_climate.lithium_battery_ah"
-                            label="Capacidade (Ah)"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-
-                {/* Lote 3 — A/C 220V (com marca, padrão has_awning+awning_brand)
-                    e VIESA (boolean simples). Distintos do "Ar condicionado"
-                    dos extras `comfort_multimedia` (esse é da cabine). */}
-                <Row>
-                    <Col lg={3}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.energy_climate.has_aircon_220v"
-                            label="Ar condicionado 220V"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {ec?.has_aircon_220v && (
-                        <Col lg={3}>
-                            <XInput
-                                name="vehicle_attributes.energy_climate.aircon_220v_brand"
-                                label="Marca (A/C 220V)"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.energy_climate.has_viesa"
-                            label="VIESA"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-
+                <EnergyClimateFields />
             </AccordionBody>
         </AccordionItem>
     );

@@ -21,37 +21,44 @@ export interface AccordionProps {
     accordionId: string;
 }
 
-export default function CabinAccordion({ accordionId }: AccordionProps) {
+/** Campos da secção, sem o acordeão (as autocaravanas compõem-nos nas suas secções). */
+export function CabinFields() {
     const { values } = useFormikContext<ICarUpdatePayload>();
     // Nas autocaravanas, os Bancos giratórios estão na lista única "Cabine de condução e segurança".
     const isMotorhome = values.vehicle_type === "motorhome";
 
+    return (
+        <>
+            <Row className="mb-2">
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.chassis_structure.has_remifront"
+                        label="Estores Remifront"
+                        className="mb-3"
+                    />
+                </Col>
+                {!isMotorhome && (
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.interior_furniture.has_rotating_seats"
+                            label="Bancos giratórios"
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
+            </Row>
+        </>
+    );
+}
+
+export default function CabinAccordion({ accordionId }: AccordionProps) {
     return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-steering-2-line me-2" />Cabine</strong>
             </AccordionHeader>
             <AccordionBody accordionId={accordionId}>
-
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_remifront"
-                            label="Estores Remifront"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {!isMotorhome && (
-                        <Col lg={2}>
-                            <XInputCheckbox
-                                name="vehicle_attributes.interior_furniture.has_rotating_seats"
-                                label="Bancos giratórios"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
-                </Row>
-
+                <CabinFields />
             </AccordionBody>
         </AccordionItem>
     );

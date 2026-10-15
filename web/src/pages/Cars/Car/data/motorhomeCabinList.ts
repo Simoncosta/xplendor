@@ -130,11 +130,14 @@ export const MOTORHOME_CABIN_LIST: CabinListItem[] = [
     { id: "usb", label: "Entrada USB", target: extra(C, "Entrada USB") },
 ];
 
+/** Jantes de liga leve: o extra de sempre, mostrado na secção Exterior das autocaravanas. */
+export const MOTORHOME_JANTES = { group: E, text: "Jantes de Liga Leve" } as const;
+
 /**
  * Extras que, nas autocaravanas, aparecem noutra secção da ficha (e não em
  * "Outros equipamentos").
  */
-export const MOTORHOME_EXTRAS_SHOWN_ELSEWHERE: CabinTarget[] = [];
+export const MOTORHOME_EXTRAS_SHOWN_ELSEWHERE: CabinTarget[] = [extra(MOTORHOME_JANTES.group, MOTORHOME_JANTES.text)];
 
 // ─────────────────────────────────────────────────────────────────────────
 // Funções puras (testadas em motorhomeCabinList.test.ts).

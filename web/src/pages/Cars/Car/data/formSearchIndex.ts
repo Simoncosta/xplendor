@@ -163,6 +163,42 @@ const HAB_LIVING_ROOM = { kind: "habitation" as const, accordionId: "9", accordi
 const HAB_CABINE      = { kind: "habitation" as const, accordionId: "10", accordionLabel: "Cabine",                  vehicleTypes: HABITATION_ONLY };
 
 // ═════════════════════════════════════════════════════════════════════════
+// Secções das autocaravanas (MotorhomeSections, ids MOTORHOME_SECTION). Depois
+// de "Dimensões e Pesos" (HAB_DIMENSIONS, comum), a ficha das autocaravanas tem:
+// Energia e autonomia; Sala e cozinha; Duche e WC; Cabine de condução e
+// segurança (com a lista única e "Outros equipamentos"); Exterior. As entradas
+// de habitação ganham a localização da autocaravana automaticamente
+// (MOTORHOME_LOCATION_BY_ACCORDION e MOTORHOME_LOCATION_BY_FIELD, mais abaixo).
+// ═════════════════════════════════════════════════════════════════════════
+
+const M_ENERGY   = { kind: "habitation" as const, accordionId: "m-energy",   accordionLabel: "Energia e autonomia",            vehicleTypes: MOTORHOME_ONLY };
+const M_LIVING   = { kind: "habitation" as const, accordionId: "m-living",   accordionLabel: "Sala e cozinha",                 vehicleTypes: MOTORHOME_ONLY };
+const M_BATHROOM = { kind: "habitation" as const, accordionId: "m-bath",     accordionLabel: "Duche e WC",                     vehicleTypes: MOTORHOME_ONLY };
+const M_CABIN    = { kind: "habitation" as const, accordionId: "m-cabin",    accordionLabel: "Cabine de condução e segurança", vehicleTypes: MOTORHOME_ONLY };
+const M_OTHERS   = { kind: "habitation" as const, accordionId: "m-others",   accordionLabel: "Outros equipamentos",            vehicleTypes: MOTORHOME_ONLY };
+const M_EXTERIOR = { kind: "habitation" as const, accordionId: "m-exterior", accordionLabel: "Exterior",                       vehicleTypes: MOTORHOME_ONLY };
+
+/** Onde fica, nas autocaravanas, cada acordeão de habitação das caravanas. */
+const MOTORHOME_LOCATION_BY_ACCORDION: Record<string, FormSearchLocation> = {
+    [HAB_KITCHEN.accordionId]: M_LIVING,
+    [HAB_BATHROOM.accordionId]: M_BATHROOM,
+    [HAB_ENERGY.accordionId]: M_ENERGY,
+    [HAB_EXTERIOR.accordionId]: M_EXTERIOR,
+    [HAB_SECURITY.accordionId]: M_CABIN,
+    [HAB_CHASSIS.accordionId]: M_CABIN,
+    [HAB_INTERIOR.accordionId]: M_LIVING,
+    [HAB_LIVING_ROOM.accordionId]: M_LIVING,
+    [HAB_CABINE.accordionId]: M_CABIN,
+};
+
+/** Campos que, nas autocaravanas, mudam de secção em relação ao seu acordeão. */
+const MOTORHOME_LOCATION_BY_FIELD: Record<string, FormSearchLocation> = {
+    "vehicle_attributes.autonomy_km": M_ENERGY,
+    "vehicle_attributes.chassis_structure.has_cabin_blackouts": M_CABIN,
+    "vehicle_attributes.chassis_structure.cabin_blackout_type": M_CABIN,
+};
+
+// ═════════════════════════════════════════════════════════════════════════
 // Accordions de Extras (CarEquipmentDataFields → AccordionId "1"-"4")
 // ═════════════════════════════════════════════════════════════════════════
 
@@ -171,10 +207,6 @@ const EXTRAS_EXTERIOR = { kind: "extras" as const, accordionId: "2", accordionLa
 const EXTRAS_INTERIOR = { kind: "extras" as const, accordionId: "3", accordionLabel: "Equipamento Interior" };
 const EXTRAS_SAFETY   = { kind: "extras" as const, accordionId: "4", accordionLabel: "Segurança & Desempenho" };
 
-// Autocaravanas: a lista única e "Outros equipamentos" substituem os 4 grupos
-// (CarEquipmentDataFields, MOTORHOME_CABIN_ID e MOTORHOME_OTHERS_ID).
-const EXTRAS_MOTORHOME_CABIN  = { kind: "extras" as const, accordionId: "5", accordionLabel: "Cabine de condução e segurança", vehicleTypes: MOTORHOME_ONLY };
-const EXTRAS_MOTORHOME_OTHERS = { kind: "extras" as const, accordionId: "6", accordionLabel: "Outros equipamentos", vehicleTypes: MOTORHOME_ONLY };
 
 const EXTRA_GROUP_LOCATION: Record<string, typeof EXTRAS_COMFORT> = {
     comfort_multimedia: EXTRAS_COMFORT,
@@ -377,7 +409,7 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Garagem — altura ajustável", name: "vehicle_attributes.exterior.garage.has_height_adjuster", loc: HAB_EXTERIOR, parentField: { fieldName: "vehicle_attributes.exterior.garage.has_garage" } },
 
     // ── HAB.6 Segurança e Fechaduras (accordionId="6") ───────────────────
-    // Nas autocaravanas, o Alarme está na lista única (EXTRAS_MOTORHOME_CABIN).
+    // Nas autocaravanas, o Alarme está na lista única (M_CABIN).
     { label: "Alarme",            name: "vehicle_attributes.security.has_alarm", loc: HAB_SECURITY, vehicleTypes: CARAVAN_ONLY },
     { label: "Fecho alçapão",     name: "vehicle_attributes.security.has_hatch_lock", loc: HAB_SECURITY },
     { label: "Fecho cabine",      name: "vehicle_attributes.security.has_cabin_lock", loc: HAB_SECURITY },
@@ -442,7 +474,7 @@ const RAW_MANUAL: RawEntry[] = [
     // Chaves JSON permanecem nos sítios originais (chassis_structure e
     // interior_furniture). Só a apresentação vive aqui. Ver CLAUDE.md sec 6.1.
     { label: "Estores Remifront", name: "vehicle_attributes.chassis_structure.has_remifront", loc: HAB_CABINE },
-    // Nas autocaravanas, os Bancos giratórios estão na lista única (EXTRAS_MOTORHOME_CABIN).
+    // Nas autocaravanas, os Bancos giratórios estão na lista única (M_CABIN).
     { label: "Bancos giratórios", name: "vehicle_attributes.interior_furniture.has_rotating_seats", loc: HAB_CABINE, vehicleTypes: CARAVAN_ONLY },
 ];
 
@@ -476,10 +508,11 @@ const buildExtrasEntries = (): FormSearchEntry[] => {
         normalizedLabel: normalizeForSearch(label),
         vehicleTypes: MOTORHOME_ONLY,
     });
-    out.push(motorhome("Caixa", EXTRAS_MOTORHOME_CABIN));
-    for (const item of MOTORHOME_CABIN_LIST) out.push(motorhome(item.label, EXTRAS_MOTORHOME_CABIN));
-    out.push(motorhome("Outros equipamentos", EXTRAS_MOTORHOME_OTHERS));
-    for (const other of otherCatalogExtras()) out.push(motorhome(other.text, EXTRAS_MOTORHOME_OTHERS));
+    out.push(motorhome("Caixa", M_CABIN));
+    for (const item of MOTORHOME_CABIN_LIST) out.push(motorhome(item.label, M_CABIN));
+    out.push(motorhome("Outros equipamentos", M_OTHERS));
+    for (const other of otherCatalogExtras()) out.push(motorhome(other.text, M_OTHERS));
+    out.push(motorhome("Jantes de liga leve", M_EXTERIOR));
     return out;
 };
 
@@ -492,15 +525,27 @@ let CACHED_INDEX: FormSearchEntry[] | null = null;
 
 export const getFormSearchIndex = (): FormSearchEntry[] => {
     if (CACHED_INDEX) return CACHED_INDEX;
-    const manual: FormSearchEntry[] = RAW_MANUAL.map(({ label, name, loc, vehicleTypes, parentField }) => ({
-        label,
-        fieldName: name,
-        location: loc,
-        normalizedLabel: normalizeForSearch(label),
-        // Override da entrada > herdado da location > undefined (todos).
-        vehicleTypes: vehicleTypes ?? loc.vehicleTypes,
-        parentField,
-    }));
+    const manual: FormSearchEntry[] = RAW_MANUAL.flatMap(({ label, name, loc, vehicleTypes, parentField }) => {
+        const entry: FormSearchEntry = {
+            label,
+            fieldName: name,
+            location: loc,
+            normalizedLabel: normalizeForSearch(label),
+            // Override da entrada > herdado da location > undefined (todos).
+            vehicleTypes: vehicleTypes ?? loc.vehicleTypes,
+            parentField,
+        };
+        // Habitação: nas autocaravanas, o campo vive noutra secção. Fica uma entrada
+        // para as caravanas (localização de sempre) e outra para as autocaravanas.
+        if (loc.kind !== "habitation" || !entry.vehicleTypes?.includes("motorhome")) return [entry];
+        const motorhomeLoc = (name && MOTORHOME_LOCATION_BY_FIELD[name]) ?? MOTORHOME_LOCATION_BY_ACCORDION[loc.accordionId];
+        if (!motorhomeLoc) return [entry];
+        const others = entry.vehicleTypes.filter((t) => t !== "motorhome");
+        return [
+            ...(others.length ? [{ ...entry, vehicleTypes: others }] : []),
+            { ...entry, location: motorhomeLoc, vehicleTypes: MOTORHOME_ONLY },
+        ];
+    });
     CACHED_INDEX = [...manual, ...buildExtrasEntries()];
     return CACHED_INDEX;
 };
@@ -568,14 +613,18 @@ const formatVehicleTypesNote = (types: FormSearchVehicleType[]): string => {
 
 // Lookup pelo fieldName — para resolver `parentEntry` (e o label dele) sem
 // duplicar texto. Construído lazy no 1º uso.
-let PARENT_LOOKUP: Map<string, FormSearchEntry> | null = null;
-const getParentLookup = (): Map<string, FormSearchEntry> => {
-    if (PARENT_LOOKUP) return PARENT_LOOKUP;
-    PARENT_LOOKUP = new Map();
-    for (const e of getFormSearchIndex()) {
-        if (e.fieldName) PARENT_LOOKUP.set(e.fieldName, e);
+// Um campo pode ter uma entrada por tipo de viatura (as autocaravanas têm outra
+// localização): o pai escolhe-se pelo tipo atual.
+let PARENT_LOOKUP: Map<string, FormSearchEntry[]> | null = null;
+const getParentEntry = (fieldName: string, vehicleType: FormSearchVehicleType): FormSearchEntry | undefined => {
+    if (!PARENT_LOOKUP) {
+        PARENT_LOOKUP = new Map();
+        for (const e of getFormSearchIndex()) {
+            if (e.fieldName) PARENT_LOOKUP.set(e.fieldName, [...(PARENT_LOOKUP.get(e.fieldName) ?? []), e]);
+        }
     }
-    return PARENT_LOOKUP;
+    const candidates = PARENT_LOOKUP.get(fieldName) ?? [];
+    return candidates.find((e) => !e.vehicleTypes || e.vehicleTypes.includes(vehicleType)) ?? candidates[0];
 };
 
 /**
@@ -600,7 +649,7 @@ export const getEntryAvailability = (
         const parentValue = readByPath(values, entry.parentField.fieldName);
         const isOn = entry.parentField.isOn ?? ((v: unknown) => Boolean(v));
         if (!isOn(parentValue)) {
-            const parentEntry = getParentLookup().get(entry.parentField.fieldName);
+            const parentEntry = getParentEntry(entry.parentField.fieldName, currentVehicleType);
             const parentLabel = entry.parentField.parentLabel ?? parentEntry?.label ?? entry.parentField.fieldName;
             return {
                 kind: "parent_off",

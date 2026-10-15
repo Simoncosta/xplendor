@@ -8,167 +8,174 @@ export interface AccordionProps {
     accordionId: string;
 }
 
-export default function ExteriorAccordion({ accordionId }: AccordionProps) {
+/** Campos da secção, sem o acordeão (as autocaravanas compõem-nos nas suas secções). */
+export function ExteriorFields() {
     const { values } = useFormikContext<ICarUpdatePayload>();
     const ext = values.vehicle_attributes?.exterior;
 
+    return (
+        <>
+            <Row className="mb-2">
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_awning"
+                        label="Toldo"
+                        className="mb-3"
+                    />
+                </Col>
+                {ext?.has_awning && (
+                    <Col lg={2}>
+                        <XInput
+                            name="vehicle_attributes.exterior.awning_brand"
+                            label="Marca do toldo"
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_national_antenna"
+                        label="Antena nacional"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_parabolic_antenna"
+                        label="Antena parabólica"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+
+            <Row className="mb-2">
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_bike_rack"
+                        label="Suporte de bicicletas"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_motorbike_rack"
+                        label="Suporte de mota"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_electric_step"
+                        label="Degrau elétrico"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_manual_step"
+                        label="Degrau manual"
+                        className="mb-3"
+                    />
+                </Col>
+                {/* Lote 3 — `has_stabilizers` (chave JSON intacta em
+                    `exterior.has_stabilizers`) renderiza agora no
+                    Chassis e Estrutura (decisão UX Matilde). */}
+            </Row>
+
+            <Row>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_spare_wheel"
+                        label="Pneu suplente"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_fix_n_go_kit"
+                        label="Kit Fix&Go"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_bull_eye"
+                        label="Olho de boi"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_external_wc"
+                        label="Sanita exterior"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_hubcaps"
+                        label="Tampões de Roda"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.has_external_ladder"
+                        label="Escada exterior"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+
+            <hr className="my-3" />
+            <h6 className="mb-3"><i className="ri-archive-line me-2" />Garagem</h6>
+
+            <Row className="mb-2">
+                <Col lg={2}>
+                    <XInputCheckbox
+                        name="vehicle_attributes.exterior.garage.has_garage"
+                        label="Garagem"
+                        className="mb-3"
+                    />
+                </Col>
+            </Row>
+            {ext?.garage?.has_garage && (
+                <Row className="mb-2">
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.exterior.garage.has_double_opening"
+                            label="Abertura dos dois lados"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.exterior.garage.is_spacious"
+                            label="Espaçosa"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.exterior.garage.has_height_adjuster"
+                            label="Altura ajustável"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+            )}
+        </>
+    );
+}
+
+export default function ExteriorAccordion({ accordionId }: AccordionProps) {
     return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-road-map-line me-2" />Exterior</strong>
             </AccordionHeader>
             <AccordionBody accordionId={accordionId}>
-
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_awning"
-                            label="Toldo"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {ext?.has_awning && (
-                        <Col lg={2}>
-                            <XInput
-                                name="vehicle_attributes.exterior.awning_brand"
-                                label="Marca do toldo"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_national_antenna"
-                            label="Antena nacional"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_parabolic_antenna"
-                            label="Antena parabólica"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_bike_rack"
-                            label="Suporte de bicicletas"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_motorbike_rack"
-                            label="Suporte de mota"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_electric_step"
-                            label="Degrau elétrico"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_manual_step"
-                            label="Degrau manual"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {/* Lote 3 — `has_stabilizers` (chave JSON intacta em
-                        `exterior.has_stabilizers`) renderiza agora no
-                        Chassis e Estrutura (decisão UX Matilde). */}
-                </Row>
-
-                <Row>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_spare_wheel"
-                            label="Pneu suplente"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_fix_n_go_kit"
-                            label="Kit Fix&Go"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_bull_eye"
-                            label="Olho de boi"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_external_wc"
-                            label="Sanita exterior"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_hubcaps"
-                            label="Tampões de Roda"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_external_ladder"
-                            label="Escada exterior"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-
-                <hr className="my-3" />
-                <h6 className="mb-3"><i className="ri-archive-line me-2" />Garagem</h6>
-
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.garage.has_garage"
-                            label="Garagem"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
-                {ext?.garage?.has_garage && (
-                    <Row className="mb-2">
-                        <Col lg={2}>
-                            <XInputCheckbox
-                                name="vehicle_attributes.exterior.garage.has_double_opening"
-                                label="Abertura dos dois lados"
-                                className="mb-3"
-                            />
-                        </Col>
-                        <Col lg={2}>
-                            <XInputCheckbox
-                                name="vehicle_attributes.exterior.garage.is_spacious"
-                                label="Espaçosa"
-                                className="mb-3"
-                            />
-                        </Col>
-                        <Col lg={2}>
-                            <XInputCheckbox
-                                name="vehicle_attributes.exterior.garage.has_height_adjuster"
-                                label="Altura ajustável"
-                                className="mb-3"
-                            />
-                        </Col>
-                    </Row>
-                )}
-
+                <ExteriorFields />
             </AccordionBody>
         </AccordionItem>
     );
