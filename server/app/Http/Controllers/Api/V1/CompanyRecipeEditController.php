@@ -99,8 +99,12 @@ class CompanyRecipeEditController extends Controller
         $withBom = DB::table('pingwin_product_boms')->where('company_id', $companyId)
             ->whereIn('product_pingwin_id', $items->pluck('pingwin_id'))->distinct()->pluck('product_pingwin_id')->map(fn ($v) => (string) $v)->all();
         $cost = (new RecipeCostService($companyId))->load([], $items->pluck('pingwin_id')->map(fn ($v) => (string) $v)->all());
+        // Auditoria (prováveis duplicados): o artigo principal de um grupo leva uma estrela.
+        $mains = DB::table('article_groups')->where('company_id', $companyId)
+            ->whereIn('main_product_pingwin_id', $items->pluck('pingwin_id')->map(fn ($v) => (string) $v)->all())
+            ->pluck('label', 'main_product_pingwin_id')->all();
 
-        return ApiResponse::success(['components' => array_values(array_filter(array_map(function ($h) use ($items, $withBom, $cost) {
+        return ApiResponse::success(['components' => array_values(array_filter(array_map(function ($h) use ($items, $withBom, $cost, $mains) {
             $i = $items[$h['id']] ?? null;
             $units = $i ? $cost->unitsFor((string) $i->pingwin_id) : [];
 
@@ -111,6 +115,8 @@ class CompanyRecipeEditController extends Controller
                 'inactive' => ! $i->is_active || $i->product_status === 'Inativo', 'is_semi' => in_array((string) $i->pingwin_id, $withBom, true),
                 'last_purchase' => $h['last_purchase'] ? ['date' => $h['last_purchase']['date'] ?? null, 'supplier' => $h['last_purchase']['supplier'] ?? null] : null,
                 'approximate' => $h['approximate'],
+                'is_main' => array_key_exists((string) $i->pingwin_id, $mains),
+                'main_of' => $mains[(string) $i->pingwin_id] ?? null,
             ] : null;
         }, $hits)))], 'Componentes.');
     }

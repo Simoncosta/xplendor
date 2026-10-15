@@ -362,7 +362,8 @@ class TrackController extends Controller
     /**
      * Cada pedido recusado no /track fica no log (info): a empresa, o tipo, o motivo e o
      * domínio de origem. Nunca o token, o IP, o visitante nem os dados do formulário; o motivo
-     * da validação leva só os nomes dos campos.
+     * da validação leva só os nomes dos campos. Também conta por dia (tracking_rejections_daily),
+     * para a Auditoria.
      */
     private function logRefusal(Request $request, int $companyId, int $status, string $reason, ?string $type = null): void
     {
@@ -378,6 +379,8 @@ class TrackController extends Controller
             'motivo' => $reason,
             'origem' => is_string($host) && $host !== '' ? strtolower($host) : null,
         ]);
+        // Auditoria (tracking): as contagens diárias por empresa, tipo, estado e motivo.
+        \App\Services\Tracking\TrackingRejections::record($companyId, $type, $status, $reason);
     }
 
     private function resolveCarId(int $companyId, ?int $rawCarId, bool $useCarmineId = false): ?int

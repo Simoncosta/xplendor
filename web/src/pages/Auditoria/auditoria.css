@@ -1,0 +1,6 @@
+/* XPLENDOR — Auditoria: o painel do detalhe de um achado e o do pipeline (ecrã inteiro no telemóvel). */
+.offcanvas.xp-audit-panel { width: min(880px, 94vw); }
+.offcanvas.xp-audit-run { width: min(460px, 100vw); }
+@media (max-width: 575.98px) {
+    .offcanvas.xp-audit-panel, .offcanvas.xp-audit-run { width: 100vw; }
+}

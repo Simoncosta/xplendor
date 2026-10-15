@@ -18,8 +18,11 @@ export const parseNum = (v: string): number | null => {
  * AVINHEZ BRANCO, 1 «Unidade» = 20 L). Mostra a sugestão, o porquê e o efeito no custo. Escreve só
  * na XPLENDOR.
  */
+/** Os campos da linha que o modal usa (a Auditoria abre-o para um artigo que pode não estar numa ficha). */
+export type FactorLine = Pick<RecipeLine, "component_id" | "description" | "qnt_base" | "waste_pct" | "pingwin_cost_eur" | "conversion">;
+
 export default function ConfirmFactorModal({ open, onClose, onDone, companyId, line, hidden }: {
-    open: boolean; onClose: () => void; onDone: () => void; companyId: number | null; line: RecipeLine; hidden: boolean;
+    open: boolean; onClose: () => void; onDone: () => void; companyId: number | null; line: FactorLine; hidden: boolean;
 }) {
     const conv = line.conversion!;
     const [choice, setChoice] = useState("current");

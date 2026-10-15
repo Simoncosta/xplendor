@@ -22,6 +22,8 @@ return [
         'bussola-stand-nightly', 'bussola-imoveis-nightly',
         // Bússola Master (R3): a referência do INE do imobiliário (lê o INE).
         'ine-housing-prices-monthly',
+        // Auditoria (Fatia 2): a saúde do tracking lê o GA4.
+        'tracking-health-daily',
     ],
 
     // As tarefas agendadas que chegam à IA (pelos trabalhos que põem na fila). Todas têm de estar

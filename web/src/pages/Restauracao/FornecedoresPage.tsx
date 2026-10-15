@@ -15,6 +15,8 @@ import {
 } from "helpers/laravel_helper";
 import { PingwinSupplier, PingwinSupplierForm, PingwinSupplierWriteState } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import AuditButton from "pages/Auditoria/AuditButton";
+import AuditCountCell, { useAuditCounts } from "pages/Auditoria/AuditCountCell";
 
 /**
  * XPLENDOR — Restauração › Fornecedores. Lista paginada do PingWin (filtro, cards no
@@ -312,6 +314,10 @@ export default function FornecedoresPage() {
         </>
     ) : null;
 
+    // Auditoria: a coluna com os achados abertos de cada fornecedor (todos, a lista é local).
+    const [auditKey, setAuditKey] = useState(0);
+    const auditCounts = useAuditCounts(companyId, "fornecedor", null, auditKey);
+
     const columns: DTColumn<PingwinSupplier>[] = [
         { id: "code", header: "Código", value: (s) => s.code, cell: (s) => <span className="fw-medium">{s.code || "—"}</span>, nowrap: true, mobile: "subtitle" },
         {
@@ -334,6 +340,10 @@ export default function FornecedoresPage() {
         { id: "phone", header: "Telefone", value: (s) => s.phone, defaultVisible: false, nowrap: true },
         { id: "email", header: "Email", value: (s) => s.email, defaultVisible: false },
         { id: "city", header: "Localidade", value: (s) => s.city, defaultVisible: false },
+        {
+            id: "audit", header: "Auditoria", value: (s) => auditCounts[String(s.pingwin_id)]?.open ?? 0, align: "center",
+            cell: (s) => <AuditCountCell counts={auditCounts} entityType="fornecedor" entityId={String(s.pingwin_id)} label={s.name} />,
+        },
     ];
     const cols = useDataColumns("restauracao.fornecedores", columns);
 
@@ -365,6 +375,7 @@ export default function FornecedoresPage() {
                             </>}
                             actions={<>
                                 {cols.selector}
+                                <AuditButton companyId={companyId} area="restauracao" origin="fornecedores" onFinished={() => setAuditKey((k) => k + 1)} />
                                 <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                                 </Button>

@@ -427,6 +427,29 @@ Schedule::job(new \App\Jobs\PurgeRadarItemsJob())
         \Illuminate\Support\Facades\Log::error('[Radar] Apagamento aos 30 dias falhou no scheduler');
     });
 
+// 08:30 (Lisboa) — AUDITORIA da restauração (Fatia 2): todas as regras da área, para as empresas
+// com o PingWin ligado. Depois dos jobs do PingWin da madrugada (o último é às 08:00). Só lê o
+// espelho e as tabelas da XPLENDOR: é interna (corre também no dev).
+Schedule::job(new \App\Jobs\DispatchNightlyAuditJob())
+    ->dailyAt('08:30')
+    ->timezone('Europe/Lisbon')
+    ->name('audit-restaurant-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Auditoria] Despacho noturno falhou no scheduler');
+    });
+
+// 09:15 (Lisboa) — AUDITORIA do tracking dos sites (Fatia 2, Parte B): as contagens do GA4 do dia
+// anterior e da XPLENDOR (28 dias) e as regras do tracking. Chama o GA4: é externa.
+Schedule::job(new \App\Jobs\TrackingHealthDailyJob())
+    ->dailyAt('09:15')
+    ->timezone('Europe/Lisbon')
+    ->name('tracking-health-daily')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Auditoria] Tracking diário falhou no scheduler');
+    });
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

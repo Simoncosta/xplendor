@@ -12,6 +12,8 @@ import { getRecipes } from "helpers/laravel_helper";
 import { RecipeListResponse, RecipeRow } from "common/models/recipe.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { COST_SOURCES_TEXT, Money, StateBadge, fmtDate, fmtPct, fmtQty } from "./fichas/recipeFormat";
+import AuditButton from "pages/Auditoria/AuditButton";
+import AuditCountCell, { useAuditCounts } from "pages/Auditoria/AuditCountCell";
 
 /**
  * XPLENDOR — Restauração › Fichas técnicas (Fatia 1, só leitura). Os artigos vendidos nos últimos
@@ -80,6 +82,9 @@ export default function FichasTecnicasPage() {
     const stateOptions: Opt[] = useMemo(() => [{ value: "", label: "Todos os estados" }, ...(data?.states ?? []).map((s) => ({ value: s.id, label: s.label }))], [data?.states]);
 
     const open = (r: RecipeRow) => navigate(`/restauracao/fichas-tecnicas/${r.product_id}`);
+    // Auditoria: a coluna com os achados abertos de cada artigo (da página que se vê).
+    const [auditKey, setAuditKey] = useState(0);
+    const auditCounts = useAuditCounts(companyId, "artigo", rows.map((r) => r.product_id), auditKey);
 
     const euroSort = (key: string) => (hidden ? undefined : key);
     const columns: DTColumn<RecipeRow>[] = [
@@ -130,6 +135,10 @@ export default function FichasTecnicasPage() {
             id: "stores", header: "Lojas", sortable: false, value: (r) => r.stores.join(", "), defaultVisible: false,
             cell: (r) => (r.stores.length ? <div className="d-flex flex-wrap gap-1">{r.stores.map((s) => <span key={s} className="badge bg-info-subtle text-info">{s}</span>)}</div> : <span className="text-muted">—</span>),
         },
+        {
+            id: "audit", header: "Auditoria", sortable: false, value: (r) => auditCounts[r.product_id]?.open ?? 0, align: "center",
+            cell: (r) => <AuditCountCell counts={auditCounts} entityType="artigo" entityId={r.product_id} label={r.description} />,
+        },
     ];
     const cols = useDataColumns("restauracao.fichas-tecnicas", columns);
 
@@ -160,7 +169,10 @@ export default function FichasTecnicasPage() {
                             info={COST_SOURCES_TEXT}
                             loading={loading && !!data}
                             status={<>Fichas lidas do PingWin: {fmtDateTime(summary?.last_synced_at)}</>}
-                            actions={cols.selector}
+                            actions={<>
+                                {cols.selector}
+                                <AuditButton companyId={companyId} area="restauracao" origin="fichas" onFinished={() => setAuditKey((k) => k + 1)} />
+                            </>}
                             filters={
                                 <RestFilterBar
                                     search={search}

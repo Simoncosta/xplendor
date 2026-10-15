@@ -71,6 +71,7 @@ export default function ComponentPicker({ companyId, exclude, onPick, onClose }:
                         className={`border rounded p-2 mb-2 ${i === active ? "border-primary bg-primary-subtle" : "bg-body"}`} style={{ cursor: "pointer" }}
                         onMouseEnter={() => setActive(i)} onClick={() => onPick(c)}>
                         <div className="d-flex flex-wrap align-items-center gap-2">
+                            {c.is_main && <i className="ri-star-fill text-warning" title={`Artigo principal${c.main_of ? ` de «${c.main_of}»` : ""}`} aria-label="Artigo principal" />}
                             <span className="fw-semibold">{c.description}</span>
                             {c.code && <span className="text-muted fs-12">{c.code}</span>}
                             {c.is_semi && <span className="badge bg-primary-subtle text-primary">semi-produto</span>}

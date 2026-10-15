@@ -80,6 +80,9 @@ final class RecipeCostService
     /** @var array<string, array<string, ProductUnitConversion>> conversões confirmadas: artigo → "unidade|NIF" */
     private array $conversions = [];
 
+    /** @var array<string, true> os artigos com os fatores confirmados já carregados */
+    private array $conversionsLoaded = [];
+
     /** @var array<string, ProductBomYield> rendimentos confirmados por versão (bom) */
     private array $yields = [];
 
@@ -151,12 +154,7 @@ final class RecipeCostService
         }
         $this->units = PingwinUnit::where('company_id', $this->companyId)->get()->keyBy(fn ($u) => (string) $u->pingwin_id)->all();
         $componentIds = array_map('strval', array_keys($components));
-        foreach (array_chunk($componentIds, 500) as $chunk) {
-            foreach (ProductUnitConversion::where('company_id', $this->companyId)->where('source', 'confirmado')
-                ->whereIn('product_pingwin_id', $chunk)->with('confirmer:id,name')->get() as $c) {
-                $this->conversions[(string) $c->product_pingwin_id][$c->unit_key . '|' . $c->supplier_nif] = $c;
-            }
-        }
+        $this->ensureConversions($componentIds);
         $bomIds = [];
         foreach ($this->versions as $versions) {
             foreach ($versions as $v) {
@@ -221,17 +219,46 @@ final class RecipeCostService
     private function loadPurchases(array $componentIds): void
     {
         $since = $this->today->subDays(self::WINDOW_DAYS)->toDateString();
+        $rows = $this->purchaseLines($componentIds);
+        foreach ($rows as $pid => $list) {
+            foreach ($list as $row) {
+                if ($row['date'] >= $since && $row['unit_id'] !== '') {
+                    $this->purchaseUnits[$pid][$row['unit_id']] = $row['unit_id'];
+                }
+            }
+        }
+        foreach ($componentIds as $id) {
+            $this->purchaseRows[$id] = $rows[$id] ?? [];
+            $this->purchase[$id] = self::purchaseStats($rows[$id] ?? [], $this->today) + ['qty_source' => self::qtySource($rows[$id] ?? [], $since)];
+        }
+    }
+
+    /**
+     * As linhas de compra (faturas e faturas-recibo fechadas) destes artigos ou, sem lista, de todos,
+     * com a quantidade na unidade base: o fator confirmado (do fornecedor, senão o geral) manda sobre
+     * a qnt_base do raw. Também a usa a Auditoria (preço fora do normal, unidade sem conversão).
+     *
+     * @param  list<string>|null  $productIds
+     * @return array<string, list<array<string, mixed>>>  por artigo, por data
+     */
+    public function purchaseLines(?array $productIds, ?string $since = null): array
+    {
+        $this->ensureUnits();
         $rows = [];
-        foreach (array_chunk($componentIds, 500) as $chunk) {
+        $chunks = $productIds === null ? [null] : array_chunk(array_values(array_unique(array_map('strval', $productIds))), 500);
+        foreach ($chunks as $chunk) {
             $q = DB::table('pingwin_supplier_document_lines as l')
                 ->join('pingwin_supplier_documents as d', fn ($j) => $j->on('d.docheader_id', '=', 'l.docheader_id')->on('d.company_id', '=', 'l.company_id'))
                 ->where('l.company_id', $this->companyId)
-                ->whereIn('l.product_pingwin_id', $chunk)
+                ->when($chunk !== null, fn ($q) => $q->whereIn('l.product_pingwin_id', $chunk))
                 ->whereIn('d.docconfig_id', self::PURCHASE_DOCCONFIGS)
                 ->where('d.docstatus_id', SupplierDocumentLinesService::STATUS_CLOSED)
                 ->where('d.doc_date', '<=', $this->today->toDateString())
+                ->when($since !== null, fn ($q) => $q->where('d.doc_date', '>=', $since))
                 ->orderBy('d.doc_date')->orderBy('l.id')
-                ->get(['l.id', 'l.product_pingwin_id', 'l.qnt', 'l.total_cents', 'l.unit_desc', 'l.description', 'l.raw', 'd.doc_date', 'd.tax_number', 'd.entity_name']);
+                ->get(['l.id', 'l.product_pingwin_id', 'l.qnt', 'l.price', 'l.total_cents', 'l.unit_desc', 'l.description', 'l.raw', 'l.docheader_id',
+                    'd.doc_date', 'd.document', 'd.tax_number', 'd.entity_name', 'd.entity_pingwin_id']);
+            $this->ensureConversions($q->pluck('product_pingwin_id')->map(fn ($v) => (string) $v)->unique()->values()->all());
             foreach ($q as $r) {
                 $raw = is_string($r->raw) ? (json_decode($r->raw, true) ?: []) : (array) $r->raw;
                 $qnt = (float) $r->qnt;
@@ -239,15 +266,16 @@ final class RecipeCostService
                 if (! is_numeric($qb)) {
                     $qb = $qnt * (is_numeric($raw['unit_value'] ?? null) ? (float) $raw['unit_value'] : 1.0);
                 }
-                $date = substr((string) $r->doc_date, 0, 10);
                 $pid = (string) $r->product_pingwin_id;
-                $unitKey = (string) (($raw['unit_id'] ?? '') !== '' ? $raw['unit_id'] : ($r->unit_desc ?? ''));
+                $unitId = (string) ($raw['unit_id'] ?? '');
+                $unitKey = $unitId !== '' ? $unitId : (string) ($r->unit_desc ?? '');
                 $nif = SupplierArticleMapService::nif($r->tax_number);
                 $row = [
-                    'id' => (int) $r->id, 'date' => $date, 'total' => ((int) $r->total_cents) / 100,
+                    'id' => (int) $r->id, 'date' => substr((string) $r->doc_date, 0, 10), 'total' => ((int) $r->total_cents) / 100,
                     'qnt' => $qnt, 'raw_qnt_base' => (float) $qb, 'qnt_base' => (float) $qb, 'qty_source' => 'raw',
-                    'unit_key' => $unitKey, 'unit_label' => (string) ($r->unit_desc ?? $unitKey), 'nif' => $nif,
-                    'supplier' => $r->entity_name, 'description' => $r->description,
+                    'unit_key' => $unitKey, 'unit_id' => $unitId, 'unit_label' => (string) ($r->unit_desc ?? $unitKey), 'nif' => $nif,
+                    'supplier' => $r->entity_name, 'supplier_id' => (string) ($r->entity_pingwin_id ?? ''), 'description' => $r->description,
+                    'price' => (float) $r->price, 'docheader_id' => (string) $r->docheader_id, 'document' => $r->document,
                 ];
                 // O fator confirmado (do fornecedor, senão o geral) manda sobre a qnt_base do raw.
                 $conv = $this->conversions[$pid]["{$unitKey}|{$nif}"] ?? $this->conversions[$pid]["{$unitKey}|"] ?? null;
@@ -256,15 +284,52 @@ final class RecipeCostService
                     $row['qty_source'] = 'confirmado';
                 }
                 $rows[$pid][] = $row;
-                if ($date >= $since && ! empty($raw['unit_id'])) {
-                    $this->purchaseUnits[$pid][(string) $raw['unit_id']] = (string) $raw['unit_id'];
-                }
             }
         }
-        foreach ($componentIds as $id) {
-            $this->purchaseRows[$id] = $rows[$id] ?? [];
-            $this->purchase[$id] = self::purchaseStats($rows[$id] ?? [], $this->today) + ['qty_source' => self::qtySource($rows[$id] ?? [], $since)];
+
+        return $rows;
+    }
+
+    /** As unidades do PingWin (uma vez). */
+    private function ensureUnits(): void
+    {
+        if (! $this->units) {
+            $this->units = PingwinUnit::where('company_id', $this->companyId)->get()->keyBy(fn ($u) => (string) $u->pingwin_id)->all();
         }
+    }
+
+    /** Os fatores confirmados destes artigos (os que ainda não estão carregados). */
+    private function ensureConversions(array $productIds): void
+    {
+        $missing = array_values(array_filter(array_map('strval', $productIds), fn ($id) => ! isset($this->conversionsLoaded[$id])));
+        foreach (array_chunk($missing, 500) as $chunk) {
+            foreach (ProductUnitConversion::where('company_id', $this->companyId)->where('source', 'confirmado')
+                ->whereIn('product_pingwin_id', $chunk)->with('confirmer:id,name')->get() as $c) {
+                $this->conversions[(string) $c->product_pingwin_id][$c->unit_key . '|' . $c->supplier_nif] = $c;
+            }
+            foreach ($chunk as $id) {
+                $this->conversionsLoaded[$id] = true;
+            }
+        }
+    }
+
+    /** Os artigos do catálogo (os que ainda não estão carregados). */
+    public function ensureItems(array $productIds): void
+    {
+        $missing = array_values(array_filter(array_map('strval', $productIds), fn ($id) => ! isset($this->items[$id])));
+        foreach (array_chunk($missing, 500) as $chunk) {
+            foreach (PingwinCatalogItem::where('company_id', $this->companyId)->whereIn('pingwin_id', $chunk)->get() as $item) {
+                $this->items[(string) $item->pingwin_id] = $item;
+            }
+        }
+    }
+
+    /** As unidades do PingWin por id. */
+    public function units(): array
+    {
+        $this->ensureUnits();
+
+        return $this->units;
     }
 
     /**
@@ -329,7 +394,7 @@ final class RecipeCostService
         };
     }
 
-    private static function median(array $values): float
+    public static function median(array $values): float
     {
         sort($values);
         $n = count($values);
@@ -410,7 +475,7 @@ final class RecipeCostService
                 $anyCost = true;
             }
             foreach ($row['warnings'] as $w) {
-                $warnings[] = $w + ['line' => $row['code'] ?? $row['description']];
+                $warnings[] = $w + ['line' => $row['code'] ?? $row['description'], 'component_id' => $row['component_id'] ?? null];
             }
         }
         if (! $version['lines']) {
@@ -605,7 +670,7 @@ final class RecipeCostService
     }
 
     /** A unidade de topo (sem pai) de uma unidade, ou null se não for conhecida. */
-    private function unitRoot(?string $unitId): ?string
+    public function unitRoot(?string $unitId): ?string
     {
         $id = (string) $unitId;
         for ($i = 0; $i < 6 && $id !== ''; $i++) {
@@ -827,11 +892,29 @@ final class RecipeCostService
     }
 
     /**
+     * Auditoria (unidade sem conversão): o bloco do "Confirmar fator" para um artigo comprado, esteja
+     * ou não numa ficha, para a unidade pedida (senão a mais usada). Null se não houver compras.
+     */
+    public function conversionFor(string $productId, ?string $unitKey = null): ?array
+    {
+        $this->load([], [$productId]);
+        $item = $this->item($productId);
+        $baseId = (string) ($item?->base_unit_id ?: '11001');
+        $root = $this->unitRoot($baseId) ?? $baseId;
+        $line = [
+            'component_id' => $productId, 'unit_id' => $root, 'unit' => $this->units[$root]->description ?? 'Unidade',
+            'description' => $item?->description ?? $productId, 'qnt_base' => 1.0, 'waste' => 0.0,
+        ];
+
+        return $this->conversionBlock($line, [], $unitKey);
+    }
+
+    /**
      * Para a confirmação do fator de um componente comprado: a unidade de compra principal (a mais
      * usada), o fator de hoje (raw ou confirmado), o confirmado, e as sugestões (descrição, razão
      * entre o preço e o custo PingWin, unit_value > 1), cada uma com o efeito no custo.
      */
-    private function conversionBlock(array $l, array $pw): ?array
+    private function conversionBlock(array $l, array $pw, ?string $forceUnit = null): ?array
     {
         $cid = $l['component_id'];
         $rows = $this->purchaseRows[$cid] ?? [];
@@ -840,12 +923,16 @@ final class RecipeCostService
         }
         $since = $this->today->subDays(self::WINDOW_DAYS)->toDateString();
         $used = array_values(array_filter($rows, fn ($r) => $r['date'] >= $since)) ?: $rows;
+        // Auditoria: a unidade em causa, mesmo que não seja a mais usada (nem dos últimos 90 dias).
+        if ($forceUnit !== null && ! in_array($forceUnit, array_column($used, 'unit_key'), true)) {
+            $used = $rows;
+        }
         $byUnit = [];
         foreach ($used as $r) {
             $byUnit[$r['unit_key']][] = $r;
         }
         uasort($byUnit, fn ($a, $b) => count($b) <=> count($a));
-        $unitKey = (string) array_key_first($byUnit);
+        $unitKey = $forceUnit !== null && isset($byUnit[$forceUnit]) ? $forceUnit : (string) array_key_first($byUnit);
         $unitRows = $byUnit[$unitKey];
         $label = $unitRows[0]['unit_label'];
         $qnt = array_sum(array_column($unitRows, 'qnt'));

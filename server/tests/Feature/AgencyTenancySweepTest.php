@@ -164,6 +164,8 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/setup-links/{linkId}/extend',
         'POST api/v1/companies/{id}/setup-links/{linkId}/revoke',
         'GET api/v1/companies/{id}/integrations/meta/ad-accounts',
+        // Auditoria (Fatia 2): mudar o estado de um achado do tracking dos sites pede integracoes.configurar.
+        'POST api/v1/companies/{id}/audit/tracking/findings/{findingId}/state',
         // F1-3 do marketing da restauração: confirmar as categorias das famílias e pedir sugestões à IA.
         'POST api/v1/companies/{id}/integrations/pingwin/family-categories/ai-suggest',
         'PUT api/v1/companies/{id}/integrations/pingwin/family-categories',

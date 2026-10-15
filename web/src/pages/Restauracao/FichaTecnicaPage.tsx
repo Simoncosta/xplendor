@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button, Container, Row, Col } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
@@ -276,6 +276,28 @@ export default function FichaTecnicaPage() {
             /* o erro já aparece no toast da API */
         }
     };
+
+    // Auditoria ("Corrigir"): ?editar=1 abre o editor (ou "Criar ficha"), ?fator={componente} abre o
+    // "Confirmar fator" dessa linha e ?rendimento=1 o "Confirmar" do rendimento. Uma vez, depois de carregar.
+    const [params, setParams] = useSearchParams();
+    const handled = useRef(false);
+    useEffect(() => {
+        if (!data || handled.current) return;
+        const editar = params.get("editar");
+        const fator = params.get("fator");
+        const rendimento = params.get("rendimento");
+        if (!editar && !fator && !rendimento) return;
+        handled.current = true;
+        if (editar && canEdit) setEditing(true);
+        if (fator) {
+            const line = (inForce ?? versions[0])?.lines.find((l) => l.component_id === fator && l.conversion);
+            if (line) setFactorLine(line);
+        }
+        if (rendimento && inForce?.yield) setYieldOpen(true);
+        const next = new URLSearchParams(params);
+        ["editar", "fator", "rendimento"].forEach((k) => next.delete(k));
+        setParams(next, { replace: true });
+    }, [data, params, setParams, canEdit, inForce, versions]);
 
     const warehouseOptions = useMemo(() => [{ value: "", label: "Todos os armazéns" }, ...(data?.warehouses ?? []).map((w) => ({ value: w.id, label: w.name }))], [data?.warehouses]);
 

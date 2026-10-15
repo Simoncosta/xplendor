@@ -252,6 +252,8 @@ export type RecipeComponentHit = {
     inactive: boolean; is_semi: boolean; approximate: boolean;
     last_purchase: { date: string | null; supplier: string | null } | null;
     units: RecipeUnitOption[]; default_unit_id: string | null;
+    /** Auditoria (prováveis duplicados): o artigo principal do grupo, com estrela. */
+    is_main?: boolean; main_of?: string | null;
 };
 
 export type RecipeStoreEffect = {

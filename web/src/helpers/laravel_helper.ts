@@ -1217,3 +1217,27 @@ export const deleteRecipeVersion = (companyId: number, productId: string, body: 
     api.create(R(companyId) + `/${productId}/delete-version`, body, JSON_BODY);
 export const deleteRecipeAll = (companyId: number, productId: string, body: { base_signature: string; confirm: boolean; confirm_all: boolean }) =>
     api.create(R(companyId) + `/${productId}/delete-all`, body, JSON_BODY);
+
+// Auditoria (Fatia 2, plataforma): a página central, a coluna "Auditoria" das listas, as corridas e os estados.
+const AUD = (companyId: number) => url.GET_COMPANIES + `/${companyId}/audit`;
+export const getAuditMeta = (companyId: number) => api.get(AUD(companyId) + "/meta");
+export const getAuditFindings = (companyId: number, params?: {
+    page?: number; perPage?: number; area?: string; rule?: string; severity?: string; state?: string;
+    entity_type?: string; entity_id?: string; search?: string; sort?: string; dir?: "asc" | "desc";
+}) => api.get(AUD(companyId) + "/findings", params);
+export const getAuditGroups = (companyId: number, params?: {
+    area?: string; rule?: string; severity?: string; state?: string; entity_type?: string; entity_id?: string; search?: string;
+}) => api.get(AUD(companyId) + "/findings/groups", params);
+export const getAuditFinding = (companyId: number, findingId: number) => api.get(AUD(companyId) + `/findings/${findingId}`);
+export const getAuditCounts = (companyId: number, entityType: string, ids?: string[]) =>
+    api.get(AUD(companyId) + "/counts", { entity_type: entityType, ids: ids && ids.length ? ids.join(",") : undefined });
+export const startAuditRun = (companyId: number, area: string, origin: string) => api.create(AUD(companyId) + `/${area}/runs`, { origin }, JSON_BODY);
+export const getAuditRun = (companyId: number, runId: number) => api.get(AUD(companyId) + `/runs/${runId}`);
+export const setAuditFindingState = (companyId: number, area: string, findingId: number, action: "aceitar" | "ignorar" | "corrigido" | "reabrir", reason?: string) =>
+    api.create(AUD(companyId) + `/${area}/findings/${findingId}/state`, { action, reason }, JSON_BODY);
+export const setArticleGroupMain = (companyId: number, findingId: number, productId: string) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/restaurant/article-groups/main`, { finding_id: findingId, product_id: productId });
+export const getSupplierDocumentLines = (companyId: number, docheaderId: string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/${docheaderId}/lines`);
+export const getRecipeConversionInfo = (companyId: number, productId: string, unitKey?: string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/conversion`, { unit_key: unitKey });

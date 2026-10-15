@@ -259,6 +259,19 @@ Route::prefix('v1')->group(function () {
                 // Módulos ativos da empresa do utilizador (Fase 2 — esconder secções).
                 Route::get('/my-modules', [CompanyModuleController::class, 'active']);
                 Route::get('/my-access', [\App\Http\Controllers\Api\V1\AccessController::class, 'show']); // ACL (F4)
+                // Auditoria (Fatia 2, plataforma): a página central, a coluna "Auditoria" das listas, as
+                // corridas e os estados. Correr e mudar o estado são rotas por área (a ACL de cada área).
+                Route::get('/audit/meta', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'meta']);
+                Route::get('/audit/findings', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'index']);
+                Route::get('/audit/findings/groups', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'groups']);
+                Route::get('/audit/findings/{findingId}', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'show'])->whereNumber('findingId');
+                Route::get('/audit/counts', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'counts']);
+                Route::get('/audit/runs/{runId}', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'run'])->whereNumber('runId');
+                foreach (['restauracao', 'automovel', 'tracking'] as $auditArea) {
+                    Route::post("/audit/{$auditArea}/runs", [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'startRun'])->defaults('area', $auditArea);
+                    Route::post("/audit/{$auditArea}/findings/{findingId}/state", [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'state'])
+                        ->whereNumber('findingId')->defaults('area', $auditArea);
+                }
                 // ACL (F5): Utilizadores › Perfis e o teto da agência gestora.
                 Route::get('/permission-profiles', [\App\Http\Controllers\Api\V1\PermissionProfileController::class, 'index']);
                 Route::post('/permission-profiles', [\App\Http\Controllers\Api\V1\PermissionProfileController::class, 'store'])->middleware('block_when_impersonating');
@@ -319,6 +332,9 @@ Route::prefix('v1')->group(function () {
                     // Fatia 1b: confirmar o rendimento de um semi-produto e o fator de uma unidade de compra (só na XPLENDOR).
                     Route::post('/restaurant/recipes/{productId}/yield', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'confirmYield'])->whereNumber('productId');
                     Route::post('/restaurant/recipes/{productId}/conversion', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'confirmConversion'])->whereNumber('productId');
+                    // Auditoria: o "Confirmar fator" de um artigo (esteja ou não numa ficha) e o artigo principal dos duplicados.
+                    Route::get('/restaurant/recipes/{productId}/conversion', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'conversionInfo'])->whereNumber('productId');
+                    Route::put('/restaurant/article-groups/main', [\App\Http\Controllers\Api\V1\CompanyArticleGroupController::class, 'setMain']);
                     // Fatia 4: editor das fichas técnicas (rascunho na XPLENDOR; "Gravar na PingWin" em fila, uma ficha de cada vez).
                     Route::get('/restaurant/recipes/components', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'components']);
                     Route::get('/restaurant/recipes/writes/{writeId}', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'writeStatus'])->whereNumber('writeId');
@@ -411,6 +427,8 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/pingwin/supplier-documents', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'index']);
                     Route::post('/integrations/pingwin/supplier-documents/sync', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'sync']);
                     Route::get('/integrations/pingwin/supplier-documents/sync-runs/{runId}', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'run'])->whereNumber('runId');
+                    // Auditoria: as linhas de um documento (do espelho), para o "Corrigir".
+                    Route::get('/integrations/pingwin/supplier-documents/{docheaderId}/lines', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'lines'])->whereNumber('docheaderId');
                     // S2 — Conta corrente de fornecedor (SÓ LEITURA no PingWin): visão geral, fornecedor, extrato, atualizar.
                     Route::middleware('ensure_module:restauracao_conta_corrente')->group(function () {
                         Route::get('/integrations/pingwin/supplier-cc', [\App\Http\Controllers\Api\V1\CompanySupplierCcController::class, 'index']);

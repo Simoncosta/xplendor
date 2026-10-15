@@ -193,6 +193,30 @@ class CompanyRecipeController extends Controller
         return ApiResponse::success(['conversion' => $conv->only(['product_pingwin_id', 'unit_key', 'unit_label', 'supplier_nif', 'factor_to_base', 'source', 'confirmed_at'])], 'Fator confirmado.');
     }
 
+    /**
+     * Auditoria (unidade sem conversão): o "Confirmar fator" de um artigo comprado, para a unidade
+     * pedida, esteja ou não numa ficha. Só lê; a confirmação é o POST .../conversion de sempre.
+     */
+    public function conversionInfo(Request $request, int $companyId, string $productId)
+    {
+        if (! $this->authorizeCompany($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $v = $request->validate(['unit_key' => ['nullable', 'string', 'max:64']]);
+        $cost = new \App\Services\Restaurant\RecipeCostService($companyId);
+        $block = $cost->conversionFor($productId, $v['unit_key'] ?? null);
+        if (! $block) {
+            return ApiResponse::error('Este artigo não tem compras para confirmar o fator.', 404);
+        }
+        $item = $cost->item($productId);
+        $finance = CompassFinancials::visibleTo($request->user(), $companyId);
+
+        return ApiResponse::success($this->forUser(['line' => [
+            'component_id' => $productId, 'code' => $item?->code, 'description' => $item?->description ?? $productId,
+            'qnt_base' => 1.0, 'waste_pct' => 0.0, 'pingwin_cost_eur' => null, 'conversion' => $block,
+        ]], $finance), 'Fator por confirmar.');
+    }
+
     private function forUser(array $payload, bool $finance): array
     {
         if ($finance) {

@@ -7,6 +7,9 @@ import PageCard from "Components/Common/PageCard";
 import { getPingwinFamilies, syncPingwinFamilies } from "helpers/laravel_helper";
 import { PingwinFamilyNode } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { AuditCounts } from "common/models/audit.model";
+import AuditButton from "pages/Auditoria/AuditButton";
+import AuditCountCell, { useAuditCounts } from "pages/Auditoria/AuditCountCell";
 
 /**
  * XPLENDOR — Restauração › Famílias (Fase 1, só leitura). Árvore de famílias de
@@ -37,10 +40,12 @@ interface TreeNodeProps {
     indent: number;
     isOpen: (id: string) => boolean;
     onToggle: (id: string) => void;
+    /** Auditoria: os achados abertos por família. */
+    audit: AuditCounts;
 }
 
 /** Nó recursivo: setinha (roda quando aberto) + Collapse com os filhos. */
-function TreeNode({ node, level, indent, isOpen, onToggle }: TreeNodeProps) {
+function TreeNode({ node, level, indent, isOpen, onToggle, audit }: TreeNodeProps) {
     const hasChildren = (node.children?.length ?? 0) > 0;
     const open = hasChildren && isOpen(node.pingwin_id);
 
@@ -67,12 +72,13 @@ function TreeNode({ node, level, indent, isOpen, onToggle }: TreeNodeProps) {
                         {node.item_count}
                     </span>
                 )}
+                {audit[node.pingwin_id] && <span className="ms-2 flex-shrink-0"><AuditCountCell counts={audit} entityType="familia" entityId={node.pingwin_id} label={node.description} /></span>}
             </div>
 
             {hasChildren && (
                 <Collapse isOpen={open}>
                     {node.children.map((child) => (
-                        <TreeNode key={child.pingwin_id} node={child} level={level + 1} indent={indent} isOpen={isOpen} onToggle={onToggle} />
+                        <TreeNode key={child.pingwin_id} node={child} level={level + 1} indent={indent} isOpen={isOpen} onToggle={onToggle} audit={audit} />
                     ))}
                 </Collapse>
             )}
@@ -86,6 +92,9 @@ export default function FamiliasPage() {
     const indent = isMobile ? 16 : 22; // indentação menor em mobile
 
     const companyId = useWorkingCompanyId();
+    // Auditoria: os achados abertos por família (a família suspeita e o vasilhame fora das cauções).
+    const [auditKey, setAuditKey] = useState(0);
+    const auditCounts = useAuditCounts(companyId, "familia", null, auditKey);
 
     const [tree, setTree] = useState<PingwinFamilyNode[]>([]);
     const [total, setTotal] = useState(0);
@@ -162,6 +171,7 @@ export default function FamiliasPage() {
                                         <i className="ri-contract-up-down-line me-1" /> Colapsar tudo
                                     </Button>
                                 </>}
+                                <AuditButton companyId={companyId} area="restauracao" origin="familias" onFinished={() => setAuditKey((k) => k + 1)} />
                                 <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                                 </Button>
@@ -182,7 +192,7 @@ export default function FamiliasPage() {
                                 ) : (
                                     <div style={{ minWidth: "fit-content" }}>
                                         {tree.map((node) => (
-                                            <TreeNode key={node.pingwin_id} node={node} level={0} indent={indent} isOpen={isOpen} onToggle={toggle} />
+                                            <TreeNode key={node.pingwin_id} node={node} level={0} indent={indent} isOpen={isOpen} onToggle={toggle} audit={auditCounts} />
                                         ))}
                                     </div>
                                 )}

@@ -271,6 +271,11 @@ const Navdata = () => {
         },
         // ── Ficheiros: o gestor de ficheiros da empresa (módulo "ficheiros") ──
         { id: "ficheiros", label: "Ficheiros", icon: "ri-folder-2-line", link: "/ficheiros", module: "ficheiros", permission: "ficheiros.ver" },
+        // Auditoria (Fatia 2, plataforma): para quem vê pelo menos uma área com regras.
+        {
+            id: "auditoria", label: "Auditoria", icon: "ri-shield-check-line", link: "/auditoria",
+            anyAccess: [{ module: "pingwin", permission: "restauracao.ver" }, { module: "stock", permission: "automovel.ver" }, { module: "marketing_analytics", permission: "resultados.ver" }],
+        },
         // ── Imóveis: a carteira do consultor imobiliário (módulo "imoveis") ──
         { id: "imoveis", label: "Imóveis", icon: "ri-home-4-line", link: "/imoveis", module: "imoveis", permission: "imoveis.ver" },
         // ── Equipa — ferramentas transversais da equipa (qualquer ramo) ──────────
@@ -359,7 +364,10 @@ const Navdata = () => {
     // ACL (F4): um item só aparece com o módulo ativo E a permissão (as chaves do backend,
     // app/Access/RoutePermissions.php). Enquanto carrega, nada que dependa deles aparece.
     // anyModule: basta um destes módulos (a Bússola: o PingWin ou o stock).
-    const visible = (it: any): boolean => (it.anyModule ? it.anyModule.some((m: string) => hasModule(m)) : hasModule(it.module)) && can(it.permission);
+    // anyAccess: basta um par módulo + permissão (a Auditoria: qualquer área com regras).
+    const visible = (it: any): boolean => it.anyAccess
+        ? it.anyAccess.some((a: { module: string; permission: string }) => hasModule(a.module) && can(a.permission))
+        : (it.anyModule ? it.anyModule.some((m: string) => hasModule(m)) : hasModule(it.module)) && can(it.permission);
 
     const filterMenu = (items: any[]): any[] =>
         items.reduce((acc: any[], it: any) => {
@@ -386,6 +394,7 @@ const Navdata = () => {
         equipa: "all",
         settings: "all",
         ficheiros: "all",
+        auditoria: "all",
     };
     const curateForRoot = (items: any[]): any[] =>
         items.reduce((acc: any[], it: any) => {

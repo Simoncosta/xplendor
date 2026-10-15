@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Col, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import AuditButton from "pages/Auditoria/AuditButton";
+import AuditCountCell, { useAuditCounts } from "pages/Auditoria/AuditCountCell";
+import SupplierDocumentLinesModal from "./faturas/SupplierDocumentLinesModal";
 import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import XSelect from "Components/Common/Select";
@@ -135,7 +138,19 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
     const [activeRun, setActiveRun] = useState<SupplierDocumentsRun | null>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const cols = useDataColumns("restauracao.faturas.documentos-pingwin", COLUMNS);
+    // Auditoria: a coluna com os achados abertos de cada documento, e as linhas do documento
+    // (o "Corrigir" da Auditoria abre ?tab=pingwin&doc={docheader_id}).
+    const [auditKey, setAuditKey] = useState(0);
+    const auditCounts = useAuditCounts(companyId, "documento", null, auditKey);
+    const [params, setParams] = useSearchParams();
+    const linesDoc = params.get("doc");
+    const openLines = (docheaderId: string) => { const n = new URLSearchParams(params); n.set("doc", docheaderId); setParams(n, { replace: true }); };
+    const closeLines = () => { const n = new URLSearchParams(params); n.delete("doc"); setParams(n, { replace: true }); };
+    const columns = useMemo<DTColumn<SupplierDocumentRow>[]>(() => [...COLUMNS, {
+        id: "audit", header: "Auditoria", value: (r) => auditCounts[r.docheader_id]?.open ?? 0, align: "center",
+        cell: (r) => <AuditCountCell counts={auditCounts} entityType="documento" entityId={r.docheader_id} label={r.document} />,
+    }], [auditCounts]);
+    const cols = useDataColumns("restauracao.faturas.documentos-pingwin", columns);
 
     const fetchRows = useCallback(async () => {
         if (!companyId) return;
@@ -285,6 +300,7 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
                 loading={loading && rows.length > 0}
                 actions={<>
                     {cols.selector}
+                    <AuditButton companyId={companyId} area="restauracao" origin="faturas" onFinished={() => setAuditKey((k) => k + 1)} />
                     <Button color="primary" onClick={openSync} disabled={running || !companyId}>
                         {running ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                     </Button>
@@ -340,6 +356,11 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
                     search={serverMode ? "" : search}
                     initialSort={{ id: "date", desc: true }}
                     rowClassName={(r) => (isVoided(r) ? "text-muted" : undefined)}
+                    rowActions={(r) => (
+                        <Button size="sm" color="outline-primary" onClick={() => openLines(r.docheader_id)} aria-label={`Ver as linhas de ${r.document ?? "documento"}`} title="Ver as linhas">
+                            <i className="ri-list-unordered" aria-hidden />
+                        </Button>
+                    )}
                     caption="Documentos de fornecedor no PingWin"
                     empty={{
                         message: "Sem documentos neste período.",
@@ -378,6 +399,7 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
                     </ReasonButton>
                 </ModalFooter>
             </Modal>
+            {linesDoc && companyId && <SupplierDocumentLinesModal companyId={companyId} docheaderId={linesDoc} onClose={closeLines} />}
         </>
     );
 }

@@ -11,6 +11,8 @@ import { getPingwinCatalog, syncPingwinCatalog } from "helpers/laravel_helper";
 import { PingwinCatalogItem, LaravelPaginator } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import ArtigosVatReport from "./ArtigosVatReport";
+import AuditButton from "pages/Auditoria/AuditButton";
+import AuditCountCell, { useAuditCounts } from "pages/Auditoria/AuditCountCell";
 
 /**
  * XPLENDOR — Restauração › Artigos (Fase 1, só leitura). Catálogo de artigos
@@ -159,6 +161,10 @@ export default function ArtigosPage() {
         </>
     );
 
+    // Auditoria: a coluna com os achados abertos de cada artigo (da página que se vê).
+    const [auditKey, setAuditKey] = useState(0);
+    const auditCounts = useAuditCounts(companyId, "artigo", rows.map((a) => String(a.pingwin_id)), auditKey);
+
     const columns: DTColumn<PingwinCatalogItem>[] = [
         { id: "code", header: "Código", sortKey: "code", value: (a) => a.code, cell: (a) => <span className="fw-medium">{a.code || "—"}</span>, mobile: "subtitle" },
         {
@@ -175,6 +181,10 @@ export default function ArtigosPage() {
         {
             id: "active", header: "Estado", sortKey: "active", value: (a) => (a.is_active ? 1 : 0), defaultVisible: false,
             cell: (a) => (a.is_active ? "Ativo" : <span className="badge bg-secondary-subtle text-secondary">Inativo</span>),
+        },
+        {
+            id: "audit", header: "Auditoria", sortable: false, value: (a) => auditCounts[String(a.pingwin_id)]?.open ?? 0, align: "center",
+            cell: (a) => <AuditCountCell counts={auditCounts} entityType="artigo" entityId={String(a.pingwin_id)} label={a.description} />,
         },
     ];
     const cols = useDataColumns("restauracao.artigos", columns);
@@ -209,6 +219,7 @@ export default function ArtigosPage() {
                             actions={<>
                                 {viewToggle}
                                 {cols.selector}
+                                <AuditButton companyId={companyId} area="restauracao" origin="artigos" onFinished={() => setAuditKey((k) => k + 1)} />
                                 <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                                 </Button>

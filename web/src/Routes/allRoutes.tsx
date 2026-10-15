@@ -11,6 +11,7 @@ import ArtigosPage from "pages/Restauracao/ArtigosPage";
 import ArtigoFormPage from "pages/Restauracao/ArtigoFormPage";
 import FichasTecnicasPage from "pages/Restauracao/FichasTecnicasPage";
 import FichaTecnicaPage from "pages/Restauracao/FichaTecnicaPage";
+import AuditoriaPage from "pages/Auditoria/AuditoriaPage";
 import EditorialPage from "pages/Editorial/EditorialPage";
 import AgencyPanelPage from "pages/Agency/AgencyPanelPage";
 import ManagementRequestPage from "pages/ManagementRequest";
@@ -155,6 +156,8 @@ const authProtectedRoutes = [
     { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigosPage /></RequireModule> },
     // Linha Editorial (transversal)
     { path: "/ficheiros", component: <RequireModule module="ficheiros" permission="ficheiros.ver"><FilesPage /></RequireModule> },
+    // Auditoria (plataforma): a página decide o que mostrar pelas áreas que a pessoa vê (getAuditMeta).
+    { path: "/auditoria", component: <AuditoriaPage /> },
     // Bússola Master (R3): a carteira do consultor imobiliário (módulo imoveis).
     { path: "/imoveis", component: <RequireModule module="imoveis" permission="imoveis.ver"><ImoveisPage /></RequireModule> },
     { path: "/editorial", component: <RequireModule module="linha_editorial" permission="editorial.ver"><EditorialPage /></RequireModule> },

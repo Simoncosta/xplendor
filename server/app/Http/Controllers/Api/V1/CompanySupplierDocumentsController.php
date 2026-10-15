@@ -121,4 +121,37 @@ class CompanySupplierDocumentsController extends Controller
 
         return ApiResponse::success(['run' => $run->toApi()], 'Estado da sincronização.');
     }
+
+    /**
+     * As linhas de um documento de fornecedor (do espelho), para o "Corrigir" da Auditoria (preço
+     * fora do normal, data fora da série, fatura sem linhas). Só lê; nunca chama o PingWin.
+     */
+    public function lines(int $companyId, string $docheaderId)
+    {
+        if (! $this->authorizeCompany($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $d = \App\Models\PingwinSupplierDocument::where('company_id', $companyId)->where('docheader_id', $docheaderId)->first();
+        if (! $d) {
+            return ApiResponse::error('Documento não encontrado.', 404);
+        }
+        $lines = \App\Models\PingwinSupplierDocumentLine::where('company_id', $companyId)->where('docheader_id', $docheaderId)
+            ->orderBy('line_number')->get();
+
+        return ApiResponse::success([
+            'document' => [
+                'id' => $d->id, 'docheader_id' => $d->docheader_id, 'document' => $d->document, 'doctype' => $d->doctype,
+                'doc_date' => $d->doc_date ? substr((string) $d->doc_date, 0, 10) : null, 'entity_name' => $d->entity_name,
+                'tax_number' => $d->tax_number, 'total' => $d->total_cents / 100, 'docstatus_description' => $d->docstatus_description,
+                'docreference_number' => $d->docreference_number, 'store_name' => $d->store_name,
+                'lines_status' => $d->lines_status, 'lines_synced_at' => $d->lines_synced_at?->toIso8601String(),
+            ],
+            'lines' => $lines->map(fn ($l) => [
+                'id' => $l->id, 'line_number' => $l->line_number, 'product_pingwin_id' => $l->product_pingwin_id,
+                'code' => $l->product_code, 'description' => $l->description, 'qnt' => (float) $l->qnt,
+                'unit' => $l->unit_desc, 'price' => (float) $l->price, 'discount' => (float) ($l->discount1 ?? 0),
+                'total' => $l->total_cents / 100, 'tax' => $l->tax_value_cents / 100, 'tax_description' => $l->tax_description,
+            ])->all(),
+        ], 'Linhas do documento.');
+    }
 }

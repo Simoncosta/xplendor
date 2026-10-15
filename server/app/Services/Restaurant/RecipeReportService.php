@@ -324,24 +324,13 @@ final class RecipeReportService
                 'cost_per_unit_eur' => $perUnit !== null ? round($perUnit, 4) : null,
                 'low_confidence' => $costed['low_confidence'],
                 'needs_factor' => $costed['needs_factor'],
-                'warnings' => array_values(array_filter(array_merge(
-                    [$this->sameDayWarning($versions, $v)],
-                    [$yield && ! $yield['confirmed'] ? ['type' => 'yield_unconfirmed', 'text' => 'Rendimento por confirmar: o custo por unidade usa 1 ' . $yield['unit_label'] . '.'] : null],
-                    [$yield ? $this->batchWarning($yield, $productId) : null],
-                    $costed['warnings'],
-                ))),
+                'warnings' => $this->versionWarnings($versions, $v, $yield, $costed, $productId),
             ]);
         }
         usort($out, fn ($a, $b) => [$b['valid_from'], $b['key']] <=> [$a['valid_from'], $a['key']]);
 
         // Lojas que venderam (90 dias) sem versão em vigor.
-        $missing = [];
-        foreach ($sales as $s) {
-            $loc = $this->locations[(int) $s->location_id] ?? null;
-            if ($versions && $loc && (float) $s->qty > 0 && ! RecipeCostService::versionInForce($versions, $date, (string) $loc->winrest_store_id)) {
-                $missing[] = $loc->display_name ?: $loc->winrest_name;
-            }
-        }
+        $missing = $this->missingStores($sales, $versions, $date);
 
         return [
             'article' => [
@@ -374,6 +363,95 @@ final class RecipeReportService
                 ->map(fn ($w) => ['id' => (string) $w->pingwin_id, 'name' => $w->description])->all(),
             'window' => ['days' => RecipeCostService::WINDOW_DAYS, 'since' => $since, 'until' => $date],
         ];
+    }
+
+    /** Os avisos de uma versão: mesma data, rendimento por confirmar, lote e os das linhas. */
+    private function versionWarnings(array $versions, array $v, ?array $yield, array $costed, string $productId): array
+    {
+        return array_values(array_filter(array_merge(
+            [$this->sameDayWarning($versions, $v)],
+            [$yield && ! $yield['confirmed'] ? ['type' => 'yield_unconfirmed', 'text' => 'Rendimento por confirmar: o custo por unidade usa 1 ' . $yield['unit_label'] . '.'] : null],
+            [$yield ? $this->batchWarning($yield, $productId) : null],
+            $costed['warnings'],
+        )));
+    }
+
+    /**
+     * As lojas que venderam o artigo (90 dias) sem versão da ficha em vigor.
+     *
+     * @param  iterable<object{location_id:int|string, qty:float|string}>  $sales
+     */
+    private function missingStores(iterable $sales, array $versions, string $date): array
+    {
+        $missing = [];
+        foreach ($sales as $s) {
+            $loc = $this->locations[(int) $s->location_id] ?? null;
+            if ($versions && $loc && (float) $s->qty > 0 && ! RecipeCostService::versionInForce($versions, $date, (string) $loc->winrest_store_id)) {
+                $missing[] = $loc->display_name ?: $loc->winrest_name;
+            }
+        }
+
+        return $missing;
+    }
+
+    /**
+     * Auditoria (os avisos das fichas como regras): para todos os artigos com ficha, as versões em
+     * vigor ou futuras (não anuladas) com os MESMOS avisos do detalhe, e as lojas que venderam sem
+     * ficha em vigor. Um só carregamento do espelho.
+     *
+     * @return array<string, array{code:?string, description:?string, sales_cents:int, missing_stores:list<string>, versions:list<array>}>
+     */
+    public function auditWarnings(): array
+    {
+        $this->cost->load(null);
+        $today = $this->cost->today();
+        $date = $today->toDateString();
+        $since = $today->subDays(RecipeCostService::WINDOW_DAYS)->toDateString();
+        $products = PingwinProductBom::where('company_id', $this->companyId)->distinct()->pluck('product_pingwin_id')->map(fn ($v) => (string) $v)->all();
+        $semis = array_fill_keys(PingwinProductBomLine::where('company_id', $this->companyId)->where('is_bom', true)
+            ->distinct()->pluck('component_pingwin_id')->map(fn ($v) => (string) $v)->all(), true);
+        $sales = [];
+        foreach (array_chunk($products, 500) as $chunk) {
+            foreach (DB::table('pingwin_item_sales_daily')->where('company_id', $this->companyId)->whereIn('product_pingwin_id', $chunk)
+                ->whereBetween('business_date', [$since, $date])->groupBy('product_pingwin_id', 'location_id')
+                ->get(['product_pingwin_id', 'location_id', DB::raw('SUM(quantity) as qty'), DB::raw('SUM(net_cents) as net')]) as $r) {
+                $sales[(string) $r->product_pingwin_id][] = $r;
+            }
+        }
+
+        $out = [];
+        foreach ($products as $pid) {
+            $versions = $this->cost->versionsOf($pid);
+            if (! $versions) {
+                continue;
+            }
+            $inForce = RecipeCostService::versionInForce($versions, $date);
+            $isSemi = $this->cost->isSemi($pid) || isset($semis[$pid]);
+            $item = $this->cost->item($pid);
+            $rows = [];
+            foreach ($versions as $v) {
+                $isInForce = $inForce && $inForce['bom_id'] === $v['bom_id'];
+                if ($v['deleted'] || (! $isInForce && (string) $v['valid_from'] < $date)) {
+                    continue; // versões antigas, já substituídas, não pedem atenção
+                }
+                $costed = $this->cost->costVersion($v, $pid);
+                $yield = $isSemi ? $this->cost->yieldInfo($pid, $v) : null;
+                $rows[] = RecipeCostService::versionInfo($v) + [
+                    'in_force' => $isInForce,
+                    'warnings' => $this->versionWarnings($versions, $v, $yield, $costed, $pid),
+                    'yield' => $yield,
+                ];
+            }
+            $out[$pid] = [
+                'code' => $item?->code,
+                'description' => $item?->description,
+                'sales_cents' => (int) array_sum(array_map(fn ($r) => (int) $r->net, $sales[$pid] ?? [])),
+                'missing_stores' => $this->missingStores($sales[$pid] ?? [], $versions, $date),
+                'versions' => $rows,
+            ];
+        }
+
+        return $out;
     }
 
     public function shapeLine(array $l): array
