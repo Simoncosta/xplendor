@@ -26,7 +26,7 @@ use Illuminate\Validation\Rule;
  * artigo, sobre o espelho das fichas do PingWin e o custo XPLENDOR. Tenancy primeiro. Os euros só
  * vão para quem vê as Finanças (como na Bússola): os outros recebem os campos *_eur a null.
  * Fatia 1b: confirmar o rendimento de um semi-produto e o fator de uma unidade de compra. Escrevem
- * só na XPLENDOR (restauracao.editar); nada vai para a PingWin.
+ * só na XPLENDOR (restauracao.editar); nada vai para o PingWin.
  */
 class CompanyRecipeController extends Controller
 {
@@ -123,6 +123,9 @@ class CompanyRecipeController extends Controller
         if ($detail === null) {
             return ApiResponse::error('Artigo não encontrado.', 404);
         }
+
+        // Fatia 4: a guarda das gravações neste ambiente, para o menu "Apagar" já vir desativado.
+        $detail['write_guard'] = \App\Services\PingwinService::bomWriteGuard($productId);
 
         return ApiResponse::success($this->forUser($detail, CompassFinancials::visibleTo($request->user(), $companyId)), 'Ficha técnica carregada.');
     }

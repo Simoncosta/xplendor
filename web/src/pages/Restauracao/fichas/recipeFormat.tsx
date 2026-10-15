@@ -62,6 +62,6 @@ export const COST_SOURCES_TEXT: React.ReactNode = (
         confirmado, quando existe; senão, da compra. Compras com preço acima de 4 vezes ou abaixo de um quarto
         da mediana ficam de fora. Sem compras em 90 dias, usa o último preço conhecido (antigo). O custo da linha usa o preço médio:
         quantidade base × custo × (1 + desperdício). Os semi-produtos usam o custo do lote da sua ficha ÷ o rendimento confirmado.
-        <br /><strong>Custo PingWin:</strong> o que a PingWin calcula para todos os armazéns.
+        <br /><strong>Custo PingWin:</strong> o que o PingWin calcula para todos os armazéns.
     </>
 );

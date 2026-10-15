@@ -191,9 +191,11 @@ export type RecipeDetail = {
     warehouses: { id: string; name: string }[];
     window: { days: number; since: string; until: string };
     financial: RecipeFinancial;
+    /** Fatia 4: a guarda das gravações neste ambiente (null = pode gravar; em produção é sempre null). */
+    write_guard?: RecipeWriteGuard | null;
 };
 
-// ── Fatia 4: editor (criar, editar e apagar na PingWin) ───────────────────────
+// ── Fatia 4: editor (criar, editar e apagar no PingWin) ───────────────────────
 
 export type RecipeUnitOption = { id: string; label: string; short: string | null; factor: number; base: boolean; suspicious: boolean };
 
@@ -210,7 +212,10 @@ export type RecipeEditorVersion = {
 
 export type RecipeWriteMode = "criar" | "nova_versao" | "corrigir";
 
-/** O rascunho (fica na XPLENDOR até "Gravar na PingWin"). */
+/** PINGWIN_BOM_WRITE_ALLOWLIST: "desligada" ("0", o dev) ou "lista" (só os artigos de teste). */
+export type RecipeWriteGuard = { mode: "desligada" | "lista"; reason: string };
+
+/** O rascunho (fica na XPLENDOR até "Gravar no PingWin"). */
 export type RecipeDraftLine = {
     uid: string; key: string | null; component_id: string; description: string; code: string | null;
     unit_id: string; units: RecipeUnitOption[]; qnt: string; waste: string; recovery: string; advanced: boolean;
@@ -239,6 +244,7 @@ export type RecipeEditorContext = {
     draft: { payload: RecipeDraftPayload; base_signature: string | null; updated_at: string | null } | null;
     active_write: RecipeWriteInfo | null;
     write_allowed: boolean;
+    write_guard: RecipeWriteGuard | null;
 };
 
 export type RecipeComponentHit = {

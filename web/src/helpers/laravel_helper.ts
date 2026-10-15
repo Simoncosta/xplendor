@@ -1200,7 +1200,7 @@ export const confirmUnitConversion = (
     productId: string,
     body: { unit_key: string; unit_label?: string | null; factor: number; supplier_nif?: string | null; reason?: string | null }
 ) => api.create(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/conversion`, body);
-// Fatia 4: editor das fichas técnicas (rascunho na XPLENDOR; gravar na PingWin em fila, uma ficha de cada vez).
+// Fatia 4: editor das fichas técnicas (rascunho na XPLENDOR; gravar no PingWin em fila, uma ficha de cada vez).
 const R = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/recipes`;
 export const getRecipeEditor = (companyId: number, productId: string) => api.get(R(companyId) + `/${productId}/editor`);
 export const searchRecipeComponents = (companyId: number, q: string) => api.get(R(companyId) + `/components`, { q });

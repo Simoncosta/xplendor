@@ -4,7 +4,7 @@ XPLENDOR — Fichas técnicas: ESCRITA (Fatia 4). Prova, sem rede, com as respos
   · a guarda: só se escreve nos artigos autorizados (o artigo de teste no teste real);
   · a sequência de cada operação: versão nova com linhas e lojas; corrigir uma versão (editar e
     apagar linhas); apagar uma versão; o MERGE é o eco do OPEN sem as chaves de preço; SAVE; CLOSE;
-  · concorrência: a ficha mudou na PingWin desde a leitura → pára sem escrever nem gravar;
+  · concorrência: a ficha mudou no PingWin desde a leitura → pára sem escrever nem gravar;
   · uma falha a meio fecha a sessão SEM gravar;
   · só as combinações caminho+ação do protocolo passam;
   · modo bom_write do run.py, com o progresso no stderr.
@@ -216,7 +216,7 @@ def test_conflict_when_a_version_appeared():
     exp = {"versions": []}  # a XPLENDOR não conhecia nenhuma versão
     s = FakeSession([opened(), ok("info"), FakeResp(200, {})])
     out = make_client(s).write_bom(COCA, {"expected": exp, "ops": [{"op": "new_version", "valid_from": "2026-10-20", "ref": "new"}]})
-    assert out["conflict"] is True and "nova na PingWin" in out["diff"][0]
+    assert out["conflict"] is True and "nova no PingWin" in out["diff"][0]
 
 
 # ── Falha a meio ─────────────────────────────────────────────────────────────

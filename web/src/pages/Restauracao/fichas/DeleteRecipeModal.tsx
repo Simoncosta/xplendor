@@ -7,7 +7,7 @@ import { fmtDate } from "./recipeFormat";
 
 /**
  * Fatia 4 — apagar uma versão da ficha (uma confirmação que diz o que muda em cada loja) ou a ficha
- * inteira (todas as versões, com dupla confirmação). Escreve na PingWin, em fila, uma ficha de cada vez.
+ * inteira (todas as versões, com dupla confirmação). Escreve no PingWin, em fila, uma ficha de cada vez.
  */
 export default function DeleteRecipeModal({ companyId, productId, productName, signature, target, onClose, onQueued }: {
     companyId: number; productId: string; productName: string; signature: string;
@@ -53,8 +53,8 @@ export default function DeleteRecipeModal({ companyId, productId, productName, s
                 {step === 1 ? (
                     <>
                         <p className="mb-2">
-                            {all ? <>Vai apagar <strong>todas as versões</strong> da ficha na PingWin. O artigo fica sem ficha técnica.</>
-                                : <>Vai apagar esta versão na PingWin. O que muda em cada loja:</>}
+                            {all ? <>Vai apagar <strong>todas as versões</strong> da ficha no PingWin. O artigo fica sem ficha técnica.</>
+                                : <>Vai apagar esta versão no PingWin. O que muda em cada loja:</>}
                         </p>
                         {effects === null ? <div className="text-muted fs-13"><Spinner size="sm" className="me-1" />A calcular…</div> : (
                             <ul className="fs-13 mb-2">
@@ -70,12 +70,12 @@ export default function DeleteRecipeModal({ companyId, productId, productName, s
                         {all && (
                             <div className="form-check mt-2">
                                 <Input type="checkbox" className="form-check-input" id="delete-all-understood" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} />
-                                <Label className="form-check-label" for="delete-all-understood">Percebo que todas as versões vão ser apagadas na PingWin.</Label>
+                                <Label className="form-check-label" for="delete-all-understood">Percebo que todas as versões vão ser apagadas no PingWin.</Label>
                             </div>
                         )}
                     </>
                 ) : (
-                    <p className="mb-0"><strong>Confirme outra vez:</strong> apagar a ficha técnica inteira de <strong>{productName}</strong> na PingWin. Não há forma de a recuperar a partir da XPLENDOR (o histórico guarda o que tinha).</p>
+                    <p className="mb-0"><strong>Confirme outra vez:</strong> apagar a ficha técnica inteira de <strong>{productName}</strong> no PingWin. Não há forma de a recuperar a partir da XPLENDOR (o histórico guarda o que tinha).</p>
                 )}
             </ModalBody>
             <ModalFooter>

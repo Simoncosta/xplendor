@@ -1244,7 +1244,7 @@ class PingwinService
     }
 
     /**
-     * ⚠️ FICHAS TÉCNICAS — ESCRITA (Fatia 4): aplica o plano de UMA ficha na PingWin, numa só sessão
+     * ⚠️ FICHAS TÉCNICAS — ESCRITA (Fatia 4): aplica o plano de UMA ficha no PingWin, numa só sessão
      * (abrir, ler e comparar com o espelho, versão, linhas, lojas, MERGE, SAVE, CLOSE) e relê-a.
      * $onProgress recebe cada passo ({step, n?, m?}) enquanto corre. A guarda do teste real
      * (services.pingwin.bom_write_allowlist) vai para o Python, que recusa os outros artigos.
@@ -1269,7 +1269,7 @@ class PingwinService
         ]), $onProgress ?? static fn () => null);
 
         if (! ($result['ok'] ?? false) && ! ($result['conflict'] ?? false)) {
-            throw new \RuntimeException('Gravação da ficha técnica na PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+            throw new \RuntimeException('Gravação da ficha técnica no PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
         }
 
         return $result;
@@ -1280,6 +1280,25 @@ class PingwinService
     {
         // Sem array_filter "nu": deitava fora o "0" (que quer dizer "nenhum artigo").
         return array_values(array_filter(array_map('trim', explode(',', (string) config('services.pingwin.bom_write_allowlist', ''))), static fn ($v) => $v !== ''));
+    }
+
+    /**
+     * A guarda das fichas neste ambiente, para o ecrã: null = pode gravar (produção, variável vazia,
+     * ou artigo autorizado); senão o modo e o porquê, para o botão aparecer desativado em vez de
+     * deixar tentar e dar erro.
+     *
+     * @return array{mode: string, reason: string}|null
+     */
+    public static function bomWriteGuard(string $productId): ?array
+    {
+        $allow = self::bomWriteAllowlist();
+        if (! $allow || in_array($productId, $allow, true)) {
+            return null;
+        }
+
+        return $allow === ['0']
+            ? ['mode' => 'desligada', 'reason' => 'Neste ambiente a gravação no PingWin está desligada (PINGWIN_BOM_WRITE_ALLOWLIST=0). Em produção está ligada.']
+            : ['mode' => 'lista', 'reason' => 'Neste ambiente só se grava nos artigos de teste autorizados.'];
     }
 
     /**

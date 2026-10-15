@@ -25,7 +25,7 @@ use Tests\Concerns\BuildsRecipes;
 use Tests\TestCase;
 
 /**
- * Fatia 4 — criar, editar e apagar fichas técnicas na PingWin: regras de versão (nova por omissão,
+ * Fatia 4 — criar, editar e apagar fichas técnicas no PingWin: regras de versão (nova por omissão,
  * corrigir, data futura, loja sem ficha), o plano, a fila (uma ficha de cada vez), a concorrência
  * (espelho mudado → recusa), a releitura (não bate → falha registada, sem repetir), o histórico,
  * o rascunho, a guarda do teste real, a ACL e o isolamento por empresa.
@@ -117,7 +117,7 @@ class RecipeWriteTest extends TestCase
         ], $over);
     }
 
-    /** A releitura da PingWin com a versão pedida (ou a nova) tal como o pedido. */
+    /** A releitura do PingWin com a versão pedida (ou a nova) tal como o pedido. */
     private function okResult(array $payload, array $tweak = []): array
     {
         $ops = $payload['plan']['ops'];
@@ -249,7 +249,7 @@ class RecipeWriteTest extends TestCase
     {
         Bus::fake();
         $id = $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/write'), $this->draft())->json('data.write.id');
-        // A PingWin gravou 0,19 em vez de 0,18.
+        // O PingWin gravou 0,19 em vez de 0,18.
         $this->respond = fn (array $p) => $this->okResult($p, ['versions.1.lines..0.qnt' => 0.19]);
         $job = new WritePingwinBomJob($id);
         $job->handle(app(PingwinService::class), app(\App\Services\PingwinBomSyncService::class));
@@ -270,7 +270,7 @@ class RecipeWriteTest extends TestCase
         $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/write'), $this->draft(['base_signature' => $old]))
             ->assertStatus(409)->assertJsonFragment(['message' => 'A ficha mudou desde que a abriu (outra gravação ou a leitura noturna): recarregue antes de gravar.']);
 
-        // 2) A ficha mudou na PingWin depois da leitura: o Python pára sem gravar (conflict).
+        // 2) A ficha mudou no PingWin depois da leitura: o Python pára sem gravar (conflict).
         Bus::fake();
         $id = $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/write'), $this->draft())->json('data.write.id');
         $this->respond = fn () => ['ok' => false, 'mode' => 'bom_write', 'conflict' => true, 'saved' => false, 'diff' => ['versão 2026-05-26: as linhas mudaram']];
@@ -328,6 +328,8 @@ class RecipeWriteTest extends TestCase
         $this->assertSame([], PingwinService::bomWriteAllowlist());
         $cook = $this->userWith(['restauracao.ver', 'restauracao.editar']);
         $this->assertTrue($this->actingAs($cook, 'sanctum')->getJson($this->url('/editor'))->json('data.write_allowed'));
+        $this->assertNull($this->actingAs($cook, 'sanctum')->getJson($this->url('/editor'))->json('data.write_guard'));
+        $this->assertNull($this->actingAs($cook, 'sanctum')->getJson($this->url(''))->json('data.write_guard'));
         $this->actingAs($cook, 'sanctum')->postJson($this->url('/write'), $this->draft())->assertOk();
         $this->assertSame([], $this->calls);   // vai para a fila; o job leva allowed_product_ids vazio
         (new WritePingwinBomJob(RecipeWrite::value('id')))->handle(app(PingwinService::class), app(\App\Services\PingwinBomSyncService::class));
@@ -337,14 +339,22 @@ class RecipeWriteTest extends TestCase
     public function test_guard_only_allows_writing_the_authorised_article(): void
     {
         Bus::fake();
+        $list = 'Neste ambiente só se grava nos artigos de teste autorizados.';
+        $off = 'Neste ambiente a gravação no PingWin está desligada (PINGWIN_BOM_WRITE_ALLOWLIST=0). Em produção está ligada.';
         config(['services.pingwin.bom_write_allowlist' => '999999']);
         $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/write'), $this->draft())
-            ->assertForbidden()->assertJsonFragment(['message' => 'Gravar fichas técnicas na PingWin só está autorizado no artigo de teste.']);
-        $this->assertFalse($this->actingAs($this->admin, 'sanctum')->getJson($this->url('/editor'))->json('data.write_allowed'));
+            ->assertForbidden()->assertJsonFragment(['message' => $list]);
+        $ctx = $this->actingAs($this->admin, 'sanctum')->getJson($this->url('/editor'));
+        $this->assertFalse($ctx->json('data.write_allowed'));
+        $this->assertSame(['mode' => 'lista', 'reason' => $list], $ctx->json('data.write_guard'));   // o ecrã desativa o botão com este porquê
         config(['services.pingwin.bom_write_allowlist' => '0']);   // "0" = nenhum artigo (não é "vazio")
         $this->assertSame(['0'], PingwinService::bomWriteAllowlist());
-        $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/write'), $this->draft())->assertForbidden();
+        $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/write'), $this->draft())->assertForbidden()->assertJsonFragment(['message' => $off]);
+        $this->assertSame(['mode' => 'desligada', 'reason' => $off], $this->actingAs($this->admin, 'sanctum')->getJson($this->url('/editor'))->json('data.write_guard'));
+        $this->assertSame('desligada', $this->actingAs($this->admin, 'sanctum')->getJson($this->url(''))->json('data.write_guard.mode'));   // o detalhe (menu "Apagar")
+        $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/delete-version'), ['bom_id' => self::V0, 'base_signature' => $this->signature(), 'confirm' => true])->assertForbidden();
         config(['services.pingwin.bom_write_allowlist' => '999999, ' . self::PROD]);
+        $this->assertNull($this->actingAs($this->admin, 'sanctum')->getJson($this->url('/editor'))->json('data.write_guard'));
         $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/write'), $this->draft())->assertOk();
         $this->assertSame(['999999', self::PROD], PingwinService::bomWriteAllowlist());
     }

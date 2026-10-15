@@ -117,7 +117,7 @@ class PingwinBomSyncTest extends TestCase
     public function test_a_new_read_replaces_the_article_versions(): void
     {
         $this->persistBom($this->company->id, $this->coca());
-        // Na PingWin: criada uma versão nova e apagada a antiga.
+        // No PingWin: criada uma versão nova e apagada a antiga.
         $next = $this->bom('1649601156985', [['00000001', '584955579139801484', '2026-10-15', ['1099511639284' => true],
             [$this->bomLine('584955579139631978', 1), $this->bomLine('X', 2)]]]);
         $this->persistBom($this->company->id, $next);
@@ -127,7 +127,7 @@ class PingwinBomSyncTest extends TestCase
         $this->assertSame(0, PingwinProductBomStore::where('bom_pingwin_id', '584955579139626657')->count());
         $this->assertSame(4, PingwinProductBomLineCost::count()); // 2 linhas × ("" + W1), sem órfãos
 
-        // Sem ficha na PingWin: o espelho do artigo fica vazio.
+        // Sem ficha no PingWin: o espelho do artigo fica vazio.
         $this->persistBom($this->company->id, $this->bom('1649601156985', []));
         $this->assertSame(0, PingwinProductBom::count() + PingwinProductBomLine::count() + PingwinProductBomLineCost::count());
     }

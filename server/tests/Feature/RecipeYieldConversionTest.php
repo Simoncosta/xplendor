@@ -55,13 +55,13 @@ class RecipeYieldConversionTest extends TestCase
         $this->catalog($c, self::FRANC, ['description' => 'Francesinha', 'base_unit_id' => '11001', 'has_bom' => true]);
         $this->catalog($c, self::AVINHEZ, ['description' => 'AVINHEZ BRANCO', 'base_unit_id' => '11003', 'forpurchase' => true]);
 
-        // Molho (lote): 6 L de vinho, 5 kg de tomate e 4 kg de ossos (subproduto, custo 0 na PingWin).
+        // Molho (lote): 6 L de vinho, 5 kg de tomate e 4 kg de ossos (subproduto, custo 0 no PingWin).
         $this->persistBom($c, $this->bom(self::MOLHO, [['00000000', 'BM', '2026-05-26', ['S1' => true], [
             $this->bomLine(self::AVINHEZ, 6, ['unit_id' => '11003', 'unit_desc' => 'Litro', 'component_description' => 'AVINHEZ BRANCO', 'unit_cost' => 0.744603, 'cost' => 4.467618]),
             $this->bomLine('2002', 5, ['unit_id' => '11002', 'unit_desc' => 'Quilograma', 'component_description' => 'TOMATE CUBOS', 'unit_cost' => 1.536, 'cost' => 7.68]),
             $this->bomLine('2003', 4, ['unit_id' => '11002', 'unit_desc' => 'Quilograma', 'component_description' => 'OSSOS']),
         ]]], [
-            // Como na PingWin: base Litro, venda e compra por omissão BIDON 30L, artigo de produção.
+            // Como no PingWin: base Litro, venda e compra por omissão BIDON 30L, artigo de produção.
             'units' => ['base' => '11003', 'sale' => 'BD30', 'purchase' => 'BD30', 'stock' => '11003'],
             'forsale' => 1, 'forproduction' => 1, 'prices' => ['saleprice' => 0, 'saleprice_wo_tax' => 0],
         ]));
@@ -130,7 +130,7 @@ class RecipeYieldConversionTest extends TestCase
         $d = $this->actingAs($this->admin, 'sanctum')->getJson($this->url('/' . self::MOLHO))->assertOk()->json('data');
         $texts = implode(' ', array_column($d['versions'][0]['warnings'], 'text'));
         $this->assertStringContainsString('Esta ficha parece ser de um lote (cerca de 30 L)', $texts);
-        $this->assertStringContainsString('A PingWin conta a ficha por 1 Litro', $texts);
+        $this->assertStringContainsString('O PingWin conta a ficha por 1 Litro', $texts);
         $this->assertStringContainsString('usa o custo de stock do semi-produto, que está a zero', $texts);
         $this->assertTrue($d['article']['is_semi']);
         $this->assertContains('rendimento_por_confirmar', $d['flags']);

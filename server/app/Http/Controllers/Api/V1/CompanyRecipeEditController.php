@@ -24,7 +24,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * XPLENDOR — Fatia 4: o editor das fichas técnicas. O rascunho fica na XPLENDOR (recipe_drafts) e o
- * custo XPLENDOR atualiza-se enquanto se edita (preview). "Gravar na PingWin" cria um RecipeWrite e
+ * custo XPLENDOR atualiza-se enquanto se edita (preview). "Gravar no PingWin" cria um RecipeWrite e
  * põe-no na fila (WritePingwinBomJob): uma ficha de cada vez, confirmada por releitura. Tenancy
  * primeiro; escrever pede restauracao.editar (submódulo restauracao_artigos); os euros só para quem
  * vê as Finanças.
@@ -79,7 +79,8 @@ class CompanyRecipeEditController extends Controller
             'today' => $today,
             'draft' => $draft ? ['payload' => $draft->payload, 'base_signature' => $draft->base_signature, 'updated_at' => $draft->updated_at?->toIso8601String()] : null,
             'active_write' => $active ? $this->writeShape($active) : null,
-            'write_allowed' => ! PingwinService::bomWriteAllowlist() || in_array($productId, PingwinService::bomWriteAllowlist(), true),
+            'write_allowed' => PingwinService::bomWriteGuard($productId) === null,
+            'write_guard' => PingwinService::bomWriteGuard($productId),
         ], 'Editor da ficha técnica.');
     }
 
@@ -223,9 +224,9 @@ class CompanyRecipeEditController extends Controller
         if (! $this->known($companyId, $productId)) {
             return ApiResponse::error('Artigo não encontrado.', 404);
         }
-        $allow = PingwinService::bomWriteAllowlist();
-        if ($allow && ! in_array($productId, $allow, true)) {
-            return ApiResponse::error('Gravar fichas técnicas na PingWin só está autorizado no artigo de teste.', 403);
+        // O ecrã já desativa o botão; isto é a rede para quem chama a API diretamente.
+        if ($guard = PingwinService::bomWriteGuard($productId)) {
+            return ApiResponse::error($guard['reason'], 403);
         }
         if (RecipeWrite::where('company_id', $companyId)->where('product_pingwin_id', $productId)->whereIn('status', RecipeWrite::ACTIVE)->exists()) {
             return ApiResponse::error('Já há uma gravação desta ficha em curso: aguarde que termine.', 409);
@@ -237,7 +238,7 @@ class CompanyRecipeEditController extends Controller
         return null;
     }
 
-    /** "Gravar na PingWin": criar a ficha, uma versão nova ou corrigir uma versão. */
+    /** "Gravar no PingWin": criar a ficha, uma versão nova ou corrigir uma versão. */
     public function write(Request $request, int $companyId, string $productId)
     {
         if (! $this->authorizeCompany($companyId)) {
@@ -296,7 +297,7 @@ class CompanyRecipeEditController extends Controller
         $draft['mode'] = $mode;
         $plan = $svc->plan($snapshot, $draft);
         if (! $plan['ops']) {
-            return ApiResponse::error('Não há nada para gravar: a versão já está assim na PingWin.', 422);
+            return ApiResponse::error('Não há nada para gravar: a versão já está assim no PingWin.', 422);
         }
         $write = RecipeWrite::create([
             'company_id' => $companyId, 'product_pingwin_id' => $productId, 'user_id' => $request->user()->id,
@@ -310,7 +311,7 @@ class CompanyRecipeEditController extends Controller
         ]);
         WritePingwinBomJob::dispatch($write->id);
 
-        return ApiResponse::success(['write' => $this->writeShape($write->fresh())], 'A gravar na PingWin…');
+        return ApiResponse::success(['write' => $this->writeShape($write->fresh())], 'A gravar no PingWin…');
     }
 
     /** Apagar uma versão (confirmado; diz o que muda em cada loja). */
@@ -360,7 +361,7 @@ class CompanyRecipeEditController extends Controller
         ]);
         WritePingwinBomJob::dispatch($write->id);
 
-        return ApiResponse::success(['write' => $this->writeShape($write->fresh())], 'A apagar na PingWin…');
+        return ApiResponse::success(['write' => $this->writeShape($write->fresh())], 'A apagar no PingWin…');
     }
 
     /** O efeito de apagar uma versão (ou todas) em cada loja, para a confirmação. */

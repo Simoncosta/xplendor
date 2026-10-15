@@ -73,7 +73,7 @@ export default function ConfirmFactorModal({ open, onClose, onDone, companyId, l
         e ? (
             <div className="text-muted fs-12">
                 Custo <Money value={e.unit_cost_eur} hidden={hidden} decimals={4} seed={seed} /> por {conv.base_label.toLowerCase()}, linha{" "}
-                <Money value={e.line_cost_eur} hidden={hidden} decimals={4} seed={seed + 1} />, face à PingWin <DiffBadge pct={e.diff_pct} />
+                <Money value={e.line_cost_eur} hidden={hidden} decimals={4} seed={seed + 1} />, face ao PingWin <DiffBadge pct={e.diff_pct} />
             </div>
         ) : null;
 
@@ -114,7 +114,7 @@ export default function ConfirmFactorModal({ open, onClose, onDone, companyId, l
                         <XSelect ariaLabel="Fornecedor" options={supplierOptions} value={nif} onChange={setNif} searchable={false} />
                     </div>
                 )}
-                <p className="text-muted fs-12 mt-3 mb-0"><i className="ri-information-line me-1" />Fica só na XPLENDOR: a PingWin não muda.</p>
+                <p className="text-muted fs-12 mt-3 mb-0"><i className="ri-information-line me-1" />Fica só na XPLENDOR: o PingWin não muda.</p>
             </ModalBody>
             <ModalFooter>
                 <Button color="light" onClick={onClose} disabled={saving}>Cancelar</Button>

@@ -17,16 +17,16 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { COST_SOURCES_TEXT, DiffBadge, Money, StateBadge, fmtDate, fmtPct, fmtQty } from "./fichas/recipeFormat";
 import ConfirmFactorModal from "./fichas/ConfirmFactorModal";
 import ConfirmYieldModal from "./fichas/ConfirmYieldModal";
-import RecipeEditor from "./fichas/RecipeEditor";
+import RecipeEditorModal from "./fichas/RecipeEditor";
 import RecipeHistory from "./fichas/RecipeHistory";
 import DeleteRecipeModal from "./fichas/DeleteRecipeModal";
 import WriteProgressModal from "./fichas/WriteProgressModal";
 import { WarningLegend, WarningTip } from "./fichas/warningInfo";
 
 /**
- * XPLENDOR — Restauração › Fichas técnicas › artigo (Fatias 1 e 1b, só leitura na PingWin). As
+ * XPLENDOR — Restauração › Fichas técnicas › artigo (Fatias 1 e 1b, só leitura no PingWin). As
  * versões da ficha (a em vigor marcada) e as lojas de cada uma, as linhas com o custo XPLENDOR
- * (último e médio, e de onde veio a quantidade) e o da PingWin por armazém, os semi-produtos (com a
+ * (último e médio, e de onde veio a quantidade) e o do PingWin por armazém, os semi-produtos (com a
  * ficha deles e o rendimento), os totais, os avisos e onde o artigo é usado. "Confirmar fator" e
  * "Confirmar" (rendimento) escrevem só na XPLENDOR.
  */
@@ -76,11 +76,13 @@ const diffOf = (l: RecipeLine, wh: string) => {
 };
 
 /** As linhas de uma versão (e, por baixo, as fichas dos semi-produtos abertos). */
-function LinesTable({ lines, hidden, tableKey, depth = 0, total, wh, factorAction, toolbar }: {
+function LinesTable({ lines, hidden, tableKey, depth = 0, total, wh, factorAction, head, toolbar }: {
     lines: RecipeLine[]; hidden: boolean; tableKey: string; depth?: number;
     total?: { cost: number | null; complete: boolean };
     wh: string;
     factorAction?: (l: RecipeLine) => React.ReactNode;
+    /** A versão mostrada (data, estado, lojas), por cima da barra. */
+    head?: React.ReactNode;
     /** Fatia 4 (B2): as versões e o armazém, na mesma linha e com a mesma altura do "Colunas". */
     toolbar?: React.ReactNode;
 }) {
@@ -159,9 +161,13 @@ function LinesTable({ lines, hidden, tableKey, depth = 0, total, wh, factorActio
     return (
         <>
             {depth === 0 && (
-                <div className="d-flex flex-wrap align-items-center gap-2 px-3 pt-2 xp-lines-toolbar" data-testid="lines-toolbar">
-                    {toolbar}
-                    <div className="ms-auto">{cols.selector}</div>
+                // A zona de filtros, como nos outros quadros com DataTable (PageCard `filters`): padding e linha por baixo.
+                <div className="card-body border-bottom xp-card-filters" data-testid="lines-filters">
+                    {head && <div className="d-flex flex-wrap align-items-center gap-2 mb-2">{head}</div>}
+                    <div className="d-flex flex-wrap align-items-center gap-2" data-testid="lines-toolbar">
+                        {toolbar}
+                        <div className="ms-auto">{cols.selector}</div>
+                    </div>
                 </div>
             )}
             <DataTable
@@ -229,7 +235,7 @@ export default function FichaTecnicaPage() {
     const [wh, setWh] = useState("");
     const [factorLine, setFactorLine] = useState<RecipeLine | null>(null);
     const [yieldOpen, setYieldOpen] = useState(false);
-    // Fatia 4: editor, apagar e histórico.
+    // Fatia 4: editor (num modal), apagar e histórico.
     const [editing, setEditing] = useState(false);
     const [deleting, setDeleting] = useState<{ target: { bom_id: string; valid_from: string | null } | "all"; signature: string } | null>(null);
     const [deleteWrite, setDeleteWrite] = useState<RecipeWriteInfo | null>(null);
@@ -258,6 +264,7 @@ export default function FichaTecnicaPage() {
     const inForce = versions.find((v) => v.in_force) ?? null;
     const y = inForce?.yield ?? null;
     const noEditReason = canEdit ? null : (editReason ?? "Precisa da permissão de editar os artigos da restauração.");
+    const noDeleteReason = noEditReason ?? data?.write_guard?.reason ?? null;
     const afterWrite = useCallback(() => { load(); setHistoryKey((k) => k + 1); }, [load]);
     const askDelete = async (target: { bom_id: string; valid_from: string | null } | "all") => {
         if (!companyId || !productId) return;
@@ -298,7 +305,7 @@ export default function FichaTecnicaPage() {
                     title={article?.description ?? "Ficha técnica"}
                     crumbLabel="Ficha técnica"
                     breadcrumbs={[{ label: "Restauração" }, { label: "Fichas técnicas", to: "/restauracao/fichas-tecnicas" }]}
-                    info="A ficha técnica do artigo na PingWin (só leitura), com o custo calculado pela XPLENDOR a partir das compras."
+                    info="A ficha técnica do artigo no PingWin (só leitura), com o custo calculado pela XPLENDOR a partir das compras."
                 />
                 {hidden && <FinancialNote className="mb-3" />}
                 <WarningLegend />
@@ -368,15 +375,11 @@ export default function FichaTecnicaPage() {
                             )}
                         </PageCard>
 
-                        {data && versions.length === 0 && !editing && (
+                        {data && versions.length === 0 && (
                             <PageCard title="Ficha técnica" flush={false}
                                 actions={<ReasonButton type="button" size="sm" color="primary" reason={noEditReason} onClick={() => setEditing(true)}><i className="ri-add-line me-1" aria-hidden />Criar ficha</ReasonButton>}>
-                                <p className="text-muted mb-0">Este artigo não tem ficha técnica na PingWin (ou ainda não foi lida: a leitura corre de noite).</p>
+                                <p className="text-muted mb-0">Este artigo não tem ficha técnica no PingWin (ou ainda não foi lida: a leitura corre de noite).</p>
                             </PageCard>
-                        )}
-
-                        {editing && productId && (
-                            <RecipeEditor companyId={companyId} productId={productId} hidden={hidden} onSaved={afterWrite} onClose={() => setEditing(false)} />
                         )}
 
                         {current && (
@@ -384,26 +387,16 @@ export default function FichaTecnicaPage() {
                                 title="Versões da ficha"
                                 status={<>Em vigor: a de data mais recente até hoje, não anulada, com a loja ativa</>}
                                 actions={<>
-                                    {!editing && (
-                                        <ReasonButton type="button" size="sm" color="outline-primary" reason={noEditReason} onClick={() => setEditing(true)}>
-                                            <i className="ri-edit-line me-1" aria-hidden />Editar ficha
-                                        </ReasonButton>
-                                    )}
+                                    <ReasonButton type="button" size="sm" color="outline-primary" reason={noEditReason} onClick={() => setEditing(true)} data-testid="ficha-editar">
+                                        <i className="ri-edit-line me-1" aria-hidden />Editar ficha
+                                    </ReasonButton>
+                                    {/* Apagar fica aqui, fora do editor; com a guarda (dev), desativado com o porquê. */}
                                     <ActionsMenu size="sm" label="Mais ações: ficha técnica" items={[
-                                        { label: `Apagar a versão de ${fmtDate(current.valid_from)}`, icon: "ri-delete-bin-line", danger: true, onClick: () => askDelete({ bom_id: current.bom_id, valid_from: current.valid_from }), disabledReason: noEditReason },
-                                        { label: "Apagar a ficha inteira", icon: "ri-delete-bin-2-line", danger: true, onClick: () => askDelete("all"), disabledReason: noEditReason },
+                                        { label: `Apagar a versão de ${fmtDate(current.valid_from)}`, icon: "ri-delete-bin-line", danger: true, onClick: () => askDelete({ bom_id: current.bom_id, valid_from: current.valid_from }), disabledReason: noDeleteReason },
+                                        { label: "Apagar a ficha inteira", icon: "ri-delete-bin-2-line", danger: true, onClick: () => askDelete("all"), disabledReason: noDeleteReason },
                                     ]} />
                                 </>}
                             >
-                                <div className="px-3 pt-3 d-flex flex-wrap align-items-center gap-2">
-                                    <span className="fw-semibold">Versão de {fmtDate(current.valid_from)}</span>
-                                    {current.in_force
-                                        ? <span className="badge bg-success-subtle text-success">em vigor</span>
-                                        : current.deleted ? <span className="badge bg-secondary-subtle text-secondary">anulada</span>
-                                            : <span className="badge bg-light text-body">não está em vigor</span>}
-                                    <span className="text-muted fs-12 ms-2">Lojas:</span>
-                                    <StoreBadges v={current} />
-                                </div>
                                 <LinesTable
                                     key={current.bom_id}
                                     lines={current.lines}
@@ -412,9 +405,18 @@ export default function FichaTecnicaPage() {
                                     wh={wh}
                                     total={{ cost: current.cost_eur, complete: current.cost_complete }}
                                     factorAction={factorAction}
+                                    head={<>
+                                        <span className="fw-semibold">Versão de {fmtDate(current.valid_from)}</span>
+                                        {current.in_force
+                                            ? <span className="badge bg-success-subtle text-success">em vigor</span>
+                                            : current.deleted ? <span className="badge bg-secondary-subtle text-secondary">anulada</span>
+                                                : <span className="badge bg-light text-body">não está em vigor</span>}
+                                        <span className="text-muted fs-12 ms-2">Lojas:</span>
+                                        <StoreBadges v={current} />
+                                    </>}
                                     toolbar={<>
                                         {versions.length > 1 && (
-                                            <div className="xp-seg" role="tablist" aria-label="Versões">
+                                            <div className="xp-seg flex-wrap" role="tablist" aria-label="Versões">
                                                 {versions.map((v) => (
                                                     <button key={v.bom_id} type="button" role="tab" aria-selected={current.bom_id === v.bom_id}
                                                         className={current.bom_id === v.bom_id ? "on" : ""} onClick={() => setTab(v.bom_id)}>
@@ -464,6 +466,11 @@ export default function FichaTecnicaPage() {
                 )}
 
                 {data && productId && <RecipeHistory companyId={companyId} productId={productId} refreshKey={historyKey} />}
+
+                {editing && productId && (
+                    <RecipeEditorModal companyId={companyId} productId={productId} bomId={current?.bom_id ?? null} hidden={hidden}
+                        onSaved={afterWrite} onClose={() => setEditing(false)} />
+                )}
 
                 {deleting && companyId && productId && (
                     <DeleteRecipeModal companyId={companyId} productId={productId} productName={article?.description ?? "artigo"} signature={deleting.signature}

@@ -7,7 +7,7 @@ import { RecipeHistoryRow } from "common/models/recipe.model";
 import { fmtDate, fmtQty } from "./recipeFormat";
 
 /**
- * Fatia 4 — "Histórico de alterações" da ficha técnica: cada gravação na PingWin (quem, quando,
+ * Fatia 4 — "Histórico de alterações" da ficha técnica: cada gravação no PingWin (quem, quando,
  * operação, versão), o antes e o depois, e o resultado confirmado por releitura.
  */
 const OPERATION: Record<RecipeHistoryRow["operation"], string> = {
@@ -51,7 +51,7 @@ export default function RecipeHistory({ companyId, productId, refreshKey }: { co
         { id: "op", header: "Operação", value: (r) => OPERATION[r.operation], mobile: "title", cell: (r) => OPERATION[r.operation] },
         { id: "version", header: "Versão", value: (r) => r.valid_from, cell: (r) => (r.valid_from ? fmtDate(r.valid_from) : r.bom_id ?? "—"), nowrap: true },
         {
-            id: "status", header: "Resultado na PingWin", value: (r) => r.status,
+            id: "status", header: "Resultado no PingWin", value: (r) => r.status,
             cell: (r) => (
                 <div>
                     <span className={`badge ${STATUS[r.status].cls}`}>{STATUS[r.status].label}</span>
@@ -65,7 +65,7 @@ export default function RecipeHistory({ companyId, productId, refreshKey }: { co
     const beforeVersion = sel?.before?.versions?.find((v) => v.id === sel.bom_id) ?? null;
 
     return (
-        <PageCard title="Histórico de alterações" info="Cada gravação desta ficha na PingWin feita pela XPLENDOR: quem, quando, o antes e o depois, e o resultado confirmado por releitura." loading={rows === null} skeleton={rows === null ? "table" : undefined}>
+        <PageCard title="Histórico de alterações" info="Cada gravação desta ficha no PingWin feita pela XPLENDOR: quem, quando, o antes e o depois, e o resultado confirmado por releitura." loading={rows === null} skeleton={rows === null ? "table" : undefined}>
             <DataTable
                 columns={cols}
                 data={rows ?? []}

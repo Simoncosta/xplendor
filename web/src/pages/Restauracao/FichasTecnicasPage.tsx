@@ -159,7 +159,7 @@ export default function FichasTecnicasPage() {
                             title="Artigos e fichas"
                             info={COST_SOURCES_TEXT}
                             loading={loading && !!data}
-                            status={<>Fichas lidas da PingWin: {fmtDateTime(summary?.last_synced_at)}</>}
+                            status={<>Fichas lidas do PingWin: {fmtDateTime(summary?.last_synced_at)}</>}
                             actions={cols.selector}
                             filters={
                                 <RestFilterBar
@@ -215,7 +215,7 @@ export default function FichasTecnicasPage() {
                                         </Button>
                                     )}
                                     caption="Fichas técnicas por ordem de vendas"
-                                    empty={{ message: noFilters ? "Ainda não há fichas técnicas nem vendas nos últimos 90 dias. As fichas são lidas da PingWin de noite." : "Nenhum artigo para estes filtros." }}
+                                    empty={{ message: noFilters ? "Ainda não há fichas técnicas nem vendas nos últimos 90 dias. As fichas são lidas do PingWin de noite." : "Nenhum artigo para estes filtros." }}
                                     server={meta ? {
                                         page: meta.current_page, lastPage: meta.last_page, total: meta.total, perPage: meta.per_page,
                                         from: meta.from ?? 0, to: meta.to ?? 0, onPageChange: setPage,

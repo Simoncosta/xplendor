@@ -2853,7 +2853,7 @@ class MyCloudPieClient:
         return sel.json().get("product", {}).get("productbom.storerelation.storedata") or []
 
     def _bom_lines_raw(self, object_id: str) -> List[Dict[str, Any]]:
-        """As linhas (cruas, como a PingWin as devolve) da versão posicionada, armazém ""."""
+        """As linhas (cruas, como o PingWin as devolve) da versão posicionada, armazém ""."""
         lr = self._bom_post(self._BOM_LINES_DATASETS, "GET,INFO", object_id, {"params": {"warehouse_id": ""}})
         lr.raise_for_status()
         return [r for r in lr.json().get("product", {}).get("productbom.prodbomdetail") or [] if int(r.get("deleted") or 0) == 0]
@@ -2926,7 +2926,7 @@ class MyCloudPieClient:
                     return
                 row = versions.get(version_id)
                 if not row:
-                    raise RuntimeError(f"ficha {product_id}: versão {version_id} não existe na PingWin.")
+                    raise RuntimeError(f"ficha {product_id}: versão {version_id} não existe no PingWin.")
                 emit(step="versao", version=version_id)
                 current_stores = self._bom_select(object_id, str(row["key"]))
                 current_lines = self._bom_lines_raw(object_id)
@@ -2995,7 +2995,7 @@ class MyCloudPieClient:
                     vid = resolve(op["version"])
                     row = versions.get(vid)
                     if not row:
-                        raise RuntimeError(f"ficha {product_id}: versão {vid} não existe na PingWin.")
+                        raise RuntimeError(f"ficha {product_id}: versão {vid} não existe no PingWin.")
                     emit(step="versao", delete=vid)
                     self._bom_write_post("productbom.maindataset", "DELETE", object_id, [row])
                     versions.pop(vid, None)
@@ -3026,7 +3026,7 @@ class MyCloudPieClient:
 
     def _bom_edit_line(self, object_id: str, row: Dict[str, Any], op: Dict[str, Any]) -> None:
         """EDIT de uma linha (nova ou existente) com a unidade, a quantidade, o desperdício e a
-        recuperação pedidos. Atualiza `row` com o que a PingWin devolveu (qnt_base, cost)."""
+        recuperação pedidos. Atualiza `row` com o que o PingWin devolveu (qnt_base, cost)."""
         body = {
             "key": row.get("key"), "product_code": row.get("product_code"),
             "product_description": row.get("product_description"), "product_id": row.get("product_id"),
@@ -3041,15 +3041,15 @@ class MyCloudPieClient:
 
     def _bom_conflicts(self, object_id: str, versions: Dict[str, Dict[str, Any]], expected: Dict[str, Any],
                        ops: List[Dict[str, Any]]) -> List[str]:
-        """Diferenças entre a ficha na PingWin e o espelho (o que a pessoa viu ao editar): as versões
+        """Diferenças entre a ficha no PingWin e o espelho (o que a pessoa viu ao editar): as versões
         (ids, datas, anuladas) e, nas versões tocadas, as linhas e as lojas. [] = igual."""
         diff: List[str] = []
         exp_versions = {str(v["id"]): v for v in expected.get("versions") or []}
         live = {vid: v for vid, v in versions.items() if int(v.get("deleted") or 0) == 0}
         for vid in sorted(set(live) - set(exp_versions)):
-            diff.append(f"versão {_bom_date(live[vid].get('cashbox_date'))} ({vid}) nova na PingWin")
+            diff.append(f"versão {_bom_date(live[vid].get('cashbox_date'))} ({vid}) nova no PingWin")
         for vid in sorted(set(exp_versions) - set(live)):
-            diff.append(f"versão {exp_versions[vid].get('valid_from')} ({vid}) já não existe na PingWin")
+            diff.append(f"versão {exp_versions[vid].get('valid_from')} ({vid}) já não existe no PingWin")
         for vid in sorted(set(exp_versions) & set(live)):
             if _bom_date(live[vid].get("cashbox_date")) != exp_versions[vid].get("valid_from"):
                 diff.append(f"versão {vid}: data mudou para {_bom_date(live[vid].get('cashbox_date'))}")
@@ -3061,7 +3061,7 @@ class MyCloudPieClient:
             exp_lines = {str(l["key"]): l for l in exp.get("lines") or []}
             got = {str(l.get("key")): l for l in lines}
             if set(exp_lines) != set(got):
-                diff.append(f"versão {exp.get('valid_from')}: as linhas mudaram ({len(got)} na PingWin, {len(exp_lines)} na XPLENDOR)")
+                diff.append(f"versão {exp.get('valid_from')}: as linhas mudaram ({len(got)} no PingWin, {len(exp_lines)} na XPLENDOR)")
             else:
                 for k, l in exp_lines.items():
                     if not self._bom_line_matches(got[k], l):

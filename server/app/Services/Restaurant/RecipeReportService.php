@@ -261,16 +261,16 @@ final class RecipeReportService
         $abbr = self::FAMILY_ABBR[$family] ?? mb_strtolower((string) $yield['unit_label']);
         $about = $yield['quantity'] ? sprintf(' (cerca de %s %s)', self::num($yield['quantity']), $abbr) : '';
         $sums = implode(' e ', array_map(fn ($x) => self::num($x['quantity']) . ' ' . $x['label'], $yield['sums']));
-        // A1: nos pratos, a PingWin não usa a ficha do semi-produto; usa o custo de stock dele.
+        // A1: nos pratos, o PingWin não usa a ficha do semi-produto; usa o custo de stock dele.
         $stock = PingwinProductBomLine::query()->join('pingwin_product_bom_line_costs as c', 'c.bom_line_id', '=', 'pingwin_product_bom_lines.id')
             ->where('pingwin_product_bom_lines.company_id', $this->companyId)->where('pingwin_product_bom_lines.component_pingwin_id', $productId)
             ->where('c.warehouse_pingwin_id', '')->max('c.unit_cost');
         $pingwin = $stock !== null && (float) $stock === 0.0
-            ? ' Nos pratos, a PingWin não usa esta ficha: usa o custo de stock do semi-produto, que está a zero.'
+            ? ' Nos pratos, o PingWin não usa esta ficha: usa o custo de stock do semi-produto, que está a zero.'
             : '';
 
         return ['type' => 'batch', 'text' => "Esta ficha parece ser de um lote{$about}: os componentes somam {$sums}. "
-            . "A PingWin conta a ficha por 1 {$yield['unit_label']}.{$pingwin} Confirme o rendimento."];
+            . "O PingWin conta a ficha por 1 {$yield['unit_label']}.{$pingwin} Confirme o rendimento."];
     }
 
     private static function num(float $v): string

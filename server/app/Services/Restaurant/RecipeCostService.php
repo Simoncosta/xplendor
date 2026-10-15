@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\DB;
  *  · Semi-produtos (componente com ficha): custo da ficha em vigor, recursivo, até 5 níveis e com
  *    proteção contra ciclos. Custo por unidade base = custo do lote ÷ rendimento confirmado (Fatia
  *    1b, product_bom_yields). Sem rendimento confirmado: ÷ 1, com o aviso "Rendimento por confirmar"
- *    e o custo dos pratos marcado como de baixa confiança. (A PingWin não usa a ficha do
+ *    e o custo dos pratos marcado como de baixa confiança. (O PingWin não usa a ficha do
  *    semi-produto nos pratos: usa o custo de stock dele, que no Molho é 0.)
  *  · Quantidade das compras (Fatia 1b): o fator confirmado por artigo e unidade (product_unit_
  *    conversions, do fornecedor ou geral) antes da qnt_base do raw. Diz-se sempre de onde veio.
@@ -651,7 +651,7 @@ final class RecipeCostService
 
     /**
      * As unidades possíveis de um componente na ficha: as da família da unidade base (como as
-     * lkprodunits da PingWin), com quantas unidades base vale cada uma (unit_value ao longo dos pais).
+     * lkprodunits do PingWin), com quantas unidades base vale cada uma (unit_value ao longo dos pais).
      *
      * @return list<array{id:string, label:string, short:?string, factor:float, base:bool, suspicious:bool}>
      */
@@ -906,7 +906,7 @@ final class RecipeCostService
         }
         $u = $this->units[$unitKey] ?? null;
         if ($u && (float) $u->unit_value > 1) {
-            $add((float) $u->unit_value, "Valor da unidade «{$u->description}» na PingWin");
+            $add((float) $u->unit_value, "Valor da unidade «{$u->description}» no PingWin");
         }
 
         $effect = function (float $factor) use ($cid, $unitKey, $l, $pw) {

@@ -67,7 +67,7 @@ export default function ConfirmYieldModal({ open, onClose, onDone, companyId, pr
                     {n ? <> · custo por {y.unit_label.toLowerCase()} <Money value={perUnit} hidden={hidden} decimals={4} seed={2} /></> : null}
                     {!version.cost_complete && <span className="badge bg-warning-subtle text-warning ms-1">parcial</span>}
                 </div>
-                <p className="text-muted fs-12 mt-3 mb-0"><i className="ri-information-line me-1" />Fica só na XPLENDOR: a PingWin não tem rendimento na ficha.</p>
+                <p className="text-muted fs-12 mt-3 mb-0"><i className="ri-information-line me-1" />Fica só na XPLENDOR: o PingWin não tem rendimento na ficha.</p>
             </ModalBody>
             <ModalFooter>
                 <Button color="light" onClick={onClose} disabled={saving}>Cancelar</Button>

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * XPLENDOR — Fatia 4: uma gravação de uma ficha técnica na PingWin (e o histórico de alterações).
+ * XPLENDOR — Fatia 4: uma gravação de uma ficha técnica no PingWin (e o histórico de alterações).
  * Estados: queued → running → ok | mismatch (a releitura não bate) | conflict (a ficha mudou na
  * PingWin desde a leitura) | failed. Nunca se repete sozinha.
  */

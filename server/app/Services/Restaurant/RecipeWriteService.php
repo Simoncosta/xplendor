@@ -10,7 +10,7 @@ use App\Models\RecipeWrite;
 use Carbon\CarbonImmutable;
 
 /**
- * XPLENDOR — Fatia 4: criar, editar e apagar fichas técnicas na PingWin, uma de cada vez.
+ * XPLENDOR — Fatia 4: criar, editar e apagar fichas técnicas no PingWin, uma de cada vez.
  *  · retrato do espelho (o "antes", o que a pessoa viu) e a sua assinatura: se o espelho mudou desde
  *    que se abriu o editor, recusa-se e pede-se para recarregar; o Python volta a comparar com a
  *    PingWin ao vivo antes de escrever;
@@ -210,7 +210,7 @@ final class RecipeWriteService
         if (in_array($write->operation, ['apagar_versao', 'apagar_ficha'], true)) {
             foreach ($after['deleted_versions'] ?? [] as $id) {
                 if ($versions->has((string) $id)) {
-                    $diff[] = "A versão {$id} continua na PingWin.";
+                    $diff[] = "A versão {$id} continua no PingWin.";
                 }
             }
 
@@ -228,15 +228,15 @@ final class RecipeWriteService
         $want = collect($after['lines'] ?? [])->map(fn ($l) => self::lineSig($l['component_id'], $l['unit_id'], $l['qnt'], $l['waste'] ?? 0, $l['recovery'] ?? 0))->sort()->values()->all();
         $got = collect($v['lines'][''] ?? [])->map(fn ($l) => self::lineSig($l['component_id'], $l['unit_id'], $l['qnt'], $l['waste'], $l['recovery']))->sort()->values()->all();
         foreach (array_diff($want, $got) as $x) {
-            $diff[] = "Linha pedida que não está na PingWin: {$x}.";
+            $diff[] = "Linha pedida que não está no PingWin: {$x}.";
         }
         foreach (array_diff($got, $want) as $x) {
-            $diff[] = "Linha na PingWin que não foi pedida: {$x}.";
+            $diff[] = "Linha no PingWin que não foi pedida: {$x}.";
         }
         $stores = collect($v['stores'] ?? [])->mapWithKeys(fn ($s) => [(string) $s['store_id'] => (bool) $s['active']]);
         foreach ($after['stores'] ?? [] as $sid => $active) {
             if ($stores->has((string) $sid) && $stores[(string) $sid] !== (bool) $active) {
-                $diff[] = sprintf('A loja %s está %s na PingWin (pedido: %s).', $sid, $stores[(string) $sid] ? 'ativa' : 'inativa', $active ? 'ativa' : 'inativa');
+                $diff[] = sprintf('A loja %s está %s no PingWin (pedido: %s).', $sid, $stores[(string) $sid] ? 'ativa' : 'inativa', $active ? 'ativa' : 'inativa');
             }
         }
 

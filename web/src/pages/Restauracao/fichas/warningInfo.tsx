@@ -25,17 +25,17 @@ export const WARNING_INFO: Record<string, Info> = {
         group: "Custo", title: "Compras fora do normal",
         from: "Compras com preço acima de 4 vezes ou abaixo de um quarto da mediana dos 90 dias ficaram de fora do custo.",
         why: "Costumam ser erros de unidade ou de quantidade na fatura, e distorcem a média.",
-        todo: "Veja essas faturas: se a quantidade ou a unidade estiver errada, corrija-a na PingWin.",
+        todo: "Veja essas faturas: se a quantidade ou a unidade estiver errada, corrija-a no PingWin.",
     },
     pingwin_diff: {
-        group: "Custo", title: "Diferença face à PingWin",
-        from: "O custo XPLENDOR (das compras) difere mais de 20% do custo que a PingWin calcula para todos os armazéns.",
+        group: "Custo", title: "Diferença face ao PingWin",
+        from: "O custo XPLENDOR (das compras) difere mais de 20% do custo que o PingWin calcula para todos os armazéns.",
         why: "Uma das duas contas está a usar uma unidade, um preço ou um armazém diferente.",
         todo: "Veja as linhas com a maior diferença; muitas vezes é um fator de unidade por confirmar.",
     },
     zero_cost: {
         group: "Custo", title: "Custo 0", info: true,
-        from: "O componente não tem compras pagas e a PingWin também lhe dá custo 0.",
+        from: "O componente não tem compras pagas e o PingWin também lhe dá custo 0.",
         why: "É normal nos subprodutos (aparas, ossos, sobras), que não custam nada à receita.",
         todo: "Nada, se for um subproduto. Se não for, confirme se o componente certo está na ficha.",
     },
@@ -47,7 +47,7 @@ export const WARNING_INFO: Record<string, Info> = {
     },
     inactive: {
         group: "Componentes", title: "Componente inativo",
-        from: "O estado do componente na PingWin é Inativo (ou o artigo foi anulado).",
+        from: "O estado do componente no PingWin é Inativo (ou o artigo foi anulado).",
         why: "Uma ficha com componentes inativos costuma estar desatualizada.",
         todo: "Troque-o pelo componente em uso, ou confirme que continua certo.",
     },
@@ -59,7 +59,7 @@ export const WARNING_INFO: Record<string, Info> = {
     },
     factor_unconfirmed: {
         group: "Unidades", title: "Fator por confirmar",
-        from: "Há um fator sugerido que explica a diferença face à PingWin, e ainda não foi confirmado.",
+        from: "Há um fator sugerido que explica a diferença face ao PingWin, e ainda não foi confirmado.",
         why: "Sem o fator certo, o custo deste componente está errado.",
         todo: "Use \"Confirmar fator\" na linha.",
     },
@@ -72,7 +72,7 @@ export const WARNING_INFO: Record<string, Info> = {
     batch: {
         group: "Unidades", title: "Ficha de lote",
         from: "Os componentes somam muito mais do que 1 unidade base do semi-produto.",
-        why: "A PingWin conta a ficha por 1 unidade base; nos pratos usa o custo de stock do semi-produto.",
+        why: "O PingWin conta a ficha por 1 unidade base; nos pratos usa o custo de stock do semi-produto.",
         todo: "Confirme o rendimento do lote.",
     },
     same_day: {
@@ -84,7 +84,7 @@ export const WARNING_INFO: Record<string, Info> = {
     empty_version: {
         group: "Ficha", title: "Versão sem linhas",
         from: "A versão em vigor não tem componentes.",
-        why: "O artigo fica sem custo e a PingWin não desconta stock na venda.",
+        why: "O artigo fica sem custo e o PingWin não desconta stock na venda.",
         todo: "Junte os componentes ou apague essa versão.",
     },
     store_without: {

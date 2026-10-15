@@ -38,7 +38,7 @@ class TenancyArchitectureTest extends TestCase
         'Admin/SupportTicketController.php' => 2,         // + a impersonation (regra transversal)
         'Agency/AgencyController.php' => 6,               // painel da agência (rotas /agencies, fora das rotas de empresa)
         'CompanyController.php' => 1,                     // criar empresas (rota sem empresa no endereço): só o root
-        'CompanyRecipeEditController.php' => 1,           // gravar fichas na PingWin só nos artigos da guarda (PINGWIN_BOM_WRITE_ALLOWLIST; regra transversal)
+        'CompanyRecipeEditController.php' => 1,           // gravar fichas no PingWin só nos artigos da guarda (PINGWIN_BOM_WRITE_ALLOWLIST; regra transversal)
         'EditorialLineController.php' => 1,               // modo de produção pela equipa (regra transversal)
         'EditorialWorkflowController.php' => 1,           // o modo de produção só o muda quem produz (regra transversal)
         'PlanController.php' => 1,                        // planos da plataforma (rota sem empresa no endereço)

@@ -56,7 +56,7 @@ class WritePingwinBomJob implements ShouldQueue
 
             if ($res['conflict'] ?? false) {
                 $write->update(['status' => 'conflict', 'result' => ['diff' => $res['diff'] ?? []], 'finished_at' => now(),
-                    'error' => 'A ficha mudou na PingWin desde a última leitura: recarregue e volte a editar.']);
+                    'error' => 'A ficha mudou no PingWin desde a última leitura: recarregue e volte a editar.']);
 
                 return;
             }
@@ -66,12 +66,12 @@ class WritePingwinBomJob implements ShouldQueue
             if (! is_array($reread)) {
                 // Gravado (SAVE), mas a releitura falhou: fica como "não bate", sem repetir.
                 $write->update(['status' => 'mismatch', 'bom_pingwin_id' => $refs['new']['id'] ?? $write->bom_pingwin_id,
-                    'result' => ['saved' => (bool) ($res['saved'] ?? false), 'refs' => $refs, 'diff' => ['Não foi possível reler a ficha na PingWin: ' . ($res['reread_error'] ?? 'erro desconhecido') . '.']],
-                    'error' => 'Gravado, mas sem confirmação por releitura: veja a ficha na PingWin.', 'finished_at' => now()]);
+                    'result' => ['saved' => (bool) ($res['saved'] ?? false), 'refs' => $refs, 'diff' => ['Não foi possível reler a ficha no PingWin: ' . ($res['reread_error'] ?? 'erro desconhecido') . '.']],
+                    'error' => 'Gravado, mas sem confirmação por releitura: veja a ficha no PingWin.', 'finished_at' => now()]);
 
                 return;
             }
-            // O espelho deste artigo passa a ser o que a PingWin tem agora (mesmo que não bata).
+            // O espelho deste artigo passa a ser o que o PingWin tem agora (mesmo que não bata).
             if (($reread['id'] ?? '') !== '') {
                 $sync->persist($write->company_id, $reread);
             }
@@ -80,7 +80,7 @@ class WritePingwinBomJob implements ShouldQueue
                 'status' => $diff ? 'mismatch' : 'ok',
                 'bom_pingwin_id' => $refs['new']['id'] ?? $write->bom_pingwin_id,
                 'result' => ['saved' => (bool) ($res['saved'] ?? false), 'refs' => $refs, 'diff' => $diff, 'article' => $res['article'] ?? null],
-                'error' => $diff ? 'A releitura na PingWin não bate com o pedido: veja as diferenças.' : null,
+                'error' => $diff ? 'A releitura no PingWin não bate com o pedido: veja as diferenças.' : null,
                 'finished_at' => now(),
             ]);
             if (! $diff) {
