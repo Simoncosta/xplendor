@@ -3,6 +3,39 @@
  * (financial.visible false): o ecrã mostra-os desfocados (HiddenMoney).
  */
 export type RecipeState = "com_ficha" | "sem_ficha" | "sem_custo" | "loja_sem_ficha";
+/** Fatia 1b: marcas que se juntam ao estado. */
+export type RecipeFlag = "rendimento_por_confirmar" | "fator_por_confirmar";
+
+/** O rendimento de uma versão da ficha de um semi-produto (só na XPLENDOR). */
+export type RecipeYield = {
+    confirmed: boolean;
+    source: "confirmado" | "sugerido" | null;
+    quantity: number | null;
+    unit_id: string | null;
+    unit_label: string;
+    reason: string | null;
+    confirmed_by: string | null;
+    confirmed_at: string | null;
+    suggestions: { quantity: number; reason: string }[];
+    sums: { label: string; quantity: number }[];
+    looks_like_batch: boolean;
+};
+
+export type RecipeCostEffect = { unit_cost_eur: number | null; line_cost_eur: number | null; diff_pct: number | null };
+
+/** A unidade de compra de um componente e as sugestões de fator (só na XPLENDOR). */
+export type RecipeConversion = {
+    unit_key: string;
+    unit_label: string;
+    base_label: string;
+    price_per_unit_eur: number | null;
+    raw_factor: number | null;
+    current_factor: number | null;
+    current: RecipeCostEffect | null;
+    suppliers: { nif: string; name: string | null }[];
+    confirmed: { factor: number; supplier_nif: string | null; confirmed_by: string | null; confirmed_at: string | null } | null;
+    suggestions: ({ factor: number; reason: string } & RecipeCostEffect)[];
+};
 
 export type RecipeRow = {
     product_id: string;
@@ -17,6 +50,11 @@ export type RecipeRow = {
     cum_pct: number | null;
     state: RecipeState;
     state_label: string;
+    flags: RecipeFlag[];
+    flag_labels: string[];
+    low_confidence: boolean;
+    yield: { quantity: number | null; unit_label: string; confirmed: boolean } | null;
+    cost_per_unit_eur: number | null;
     missing_stores: string[];
     components: number | null;
     cost_eur: number | null;
@@ -56,12 +94,12 @@ export type RecipeListResponse = {
     };
     families: string[];
     locations: { id: number; name: string }[];
-    states: { id: RecipeState; label: string }[];
+    states: { id: RecipeState | RecipeFlag; label: string }[];
     sort: { sort: string; dir: "asc" | "desc" };
     financial: RecipeFinancial;
 };
 
-export type RecipeWarning = { type: string; text: string; line?: string };
+export type RecipeWarning = { type: string; text: string; line?: string; level?: "info" };
 
 export type RecipeLine = {
     key: string;
@@ -76,7 +114,7 @@ export type RecipeLine = {
     is_bom: boolean;
     inactive: boolean;
     cost_source: "compras" | "ficha";
-    cost_status: "ok" | "antigo" | "sem_custo" | "parcial" | "ciclo" | "fundo";
+    cost_status: "ok" | "antigo" | "sem_custo" | "parcial" | "ciclo" | "fundo" | "zero";
     unit_cost_last_eur: number | null;
     unit_cost_avg_eur: number | null;
     last_purchase: string | null;
@@ -84,11 +122,19 @@ export type RecipeLine = {
     pingwin_cost_eur: number | null;
     line_cost_eur: number | null;
     diff_pct: number | null;
+    pingwin_by_warehouse: { warehouse_id: string; unit_cost_eur: number | null; cost_eur: number | null }[];
+    qty_source: "raw" | "confirmado" | "misto" | null;
+    low_confidence: boolean;
+    needs_factor: boolean;
+    conversion: RecipeConversion | null;
+    similar: { product_id: string; code: string | null; description: string; score: number; last_eur: number | null; avg_eur: number | null; last_purchase: string | null } | null;
     warnings: RecipeWarning[];
     sub: {
         product_id: string;
         version: { bom_id: string; key: string; valid_from: string | null };
         cost_eur: number | null;
+        cost_per_unit_eur: number | null;
+        yield: RecipeYield;
         cost_complete: boolean;
         pingwin_cost_eur: number | null;
         lines: RecipeLine[];
@@ -112,6 +158,10 @@ export type RecipeVersion = {
     diff_pct: number | null;
     food_cost_pct: number | null;
     margin_eur: number | null;
+    yield: RecipeYield | null;
+    cost_per_unit_eur: number | null;
+    low_confidence: boolean;
+    needs_factor: boolean;
     warnings: RecipeWarning[];
 };
 
@@ -125,6 +175,7 @@ export type RecipeDetail = {
         is_active: boolean | null;
         forsale: boolean | null;
         forproduction: boolean | null;
+        is_semi: boolean;
         qty_90d: number;
         sales_eur: number | null;
         price_eur: number | null;
@@ -133,6 +184,7 @@ export type RecipeDetail = {
         bom_synced_at: string | null;
     };
     state: RecipeState;
+    flags: RecipeFlag[];
     missing_stores: string[];
     versions: RecipeVersion[];
     used_in: { product_id: string; code: string | null; description: string; valid_from: string | null; in_force: boolean; qnt: number; unit: string | null }[];

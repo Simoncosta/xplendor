@@ -58,9 +58,10 @@ export function DiffBadge({ pct }: { pct: number | null | undefined }) {
 export const COST_SOURCES_TEXT: React.ReactNode = (
     <>
         <strong>Custo XPLENDOR:</strong> das compras dos últimos 90 dias (faturas e faturas-recibo de fornecedor), por unidade base:
-        último preço e preço médio ponderado, já com os descontos da linha. Compras com preço acima de 4 vezes ou abaixo de um quarto
+        último preço e preço médio ponderado (a coluna mostra os dois), já com os descontos da linha. A quantidade vem do fator
+        confirmado, quando existe; senão, da compra. Compras com preço acima de 4 vezes ou abaixo de um quarto
         da mediana ficam de fora. Sem compras em 90 dias, usa o último preço conhecido (antigo). O custo da linha usa o preço médio:
-        quantidade base × custo × (1 + desperdício). Os semi-produtos usam o custo da sua ficha, por unidade base.
+        quantidade base × custo × (1 + desperdício). Os semi-produtos usam o custo do lote da sua ficha ÷ o rendimento confirmado.
         <br /><strong>Custo PingWin:</strong> o que a PingWin calcula para todos os armazéns.
     </>
 );

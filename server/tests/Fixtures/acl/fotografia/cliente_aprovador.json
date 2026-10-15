@@ -1,6 +1,6 @@
 {
     "ator": "cliente_aprovador",
-    "rotas": 420,
+    "rotas": 422,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -527,6 +527,8 @@
         "POST api/v1/companies/{id}/permission-profiles": 403,
         "POST api/v1/companies/{id}/permission-profiles/preview": 422,
         "POST api/v1/companies/{id}/properties": 422,
+        "POST api/v1/companies/{id}/restaurant/recipes/{productId}/conversion": 422,
+        "POST api/v1/companies/{id}/restaurant/recipes/{productId}/yield": 422,
         "POST api/v1/companies/{id}/scraper/run": 422,
         "POST api/v1/companies/{id}/setup-links": 403,
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend": 403,

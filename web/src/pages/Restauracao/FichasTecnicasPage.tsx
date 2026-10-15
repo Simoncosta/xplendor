@@ -102,6 +102,7 @@ export default function FichasTecnicasPage() {
             cell: (r) => (
                 <div className="d-flex flex-wrap align-items-center gap-1" style={{ minWidth: 150 }}>
                     <StateBadge state={r.state} label={r.state_label} title={r.missing_stores.length ? `Sem versão em vigor: ${r.missing_stores.join(", ")}` : undefined} />
+                    {r.flag_labels.map((f) => <span key={f} className="badge bg-warning-subtle text-warning text-wrap text-start" data-testid="recipe-flag">{f}</span>)}
                     {r.warnings > 0 && <span className="badge bg-light text-body fs-11" title="Avisos no detalhe"><i className="ri-alert-line me-1" />{r.warnings}</span>}
                 </div>
             ),
@@ -113,6 +114,8 @@ export default function FichasTecnicasPage() {
                 <>
                     <Money value={r.cost_eur} hidden={hidden && !!r.components} decimals={2} seed={r.pareto + 1} />
                     {r.cost_complete === false && (r.cost_eur !== null || (hidden && !!r.components)) ? <div className="text-warning fs-11">parcial</div> : null}
+                    {r.low_confidence && <div className="text-warning fs-11">baixa confiança</div>}
+                    {r.yield?.confirmed && <div className="text-muted fs-11">lote de {fmtQty(r.yield.quantity, 3)} {r.yield.unit_label}, <Money value={r.cost_per_unit_eur} hidden={hidden} decimals={4} seed={r.pareto + 4} /> cada</div>}
                 </>
             ),
         },

@@ -316,6 +316,9 @@ Route::prefix('v1')->group(function () {
                     // Fatia 1: fichas técnicas (só leitura) — lista por Pareto e detalhe de um artigo.
                     Route::get('/restaurant/recipes', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'index']);
                     Route::get('/restaurant/recipes/{productId}', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'show'])->whereNumber('productId');
+                    // Fatia 1b: confirmar o rendimento de um semi-produto e o fator de uma unidade de compra (só na XPLENDOR).
+                    Route::post('/restaurant/recipes/{productId}/yield', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'confirmYield'])->whereNumber('productId');
+                    Route::post('/restaurant/recipes/{productId}/conversion', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'confirmConversion'])->whereNumber('productId');
                     // Artigos — CRIAR (escrita; exige confirm) + poll do resultado.
                     Route::post('/integrations/pingwin/articles', [CompanyPingwinController::class, 'createArticle']);
                     Route::get('/integrations/pingwin/articles/creation/{creationId}', [CompanyPingwinController::class, 'articleCreation']);

@@ -6,6 +6,14 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Models\PingwinCatalogItem;
+use App\Models\PingwinProductBom;
+use App\Models\PingwinProductBomLine;
+use App\Models\PingwinUnit;
+use App\Models\ProductBomYield;
+use App\Models\ProductUnitConversion;
+use App\Services\SupplierArticleMapService;
+use Illuminate\Support\Facades\DB;
 use App\Services\Restaurant\CompassFinancials;
 use App\Services\Restaurant\RecipeReportService;
 use Illuminate\Http\Request;
@@ -17,6 +25,8 @@ use Illuminate\Validation\Rule;
  * XPLENDOR — Fatia 1: fichas técnicas (só leitura). Lista por Pareto das vendas e detalhe de um
  * artigo, sobre o espelho das fichas do PingWin e o custo XPLENDOR. Tenancy primeiro. Os euros só
  * vão para quem vê as Finanças (como na Bússola): os outros recebem os campos *_eur a null.
+ * Fatia 1b: confirmar o rendimento de um semi-produto e o fator de uma unidade de compra. Escrevem
+ * só na XPLENDOR (restauracao.editar); nada vai para a PingWin.
  */
 class CompanyRecipeController extends Controller
 {
@@ -115,6 +125,69 @@ class CompanyRecipeController extends Controller
         }
 
         return ApiResponse::success($this->forUser($detail, CompassFinancials::visibleTo($request->user(), $companyId)), 'Ficha técnica carregada.');
+    }
+
+    /** Confirma o rendimento de uma versão da ficha de um semi-produto (ex.: o lote rende 30 L). */
+    public function confirmYield(Request $request, int $companyId, string $productId)
+    {
+        if (! $this->authorizeCompany($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $data = $request->validate([
+            'bom_id' => ['required', 'string', 'max:32'],
+            'quantity' => ['required', 'numeric', 'gt:0', 'max:1000000'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+        $bom = PingwinProductBom::where('company_id', $companyId)->where('product_pingwin_id', $productId)
+            ->where('bom_pingwin_id', $data['bom_id'])->first();
+        if (! $bom) {
+            return ApiResponse::error('Versão da ficha não encontrada.', 404);
+        }
+        $baseId = PingwinCatalogItem::where('company_id', $companyId)->where('pingwin_id', $productId)->value('base_unit_id');
+        $yield = ProductBomYield::updateOrCreate(
+            ['company_id' => $companyId, 'bom_pingwin_id' => $bom->bom_pingwin_id],
+            [
+                'product_pingwin_id' => $productId, 'quantity' => (float) $data['quantity'],
+                'unit_pingwin_id' => $baseId, 'unit_label' => $baseId ? PingwinUnit::where('company_id', $companyId)->where('pingwin_id', $baseId)->value('description') : null,
+                'source' => 'confirmado', 'reason' => $data['reason'] ?? null,
+                'confirmed_by' => $request->user()?->id, 'confirmed_at' => now(),
+            ],
+        );
+
+        return ApiResponse::success(['yield' => $yield->only(['bom_pingwin_id', 'quantity', 'unit_label', 'source', 'reason', 'confirmed_at'])], 'Rendimento confirmado.');
+    }
+
+    /** Confirma quantas unidades base vale uma unidade de compra de um artigo (ex.: "Unidade" = 20 L). */
+    public function confirmConversion(Request $request, int $companyId, string $productId)
+    {
+        if (! $this->authorizeCompany($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $data = $request->validate([
+            'unit_key' => ['required', 'string', 'max:64'],
+            'unit_label' => ['nullable', 'string', 'max:60'],
+            'factor' => ['required', 'numeric', 'gt:0', 'max:100000'],
+            'supplier_nif' => ['nullable', 'string', 'max:20'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+        // O artigo tem de ser desta empresa: no catálogo, num componente de ficha ou numa compra.
+        $known = PingwinCatalogItem::where('company_id', $companyId)->where('pingwin_id', $productId)->exists()
+            || PingwinProductBomLine::where('company_id', $companyId)->where('component_pingwin_id', $productId)->exists()
+            || DB::table('pingwin_supplier_document_lines')->where('company_id', $companyId)->where('product_pingwin_id', $productId)->exists();
+        if (! $known) {
+            return ApiResponse::error('Artigo não encontrado.', 404);
+        }
+        $conv = ProductUnitConversion::updateOrCreate(
+            ['company_id' => $companyId, 'product_pingwin_id' => $productId, 'unit_key' => $data['unit_key'],
+                'supplier_nif' => SupplierArticleMapService::nif($data['supplier_nif'] ?? '')],
+            [
+                'unit_label' => $data['unit_label'] ?? null, 'factor_to_base' => (float) $data['factor'],
+                'source' => 'confirmado', 'reason' => $data['reason'] ?? null,
+                'confirmed_by' => $request->user()?->id, 'confirmed_at' => now(),
+            ],
+        );
+
+        return ApiResponse::success(['conversion' => $conv->only(['product_pingwin_id', 'unit_key', 'unit_label', 'supplier_nif', 'factor_to_base', 'source', 'confirmed_at'])], 'Fator confirmado.');
     }
 
     private function forUser(array $payload, bool $finance): array

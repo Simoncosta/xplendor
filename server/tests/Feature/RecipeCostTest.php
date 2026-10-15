@@ -208,7 +208,7 @@ class RecipeCostTest extends TestCase
         $this->catalog($this->company->id, 'CAIXA', ['default_purchase_unit_id' => 'CX24']);
         $this->persistBom($this->company->id, $this->bom('A', [['00000000', 'BA', '2026-05-01', ['S1' => true], [
             $this->bomLine('INATIVO', 1, ['status' => 2]),
-            $this->bomLine('SEMCOMPRAS', 1),
+            $this->bomLine('SEMCOMPRAS', 1, ['unit_cost' => 0.3, 'cost' => 0.3]), // a PingWin tem custo: não é subproduto
             $this->bomLine('ANTIGO', 1),
             $this->bomLine('CAIXA', 1, ['unit_cost' => 0.5, 'cost' => 0.5]),
         ]]]));
@@ -228,7 +228,7 @@ class RecipeCostTest extends TestCase
 
     public function test_cost_is_null_when_no_line_has_a_cost(): void
     {
-        $this->persistBom($this->company->id, $this->bom('A', [['00000000', 'BA', '2026-05-01', ['S1' => true], [$this->bomLine('NADA', 1)]]]));
+        $this->persistBom($this->company->id, $this->bom('A', [['00000000', 'BA', '2026-05-01', ['S1' => true], [$this->bomLine('NADA', 1, ['unit_cost' => 1, 'cost' => 1])]]]));
         $c = $this->costOf($this->cost(), 'A');
         $this->assertNull($c['cost']);
         $this->assertFalse($c['complete']);

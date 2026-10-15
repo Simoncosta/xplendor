@@ -1192,3 +1192,11 @@ export const getRecipes = (
 ) => api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes`, params);
 export const getRecipe = (companyId: number, productId: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}`);
+// Fatia 1b (só na XPLENDOR): confirmar o rendimento de um semi-produto e o fator de uma unidade de compra.
+export const confirmRecipeYield = (companyId: number, productId: string, body: { bom_id: string; quantity: number; reason?: string | null }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/yield`, body);
+export const confirmUnitConversion = (
+    companyId: number,
+    productId: string,
+    body: { unit_key: string; unit_label?: string | null; factor: number; supplier_nif?: string | null; reason?: string | null }
+) => api.create(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/conversion`, body);

@@ -1,22 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button, Container, Row, Col } from "reactstrap";
+import { ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import Skeleton from "Components/Common/Skeleton";
+import XSelect from "Components/Common/Select";
+import ReasonButton from "Components/Common/ReasonButton";
 import { FinancialNote } from "Components/Common/HiddenMoney";
+import { useCan } from "contexts/ModulesContext";
 import { getRecipe } from "helpers/laravel_helper";
 import { RecipeDetail, RecipeLine, RecipeVersion, RecipeWarning } from "common/models/recipe.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { COST_SOURCES_TEXT, DiffBadge, Money, StateBadge, fmtDate, fmtPct, fmtQty } from "./fichas/recipeFormat";
+import ConfirmFactorModal from "./fichas/ConfirmFactorModal";
+import ConfirmYieldModal from "./fichas/ConfirmYieldModal";
 
 /**
- * XPLENDOR — Restauração › Fichas técnicas › artigo (Fatia 1, só leitura). As versões da ficha (a em
- * vigor marcada) e as lojas de cada uma, as linhas com o custo XPLENDOR (último e médio) e o da
- * PingWin, os semi-produtos (com a ficha deles), os totais, os avisos e onde o artigo é usado.
- * Nada se grava na PingWin.
+ * XPLENDOR — Restauração › Fichas técnicas › artigo (Fatias 1 e 1b, só leitura na PingWin). As
+ * versões da ficha (a em vigor marcada) e as lojas de cada uma, as linhas com o custo XPLENDOR
+ * (último e médio, e de onde veio a quantidade) e o da PingWin por armazém, os semi-produtos (com a
+ * ficha deles e o rendimento), os totais, os avisos e onde o artigo é usado. "Confirmar fator" e
+ * "Confirmar" (rendimento) escrevem só na XPLENDOR.
  */
+
+const STATE_LABEL = { com_ficha: "Com ficha", sem_ficha: "Sem ficha", sem_custo: "Com ficha mas sem custo", loja_sem_ficha: "Loja sem ficha em vigor" } as const;
+const FLAG_LABEL = { rendimento_por_confirmar: "Rendimento por confirmar", fator_por_confirmar: "Fator por confirmar" } as const;
 
 const COST_STATUS: Record<RecipeLine["cost_status"], { label: string; cls: string } | null> = {
     ok: null,
@@ -25,35 +35,68 @@ const COST_STATUS: Record<RecipeLine["cost_status"], { label: string; cls: strin
     parcial: { label: "parcial", cls: "bg-warning-subtle text-warning" },
     ciclo: { label: "ciclo", cls: "bg-danger-subtle text-danger" },
     fundo: { label: "mais de 5 níveis", cls: "bg-danger-subtle text-danger" },
+    zero: { label: "custo 0", cls: "bg-info-subtle text-info" },
 };
+
+const QTY_SOURCE: Record<string, string> = {
+    confirmado: "quantidade pelo fator confirmado",
+    raw: "quantidade da compra",
+    misto: "quantidade: fator confirmado e da compra",
+};
+
+/** A linha precisa do botão "Confirmar fator": tem compras e um aviso de unidade, de fator ou de diferença. */
+const factorCandidate = (l: RecipeLine) =>
+    !!l.conversion && (l.needs_factor || l.warnings.some((w) => w.type === "unit_factor") || (l.diff_pct !== null && Math.abs(l.diff_pct) > 20));
 
 function WarningIcon({ warnings }: { warnings: RecipeWarning[] }) {
     if (!warnings.length) return null;
+    const onlyInfo = warnings.every((w) => w.level === "info");
     return (
-        <span className="text-warning ms-1" title={warnings.map((w) => w.text).join("\n")} aria-label={`Avisos: ${warnings.map((w) => w.text).join(" ")}`}>
-            <i className="ri-alert-line" aria-hidden />
+        <span className={`${onlyInfo ? "text-info" : "text-warning"} ms-1`} title={warnings.map((w) => w.text).join("\n")} aria-label={`Avisos: ${warnings.map((w) => w.text).join(" ")}`}>
+            <i className={onlyInfo ? "ri-information-line" : "ri-alert-line"} aria-hidden />
         </span>
     );
 }
 
+/** O custo PingWin de uma linha no armazém escolhido ("" = todos). */
+const pingwinOf = (l: RecipeLine, wh: string) =>
+    wh === "" ? l.pingwin_cost_eur : (l.pingwin_by_warehouse.find((w) => w.warehouse_id === wh)?.cost_eur ?? null);
+const pingwinUnitOf = (l: RecipeLine, wh: string) =>
+    wh === "" ? l.pingwin_unit_cost_eur : (l.pingwin_by_warehouse.find((w) => w.warehouse_id === wh)?.unit_cost_eur ?? null);
+const diffOf = (l: RecipeLine, wh: string) => {
+    if (wh === "") return l.diff_pct;
+    const pw = pingwinOf(l, wh);
+    return l.line_cost_eur !== null && pw ? Math.round(((l.line_cost_eur - pw) / pw) * 1000) / 10 : null;
+};
+
 /** As linhas de uma versão (e, por baixo, as fichas dos semi-produtos abertos). */
-function LinesTable({ lines, hidden, tableKey, depth = 0, total }: {
+function LinesTable({ lines, hidden, tableKey, depth = 0, total, wh, factorAction }: {
     lines: RecipeLine[]; hidden: boolean; tableKey: string; depth?: number;
-    total?: { cost: number | null; complete: boolean; pingwin: number | null };
+    total?: { cost: number | null; complete: boolean };
+    wh: string;
+    factorAction?: (l: RecipeLine) => React.ReactNode;
 }) {
     const [open, setOpen] = useState<Record<string, boolean>>({});
     const money = (v: number | null, seed: number, decimals = 4) => <Money value={v} hidden={hidden && v === null} decimals={decimals} seed={seed} />;
 
     const columns: DTColumn<RecipeLine>[] = [
-        { id: "code", header: "Código", value: (l) => l.code, cell: (l) => <span className="fw-medium">{l.code ?? "—"}</span>, mobile: "subtitle", nowrap: true },
+        { id: "code", header: "Código", value: (l) => l.code, cell: (l) => <span className="fw-medium">{l.code ?? "—"}</span>, mobile: "subtitle", nowrap: true, defaultVisible: false },
         {
             id: "description", header: "Descrição", value: (l) => l.description, mobile: "title", hideable: false,
             cell: (l) => (
-                <div style={{ minWidth: 200 }}>
+                <div style={{ minWidth: 190 }}>
                     <span className={l.inactive ? "text-muted" : undefined}>{l.description}</span>
                     {l.inactive && <span className="badge bg-secondary-subtle text-secondary ms-1">inativo</span>}
                     {l.is_bom && <span className="badge bg-primary-subtle text-primary ms-1">semi-produto</span>}
                     <WarningIcon warnings={l.warnings} />
+                    {l.similar && (
+                        <div className="fs-12 text-muted" data-testid="similar">
+                            <i className="ri-lightbulb-line me-1" aria-hidden />Compra-se um parecido:{" "}
+                            <Link to={`/restauracao/artigos/${l.similar.product_id}`} onClick={(e) => e.stopPropagation()}>{l.similar.code} {l.similar.description}</Link>
+                            {", último "}<Money value={l.similar.last_eur} hidden={hidden} decimals={4} seed={9} />
+                        </div>
+                    )}
+                    {l.code && <div className="text-muted fs-12">{l.code}</div>}
                     {l.is_bom && l.sub && (
                         <div>
                             <Button size="sm" color="link" className="p-0 fs-12" onClick={(e) => { e.stopPropagation(); setOpen((o) => ({ ...o, [l.key]: !o[l.key] })); }}
@@ -71,27 +114,39 @@ function LinesTable({ lines, hidden, tableKey, depth = 0, total }: {
         { id: "waste", header: "Desperdício", value: (l) => l.waste_pct, cell: (l) => fmtPct(l.waste_pct, 1), align: "end", nowrap: true },
         { id: "recovery", header: "Recuperação", value: (l) => l.recovery_pct, cell: (l) => fmtPct(l.recovery_pct, 1), align: "end", nowrap: true, defaultVisible: false },
         {
-            id: "unit_cost", header: "Custo unitário (último · médio)", value: (l) => l.unit_cost_avg_eur, align: "end", nowrap: true,
+            id: "unit_cost", header: "Custo unitário", value: (l) => l.unit_cost_avg_eur, align: "end", nowrap: true,
             cell: (l) => {
                 const st = COST_STATUS[l.cost_status];
                 return (
                     <div>
                         {l.cost_source === "ficha"
-                            ? <>{money(l.unit_cost_avg_eur, 1)}<div className="text-muted fs-11">da ficha</div></>
+                            ? <>{money(l.unit_cost_avg_eur, 1)}<div className="text-muted fs-11">da ficha, por {l.sub?.yield.unit_label.toLowerCase() ?? "unidade"}</div></>
                             : l.unit_cost_avg_eur === null && !hidden ? <span className="text-muted">—</span>
                                 : <>{money(l.unit_cost_last_eur, 2)} · {money(l.unit_cost_avg_eur, 3)}</>}
                         {st && <div><span className={`badge ${st.cls} fs-11`}>{st.label}</span></div>}
+                        {l.low_confidence && <div><span className="badge bg-warning-subtle text-warning fs-11" title="Rendimento do semi-produto por confirmar">baixa confiança</span></div>}
                         {l.cost_status === "antigo" && l.last_purchase && <div className="text-muted fs-11">compra de {fmtDate(l.last_purchase)}</div>}
+                        {l.qty_source && <div className={`fs-11 ${l.qty_source === "confirmado" ? "text-success" : "text-muted"}`}>{QTY_SOURCE[l.qty_source]}</div>}
                     </div>
                 );
             },
         },
-        { id: "pingwin", header: "Custo PingWin", value: (l) => l.pingwin_cost_eur, cell: (l) => money(l.pingwin_cost_eur, 4), align: "end", nowrap: true },
+        {
+            id: "pingwin", header: wh === "" ? "Custo PingWin" : "Custo PingWin (armazém)", value: (l) => pingwinOf(l, wh), align: "end", nowrap: true,
+            cell: (l) => (
+                <div>
+                    {money(pingwinOf(l, wh), 4)}
+                    <div className="text-muted fs-11">{money(pingwinUnitOf(l, wh), 8)} por {(l.unit ?? "unidade").toLowerCase()}</div>
+                </div>
+            ),
+        },
         { id: "line_cost", header: "Custo da linha", value: (l) => l.line_cost_eur, cell: (l) => <span className="fw-medium">{money(l.line_cost_eur, 5)}</span>, align: "end", nowrap: true },
-        { id: "diff", header: "Diferença", value: (l) => l.diff_pct, cell: (l) => <DiffBadge pct={l.diff_pct} />, align: "end", nowrap: true },
+        { id: "diff", header: "Diferença", value: (l) => diffOf(l, wh), cell: (l) => <DiffBadge pct={diffOf(l, wh)} />, align: "end", nowrap: true },
     ];
     const cols = useDataColumns(`restauracao.ficha-tecnica.linhas${depth ? ".semi" : ""}`, columns);
     const semis = lines.filter((l) => l.is_bom && l.sub && open[l.key]);
+    const pwTotal = lines.reduce((acc, l) => acc + (pingwinOf(l, wh) ?? 0), 0);
+    const anyFactor = !!factorAction && lines.some(factorCandidate);
 
     return (
         <>
@@ -103,25 +158,34 @@ function LinesTable({ lines, hidden, tableKey, depth = 0, total }: {
                 paginate={false}
                 caption="Linhas da ficha técnica"
                 rowClassName={(l) => (l.inactive ? "text-muted" : undefined)}
+                rowActions={anyFactor ? (l) => (factorCandidate(l) ? factorAction!(l) : null) : undefined}
                 empty={{ message: "Esta versão não tem linhas." }}
                 footerRow={total ? {
                     label: <span className="fw-semibold">Total{total.complete ? "" : " (parcial)"}</span>,
                     cells: {
-                        pingwin: <span className="fw-semibold">{money(total.pingwin, 6, 2)}</span>,
+                        pingwin: <span className="fw-semibold">{money(hidden ? null : pwTotal, 6, 2)}</span>,
                         line_cost: <span className="fw-semibold">{money(total.cost, 7, 2)}</span>,
                     },
                 } : undefined}
                 data-testid={`recipe-lines-${tableKey}`}
             />
-            {semis.map((l) => (
-                <div key={l.key} className="border-top bg-light-subtle px-3 py-2" data-testid="semi-ficha">
-                    <div className="fs-13 fw-semibold mb-1">
-                        <i className="ri-git-branch-line me-1" />Ficha do semi-produto {l.description} (versão de {fmtDate(l.sub!.version.valid_from)}), por unidade base
+            {semis.map((l) => {
+                const sub = l.sub!;
+                const y = sub.yield;
+                return (
+                    <div key={l.key} className="border-top bg-light-subtle px-3 py-2" data-testid="semi-ficha">
+                        <div className="fs-13 fw-semibold mb-1">
+                            <i className="ri-git-branch-line me-1" />Ficha do semi-produto {l.description} (versão de {fmtDate(sub.version.valid_from)}):{" "}
+                            lote de <Money value={sub.cost_eur} hidden={hidden} decimals={2} seed={20} />, rende {y.confirmed ? fmtQty(y.quantity, 3) : "1"} {y.unit_label}
+                            {y.confirmed ? <span className="badge bg-success-subtle text-success ms-1">confirmado</span> : <span className="badge bg-warning-subtle text-warning ms-1">rendimento por confirmar</span>}
+                            {" "}· <Money value={sub.cost_per_unit_eur} hidden={hidden} decimals={4} seed={21} /> por {y.unit_label.toLowerCase()}
+                            {" "}<Link to={`/restauracao/fichas-tecnicas/${sub.product_id}`} className="fw-normal ms-1">Abrir</Link>
+                        </div>
+                        <LinesTable lines={sub.lines} hidden={hidden} tableKey={`${tableKey}-${l.key}`} depth={depth + 1} wh={wh}
+                            total={{ cost: sub.cost_eur, complete: sub.cost_complete }} factorAction={factorAction} />
                     </div>
-                    <LinesTable lines={l.sub!.lines} hidden={hidden} tableKey={`${tableKey}-${l.key}`} depth={depth + 1}
-                        total={{ cost: l.sub!.cost_eur, complete: l.sub!.cost_complete, pingwin: l.sub!.pingwin_cost_eur }} />
-                </div>
-            ))}
+                );
+            })}
         </>
     );
 }
@@ -144,10 +208,14 @@ export default function FichaTecnicaPage() {
     const { productId } = useParams<{ productId: string }>();
     const companyId = useWorkingCompanyId();
     const navigate = useNavigate();
+    const [canEdit, editReason] = useCan("restauracao.editar");
     const [data, setData] = useState<RecipeDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [tab, setTab] = useState<string | null>(null);
+    const [wh, setWh] = useState("");
+    const [factorLine, setFactorLine] = useState<RecipeLine | null>(null);
+    const [yieldOpen, setYieldOpen] = useState(false);
 
     const load = useCallback(async () => {
         if (!companyId || !productId) return;
@@ -170,6 +238,16 @@ export default function FichaTecnicaPage() {
     const versions = useMemo(() => data?.versions ?? [], [data]);
     const current = useMemo(() => versions.find((v) => v.bom_id === tab) ?? versions.find((v) => v.in_force) ?? versions[0] ?? null, [versions, tab]);
     const inForce = versions.find((v) => v.in_force) ?? null;
+    const y = inForce?.yield ?? null;
+    const noEditReason = canEdit ? null : (editReason ?? "Precisa da permissão de editar os artigos da restauração.");
+
+    const warehouseOptions = useMemo(() => [{ value: "", label: "Todos os armazéns" }, ...(data?.warehouses ?? []).map((w) => ({ value: w.id, label: w.name }))], [data?.warehouses]);
+
+    const factorAction = (l: RecipeLine) => (
+        <ReasonButton size="sm" color="outline-primary" reason={noEditReason} onClick={() => setFactorLine(l)}>
+            <i className="ri-scales-3-line me-1" aria-hidden />Confirmar fator
+        </ReasonButton>
+    );
 
     const kpi = (label: string, node: React.ReactNode, sub?: React.ReactNode) => (
         <Col xs={6} md={4} xl={2}>
@@ -179,8 +257,13 @@ export default function FichaTecnicaPage() {
         </Col>
     );
 
+    const costBadge = inForce && !inForce.cost_complete && inForce.line_count > 0 && (inForce.cost_eur === null && !hidden
+        ? <span className="badge bg-danger-subtle text-danger fs-11 ms-1">sem custo</span>
+        : <span className="badge bg-warning-subtle text-warning fs-11 ms-1">parcial</span>);
+
     return (
         <div className="page-content">
+            <ToastContainer />
             <Container fluid>
                 <PageHeader
                     title={article?.description ?? "Ficha técnica"}
@@ -205,7 +288,8 @@ export default function FichaTecnicaPage() {
                             skeleton={data ? undefined : <div className="p-3"><Skeleton variant="lines" lines={3} label="" /></div>}
                             flush={false}
                             actions={<>
-                                {data && <StateBadge state={data.state} label={{ com_ficha: "Com ficha", sem_ficha: "Sem ficha", sem_custo: "Com ficha mas sem custo", loja_sem_ficha: "Loja sem ficha em vigor" }[data.state]} />}
+                                {data && <StateBadge state={data.state} label={STATE_LABEL[data.state]} />}
+                                {data?.flags.map((f) => <span key={f} className="badge bg-warning-subtle text-warning" data-testid="recipe-flag">{FLAG_LABEL[f]}</span>)}
                                 <Button size="sm" color="outline-primary" onClick={() => navigate(`/restauracao/artigos/${productId}`)}>
                                     <i className="ri-external-link-line me-1" />Abrir o artigo
                                 </Button>
@@ -219,14 +303,34 @@ export default function FichaTecnicaPage() {
                                         </div>
                                     )}
                                     <Row className="g-3">
-                                        {kpi("Custo XPLENDOR", <><Money value={inForce?.cost_eur ?? null} hidden={hidden && !!inForce && inForce.line_count > 0} decimals={2} seed={1} />{inForce && !inForce.cost_complete && inForce.line_count > 0 && (inForce.cost_eur === null && !hidden
-                                            ? <span className="badge bg-danger-subtle text-danger fs-11 ms-1">sem custo</span>
-                                            : <span className="badge bg-warning-subtle text-warning fs-11 ms-1">parcial</span>)}</>,
-                                            inForce ? <>PingWin: <Money value={inForce.pingwin_cost_eur} hidden={hidden && inForce.line_count > 0} decimals={2} seed={2} />{inForce.diff_pct !== null && <> <DiffBadge pct={inForce.diff_pct} /></>}</> : "Sem versão em vigor")}
-                                        {kpi("Preço sem IVA (90 dias)", <Money value={article?.price_eur ?? null} hidden={hidden && (article?.qty_90d ?? 0) > 0} seed={3} />,
-                                            <>Preço de tabela: <Money value={article?.list_price_eur ?? null} hidden={hidden} seed={4} /> com IVA</>)}
-                                        {kpi("Food cost", inForce?.food_cost_pct !== null && inForce?.food_cost_pct !== undefined ? fmtPct(inForce.food_cost_pct) : "—")}
-                                        {kpi("Margem", <Money value={inForce?.margin_eur ?? null} hidden={hidden && !!inForce && inForce.line_count > 0 && (article?.qty_90d ?? 0) > 0} seed={5} />)}
+                                        {article?.is_semi && y ? (
+                                            <>
+                                                {kpi("Custo do lote", <><Money value={inForce?.cost_eur ?? null} hidden={hidden && !!inForce && inForce.line_count > 0} decimals={2} seed={1} />{costBadge}</>,
+                                                    inForce ? <>PingWin: <Money value={inForce.pingwin_cost_eur} hidden={hidden && inForce.line_count > 0} decimals={2} seed={2} />{inForce.diff_pct !== null && <> <DiffBadge pct={inForce.diff_pct} /></>}</> : undefined)}
+                                                {kpi("Rende", <span data-testid="yield">{y.quantity !== null ? `${fmtQty(y.quantity, 3)} ${y.unit_label}` : "—"}{" "}
+                                                    {y.confirmed ? <span className="badge bg-success-subtle text-success fs-11">confirmado</span> : <span className="badge bg-warning-subtle text-warning fs-11">{y.quantity !== null ? "sugerido" : "por confirmar"}</span>}</span>,
+                                                    <>
+                                                        {y.confirmed ? `Por ${y.confirmed_by ?? "alguém"}${y.confirmed_at ? ` em ${fmtDate(y.confirmed_at)}` : ""}` : (y.reason ?? "Sem sugestão")}
+                                                        <div className="mt-1">
+                                                            <ReasonButton size="sm" color="outline-primary" reason={noEditReason} onClick={() => setYieldOpen(true)}>
+                                                                <i className="ri-check-double-line me-1" aria-hidden />{y.confirmed ? "Alterar" : "Confirmar"}
+                                                            </ReasonButton>
+                                                        </div>
+                                                    </>)}
+                                                {kpi(`Custo por ${y.unit_label.toLowerCase()}`, <Money value={inForce?.cost_per_unit_eur ?? null} hidden={hidden && !!inForce && inForce.line_count > 0} decimals={4} seed={3} />,
+                                                    y.confirmed ? "Custo do lote ÷ rendimento" : `Sem rendimento confirmado, conta 1 ${y.unit_label}`)}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {kpi("Custo XPLENDOR", <><Money value={inForce?.cost_eur ?? null} hidden={hidden && !!inForce && inForce.line_count > 0} decimals={2} seed={1} />{costBadge}
+                                                    {inForce?.low_confidence && <span className="badge bg-warning-subtle text-warning fs-11 ms-1">baixa confiança</span>}</>,
+                                                    inForce ? <>PingWin: <Money value={inForce.pingwin_cost_eur} hidden={hidden && inForce.line_count > 0} decimals={2} seed={2} />{inForce.diff_pct !== null && <> <DiffBadge pct={inForce.diff_pct} /></>}</> : "Sem versão em vigor")}
+                                                {kpi("Preço sem IVA (90 dias)", <Money value={article?.price_eur ?? null} hidden={hidden && (article?.qty_90d ?? 0) > 0} seed={3} />,
+                                                    <>Preço de tabela: <Money value={article?.list_price_eur ?? null} hidden={hidden} seed={4} /> com IVA</>)}
+                                                {kpi("Food cost", inForce?.food_cost_pct !== null && inForce?.food_cost_pct !== undefined ? fmtPct(inForce.food_cost_pct) : "—")}
+                                                {kpi("Margem", <Money value={inForce?.margin_eur ?? null} hidden={hidden && !!inForce && inForce.line_count > 0 && (article?.qty_90d ?? 0) > 0} seed={5} />)}
+                                            </>
+                                        )}
                                         {kpi("Quantidade vendida", fmtQty(article?.qty_90d ?? 0, 0), `De ${fmtDate(data.window.since)} a ${fmtDate(data.window.until)}`)}
                                         {kpi("Versão em vigor", inForce ? fmtDate(inForce.valid_from) : "—", inForce ? `${inForce.line_count} ${inForce.line_count === 1 ? "componente" : "componentes"}` : undefined)}
                                     </Row>
@@ -244,16 +348,23 @@ export default function FichaTecnicaPage() {
                             <PageCard
                                 title="Versões da ficha"
                                 status={<>Em vigor: a de data mais recente até hoje, não anulada, com a loja ativa</>}
-                                actions={versions.length > 1 ? (
-                                    <div className="xp-seg" role="tablist" aria-label="Versões">
-                                        {versions.map((v) => (
-                                            <button key={v.bom_id} type="button" role="tab" aria-selected={current.bom_id === v.bom_id}
-                                                className={current.bom_id === v.bom_id ? "on" : ""} onClick={() => setTab(v.bom_id)}>
-                                                {fmtDate(v.valid_from)}{versions.filter((x) => x.valid_from === v.valid_from).length > 1 && ` (versão ${Number(v.key) + 1})`}{v.in_force && <i className="ri-check-line ms-1" aria-label="em vigor" />}{v.deleted && " (anulada)"}
-                                            </button>
-                                        ))}
-                                    </div>
-                                ) : undefined}
+                                actions={<>
+                                    {(data?.warehouses.length ?? 0) > 0 && (
+                                        <div style={{ minWidth: 190 }}>
+                                            <XSelect ariaLabel="Armazém do custo PingWin" small options={warehouseOptions} value={wh} onChange={setWh} searchable={false} />
+                                        </div>
+                                    )}
+                                    {versions.length > 1 && (
+                                        <div className="xp-seg" role="tablist" aria-label="Versões">
+                                            {versions.map((v) => (
+                                                <button key={v.bom_id} type="button" role="tab" aria-selected={current.bom_id === v.bom_id}
+                                                    className={current.bom_id === v.bom_id ? "on" : ""} onClick={() => setTab(v.bom_id)}>
+                                                    {fmtDate(v.valid_from)}{versions.filter((x) => x.valid_from === v.valid_from).length > 1 && ` (versão ${Number(v.key) + 1})`}{v.in_force && <i className="ri-check-line ms-1" aria-label="em vigor" />}{v.deleted && " (anulada)"}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>}
                             >
                                 <div className="px-3 pt-3 d-flex flex-wrap align-items-center gap-2">
                                     <span className="fw-semibold">Versão de {fmtDate(current.valid_from)}</span>
@@ -269,13 +380,17 @@ export default function FichaTecnicaPage() {
                                     lines={current.lines}
                                     hidden={hidden}
                                     tableKey={current.bom_id}
-                                    total={{ cost: current.cost_eur, complete: current.cost_complete, pingwin: current.pingwin_cost_eur }}
+                                    wh={wh}
+                                    total={{ cost: current.cost_eur, complete: current.cost_complete }}
+                                    factorAction={factorAction}
                                 />
                                 {current.warnings.length > 0 && (
                                     <div className="border-top px-3 py-3" data-testid="recipe-warnings">
                                         <div className="fw-semibold fs-13 mb-2"><i className="ri-alert-line text-warning me-1" />Avisos ({current.warnings.length})</div>
                                         <ul className="mb-0 fs-13 ps-3">
-                                            {current.warnings.map((w, i) => <li key={i}>{w.line ? <><strong>{w.line}</strong>: </> : null}{w.text}</li>)}
+                                            {current.warnings.map((w, i) => (
+                                                <li key={i} className={w.level === "info" ? "text-muted" : undefined}>{w.line ? <><strong>{w.line}</strong>: </> : null}{w.text}</li>
+                                            ))}
                                         </ul>
                                     </div>
                                 )}
@@ -300,6 +415,15 @@ export default function FichaTecnicaPage() {
                             </PageCard>
                         )}
                     </>
+                )}
+
+                {factorLine?.conversion && (
+                    <ConfirmFactorModal open={!!factorLine} line={factorLine} companyId={companyId} hidden={hidden}
+                        onClose={() => setFactorLine(null)} onDone={() => { setFactorLine(null); load(); }} />
+                )}
+                {inForce?.yield && productId && (
+                    <ConfirmYieldModal open={yieldOpen} version={inForce} productId={productId} companyId={companyId} hidden={hidden}
+                        onClose={() => setYieldOpen(false)} onDone={() => { setYieldOpen(false); load(); }} />
                 )}
             </Container>
         </div>

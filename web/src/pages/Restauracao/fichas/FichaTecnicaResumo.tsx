@@ -51,7 +51,12 @@ export default function FichaTecnicaResumo({ companyId, productId }: { companyId
             {data && !hasBom && <p className="text-muted fs-13 mb-0">Este artigo não tem ficha técnica na PingWin.</p>}
             {data && hasBom && (
                 <Row className="g-3 align-items-center">
-                    <Col xs={12} md="auto"><StateBadge state={data.state} label={STATE_LABEL[data.state]} /></Col>
+                    <Col xs={12} md="auto">
+                        <div className="d-flex flex-wrap gap-1">
+                            <StateBadge state={data.state} label={STATE_LABEL[data.state]} />
+                            {data.flags.map((f) => <span key={f} className="badge bg-warning-subtle text-warning">{f === "rendimento_por_confirmar" ? "Rendimento por confirmar" : "Fator por confirmar"}</span>)}
+                        </div>
+                    </Col>
                     <Col xs={6} md>
                         <div className="text-muted fs-12">Versão em vigor</div>
                         <div className="fw-semibold">{v ? `${fmtDate(v.valid_from)}, ${v.line_count} ${v.line_count === 1 ? "componente" : "componentes"}` : "Nenhuma"}</div>
