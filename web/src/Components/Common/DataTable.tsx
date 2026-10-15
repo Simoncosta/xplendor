@@ -9,6 +9,8 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table";
+import { SkeletonRows } from "./Skeleton";
+import useDelayedFlag from "hooks/useDelayedFlag";
 import Pagination from "./Pagination";
 import ColumnSelector from "./ColumnSelector";
 import useTablePrefs from "hooks/useTablePrefs";
@@ -222,7 +224,13 @@ export default function DataTable<T>({
 
     const pageRows = table.getRowModel().rows;
     const colCount = visibleDefs.length + (rowActions ? 1 : 0);
+    // 1.ª carga (sem dados): linhas esqueleto com as colunas visíveis (aparecem só após ~200 ms;
+    // antes ocupam o espaço, invisíveis). Recarga com dados: as linhas ficam, esbatidas.
     const showSkeleton = !!loading && data.length === 0;
+    const skeletonVisible = useDelayedFlag(showSkeleton);
+    const reloading = useDelayedFlag(!!loading && data.length > 0);
+    // Tantas linhas como uma página (até 15): o número real ainda não se sabe; a altura é a das linhas.
+    const skeletonRows = Math.max(3, Math.min(server?.perPage ?? pageSize, 15));
     const showEmpty = !loading && pageRows.length === 0;
     const emptyMessage = search.trim() && rows.length === 0 && data.length > 0
         ? <>Nenhum resultado para “{search.trim()}”.</>
@@ -300,11 +308,13 @@ export default function DataTable<T>({
         const render = (d: DTColumn<T>, r: T) => (d.cell ? d.cell(r) : d.value ? (d.value(r) ?? "—") : null);
         return (
             <div className="xp-dt xp-dt-mobile" data-testid={rest["data-testid"] ?? "datatable"} aria-busy={!!loading}>
-                <div className="p-3 d-flex flex-column gap-2" style={loading && data.length > 0 ? { opacity: 0.55 } : undefined}>
+                {showSkeleton && <span className="visually-hidden">A carregar…</span>}
+                <div className={`p-3 d-flex flex-column gap-2 ${reloading ? "xp-reloading" : ""}`}>
                     {showSpecials && leadingRow && specialCard(leadingRow, "leading")}
                     {showSkeleton ? Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="xp-dt-card placeholder-glow" data-testid="dt-skeleton">
-                            <span className="placeholder col-7 mb-2" /><span className="placeholder col-4" />
+                        <div key={i} className={`xp-dt-card xp-skeleton placeholder-glow ${skeletonVisible ? "" : "xp-skeleton-pending"}`} data-testid="dt-skeleton" aria-hidden="true">
+                            <span className="placeholder xp-skeleton-bar mb-2" style={{ width: "60%", height: 12 }} /><br />
+                            <span className="placeholder xp-skeleton-bar" style={{ width: "35%", height: 10 }} />
                         </div>
                     )) : showEmpty ? emptyBlock : pageRows.map((row) => {
                         const r = row.original;
@@ -339,6 +349,7 @@ export default function DataTable<T>({
     // ── Computador: tabela ───────────────────────────────────────────────
     return (
         <div className="xp-dt" data-testid={rest["data-testid"] ?? "datatable"}>
+            {showSkeleton && <span className="visually-hidden">A carregar…</span>}
             <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle mb-0" aria-busy={!!loading} aria-label={caption}>
                     <thead className="table-light text-muted">
@@ -366,15 +377,9 @@ export default function DataTable<T>({
                             </tr>
                         ))}
                     </thead>
-                    <tbody style={loading && data.length > 0 ? { opacity: 0.55 } : undefined}>
+                    <tbody className={reloading ? "xp-reloading" : undefined}>
                         {showSpecials && leadingRow && specialTr(leadingRow, "leading")}
-                        {showSkeleton ? Array.from({ length: 5 }).map((_, i) => (
-                            <tr key={i} className="placeholder-glow" data-testid="dt-skeleton">
-                                {Array.from({ length: colCount }).map((__, j) => (
-                                    <td key={j}><span className={`placeholder ${j === 0 ? "col-8" : "col-6"}`} /></td>
-                                ))}
-                            </tr>
-                        )) : showEmpty ? (
+                        {showSkeleton ? <SkeletonRows rows={skeletonRows} columns={colCount} visible={skeletonVisible} /> : showEmpty ? (
                             <tr><td colSpan={colCount} className="p-0">{emptyBlock}</td></tr>
                         ) : pageRows.map((row) => {
                             const r = row.original;

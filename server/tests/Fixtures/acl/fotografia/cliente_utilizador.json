@@ -1,6 +1,6 @@
 {
     "ator": "cliente_utilizador",
-    "rotas": 418,
+    "rotas": 420,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -364,6 +364,8 @@
         "GET api/v1/companies/{id}/quotes": 403,
         "GET api/v1/companies/{id}/quotes/{quote}/pdf": 403,
         "GET api/v1/companies/{id}/recommendations": 200,
+        "GET api/v1/companies/{id}/restaurant/recipes": 200,
+        "GET api/v1/companies/{id}/restaurant/recipes/{productId}": 404,
         "GET api/v1/companies/{id}/scraper/executions": 200,
         "GET api/v1/companies/{id}/scraper/executions/{runId}": 404,
         "GET api/v1/companies/{id}/setup-link": 403,

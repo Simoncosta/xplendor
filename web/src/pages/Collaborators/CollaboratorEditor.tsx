@@ -13,6 +13,7 @@ import PageCard from "Components/Common/PageCard";
 import ReasonButton from "Components/Common/ReasonButton";
 import { useModules } from "contexts/ModulesContext";
 import XSelect from "Components/Common/Select";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Criar ou editar um colaborador. Dados e foto (400x400 WebP, gerada no servidor);
@@ -131,7 +132,7 @@ const CollaboratorEditor = () => {
     };
 
     if (loading) {
-        return <div className="page-content"><Container fluid><div className="text-center py-5"><Spinner color="primary" /></div></Container></div>;
+        return <div className="page-content"><Container fluid><div aria-busy="true"><Skeleton variant="lines" lines={1} className="mb-3" style={{ maxWidth: 320 }} /><div className="card"><div className="card-body"><Skeleton variant="lines" lines={8} label="" /></div></div></div></Container></div>;
     }
 
     const currentPhoto = photoPreview || (collaborator ? collaboratorPhoto(collaborator) : null);

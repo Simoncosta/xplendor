@@ -19,11 +19,13 @@ import { useArticleWritePolling } from "./useArticleWritePolling";
 import { useArticleReadPolling } from "./useArticleReadPolling";
 import { useSupplierPricesStaging } from "./useSupplierPricesStaging";
 import ArtigoComprasTab from "./ArtigoComprasTab";
+import FichaTecnicaResumo from "./fichas/FichaTecnicaResumo";
 import ArticleSupplierCodes from "./faturas/ArticleSupplierCodes";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PageHeader from "Components/Common/PageHeader";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import { confirmAction } from "helpers/swal";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * XPLENDOR — Restauração › Artigo (criar / abrir / editar). Mesmo form nos 2 modos.
@@ -328,7 +330,10 @@ export default function ArtigoFormPage() {
                 />
 
                 {loading ? (
-                    <div className="text-center py-5 text-muted"><Spinner color="primary" className="me-2" /> A carregar do PingWin…</div>
+                    <div className="card"><div className="card-body">
+                        <p className="text-muted fs-13 mb-3">A carregar do PingWin…</p>
+                        <Skeleton variant="lines" lines={8} label="" />
+                    </div></div>
                 ) : (
                     <Form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
                         {created && (
@@ -495,6 +500,8 @@ export default function ArtigoFormPage() {
                                 </Button>
                             </div>
                         </Card>
+                        {/* Fatia 1: o resumo da ficha técnica (só leitura), com "Ver ficha técnica". */}
+                        {!isCreate && pingwinId && <FichaTecnicaResumo companyId={companyId} productId={pingwinId} />}
                         <div className="mb-5" />
                     </Form>
                 )}

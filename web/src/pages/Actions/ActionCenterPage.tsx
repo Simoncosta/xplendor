@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Container, Row, Col, Button, Spinner } from "reactstrap";
+import { Container, Row, Col, Button } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 
 import { getCompanyAlertsApi, getCompanyDecisionsApi, markCompanyAlertsReadApi } from "../../helpers/laravel_helper";
@@ -9,6 +9,7 @@ import { ActionCenterCarItem, AlertItem, CarDecisionResponse, DecisionType, Guar
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
+import Skeleton from "Components/Common/Skeleton";
 
 const decisionOrder: Record<DecisionType, number> = {
     PARAR: 1,
@@ -257,10 +258,7 @@ export default function ActionCenterPage() {
                 {loading ? (
                     <Row>
                         <Col>
-                            <div className="d-flex align-items-center justify-content-center gap-2 py-5 text-muted">
-                                <Spinner size="sm" />
-                                A carregar decisões reais dos veículos...
-                            </div>
+                            <Skeleton variant="table" rows={6} columns={5} label="A carregar as decisões dos veículos…" />
                         </Col>
                     </Row>
                 ) : error ? (

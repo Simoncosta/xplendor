@@ -12,6 +12,8 @@ import CreatePostModal from "../CreatePostModal";
 import BussolaTop from "./BussolaTop";
 import BussolaPlays, { StoreSelector } from "./BussolaPlays";
 import { ChangesCard, ChannelsCard, DaysCard, DecideCard, ForgottenCard, StarsCard } from "./BussolaBlocks";
+import BussolaSkeleton from "./BussolaSkeleton";
+import useDelayedFlag from "hooks/useDelayedFlag";
 
 /**
  * Bússola, fornecedor da restauração (antes "O que publicar e quando"): o cartão do topo da semana, as 3 jogadas e os
@@ -28,6 +30,8 @@ export default function RestaurantBussola({ providerSwitch, radar }: { providerS
     const [data, setData] = useState<CompassData | null>(null);
     const [loading, setLoading] = useState(true);
     const [forgotten, setForgotten] = useState<any>(null);
+    // Recarga (outra loja, depois de ignorar): os dados ficam, esbatidos, com o indicador no cabeçalho.
+    const reloading = useDelayedFlag(loading && !!data);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -70,9 +74,9 @@ export default function RestaurantBussola({ providerSwitch, radar }: { providerS
                         <p className="mb-1"><Badge color="success-subtle" className="text-success fw-normal me-1">Confiança alta</Badge>amostra grande e desvio claro. <Badge color="info-subtle" className="text-info fw-normal me-1">Confiança média</Badge>amostra mais pequena ou desvio menor. Os sinais de confiança baixa não aparecem.</p>
                         <p className="mb-0">Recalcula-se todas as noites e quando as categorias são confirmadas.</p>
                     </>}
-                    filters={providerSwitch || data?.enabled ? <>{providerSwitch}{data?.enabled ? <StoreSelector data={data} onLocation={setLocationId} /> : null}</> : undefined}
+                    filters={providerSwitch || data?.enabled ? <>{providerSwitch}{data?.enabled ? <StoreSelector data={data} onLocation={setLocationId} /> : null}{reloading && <Spinner size="sm" aria-label="A carregar" />}</> : undefined}
                 />
-                {!data && loading && <div className="text-center py-5"><Spinner color="primary" /></div>}
+                {!data && loading && <BussolaSkeleton />}
                 {data && !data.enabled && (
                     <>
                         <Card><CardBody className="text-muted">A leitura das vendas por artigo está desligada nesta empresa. Quando for ligada, a Bússola aparece aqui.</CardBody></Card>
@@ -86,7 +90,7 @@ export default function RestaurantBussola({ providerSwitch, radar }: { providerS
                                 <i className="ri-error-warning-line me-1" aria-hidden />Há {data.categories_pending} {data.categories_pending === 1 ? "família" : "famílias"} de artigos por confirmar: os rankings por categoria e os grupos de artigos ficam completos quando forem confirmadas. <Link to="/restauracao/categorias">Confirmar as categorias</Link>
                             </div>
                         )}
-                        <div className={loading ? "opacity-50" : undefined}>
+                        <div className={reloading ? "xp-reloading" : undefined} aria-busy={reloading || undefined}>
                             <BussolaTop data={data} />
                             <BussolaPlays companyId={companyId} data={data} onChanged={load} />
                             {radar}

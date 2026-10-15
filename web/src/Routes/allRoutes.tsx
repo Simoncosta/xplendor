@@ -9,6 +9,8 @@ import CalendarioPage from "pages/Restauracao/CalendarioPage";
 import DocumentosPage from "pages/Restauracao/DocumentosPage";
 import ArtigosPage from "pages/Restauracao/ArtigosPage";
 import ArtigoFormPage from "pages/Restauracao/ArtigoFormPage";
+import FichasTecnicasPage from "pages/Restauracao/FichasTecnicasPage";
+import FichaTecnicaPage from "pages/Restauracao/FichaTecnicaPage";
 import EditorialPage from "pages/Editorial/EditorialPage";
 import AgencyPanelPage from "pages/Agency/AgencyPanelPage";
 import ManagementRequestPage from "pages/ManagementRequest";
@@ -160,6 +162,8 @@ const authProtectedRoutes = [
     { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial" permission="editorial.ver"><ContentReviewPreview /></RequireModule> },
     { path: "/restauracao/artigos/novo", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
     { path: "/restauracao/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
+    { path: "/restauracao/fichas-tecnicas", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><FichasTecnicasPage /></RequireModule> },
+    { path: "/restauracao/fichas-tecnicas/:productId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><FichaTecnicaPage /></RequireModule> },
     { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias" permission="restauracao.ver"><FamiliasPage /></RequireModule> },
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).
     { path: "/restauracao/categorias", component: <RequireModule module="pingwin" permission="restauracao.ver"><CategoriasFamiliasPage /></RequireModule> },

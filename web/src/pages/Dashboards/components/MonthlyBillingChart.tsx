@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { Col } from "reactstrap";
 import PageCard from "Components/Common/PageCard";
+import Skeleton from "Components/Common/Skeleton";
 import XSelect from "Components/Common/Select";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getPingwinMonthlyBilling } from "helpers/laravel_helper";
@@ -87,7 +88,16 @@ export default function MonthlyBillingChart() {
             },
         },
         grid: { borderColor: "var(--vz-border-color)", strokeDashArray: 3 },
-        tooltip: { y: { formatter: (val) => (val === null ? "Sem dados" : euro(Number(val))) } },
+        // Mês parcial (dias de vendas em falta nesta loja): o valor é só dos dias lidos — e diz-se.
+        tooltip: {
+            y: {
+                formatter: (val, opts) => {
+                    if (val === null || val === undefined) return "Sem dados";
+                    const missing = data?.series?.[opts?.seriesIndex ?? -1]?.missing_days?.[startIdx + (opts?.dataPointIndex ?? 0)] ?? 0;
+                    return missing > 0 ? `${euro(Number(val))} (faltam ${missing} ${missing === 1 ? "dia" : "dias"})` : euro(Number(val));
+                },
+            },
+        },
         legend: { show: true, position: "top", horizontalAlign: "right", fontSize: "12px" },
         // ⚠️ Não ligar pontos através de meses sem dados (null) — honestidade.
         // (connectNulls fica false por defeito; deixado explícito.)
@@ -104,6 +114,7 @@ export default function MonthlyBillingChart() {
                 title="Faturação mensal por restaurante"
                 flush={false}
                 loading={loading}
+                skeleton={data ? undefined : <Skeleton variant="chart" height={340} />}
                 actions={<>
                     <div className="xp-seg" role="tablist" aria-label="Período">
                         {RANGES.map((r) => (

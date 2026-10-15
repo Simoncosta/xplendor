@@ -14,6 +14,7 @@ return [
         'fetch-meta-ads-metrics', 'dispatch-meta-account-insights-sync', 'dispatch-meta-ad-insights-sync',
         'refresh-stale-market-aggregates', 'sync-carmine-cars', 'restaurant-daily-sync',
         'pingwin-supplier-cc-nightly', 'pingwin-supplier-documents-nightly', 'pingwin-supplier-document-lines-nightly',
+        'pingwin-boms-nightly',
         'ocr-pingwin-relink-nightly', 'social-followers-daily', 'radar-collect-feeds',
         // P2 do fecho: tarefas internas cujo trabalho chama a IA (as frases da Bússola do stand).
         // Contam como externas: no dev ficam desligadas, como as outras. A restauração já chegava

@@ -602,7 +602,14 @@ class RestaurantSignalService
         $before = $this->itemTotals($location->id, $prevFrom, $prevTo);
         $storeNow = array_sum(array_column($now, 'net'));
         $storeBefore = array_sum(array_column($before, 'net'));
-        $variation = $storeBefore > 0 ? ($storeNow - $storeBefore) / $storeBefore : null;
+        // Só compara as duas janelas com a loja aberta em ambas e os dias lidos (90%): uma loja que
+        // abriu a meio da janela anterior (ou com dias por ler) dava uma subida falsa.
+        $start = $this->locationStart($location);
+        $read = fn (CarbonImmutable $f, CarbonImmutable $t) => PingwinItemSalesDay::where('location_id', $location->id)
+            ->whereBetween('business_date', [$f->toDateString(), $t->toDateString()])->whereIn('status', ['ok', 'unverified', 'empty'])->count();
+        $comparable = (! $start || $start->lte($prevFrom))
+            && $read($from, $to) / self::WINDOW_DAYS >= self::MIN_COVERAGE && $read($prevFrom, $prevTo) / self::WINDOW_DAYS >= self::MIN_COVERAGE;
+        $variation = $comparable && $storeBefore > 0 ? ($storeNow - $storeBefore) / $storeBefore : null;
 
         $moving = 0;
         $down = 0;
@@ -875,6 +882,11 @@ class RestaurantSignalService
     private function strongestWeekday(int $locationId): int
     {
         [$from, $to] = $this->window(self::COMPARE_DAYS);
+        // Só a partir do início da loja: as linhas a zero de antes da abertura não são vendas.
+        $location = PingwinLocation::find($locationId);
+        if ($location && ($start = $this->locationStart($location))) {
+            $from = $from->max($start);
+        }
         $byWd = [];
         PingwinDailySale::where('location_id', $locationId)->whereRaw('DATE(business_date) BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
             ->get(['business_date', 'net_cents'])->each(function ($r) use (&$byWd) {

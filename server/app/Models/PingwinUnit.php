@@ -16,12 +16,13 @@ class PingwinUnit extends Model
 {
     protected $fillable = [
         'company_id', 'pingwin_id', 'description', 'shortname', 'product_pingwin_id',
-        'parent_pingwin_id', 'unit_value', 'purchase', 'sale', 'stock',
+        'parent_pingwin_id', 'parent_qnt', 'unit_value', 'purchase', 'sale', 'stock',
         'net_weight', 'external_measure', 'raw', 'is_active', 'synced_at',
     ];
 
     protected $casts = [
         'unit_value'  => 'float',
+        'parent_qnt'  => 'float',
         'net_weight'  => 'float',
         'purchase'    => 'boolean',
         'sale'        => 'boolean',

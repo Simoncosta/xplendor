@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\CompanyIntegration;
-use App\Models\PingwinSyncRun;
+use App\Services\Restaurant\RestaurantSalesCoverage;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +34,11 @@ use Illuminate\Support\Facades\Log;
  *      estrutura aceita-o mas NÃO é produzido nesta versão.
  * Mês em curso: compara os MESMOS DIAS (1..N contra 1..N), só dias completos (até
  * ontem). Mês passado: mês inteiro contra mês inteiro.
+ *
+ * Faturação (RestaurantSalesCoverage, a regra comum da Restauração): um dia sem as vendas de
+ * nenhuma loja fica a null na série (em falta, não a zero); "coverage" diz que lojas não têm
+ * dados e que dias faltam. Os internos só se comparam (e o peso do marketing só se calcula)
+ * com o período e a janela de comparação COMPLETOS (todas as lojas abertas, todos os dias).
  */
 class RestaurantMarketingService
 {
@@ -49,7 +54,7 @@ class RestaurantMarketingService
         'direct' => ['Direct'],
     ];
 
-    public function __construct(private readonly GoogleAnalyticsService $ga4) {}
+    public function __construct(private readonly GoogleAnalyticsService $ga4, private readonly RestaurantSalesCoverage $coverage) {}
 
     public function build(int $companyId, ?string $month = null, ?CarbonImmutable $today = null): array
     {
@@ -109,7 +114,12 @@ class RestaurantMarketingService
         }
 
         // ── 1. Faturação + pessoas (internos) ─────────────────────────────────
-        $internalTier = $this->firstTier($windows, fn ($w) => $this->isFullySynced($companyId, $w['start'], $w['end']));
+        // Com dias ou lojas em falta no período, os internos não se comparam (seria comparar
+        // um mês parcial com um completo).
+        $periodCoverage = $this->coverage->period($companyId, $period['start'], $period['end']);
+        $internalTier = $periodCoverage['complete']
+            ? $this->firstTier($windows, fn ($w) => $this->isFullySynced($companyId, $w['start'], $w['end']))
+            : null;
 
         $revenueSeries = $this->dailyRevenue($companyId, $period['start'], $period['end']);
         $revenueTotal = round(array_sum($revenueSeries), 2);
@@ -119,17 +129,20 @@ class RestaurantMarketingService
         $coversTotal = array_sum(array_column($cm, 'guests'));
         $cmBase = $internalTier ? $this->dailyReservations($companyId, $windows[$internalTier]['start'], $windows[$internalTier]['end']) : null;
 
-        $out['metrics']['revenue'] = [
+        // Sem vendas de nenhuma loja no período → "sem dados" (null), não 0 €.
+        $out['metrics']['revenue'] = $periodCoverage['status'] === RestaurantSalesCoverage::NO_DATA ? null : [
             'unit' => 'EUR',
             'total' => $revenueTotal,
-            'series' => $this->seriesFrom($revenueSeries, $period),
-            'comparison' => $this->compare($revenueTotal, $internalTier, $revenueBase, $windows),
+            // Dia sem as vendas de nenhuma loja → null (em falta, não zero).
+            'series' => $this->seriesFrom($revenueSeries, $period, true),
+            'comparison' => $periodCoverage['complete'] ? $this->compare($revenueTotal, $internalTier, $revenueBase, $windows) : $this->incomplete(),
         ];
+        $out['coverage'] = RestaurantSalesCoverage::compact($periodCoverage);
         $out['metrics']['covers'] = [
             'unit' => 'people',
             'has_data' => $cm !== [],
             'total' => $coversTotal,
-            'series' => $this->seriesFrom(array_map(fn ($d) => $d['guests'], $cm), $period),
+            'series' => $this->seriesFrom(array_map(fn ($d) => $d['guests'], $cm), $period, true),
             'comparison' => $cm === [] ? $this->noComparison()
                 : $this->compare($coversTotal, $internalTier, $cmBase !== null ? array_sum(array_column($cmBase, 'guests')) : null, $windows),
         ];
@@ -197,7 +210,8 @@ class RestaurantMarketingService
 
                 // ── 4. Peso do marketing = gasto Meta ÷ faturação ───────────────
                 // Escalão comum às duas fontes (senão não é comparável).
-                $weight = $revenueTotal > 0 ? round($metaSpendTotal / $revenueTotal * 100, 2) : null;
+                // Só com a faturação do período completa (com dias em falta o peso sairia inflacionado).
+                $weight = $periodCoverage['complete'] && $revenueTotal > 0 ? round($metaSpendTotal / $revenueTotal * 100, 2) : null;
                 $commonTier = $this->commonTier($windows, $internalTier, $metaTier, fn ($w) =>
                     $this->isFullySynced($companyId, $w['start'], $w['end'])
                     && $coverage !== null && CarbonImmutable::parse($w['start'])->gte($coverage)
@@ -315,6 +329,12 @@ class RestaurantMarketingService
         return ['tier' => null, 'reason' => 'no_history'];
     }
 
+    /** O período tem lojas ou dias de vendas em falta: não se compara. */
+    private function incomplete(): array
+    {
+        return ['tier' => null, 'reason' => 'incomplete_period'];
+    }
+
     /** Delta em % de um total (nunca inventa %: base ≤ 0 → delta_pct null). */
     private function compare(float|int $current, ?string $tier, float|int|null $base, array $windows): array
     {
@@ -352,17 +372,13 @@ class RestaurantMarketingService
 
     // ── Fontes de dados ───────────────────────────────────────────────────────
 
-    /** Período totalmente sincronizado (PingWin + CoverManager correm no mesmo orquestrador). */
+    /**
+     * Período completo: todos os dias sincronizados E com as vendas de todas as lojas já abertas
+     * (não basta o dia estar sincronizado na empresa: uma loja pode ter ficado de fora).
+     */
     private function isFullySynced(int $companyId, string $from, string $to): bool
     {
-        $needed = (int) CarbonImmutable::parse($from)->diffInDays(CarbonImmutable::parse($to)) + 1;
-        $synced = PingwinSyncRun::where('company_id', $companyId)
-            ->where('status', 'success')
-            ->whereRaw('DATE(business_date) BETWEEN ? AND ?', [$from, $to])
-            ->distinct('business_date')
-            ->count('business_date');
-
-        return $synced >= $needed;
+        return $this->coverage->period($companyId, $from, $to)['complete'];
     }
 
     /** Faturação (EUR, c/ IVA = invoiced) por dia, respeitando opened_on das lojas. */
@@ -372,7 +388,7 @@ class RestaurantMarketingService
             ->join('pingwin_locations as l', 'l.id', '=', 's.location_id')
             ->where('s.company_id', $companyId)
             ->whereRaw('DATE(s.business_date) BETWEEN ? AND ?', [$from, $to])
-            ->whereRaw('(l.opened_on IS NULL OR DATE(s.business_date) >= DATE(l.opened_on))')
+            ->whereRaw(PingwinDashboardService::started('s.business_date'))
             ->selectRaw('DATE(s.business_date) as d, COALESCE(SUM(s.invoiced_cents),0) as cents')
             ->groupByRaw('DATE(s.business_date)')
             ->get()
@@ -387,7 +403,7 @@ class RestaurantMarketingService
             ->join('pingwin_locations as l', 'l.id', '=', 'c.location_id')
             ->where('c.company_id', $companyId)
             ->whereRaw('DATE(c.business_date) BETWEEN ? AND ?', [$from, $to])
-            ->whereRaw('(l.opened_on IS NULL OR DATE(c.business_date) >= DATE(l.opened_on))')
+            ->whereRaw(PingwinDashboardService::started('c.business_date'))
             ->selectRaw('DATE(c.business_date) as d, COALESCE(SUM(c.guests_total),0) as guests, COALESCE(SUM(c.reservations_count),0) as reservations, COALESCE(SUM(c.walk_ins_count),0) as walk_ins')
             ->groupByRaw('DATE(c.business_date)')
             ->get()
@@ -447,9 +463,9 @@ class RestaurantMarketingService
         return $out;
     }
 
-    /** [data => valor] → [{date, value}] contínuo. */
-    private function seriesFrom(array $byDate, array $period): array
+    /** [data => valor] → [{date, value}] contínuo; com $nullMissing, um dia sem dados fica null (não zero). */
+    private function seriesFrom(array $byDate, array $period, bool $nullMissing = false): array
     {
-        return array_map(fn ($date) => ['date' => $date, 'value' => $byDate[$date] ?? 0], $this->dates($period));
+        return array_map(fn ($date) => ['date' => $date, 'value' => $byDate[$date] ?? ($nullMissing ? null : 0)], $this->dates($period));
     }
 }

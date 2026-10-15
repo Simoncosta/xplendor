@@ -1185,3 +1185,10 @@ export const getArticleSupplierCodes = (companyId: number, catalogItemId: number
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/supplier-codes`);
 export const getArticleVatDivergences = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog/vat-divergences`);
+// Fatia 1: fichas técnicas (só leitura) — lista por Pareto e detalhe de um artigo (id do PingWin).
+export const getRecipes = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; search?: string; family?: string; location_id?: number; state?: string; sort?: string; dir?: "asc" | "desc" }
+) => api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes`, params);
+export const getRecipe = (companyId: number, productId: string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}`);

@@ -8,6 +8,8 @@ import type { StandCompassData, StandType } from "common/models/standCompass.mod
 import StandTop from "./StandTop";
 import StandPlays, { TypeSelector } from "./StandPlays";
 import { AdsCard, AgingCard, DemandCard, FooterCard, ForgottenCard, PriceCard } from "./StandBlocks";
+import BussolaSkeleton from "../BussolaSkeleton";
+import useDelayedFlag from "hooks/useDelayedFlag";
 
 /**
  * Bússola, fornecedor do stand (veículos: carros e autocaravanas): o topo, as 3 jogadas da
@@ -20,6 +22,8 @@ export default function StandBussola({ providerSwitch, radar }: { providerSwitch
     const [type, setType] = useState<StandType>("all");
     const [data, setData] = useState<StandCompassData | null>(null);
     const [loading, setLoading] = useState(true);
+    // Recarga (outro tipo, depois de ignorar): os dados ficam, esbatidos, com o indicador no cabeçalho.
+    const reloading = useDelayedFlag(loading && !!data);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -46,9 +50,9 @@ export default function StandBussola({ providerSwitch, radar }: { providerSwitch
                         <p className="mb-1"><Badge color="success-subtle" className="text-success fw-normal me-1">Confiança alta</Badge>factos ou muitos comparáveis. <Badge color="info-subtle" className="text-info fw-normal me-1">Confiança média</Badge>menos comparáveis ou menos vistas. Os sinais de confiança baixa não aparecem.</p>
                         <p className="mb-0">Recalcula-se todas as noites e quando o stock, os preços ou os anúncios mudam.</p>
                     </>}
-                    filters={<>{providerSwitch}{data?.enabled ? <TypeSelector data={data} onType={setType} /> : null}</>}
+                    filters={<>{providerSwitch}{data?.enabled ? <TypeSelector data={data} onType={setType} /> : null}{reloading && <Spinner size="sm" aria-label="A carregar" />}</>}
                 />
-                {!data && loading && <div className="text-center py-5"><Spinner color="primary" /></div>}
+                {!data && loading && <BussolaSkeleton />}
                 {data && !data.enabled && (
                     <>
                         <Card><CardBody className="text-muted">A Bússola do stand está desligada nesta empresa. Quando a equipa XPLENDOR a ligar, aparece aqui.</CardBody></Card>
@@ -56,7 +60,7 @@ export default function StandBussola({ providerSwitch, radar }: { providerSwitch
                     </>
                 )}
                 {data && data.enabled && (
-                    <div className={loading ? "opacity-50" : undefined} data-testid="stand-bussola">
+                    <div className={reloading ? "xp-reloading" : undefined} aria-busy={reloading || undefined} data-testid="stand-bussola">
                         <StandTop data={data} />
                         <StandPlays companyId={companyId} data={data} onChanged={load} />
                         {radar}

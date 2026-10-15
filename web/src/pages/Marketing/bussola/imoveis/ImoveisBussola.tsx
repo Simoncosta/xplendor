@@ -9,6 +9,8 @@ import StandTop from "../stand/StandTop";
 import { FooterCard } from "../stand/StandBlocks";
 import ImoveisPlays, { ImoveisTypeSelector } from "./ImoveisPlays";
 import { ImoveisAgingCard, ImoveisClosedCard, ImoveisInterestCard, ImoveisPriceCard, ImoveisZonesCard } from "./ImoveisBlocks";
+import BussolaSkeleton from "../BussolaSkeleton";
+import useDelayedFlag from "hooks/useDelayedFlag";
 
 /**
  * Bússola, fornecedor do imobiliário (Bússola Master, R3): o topo, as 3 jogadas da semana e os
@@ -21,6 +23,8 @@ export default function ImoveisBussola({ providerSwitch, radar }: { providerSwit
     const [type, setType] = useState<ImoveisType>("all");
     const [data, setData] = useState<ImoveisCompassData | null>(null);
     const [loading, setLoading] = useState(true);
+    // Recarga (outro tipo, depois de ignorar): os dados ficam, esbatidos, com o indicador no cabeçalho.
+    const reloading = useDelayedFlag(loading && !!data);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -44,9 +48,9 @@ export default function ImoveisBussola({ providerSwitch, radar }: { providerSwit
                         <p className="mb-1">O que fazer esta semana na carteira de imóveis, a partir dos dias em carteira, da referência oficial do INE, das publicações e do calendário. Os números descrevem o que aconteceu; não dizem porquê. Nunca se sugere um preço.</p>
                         <p className="mb-0"><Badge color="success-subtle" className="text-success fw-normal me-1">Confiança alta</Badge>factos da carteira. <Badge color="info-subtle" className="text-info fw-normal me-1">Confiança média</Badge>a referência do INE é de toda a freguesia.</p>
                     </>}
-                    filters={<>{providerSwitch}{data?.enabled ? <ImoveisTypeSelector data={data} onType={setType} /> : null}</>}
+                    filters={<>{providerSwitch}{data?.enabled ? <ImoveisTypeSelector data={data} onType={setType} /> : null}{reloading && <Spinner size="sm" aria-label="A carregar" />}</>}
                 />
-                {!data && loading && <div className="text-center py-5"><Spinner color="primary" /></div>}
+                {!data && loading && <BussolaSkeleton />}
                 {data && !data.enabled && (
                     <>
                         <Card><CardBody className="text-muted">A Bússola do imobiliário está desligada nesta empresa. Quando o módulo dos imóveis for ligado, aparece aqui.</CardBody></Card>
@@ -54,7 +58,7 @@ export default function ImoveisBussola({ providerSwitch, radar }: { providerSwit
                     </>
                 )}
                 {data && data.enabled && (
-                    <div className={loading ? "opacity-50" : undefined} data-testid="imoveis-bussola">
+                    <div className={reloading ? "xp-reloading" : undefined} aria-busy={reloading || undefined} data-testid="imoveis-bussola">
                         <StandTop data={data as any} />
                         <ImoveisPlays companyId={companyId} data={data} onChanged={load} />
                         {radar}

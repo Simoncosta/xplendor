@@ -20,6 +20,7 @@ import {
 } from "helpers/laravel_helper";
 import { PingwinDocumentConfig, PingwinDocPaycondLink } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import Skeleton from "Components/Common/Skeleton";
 
 // D1 — selects editáveis do maindataset: {opção no snapshot, campo _id a gravar, label}.
 const DOC_SELECTS: { opt: string; field: string; label: string }[] = [
@@ -644,7 +645,8 @@ export default function DocumentosPage() {
                 </ModalHeader>
                 <ModalBody>
                     {!detailDoc ? (
-                        <div className="text-muted py-3">{detailLoading ? "A carregar…" : "Sem dados. Execute primeiro “Sincronizar detalhe” (no menu de ações da página)."}</div>
+                        detailLoading ? <Skeleton variant="lines" lines={6} className="py-2" />
+                            : <div className="text-muted py-3">Sem dados. Execute primeiro “Sincronizar detalhe” (no menu de ações da página).</div>
                     ) : (
                         <>
                             <Nav tabs className="mb-3">

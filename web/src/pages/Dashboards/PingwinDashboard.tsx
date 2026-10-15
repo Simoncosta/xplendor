@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useModules } from "contexts/ModulesContext";
 import classnames from "classnames";
 import { Link, useSearchParams } from "react-router-dom";
-import { Card, CardBody, Container, Row, Col, Nav, NavItem, NavLink, Spinner } from "reactstrap";
+import { Alert, Button, Card, CardBody, Container, Row, Col, Nav, NavItem, NavLink, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
@@ -10,8 +10,10 @@ import InfoTip from "Components/Common/InfoTip";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ReasonButton from "Components/Common/ReasonButton";
 import ConfirmModal from "Components/Common/ConfirmModal";
+import Skeleton from "Components/Common/Skeleton";
+import useDelayedFlag from "hooks/useDelayedFlag";
 import { getPingwinDashboard, getRestaurantSignals, queuePingwinSync } from "helpers/laravel_helper";
-import { PingwinDashboard as PingwinDashboardData, PingwinMoneyPair, PingwinOccupancyPeriod, RestaurantSignalsData } from "common/models/pingwin.model";
+import { PingwinDashboard as PingwinDashboardData, PingwinCoverage, PingwinLocationPeriod, PingwinMoneyPair, PingwinOccupancyPeriod, RestaurantSignalsData } from "common/models/pingwin.model";
 import DashboardSectionHeader from "./components/DashboardSectionHeader";
 import MonthlyBillingChart from "./components/MonthlyBillingChart";
 import RestaurantMarketingBlock from "./components/RestaurantMarketingBlock";
@@ -68,8 +70,12 @@ const monthLabel = (ym?: string) => {
 const dayLabel = (d?: string) =>
     d ? new Date(d + "T00:00:00").toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" }) : "";
 
-/** Card de período: faturado c/IVA + líquido; contexto do período + cor de acento; comparação opcional. */
-const PeriodCard = ({ label, subtitle, icon, accent, values, compareLabel, deltaInvoiced, deltaNet }: {
+/**
+ * Card de período: faturado c/IVA + líquido; contexto do período + cor de acento; comparação opcional.
+ * Sem nenhuma loja com vendas lidas → "Sem dados neste período" (nunca 0 €); com lojas ou dias em
+ * falta, a nota da cobertura diz quais (e o valor é só dos dias lidos).
+ */
+const PeriodCard = ({ label, subtitle, icon, accent, values, compareLabel, deltaInvoiced, deltaNet, coverage }: {
     label: string;
     subtitle?: string;
     icon: string;
@@ -78,6 +84,7 @@ const PeriodCard = ({ label, subtitle, icon, accent, values, compareLabel, delta
     compareLabel?: string;
     deltaInvoiced?: number | null;
     deltaNet?: number | null;
+    coverage?: PingwinCoverage;
 }) => (
     <Col md={4}>
         <Card className="h-100 mb-0" style={{ borderTop: `3px solid var(--vz-${accent})` }}>
@@ -90,14 +97,21 @@ const PeriodCard = ({ label, subtitle, icon, accent, values, compareLabel, delta
                     </div>
                     <i className={`${icon} fs-4 text-${accent}`} />
                 </div>
-                <div className="mb-1">
-                    <span className="text-muted fs-12">Faturado c/IVA</span>
-                    <h4 className={`mb-0 fw-semibold text-${accent}`}>{euro(values.invoiced_cents)}</h4>
-                </div>
-                <div className="mb-0">
-                    <span className="text-muted fs-12">Líquido</span>
-                    <h5 className="mb-0 fw-semibold text-muted">{euro(values.net_cents)}</h5>
-                </div>
+                {values.invoiced_cents === null ? (
+                    <p className="text-muted fs-13 mb-0" data-testid="period-no-data">Sem dados neste período.</p>
+                ) : (
+                    <>
+                        <div className="mb-1">
+                            <span className="text-muted fs-12">Faturado c/IVA</span>
+                            <h4 className={`mb-0 fw-semibold text-${accent}`}>{euro(values.invoiced_cents)}</h4>
+                        </div>
+                        <div className="mb-0">
+                            <span className="text-muted fs-12">Líquido</span>
+                            <h5 className="mb-0 fw-semibold text-muted">{euro(values.net_cents ?? 0)}</h5>
+                        </div>
+                    </>
+                )}
+                {coverage?.note && <p className="text-warning fs-11 mb-0 mt-1" data-testid="period-coverage">{coverage.note}</p>}
                 {compareLabel && (
                     <div className="mt-2 pt-2 fs-12" style={{ borderTop: "1px dashed var(--vz-border-color)" }}>
                         <div className="d-flex justify-content-between">
@@ -186,26 +200,47 @@ const OccupancyCard = ({ occ }: { occ?: { annual: PingwinOccupancyPeriod; monthl
 const fmtDateTime = (d: string | null) =>
     d ? new Date(d).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Nunca";
 
-/** Célula de um período por loja: faturado c/IVA (cor do tema) + líquido + lotação (pessoas). */
-const PeriodCell = ({ pair, occ, color }: { pair: PingwinMoneyPair; occ?: PingwinOccupancyPeriod; color: string }) => (
+/**
+ * Célula de um período por loja: faturado c/IVA (cor do tema) + líquido + lotação (pessoas). Loja sem
+ * vendas lidas no período (ainda não tinha aberto, ou não lida) → "Sem dados neste período", não 0 €.
+ */
+const PeriodCell = ({ pair, occ, color }: { pair: PingwinLocationPeriod; occ?: PingwinOccupancyPeriod; color: string }) => (
     <div className="text-end">
-        <div className={`fw-semibold ${color}`}>{euro(pair?.invoiced_cents ?? 0)}</div>
-        <div className="text-muted fs-11">{euro(pair?.net_cents ?? 0)} líq.</div>
+        {pair?.invoiced_cents === null || pair?.invoiced_cents === undefined ? (
+            <div className="text-muted fs-12" title={pair?.note ?? undefined}>Sem dados neste período</div>
+        ) : (
+            <>
+                <div className={`fw-semibold ${color}`}>{euro(pair.invoiced_cents)}</div>
+                <div className="text-muted fs-11">{euro(pair.net_cents ?? 0)} líq.</div>
+                {(pair.missing_days ?? 0) > 0 && (
+                    <div className="text-warning fs-11" title={pair.note ?? undefined}>faltam {pair.missing_days} {pair.missing_days === 1 ? "dia" : "dias"}</div>
+                )}
+            </>
+        )}
         <div className="text-muted fs-11">{occ?.has_data ? `${num(occ.total)} pessoas` : "sem reservas"}</div>
     </div>
 );
+
+/** Alturas do conteúdo dos cartões (para o esqueleto ter as mesmas medidas e não saltar). */
+const SALES_CARD_HEIGHT = 230;
+const KPI_CARD_HEIGHT = 102;
 
 /** Separador "Vendas": faturação por período, ticket médio, lotação, gráfico e lojas, com a data e o "atualizar". */
 function RestaurantSalesTab({ companyId }: { companyId: number }) {
     const [date, setDate] = useState<string>(yesterdayIso());
     const [data, setData] = useState<PingwinDashboardData | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    // 1.ª carga → cartões em esqueleto (nunca 0 € enquanto carrega); outra data → esbatidos.
+    const firstLoad = loading && !data;
+    const reloading = useDelayedFlag(loading && !!data);
     const [queuing, setQueuing] = useState(false);
 
     const fetchDashboard = useCallback(async (d?: string) => {
         if (!companyId) return;
         setLoading(true);
+        setError(false);
         try {
             const res: any = await getPingwinDashboard(companyId, d);
             setData(res?.data ?? null);
@@ -213,6 +248,7 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
             if (res?.data?.date && !d) setDate(res.data.date);
         } catch {
             setData(null);
+            setError(true);
         } finally {
             setLoading(false);
         }
@@ -251,9 +287,9 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                 </div>
             ),
         },
-        { id: "annual", header: "Anual", align: "end", value: (loc) => loc.annual?.invoiced_cents ?? 0, cell: (loc) => <PeriodCell pair={loc.annual} occ={loc.occupancy?.annual} color="text-primary" /> },
-        { id: "monthly", header: "Mensal", align: "end", value: (loc) => loc.monthly?.invoiced_cents ?? 0, cell: (loc) => <PeriodCell pair={loc.monthly} occ={loc.occupancy?.monthly} color="text-info" /> },
-        { id: "daily", header: "Diário", align: "end", value: (loc) => loc.daily?.invoiced_cents ?? 0, cell: (loc) => <PeriodCell pair={loc.daily} occ={loc.occupancy?.daily} color="text-success" /> },
+        { id: "annual", header: "Anual", align: "end", value: (loc) => loc.annual?.invoiced_cents ?? undefined, cell: (loc) => <PeriodCell pair={loc.annual} occ={loc.occupancy?.annual} color="text-primary" /> },
+        { id: "monthly", header: "Mensal", align: "end", value: (loc) => loc.monthly?.invoiced_cents ?? undefined, cell: (loc) => <PeriodCell pair={loc.monthly} occ={loc.occupancy?.monthly} color="text-info" /> },
+        { id: "daily", header: "Diário", align: "end", value: (loc) => loc.daily?.invoiced_cents ?? undefined, cell: (loc) => <PeriodCell pair={loc.daily} occ={loc.occupancy?.daily} color="text-success" /> },
         { id: "synced", header: "Sincronização", align: "end", value: (loc) => loc.last_synced_at ?? undefined, cell: (loc) => <span className="text-muted fs-12">{fmtDateTime(loc.last_synced_at)}</span>, nowrap: true },
     ] as DTColumn<Loc>[]);
 
@@ -284,12 +320,42 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                     onChange={(e) => { setDate(e.target.value); fetchDashboard(e.target.value); }}
                     style={{ minWidth: 170 }}
                 />
+                {reloading && <Spinner size="sm" aria-label="A carregar" data-testid="sales-reloading" />}
                 <ReasonButton size="sm" color="outline-primary" onClick={() => setConfirmOpen(true)} disabled={queuing}
                     reason={!companyId ? "Escolha primeiro a empresa." : !date ? "Indique a data." : null}>
                     {queuing ? <><Spinner size="sm" className="me-1" /> A atualizar</> : <><i className="ri-refresh-line me-1" /> <span className="d-none d-sm-inline">Buscar dados atualizados</span><span className="d-sm-none">Atualizar</span></>}
                 </ReasonButton>
             </DashboardSectionHeader>
 
+            {firstLoad ? (
+                <div aria-busy="true" data-testid="sales-skeleton">
+                    <span className="visually-hidden">A carregar as vendas…</span>
+                    <Row className="g-3 mb-3">
+                        {["primary", "info", "success"].map((c) => (
+                            <Col md={4} key={c}>
+                                <Card className="h-100 mb-0" style={{ borderTop: `3px solid var(--vz-${c})` }}>
+                                    <CardBody><Skeleton variant="kpi" height={SALES_CARD_HEIGHT} label="" /></CardBody>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                    <Row className="g-3 mb-3">
+                        {["warning", "info"].map((c) => (
+                            <Col md={6} key={c}>
+                                <Card className="h-100 mb-0" style={{ borderTop: `3px solid var(--vz-${c})` }}>
+                                    <CardBody><Skeleton variant="kpi" height={KPI_CARD_HEIGHT} label="" /></CardBody>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                </div>
+            ) : error && !data ? (
+                <Alert color="danger" className="d-flex flex-wrap align-items-center justify-content-between gap-2 fs-13" data-testid="sales-error">
+                    <span>Não foi possível carregar os dados de vendas.</span>
+                    <Button size="sm" color="outline-danger" onClick={() => fetchDashboard(date)}>Tentar de novo</Button>
+                </Alert>
+            ) : (
+            <div className={reloading ? "xp-reloading" : undefined} aria-busy={reloading || undefined}>
             {/* 3 cards de faturação por período (contexto do período no subtítulo) */}
             <Row className="g-3 mb-3">
                 <PeriodCard
@@ -301,6 +367,7 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                     compareLabel="vs ano passado"
                     deltaInvoiced={annual?.delta_pct_invoiced ?? null}
                     deltaNet={annual?.delta_pct_net ?? null}
+                    coverage={annual?.coverage}
                 />
                 <PeriodCard
                     label="Mensal"
@@ -308,6 +375,7 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                     icon="ri-calendar-line"
                     accent="info"
                     values={monthly ?? { invoiced_cents: 0, net_cents: 0 }}
+                    coverage={monthly?.coverage}
                 />
                 <PeriodCard
                     label="Diário"
@@ -318,6 +386,7 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                     compareLabel="vs mesmo dia da semana anterior"
                     deltaInvoiced={daily?.delta_pct_invoiced ?? null}
                     deltaNet={daily?.delta_pct_net ?? null}
+                    coverage={daily?.coverage}
                 />
             </Row>
 
@@ -326,6 +395,9 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                 <AvgTicketCard avg={data?.avg_ticket} enabled={data?.avg_ticket_enabled ?? true} />
                 <OccupancyCard occ={data?.occupancy} />
             </Row>
+
+            </div>
+            )}
 
             {/* Gráfico de faturação mensal por restaurante (acima da tabela). */}
             <Row className="g-3 mb-3">

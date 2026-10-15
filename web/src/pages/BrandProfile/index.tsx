@@ -12,6 +12,7 @@ import FollowersCard from "./FollowersCard";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Perfil da Marca (página própria, fora do Blog). Alimenta a IA (blog, sugestões de
@@ -157,7 +158,7 @@ export default function BrandProfilePage() {
                 />
 
                 {loading ? (
-                    <div className="text-center py-5"><Spinner color="primary" /></div>
+                    <div className="card"><div className="card-body"><Skeleton variant="lines" lines={8} /></div></div>
                 ) : (
                     <>
                         <Row className="g-3">

@@ -215,6 +215,21 @@ def shape_hourly_sales(grid: Dict[str, Any]) -> List[Dict[str, Any]]:
     return out
 
 
+def _bom_date(value: Any) -> str | None:
+    """cashbox_date da versão da ficha ("20260506T00:00:00") → "2026-05-06"."""
+    s = str(value or "").strip()
+    if len(s) < 8 or not s[:8].isdigit():
+        return None
+    return f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
+
+
+def _int_or_none(value: Any) -> int | None:
+    try:
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 def custom_pbkdf2(password: str, salt_hex: str) -> str:
     """
     PBKDF2 customizado do PingWin BO (GrupoPIE): 1000 iterações de MD5 com XOR.
@@ -2570,15 +2585,7 @@ class MyCloudPieClient:
         return saved
 
     # ════════════════════════════════ FICHA TÉCNICA (BOM / productbom) ════════════
-    # SÓ LEITURA. Sequência descoberta ao vivo (read-only — nunca grava no PingWin):
-    #   OPEN  → ObjectID (no HEADER da resposta)
-    #   maindataset (Action GET) — carrega a ficha na sessão do ObjectID
-    #   lkwarehouses (GET,INFO) — armazéns disponíveis
-    #   prodbomdetail (GET,INFO, warehouse_id) — linhas (composição + custo do armazém)
-    #   CLOSE
-    # NOTA: maindataset TEM de ser chamado antes de prodbomdetail no mesmo ObjectID.
-    # NOTA: o armazém id="" (default da sessão) é NÃO-DETERMINÍSTICO — ignorar; usar
-    #       só os armazéns nomeados (custo estável e reproduzível).
+    # SÓ LEITURA. Os cabeçalhos dos pedidos da ficha; o protocolo está mais abaixo (read_bom).
     def _bom_headers(self, action: str, object_id: str | None = None) -> Dict[str, str]:
         h = {
             "Action": action,
@@ -2589,72 +2596,220 @@ class MyCloudPieClient:
             h["ObjectID"] = object_id
         return h
 
-    def open_bom(self, product_id: str) -> str:
-        """Abre a ficha técnica do artigo (Action OPEN). Devolve o ObjectID (header).
-        Read-only: abrir+fechar sem gravar não escreve nada no PingWin."""
-        url = f"{self.api_url}/service/product/{product_id}/productbom"
-        r = self.session.post(url, json={"params": {}}, headers=self._bom_headers("OPEN"))
-        if r.status_code != 200:
-            log.error("open_bom %s falhou: HTTP %s body=%s", product_id, r.status_code, r.text[:1000])
-            r.raise_for_status()
+    # ════════════════ FICHA TÉCNICA COMPLETA (Fatia 1) — SÓ LEITURA, porta da API ════════════
+    # Protocolo do HAR de 15/10 (Coca Cola 0), na porta da API (a da sessão principal):
+    #   1. OPEN,GET,INFO  /service/product/{id}/<_BOM_OPEN_DATASETS>  → ObjectID no HEADER;
+    #      o corpo traz o artigo (unidades, preços) e as VERSÕES (productbom.maindataset).
+    #   2. GET,INFO (sem corpo) /service/product/<_BOM_INFO_DATASETS> → armazéns e lojas.
+    #   3. por versão: EDIT,GET .../productbom.maindataset/<lojas> com [{"key": <key da versão>}]
+    #      → só POSICIONA a versão (nada se grava sem SAVE) e devolve as lojas dessa versão.
+    #   4. por armazém ("" = todos, e cada um): GET,INFO prodbomdetail com {"params":{"warehouse_id"}}.
+    #   5. CLOSE /service/product (sempre, num finally).
+    # NUNCA MERGE, SAVE, NEW, DELETE, nem EDIT em productbom.storerelation.storedata (o ecrã da
+    # PingWin reenvia-o sozinho ao mudar de versão; nós não).
+    _BOM_OPEN_DATASETS = (
+        "maindataset,productunits.baseunit,productunits.lkunitsale,productunits.lkunitpurchase,"
+        "lk_stockconfig,prices,productbom.maindataset"
+    )
+    _BOM_INFO_DATASETS = (
+        "productbom.lkunits,productbom.lkprodunits,productbom.prodbomdetail,"
+        "productbom.storerelation.storedata,productbom.storerelation.storegroup,productbom.lkwarehouses"
+    )
+    _BOM_SELECT_PATH = "productbom.maindataset/productbom.storerelation.storedata,productbom.storerelation.storegroup"
+    _BOM_LINES_DATASETS = "productbom.prodbomdetail,productbom.lkunits,productbom.lkprodunits"
+
+    def _bom_post(self, path: str, action: str, object_id: str | None, body: Any = None) -> requests.Response:
+        """Um pedido da ficha na porta da API. Só as ações de leitura passam (guarda de segurança)."""
+        if action not in ("OPEN,GET,INFO", "GET,INFO", "EDIT,GET", "CLOSE"):
+            raise RuntimeError(f"ficha técnica: ação '{action}' recusada (só leitura).")
+        if action == "EDIT,GET" and "storerelation.storedata" in path.split("/")[0]:
+            raise RuntimeError("ficha técnica: EDIT em storedata recusado.")
+        url = f"{self.api_url}/service/product{('/' + path) if path else ''}"
+        headers = self._bom_headers(action, object_id)
+        if body is None:
+            return self.session.post(url, data=b"", headers=headers)
+        return self.session.post(url, data=json.dumps(body), headers=headers)
+
+    @staticmethod
+    def parse_bom_article(product: Dict[str, Any]) -> Dict[str, Any]:
+        """Do corpo do OPEN: o artigo (unidades por função, stock, custo), preços e versões."""
+        main = (product.get("maindataset") or [{}])[0] or {}
+        prices = (product.get("prices") or [{}])[0] or {}
+        units: Dict[str, Dict[str, Any]] = {}
+        for ds in ("productunits.lkunitsale", "productunits.lkunitpurchase"):
+            for u in product.get(ds) or []:
+                uid = str(u.get("id") or "")
+                if uid and uid not in units:
+                    units[uid] = {
+                        "id": uid, "description": u.get("description"), "shortname": u.get("shortname"),
+                        "unit_value": u.get("unit_value"), "parent_id": str(u.get("parent_id") or "") or None,
+                        "parent_qnt": u.get("parent_qnt"),
+                    }
+        versions = [
+            {
+                "key": str(v.get("key") or ""), "id": str(v.get("id") or ""),
+                "valid_from": _bom_date(v.get("cashbox_date")), "deleted": int(v.get("deleted") or 0),
+                "bom_type": v.get("bom_type") or "",
+            }
+            for v in product.get("productbom.maindataset") or []
+            if v.get("id")
+        ]
+        return {
+            "id": str(main.get("id") or ""),
+            "code": main.get("code"),
+            "description": main.get("description"),
+            "units": {
+                "base": str(main.get("base_unit_id") or "") or None,
+                "sale": str(main.get("default_sale_unit_id") or "") or None,
+                "purchase": str(main.get("default_purchase_unit_id") or "") or None,
+                "stock": str(main.get("default_stock_unit_id") or "") or None,
+            },
+            "forsale": _int_or_none(main.get("forsale")),
+            "forpurchase": _int_or_none(main.get("forpurchase")),
+            "forproduction": _int_or_none(main.get("forproduction")),
+            "stockconfig_id": str(main.get("stockconfig_id") or "") or None,
+            "cost_warehouse_id": str(main.get("cost_warehouse_id") or "") or None,
+            "unit_list": list(units.values()),
+            "prices": {
+                "saleprice": prices.get("saleprice"),
+                "saleprice_wo_tax": prices.get("saleprice_wo_tax"),
+            },
+            "versions": versions,
+        }
+
+    @staticmethod
+    def parse_bom_lines(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Linhas de uma versão (prodbomdetail) num armazém. As anuladas ficam de fora."""
+        out = []
+        for r in rows or []:
+            if int(r.get("deleted") or 0) == 1:
+                continue
+            out.append({
+                "key": str(r.get("key") or ""),
+                "productbom_id": str(r.get("productbom_id") or ""),
+                "component_id": str(r.get("product_id") or ""),
+                # O PingWin às vezes põe um BOM (U+FEFF) no início do código.
+                "component_code": str(r.get("product_code") or "").lstrip("﻿").strip() or None,
+                "component_description": r.get("product_description"),
+                "unit_id": str(r.get("unit_id") or "") or None,
+                "unit_desc": r.get("unit_desc"),
+                "qnt": r.get("qnt"),
+                "qnt_base": r.get("qnt_base"),
+                "waste": r.get("waste"),
+                "recovery": r.get("recovery"),
+                "unit_cost": r.get("unit_cost"),
+                "cost": r.get("cost"),
+                "isbom": int(r.get("isbom") or 0),
+                "status": _int_or_none(r.get("product_status")),
+            })
+        return out
+
+    @staticmethod
+    def parse_bom_stores(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Lojas de uma versão (storedata): ativa = deleted 0."""
+        return [
+            {
+                "store_id": str(s.get("store_id") or ""),
+                "store_code": s.get("store_code"),
+                "store_name": s.get("store_name"),
+                "active": int(s.get("deleted") or 0) == 0,
+            }
+            for s in rows or []
+            if s.get("store_id")
+        ]
+
+    def read_bom(self, product_id: str) -> Dict[str, Any]:
+        """SÓ LEITURA: a ficha técnica completa de um artigo, com todas as versões, as lojas de
+        cada versão e as linhas com custo em "" (todos os armazéns) e em cada armazém."""
+        r = self._bom_post(f"{product_id}/{self._BOM_OPEN_DATASETS}", "OPEN,GET,INFO", None)
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"ficha {product_id}: OPEN falhou (HTTP {r.status_code}) — {r.text[:300]}")
         object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
         if not object_id:
-            raise RuntimeError(
-                f"open_bom {product_id}: header 'ObjectID' ausente. Headers: {dict(r.headers)}"
-            )
-        return object_id
-
-    def fetch_bom_meta(self, object_id: str) -> Dict[str, Any]:
-        """maindataset (Action GET, read-only) — {id (productbom_id), product_id,
-        cashbox_date, product_id_descr, deleted}. Carrega a ficha na sessão."""
-        url = (
-            f"{self.api_url}/service/product/productbom.maindataset/"
-            f"productbom.storerelation.storedata,productbom.storerelation.storegroup"
-        )
-        r = self.session.post(url, json=[{"key": "00000000"}], headers=self._bom_headers("GET", object_id))
-        if r.status_code != 200:
-            log.error("fetch_bom_meta falhou: HTTP %s body=%s", r.status_code, r.text[:1000])
-            r.raise_for_status()
-        prod = r.json().get("product", {})
-        md = prod.get("productbom.maindataset", [])
-        meta = dict(md[0]) if md else {}
-        # storerelation (quais lojas a ficha cobre) — guarda o que vier (pode vir vazio).
-        storerel = {k: v for k, v in prod.items() if k.startswith("productbom.storerelation")}
-        if storerel:
-            meta["_storerelation"] = storerel
-        return meta
-
-    def fetch_bom_warehouses(self, object_id: str) -> List[Dict[str, Any]]:
-        """lkwarehouses (GET,INFO) — [{id, description}]. Inclui o default id="" (a
-        ignorar a montante por ser não-determinístico)."""
-        url = f"{self.api_url}/service/product/productbom.lkwarehouses"
-        r = self.session.post(url, json={"params": {}}, headers=self._bom_headers("GET,INFO", object_id))
-        if r.status_code != 200:
-            log.error("fetch_bom_warehouses falhou: HTTP %s body=%s", r.status_code, r.text[:1000])
-            r.raise_for_status()
-        return r.json().get("product", {}).get("productbom.lkwarehouses", [])
-
-    def fetch_bom_ingredients(self, object_id: str, warehouse_id: str = "") -> List[Dict[str, Any]]:
-        """prodbomdetail (GET,INFO) para um armazém — linhas com composição
-        (qnt/qnt_base/waste/recovery/unit) e custo (unit_cost/cost) + isbom."""
-        url = (
-            f"{self.api_url}/service/product/"
-            f"productbom.prodbomdetail,productbom.lkunits,productbom.lkprodunits"
-        )
-        body = {"params": {"warehouse_id": warehouse_id}}
-        r = self.session.post(url, json=body, headers=self._bom_headers("GET,INFO", object_id))
-        if r.status_code != 200:
-            log.error("fetch_bom_ingredients wh=%s falhou: HTTP %s body=%s", warehouse_id, r.status_code, r.text[:1000])
-            r.raise_for_status()
-        return r.json().get("product", {}).get("productbom.prodbomdetail", [])
-
-    def close_bom(self, product_id: str, object_id: str) -> None:
-        """Fecha a sessão da ficha (Action CLOSE). Sem SAVE → nada é gravado."""
-        url = f"{self.api_url}/service/product/{product_id}/productbom"
+            raise RuntimeError(f"ficha {product_id}: header 'ObjectID' ausente.")
         try:
-            self.session.post(url, json={"params": {}}, headers=self._bom_headers("CLOSE", object_id))
-        except Exception as exc:  # noqa: BLE001 — fechar é best-effort; não rebenta o sync
-            log.warning("close_bom %s falhou (ignorado): %s", product_id, type(exc).__name__)
+            article = self.parse_bom_article(r.json().get("product", {}))
+            versions = article["versions"]
+            warehouses: List[Dict[str, Any]] = []
+            if versions:
+                info = self._bom_post(self._BOM_INFO_DATASETS, "GET,INFO", object_id)
+                info.raise_for_status()
+                warehouses = [
+                    {"id": str(w.get("id") or ""), "description": w.get("description") or ""}
+                    for w in info.json().get("product", {}).get("productbom.lkwarehouses") or []
+                ]
+            wh_ids = [""] + [w["id"] for w in warehouses if w["id"]]
+            for v in versions:
+                sel = self._bom_post(self._BOM_SELECT_PATH, "EDIT,GET", object_id, [{"key": v["key"]}])
+                sel.raise_for_status()
+                v["stores"] = self.parse_bom_stores(sel.json().get("product", {}).get("productbom.storerelation.storedata"))
+                v["lines"] = {}
+                for wh in wh_ids:
+                    lr = self._bom_post(self._BOM_LINES_DATASETS, "GET,INFO", object_id, {"params": {"warehouse_id": wh}})
+                    lr.raise_for_status()
+                    lines = self.parse_bom_lines(lr.json().get("product", {}).get("productbom.prodbomdetail"))
+                    # As linhas têm de ser da versão posicionada; se não forem, não se usam.
+                    if any(l["productbom_id"] and l["productbom_id"] != v["id"] for l in lines):
+                        raise RuntimeError(f"ficha {product_id}: linhas de outra versão (esperada {v['id']}).")
+                    v["lines"][wh] = lines
+            article["warehouses"] = [w for w in warehouses if w["id"]]
+            return article
+        finally:
+            try:
+                self._bom_post("", "CLOSE", object_id)
+            except Exception as exc:  # noqa: BLE001 — fechar é best-effort; não mascara o erro real
+                log.warning("read_bom %s: CLOSE falhou (ignorado): %s", product_id, type(exc).__name__)
+
+    def read_boms(self, product_ids: List[str], max_depth: int = 5) -> Dict[str, Any]:
+        """Lê várias fichas numa só sessão. Os semi-produtos (linhas com isbom=1) são lidos também,
+        recursivamente, até `max_depth` níveis e sem repetir (proteção contra ciclos). Uma falha
+        num artigo fica registada e não pára os outros."""
+        boms: Dict[str, Any] = {}
+        errors: Dict[str, str] = {}
+        queue = [(str(p), 0) for p in product_ids if p]
+        seen: set = set()
+        while queue:
+            pid, depth = queue.pop(0)
+            if pid in seen:
+                continue
+            seen.add(pid)
+            try:
+                bom = self.read_bom(pid)
+            except Exception as exc:  # noqa: BLE001 — um artigo não pára os outros
+                errors[pid] = str(exc)[:300]
+                log.warning("read_boms: %s falhou: %s", pid, str(exc)[:200])
+                continue
+            bom["depth"] = depth
+            boms[pid] = bom
+            if depth + 1 > max_depth:
+                continue
+            for v in bom["versions"]:
+                for line in v.get("lines", {}).get("", []):
+                    if line["isbom"] == 1 and line["component_id"] and line["component_id"] not in seen:
+                        queue.append((line["component_id"], depth + 1))
+        return {"boms": boms, "errors": errors}
+
+    def list_bom_products(self, any_product_id: str) -> List[Dict[str, Any]]:
+        """A lista de artigos do seletor da ficha (productbom.productlist), com isproduct_bom.
+        Precisa de uma ficha aberta (qualquer artigo); abre, lê e fecha."""
+        r = self._bom_post(f"{any_product_id}/{self._BOM_OPEN_DATASETS}", "OPEN,GET,INFO", None)
+        r.raise_for_status()
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError("productlist: header 'ObjectID' ausente.")
+        try:
+            lr = self._bom_post("productbom.productlist", "GET,INFO", object_id, {"params": {}})
+            lr.raise_for_status()
+            return [
+                {"id": str(p.get("id") or ""), "code": p.get("code"), "isbom": int(p.get("isproduct_bom") or 0)}
+                for p in lr.json().get("product", {}).get("productbom.productlist") or []
+                if p.get("id")
+            ]
+        finally:
+            try:
+                self._bom_post("", "CLOSE", object_id)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("productlist: CLOSE falhou (ignorado): %s", type(exc).__name__)
 
     # ═══════════════════════ FORM DO ARTIGO (form-lookups) — porta 8134 ═══════════
     # ⚠️ SÓ LEITURA (Caminho 1/3). O form do artigo NÃO abre com OPEN puro: abre com

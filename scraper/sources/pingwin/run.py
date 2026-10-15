@@ -377,6 +377,22 @@ def run(cfg: dict) -> dict:
             product = client.read_product(product_id)
             return {"ok": True, "mode": "read_product", "product": product}
 
+        if mode == "boms":
+            # SÓ LEITURA (Fatia 1): fichas técnicas dos artigos pedidos (+ semi-produtos,
+            # recursivo até 5 níveis). Sem product_ids → lista do seletor da ficha
+            # (isproduct_bom) e lê todas as que têm ficha.
+            ids = [str(i) for i in (cfg.get("product_ids") or []) if i]
+            product_list = None
+            if not ids:
+                probe = str(cfg.get("probe_product_id") or "")
+                if not probe:
+                    return {"ok": False, "error": "product_ids ou probe_product_id em falta."}
+                product_list = client.list_bom_products(probe)
+                ids = [p["id"] for p in product_list if p["isbom"] == 1]
+            result = client.read_boms(ids, max_depth=int(cfg.get("max_depth") or 5))
+            return {"ok": True, "mode": "boms", **result,
+                    "product_list": product_list}
+
         if mode == "update_product":
             # ⚠️ ESCRITA: EDITAR um artigo (OPEN→(prices)→MERGE curto→SAVE→CLOSE→confirmar).
             product_id = str(cfg.get("product_id") or "")

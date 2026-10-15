@@ -6,7 +6,7 @@ export type ComparisonTier = "same_month_last_year" | "previous_month" | "declar
 
 /** Comparação de um total (delta em %) ou de uma percentagem (delta em pontos percentuais). */
 export type MarketingComparison =
-    | { tier: null; reason: "no_history" }
+    | { tier: null; reason: "no_history" | "incomplete_period" } // incomplete_period: faltam lojas ou dias de vendas no período
     | {
         tier: ComparisonTier;
         reference_month: string; // AAAA-MM
@@ -18,7 +18,8 @@ export type MarketingComparison =
         seasonality_warning: boolean;
     };
 
-export interface SeriesPoint { date: string; value: number; }
+/** value null = dia sem dados (as vendas em falta não são zero). */
+export interface SeriesPoint { date: string; value: number | null; }
 
 export interface TotalMetric {
     unit: string;
@@ -69,4 +70,6 @@ export interface RestaurantMarketing {
         reservations_mix: ReservationsMixMetric | null;
     };
     declared: null;
+    /** Vendas do período: lojas sem dados e dias em falta (note = a frase pronta, ou null). */
+    coverage?: { status: "complete" | "partial" | "no_data" | "not_open"; complete: boolean; note: string | null };
 }

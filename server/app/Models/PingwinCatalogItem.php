@@ -25,6 +25,8 @@ class PingwinCatalogItem extends Model
         'default_stock_unit_id', 'label_unit_id', 'volume_unit_id',
         'taxgroup_id', 'stockconfig_id', 'printzone_id', 'product_type_id', 'status_id',
         'setexpireday', 'weight', 'default_supplier_id', 'fixedsupplier', 'obs',
+        // Fatia 1 (fichas técnicas): o armazém do custo, o preço sem IVA e a hora da última leitura.
+        'cost_warehouse_id', 'saleprice_wo_tax_cents', 'bom_synced_at',
     ];
 
     protected $casts = [

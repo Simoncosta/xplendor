@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Badge, Button, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
+import { Alert, Badge, Button, Col, Container, Input, Label, Row } from "reactstrap";
 import Select from "react-select";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
@@ -18,6 +18,7 @@ import QuoteSelect from "./QuoteSelect";
 import XSelect from "Components/Common/Select";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { confirmAction } from "helpers/swal";
+import Skeleton from "Components/Common/Skeleton";
 import {
     IQuote, IQuoteActivity, IQuoteLine, IQuoteCustomer, IQuoteCompanyOption, ICatalogItem, QuoteBilling, QuoteDiscountType, QuoteUnit,
     QUOTE_STATUS_META, UNIT_LABEL, BILLING_LABEL, DEFAULT_UNIT, VAT_NOTE, ADS_NOTE, formatQuoteEuro, longDate, longDateTime, quoteTotals,
@@ -371,7 +372,7 @@ const QuoteEditor = () => {
     const stickyStyle: React.CSSProperties = { position: "sticky", top: STICKY_TOP, zIndex: 2 };
 
     if (loading) {
-        return <div className="page-content"><Container fluid><div className="text-center py-5"><Spinner color="primary" /></div></Container></div>;
+        return <div className="page-content"><Container fluid><div aria-busy="true"><Skeleton variant="lines" lines={1} className="mb-3" style={{ maxWidth: 320 }} /><div className="card"><div className="card-body"><Skeleton variant="lines" lines={8} label="" /></div></div></div></Container></div>;
     }
 
     const sm = QUOTE_STATUS_META[status];

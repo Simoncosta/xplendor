@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Offcanvas, OffcanvasBody, OffcanvasHeader, Spinner } from "reactstrap";
+import { Offcanvas, OffcanvasBody, OffcanvasHeader } from "reactstrap";
 import { toast } from "react-toastify";
 import { RadarReactModal, RadarSignalCard, useRadar } from "./RadarCard";
 import type { RadarSignal } from "common/models/radar.model";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Painel lateral "Agora" da Linha Editorial: os mesmos cartões do Radar, em versão curta, para
@@ -19,7 +20,7 @@ export default function RadarNowPanel({ companyId, isOpen, onClose, onChanged }:
             <OffcanvasHeader toggle={onClose}>Agora</OffcanvasHeader>
             <OffcanvasBody>
                 <p className="text-muted fs-13">O que está a subir agora para o ramo da sua marca. O Radar nunca publica nem escreve o texto.</p>
-                {!data && loading && <div className="text-center py-4"><Spinner color="primary" /></div>}
+                {!data && loading && <Skeleton variant="lines" lines={4} className="py-2" />}
                 {data?.sector_missing && <p className="text-muted mb-0">Escolha o ramo da sua marca para o Radar saber o que lhe interessa.</p>}
                 {data && !data.sector_missing && data.signals.length === 0 && <p className="text-muted mb-0">Nada a subir agora para o seu ramo.</p>}
                 <div className="d-flex flex-column gap-3">

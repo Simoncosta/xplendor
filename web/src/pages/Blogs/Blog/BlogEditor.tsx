@@ -18,6 +18,7 @@ import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Criar e editar um artigo do blog. Conteúdo (o HTML é limpo no servidor ao gravar e ao
@@ -258,7 +259,7 @@ const BlogEditor = () => {
     const markers = [v.title, v.subtitle, v.excerpt, v.content, v.meta_title, v.meta_description].some(hasMarker);
 
     if (loading) {
-        return <div className="page-content"><Container fluid><div className="text-center py-5"><Spinner /></div></Container></div>;
+        return <div className="page-content"><Container fluid><div aria-busy="true"><Skeleton variant="lines" lines={1} className="mb-3" style={{ maxWidth: 320 }} /><div className="card"><div className="card-body"><Skeleton variant="lines" lines={8} label="" /></div></div></div></Container></div>;
     }
 
     return (

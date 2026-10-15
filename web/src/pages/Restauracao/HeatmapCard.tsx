@@ -4,6 +4,7 @@ import XSelect from "Components/Common/Select";
 import { getPingwinHeatmap } from "helpers/laravel_helper";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { FINANCIAL_NOTE, FinancialNote } from "Components/Common/HiddenMoney";
+import useDelayedFlag from "hooks/useDelayedFlag";
 
 /**
  * XPLENDOR — F2 do marketing da restauração: mapa de calor da semana (dia × hora), por loja.
@@ -53,6 +54,8 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
     const locationId = embedded ? (fixedLocation ?? null) : ownLocation;
     const [metric, setMetric] = useState<"sales" | "guests">("sales");
     const [loading, setLoading] = useState(false);
+    // Outra loja ou métrica com o mapa no ecrã: fica visível, esbatido, com o indicador no título.
+    const reloading = useDelayedFlag(loading && !!data);
 
     const load = useCallback(async () => {
         if (!companyId) return;
@@ -152,10 +155,10 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
         return (
             <div data-testid="heatmap-embedded">
                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                    <p className="text-muted fs-13 mb-0">{period} {loading && <Spinner size="sm" className="ms-1" />}</p>
+                    <p className="text-muted fs-13 mb-0">{period} {reloading && <Spinner size="sm" className="ms-1" aria-label="A carregar" />}</p>
                     {metricToggle}
                 </div>
-                {body}
+                <div className={reloading ? "xp-reloading" : undefined}>{body}</div>
             </div>
         );
     }
@@ -165,7 +168,7 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
             <Card className="mb-0">
                 <CardHeader className="d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
-                        <h5 className="card-title mb-1">Mapa da semana {loading && <Spinner size="sm" className="ms-1" />}</h5>
+                        <h5 className="card-title mb-1">Mapa da semana {reloading && <Spinner size="sm" className="ms-1" aria-label="A carregar" />}</h5>
                         <p className="text-muted fs-13 mb-0">{period}</p>
                     </div>
                     <div className="d-flex flex-wrap align-items-center gap-2">
@@ -176,7 +179,7 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
                         {metricToggle}
                     </div>
                 </CardHeader>
-                <CardBody>
+                <CardBody className={reloading ? "xp-reloading" : undefined} aria-busy={reloading || undefined}>
                     {body}
                 </CardBody>
             </Card>

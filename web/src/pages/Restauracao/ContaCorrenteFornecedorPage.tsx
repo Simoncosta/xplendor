@@ -11,6 +11,7 @@ import { getSupplierCc, getSupplierCcStatement } from "helpers/laravel_helper";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { SupplierCcOpenDoc, SupplierCcRow, SupplierCcStatement, SupplierCcStatementLine } from "common/models/supplierCc.model";
 import { CcStatusBadge, DIFF_TOOLTIP, eur, fmtDay, fmtInstant, isoDay, useSupplierCcRefresh } from "./contaCorrente.shared";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * XPLENDOR — Restauração › Conta Corrente Fornecedores › fornecedor (S2).
@@ -56,7 +57,7 @@ export default function ContaCorrenteFornecedorPage() {
 
     const [tab, setTab] = useState<"aberto" | "extrato">("aberto");
     const [detail, setDetail] = useState<Detail | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // começa a carregar (sem "sem dados" no 1.º render)
     const [notFound, setNotFound] = useState(false);
 
     // Extrato: por omissão de 1 de janeiro do ano corrente até hoje, todas as lojas.
@@ -69,7 +70,7 @@ export default function ContaCorrenteFornecedorPage() {
     document.title = `${detail?.supplier.name ?? "Fornecedor"} | Conta Corrente | Xplendor`;
 
     const loadDetail = useCallback(async () => {
-        if (!companyId || !supplierId) return;
+        if (!companyId || !supplierId) { setLoading(false); return; }
         setLoading(true);
         try {
             const res: any = await getSupplierCc(companyId, supplierId);
@@ -170,6 +171,12 @@ export default function ContaCorrenteFornecedorPage() {
                     <PageCard
                         title="Resumo"
                         flush={false}
+                        loading={loading && !s}
+                        skeleton={!s ? (
+                            <Row className="g-3 align-items-center" aria-busy="true">
+                                {[0, 1, 2, 3].map((i) => <Col key={i} sm={6} lg={3}><Skeleton variant="kpi" height={58} label={i === 0 ? "A carregar o resumo…" : ""} /></Col>)}
+                            </Row>
+                        ) : undefined}
                         status={s ? <>Atualizado a {fmtInstant(s.synced_at)}</> : undefined}
                         actions={<>
                             <Link to="/restauracao/conta-corrente" className="btn btn-light btn-sm"><i className="ri-arrow-left-line me-1" />Voltar</Link>
@@ -179,7 +186,7 @@ export default function ContaCorrenteFornecedorPage() {
                         </>}
                     >
                         {!s ? (
-                            <div className="text-center py-3"><Spinner size="sm" /></div>
+                            <p className="text-muted mb-0">Sem dados deste fornecedor.</p>
                         ) : (
                             <Row className="g-3 align-items-center">
                                 <Col lg={3}>

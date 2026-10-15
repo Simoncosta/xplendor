@@ -6,6 +6,7 @@ import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ReasonButton from "Components/Common/ReasonButton";
 import XSelect from "Components/Common/Select";
+import Skeleton from "Components/Common/Skeleton";
 import {
     applyAiModelToAll, chooseAiBlindCase, createAiBlindTest, getAiBlindTest, getAiBlindTests, getAiModels, updateAiModel,
 } from "helpers/laravel_helper";
@@ -144,7 +145,7 @@ export default function AiModelsPage() {
                 <PageHeader title="Modelos de IA" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
                     info="O fornecedor, o modelo e o nível de raciocínio de cada função de IA. As chaves ficam só no servidor. O OCR das faturas escolhe-se aqui à parte (sem escolha, vale o modelo do .env)." />
 
-                {!data ? <div className="text-center py-5"><Spinner color="primary" /></div> : view === "functions" ? (
+                {!data ? <div className="card"><Skeleton variant="table" rows={8} columns={5} /></div> : view === "functions" ? (
                     <>
                         {data.providers.filter((p) => !p.configured).map((p) => (
                             <div key={p.key} className="alert alert-warning fs-13" role="alert">
@@ -392,7 +393,7 @@ function BlindTestModal({ testId, onClose }: { testId: number; onClose: () => vo
         <Modal isOpen toggle={onClose} size="xl" scrollable centered data-testid="blind-test-modal">
             <ModalHeader toggle={onClose}>Teste às cegas: {test?.function_label ?? ""}</ModalHeader>
             <ModalBody>
-                {!test || !c ? <div className="text-center py-4"><Spinner color="primary" /></div> : (
+                {!test || !c ? <Skeleton variant="lines" lines={6} className="py-2" /> : (
                     <>
                         <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
                             <strong>Caso {c.index} de {test.cases.length}</strong>

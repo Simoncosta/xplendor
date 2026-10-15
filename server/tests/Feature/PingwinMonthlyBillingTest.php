@@ -62,15 +62,22 @@ class PingwinMonthlyBillingTest extends TestCase
         $this->assertSame(80.0, $costa['data'][5]);
     }
 
-    public function test_synced_month_with_no_sales_is_real_zero_not_null(): void
+    public function test_read_day_without_sales_is_real_zero_but_missing_store_is_null(): void
     {
-        // Junho sincronizado (A faturou); B não faturou nesse mês → 0 real (não null).
+        // Junho: A faturou; B foi lida e não vendeu (linha a zero) → 0 real.
         $this->sale($this->a, '2026-06-05', 10000);
+        $this->sale($this->b, '2026-06-05', 0);
+        // Julho: só A foi lida (o dia está "sincronizado" na empresa, mas sem a linha de B) →
+        // B fica sem dados (null), não a zero (era o zero falso do BUG-MAIO).
+        $this->sale($this->a, '2026-07-05', 7000);
 
         $out = $this->svc->monthlyByLocation($this->company->id, 2026);
         $costa = collect($out['series'])->firstWhere('location_id', $this->b->id);
-        $this->assertSame(0.0, $costa['data'][5]);   // mês sincronizado, sem vendas → 0 real
-        $this->assertNull($costa['data'][6]);        // Julho não sincronizado → null
+        $this->assertSame(0.0, $costa['data'][5]);   // dia lido, sem vendas → 0 real
+        $this->assertNull($costa['data'][6]);        // sem a linha de B → null (não 0)
+        $this->assertNull($costa['data'][7]);        // Agosto sem nada → null
+        // Junho de B: 1 dia lido; faltam os outros 25 dias desde o início (05/06).
+        $this->assertSame(25, $costa['missing_days'][5]);
     }
 
     public function test_opened_on_makes_pre_opening_months_null(): void

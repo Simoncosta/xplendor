@@ -18,6 +18,7 @@ import XSelect, { XMultiSelect } from "Components/Common/Select";
 import SetupLinkModal from "pages/Companies/CompanyProfile/setupLink/SetupLinkModal";
 import { isAdminRole } from "helpers/roles";
 import { useAccess } from "contexts/ModulesContext";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Painel da agência (a equipa da agência e o root, no contexto da agência): por cliente, o
@@ -124,7 +125,7 @@ function ClientsTab({ agencyId, isAgencyAdmin }: { agencyId: number; isAgencyAdm
         { id: "production", header: "Em produção", align: "center", value: (r) => r.production, cell: (r) => cell(r, r.production, "kanban", "primary", "Em produção") },
     ] as DTColumn<PanelRow>[]);
 
-    if (rows === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
+    if (rows === null) return <Skeleton variant="table" rows={5} columns={5} />;
 
     return (
         <PageCard
@@ -199,7 +200,7 @@ function RequestsTab({ agencyId }: { agencyId: number }) {
             </> },
     ] as DTColumn<Req>[]);
 
-    if (list === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
+    if (list === null) return <Skeleton variant="table" rows={5} columns={5} />;
 
     return (
         <PageCard
@@ -285,7 +286,7 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
         finally { setSaving(0); }
     };
 
-    if (rows === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
+    if (rows === null) return <Skeleton variant="table" rows={5} columns={5} />;
 
     return (
         <PageCard
@@ -415,7 +416,7 @@ function ManagementTab({ agencyId }: { agencyId: number }) {
             </> },
     ] as DTColumn<MgmtReq>[]);
 
-    if (list === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
+    if (list === null) return <Skeleton variant="table" rows={5} columns={5} />;
 
     return (
         <Row className="g-3">

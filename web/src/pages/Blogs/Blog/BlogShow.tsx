@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Badge, Container, Spinner } from "reactstrap";
+import { Badge, Container } from "reactstrap";
 import { showBlog } from "helpers/laravel_helper";
 import { BLOG_STATUS_META, IBlogPost, blogImage, fmtDateTime } from "common/models/blog.model";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Pré-visualização de leitura do artigo. O conteúdo chega já limpo pelo servidor (lista de
@@ -24,7 +25,7 @@ export default function BlogShow() {
         showBlog(companyId, Number(id)).then((r: any) => setBlog(r.data)).catch(() => setBlog(null)).finally(() => setLoading(false));
     }, [companyId, id]);
 
-    if (loading) return <div className="page-content"><Container fluid><div className="text-center py-5"><Spinner /></div></Container></div>;
+    if (loading) return <div className="page-content"><Container fluid><div aria-busy="true"><Skeleton variant="lines" lines={1} className="mb-3" style={{ maxWidth: 320 }} /><div className="card"><div className="card-body"><Skeleton variant="lines" lines={8} label="" /></div></div></div></Container></div>;
     if (!blog) {
         return (
             <div className="page-content"><Container fluid>

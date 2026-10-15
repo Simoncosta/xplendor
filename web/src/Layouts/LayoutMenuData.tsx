@@ -223,6 +223,7 @@ const Navdata = () => {
                 { id: "pingwin-lojas", label: "Lojas", link: "/restauracao/lojas", parentId: "restauracao", module: "restauracao_lojas", permission: "restauracao.ver" },
                 { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "restauracao_calendario", permission: "restauracao.ver" },
                 { id: "pingwin-artigos", label: "Artigos", link: "/restauracao/artigos", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
+                { id: "pingwin-fichas-tecnicas", label: "Fichas técnicas", link: "/restauracao/fichas-tecnicas", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "restauracao_faturas", permission: "restauracao.ver" },
                 { id: "pingwin-conta-corrente", label: "Conta Corrente Fornecedores", link: "/restauracao/conta-corrente", parentId: "restauracao", module: "restauracao_conta_corrente", permission: "restauracao.ver" },
             ],

@@ -27,6 +27,7 @@ import { CHARGE_STATUS_META, dmy } from "common/models/charge.model";
 import { companyChargeInvoicePath } from "helpers/laravel_helper";
 import { openPdfGet } from "helpers/download_helper";
 import { useModules } from "contexts/ModulesContext";
+import Skeleton from "Components/Common/Skeleton";
 
 interface Option { value: number; label: string; }
 
@@ -266,6 +267,9 @@ const ExpenseList = () => {
     );
 
     const metaAuto = summary?.automatic_meta;
+    // Totais: esqueleto na 1.ª carga (nunca "0,00 €" enquanto carrega); "—" se não vierem.
+    const kpi = (content: React.ReactNode, label = "", lines = 1) => content
+        || (loading ? <Skeleton variant="value" lines={lines} label={label} /> : <div className="fs-20 fw-semibold text-muted">—</div>);
 
     return (
         <React.Fragment>
@@ -283,20 +287,20 @@ const ExpenseList = () => {
                         <Col md={4}>
                             <Card className="mb-0"><CardBody>
                                 <p className="text-muted mb-1">Total</p>
-                                <div className="fs-20 fw-semibold">{eur(summary?.total_amount ?? 0)}</div>
-                                <small className="text-muted">{summary?.count ?? 0} despesa(s)</small>
+                                {kpi(summary && <><div className="fs-20 fw-semibold">{eur(summary.total_amount)}</div>
+                                    <small className="text-muted">{summary.count} despesa(s)</small></>, "A carregar os totais…", 2)}
                             </CardBody></Card>
                         </Col>
                         <Col md={4}>
                             <Card className="mb-0"><CardBody>
                                 <p className="text-muted mb-1">Em aberto</p>
-                                <div className="fs-20 fw-semibold text-danger">{eur(summary?.open_amount ?? 0)}</div>
+                                {kpi(summary && <div className="fs-20 fw-semibold text-danger">{eur(summary.open_amount)}</div>)}
                             </CardBody></Card>
                         </Col>
                         <Col md={4}>
                             <Card className="mb-0"><CardBody>
                                 <p className="text-muted mb-1">Pagas</p>
-                                <div className="fs-20 fw-semibold text-success">{eur(summary?.paid_amount ?? 0)}</div>
+                                {kpi(summary && <div className="fs-20 fw-semibold text-success">{eur(summary.paid_amount)}</div>)}
                             </CardBody></Card>
                         </Col>
                     </Row>

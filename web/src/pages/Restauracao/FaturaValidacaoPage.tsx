@@ -24,6 +24,7 @@ import {
     OcrLineLink, OcrArticlesSummary, OcrLineLinksPayload,
 } from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * XPLENDOR — Restauração › Faturas › Validação (OCR Fase A, o CORE). Mostra o que
@@ -339,7 +340,7 @@ export default function FaturaValidacaoPage() {
     const pageTitle = inv?.number ? `Fatura ${inv.number}` : "Validar fatura";
 
     if (loading) {
-        return <div className="page-content"><Container fluid><PageHeader title="Validar fatura" breadcrumbs={crumbs} crumbLabel="Validar" /><div className="text-center py-5"><Spinner /> A carregar…</div></Container></div>;
+        return <div className="page-content"><Container fluid><PageHeader title="Validar fatura" breadcrumbs={crumbs} crumbLabel="Validar" /><div className="card"><div className="card-body"><Skeleton variant="lines" lines={10} /></div></div></Container></div>;
     }
 
     if (inv?.status === "processing") {
@@ -690,7 +691,7 @@ export default function FaturaValidacaoPage() {
                             <div className="card-header"><h5 className="card-title mb-0">Imagem da fatura</h5></div>
                             <CardBody className="text-center">
                                 {!imageUrl ? (
-                                    <div className="text-muted py-5"><Spinner size="sm" className="me-1" /> A carregar imagem…</div>
+                                    <Skeleton variant="block" height="70vh" label="A carregar a imagem…" />
                                 ) : imageIsPdf ? (
                                     <iframe title="fatura" src={imageUrl} style={{ width: "100%", height: "70vh", border: "1px solid var(--vz-border-color)", borderRadius: 8 }} />
                                 ) : (

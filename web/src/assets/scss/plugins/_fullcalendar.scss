@@ -256,15 +256,27 @@
     }
 }
 
+// XPLENDOR — botões da barra do calendário no tamanho sm (27,3 px), como as outras ações de cartão.
+// O .fc-button acima força padding/height com !important; aqui volta-se ao btn-sm.
+.fc .fc-toolbar .fc-button {
+    padding: $btn-padding-y-sm $btn-padding-x-sm !important;
+    font-size: $btn-font-size-sm;
+    line-height: $btn-line-height;
+    border-radius: $btn-border-radius-sm;
+    // O "Hoje" do tema perde a borda (border: <cor>); com ela, todos ficam com os 27,3 px do btn-sm.
+    border-style: solid;
+    border-width: $btn-border-width;
+}
+
 .fc-prev-button,
 .fc-next-button {
     position: relative;
-    height: 37.5px;
-    width: 37.5px;
+    // Quadrado com a altura do btn-sm (o conteúdo é só a seta do ::before).
+    width: calc(#{$btn-font-size-sm} * #{$btn-line-height} + #{$btn-padding-y-sm} * 2 + #{$btn-border-width} * 2);
     &::before {
         position: absolute;
         font-family: remixicon !important;
-        font-size: 20px;
+        font-size: 16px;
         top: 0;
         bottom: 0px;
         left: 0;
@@ -272,6 +284,15 @@
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+    // Uma só seta: a do tema (::before). O FullCalendar desenha também o seu ícone (.fc-icon
+    // chevron); ficavam as duas sobrepostas em qualquer calendário com barra.
+    .fc-icon {
+        display: none;
+    }
+    // O botão fica com a altura do btn-sm mesmo sem texto (o ícone escondido não dá altura).
+    &::after {
+        content: "\200b";
     }
 }
 .fc-prev-button {

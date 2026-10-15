@@ -9,6 +9,8 @@ import XSelect from "Components/Common/Select";
 import DashboardSectionHeader from "./DashboardSectionHeader";
 import RecommendationsCard, { type RecommendationsState } from "./RecommendationsCard";
 import { buildInsights, comparisonTag, eur0, int, monthLong, signedPct, signedPp, usesSeasonalityWarning } from "./restaurantMarketingText";
+import Skeleton from "Components/Common/Skeleton";
+import useDelayedFlag from "hooks/useDelayedFlag";
 
 /**
  * XPLENDOR — Dashboard de restauração: bloco "Marketing e resultados" (o HUB).
@@ -136,6 +138,8 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
     const [data, setData] = useState<RestaurantMarketing | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    // Outro mês com os dados já no ecrã: ficam visíveis, esbatidos (e um indicador ao lado do mês).
+    const reloading = useDelayedFlag(loading && !!data);
 
     useEffect(() => {
         if (!companyId) return;
@@ -162,14 +166,27 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
         // Sem título: está dentro do separador "Marketing e resultados", que já o diz.
         <DashboardSectionHeader subtitle="Como estão a empresa e o marketing no mês escolhido.">
             <XSelect small width={240} ariaLabel="Mês" options={monthOptions} value={month} onChange={setMonth} searchable={false} disabled={loading} />
+            {reloading && <Spinner size="sm" aria-label="A carregar" />}
         </DashboardSectionHeader>
     );
 
     if (loading && !data) {
+        // 1.ª carga: os 5 totais e o gráfico em esqueleto (com as medidas do conteúdo).
         return (
-            <section className="mb-4">
+            <section className="mb-4" aria-busy="true">
                 {header}
-                <Card className="mb-0"><CardBody className="text-center py-4"><Spinner color="primary" size="sm" /></CardBody></Card>
+                <span className="visually-hidden">A carregar o resumo de marketing…</span>
+                <Row className="g-3 mb-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <Col key={i} xs={12} sm={6} xl>
+                            <Card className="mb-0 h-100"><CardBody><Skeleton variant="kpi" height={96} label="" /></CardBody></Card>
+                        </Col>
+                    ))}
+                </Row>
+                <Row className="g-3 mb-3">
+                    <Col lg={5}><Card className="mb-0 h-100"><CardBody><Skeleton variant="lines" lines={5} label="" /></CardBody></Card></Col>
+                    <Col lg={7}><Card className="mb-0 h-100"><CardBody><Skeleton variant="chart" height={280} label="" /></CardBody></Card></Col>
+                </Row>
             </section>
         );
     }
@@ -207,6 +224,7 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
     return (
         <section className="mb-4">
             {header}
+            <div className={reloading ? "xp-reloading" : undefined} aria-busy={reloading || undefined}>
 
             {data.period.days === 0 ? (
                 <Alert color="info" className="mb-3 fs-13">
@@ -237,6 +255,8 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
                                 help="O total faturado nas lojas (com IVA) no período, segundo o sistema de vendas. Por baixo, as pessoas servidas segundo as reservas."
                             >
                                 <ComparisonBadge cmp={m.revenue?.comparison} />
+                                {/* Lojas sem dados e dias de vendas em falta: o total é só dos dias lidos. */}
+                                {data.coverage?.note && <div className="mt-1 fs-12 text-warning" data-testid="revenue-coverage">{data.coverage.note}</div>}
                                 {m.covers?.has_data && (
                                     <div className="mt-2 fs-13">
                                         <span className="text-body fw-medium">{int(m.covers.total)} pessoas</span>{" "}
@@ -289,7 +309,9 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
                                     ? `${m.marketing_weight.value.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}%`
                                     : undefined}
                                 unavailable={!m.marketing_weight || m.marketing_weight.value === null
-                                    ? (m.meta_spend ? "Sem faturação no período para calcular." : "Precisa da Meta ligada para calcular.")
+                                    ? (!m.meta_spend ? "Precisa da Meta ligada para calcular."
+                                        : data.coverage && !data.coverage.complete && m.revenue ? "Faltam vendas de lojas ou dias no período: não se calcula."
+                                        : "Sem faturação no período para calcular.")
                                     : undefined}
                                 help="Quanto o investimento na Meta representa da faturação: por cada 100 € faturados, quantos euros foram para anúncios. Não mede o efeito dos anúncios."
                             >
@@ -374,7 +396,7 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
 
             {/* ── Recomendações (motor de regras explicáveis), entre o Insight e os atalhos ── */}
             <RecommendationsCard companyId={companyId} vertical="restaurant" state={recommendations} />
-
+            </div>
         </section>
     );
 }
@@ -388,7 +410,8 @@ function DailyChart({ data }: { data: RestaurantMarketing }) {
         return <p className="text-muted mb-0">Sem dados diários para este período.</p>;
     }
 
-    const series: { name: string; type: string; data: number[] }[] = [];
+    // null = dia sem dados: o gráfico deixa o buraco (não desce a zero).
+    const series: { name: string; type: string; data: (number | null)[] }[] = [];
     const yaxis: ApexYAxis[] = [];
     const colors: string[] = [];
     const palette = getChartColorsArray('["--vz-primary", "--vz-info", "--vz-success"]');

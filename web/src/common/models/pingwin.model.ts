@@ -55,9 +55,21 @@ export interface PingwinLocationEntity {
 }
 
 // ── Dashboard de restauração (valores em CÊNTIMOS inteiros) ──────────────────
+// null = sem dados no período (nenhuma loja com vendas lidas), nunca zero.
 export interface PingwinMoneyPair {
-    invoiced_cents: number; // faturado c/IVA
-    net_cents: number;      // vendas líquidas
+    invoiced_cents: number | null; // faturado c/IVA
+    net_cents: number | null;      // vendas líquidas
+}
+
+/** Estado das vendas de uma loja num período (RestaurantSalesCoverage). */
+export type PingwinCoverageStatus = "complete" | "partial" | "no_data" | "not_open";
+
+/** Que lojas têm dados num período e que dias faltam (note: a frase pronta, ou null). */
+export interface PingwinCoverage {
+    status: PingwinCoverageStatus;
+    complete: boolean;
+    note: string | null;
+    locations: { id: number; name: string; start: string | null; status: PingwinCoverageStatus; missing_days: number; missing_ranges: [string, string][] }[];
 }
 
 export interface PingwinAnnualCard extends PingwinMoneyPair {
@@ -66,10 +78,12 @@ export interface PingwinAnnualCard extends PingwinMoneyPair {
     delta_pct_invoiced: number | null; // null = "—" (portão de honestidade)
     delta_pct_net: number | null;
     comparable: boolean;
+    coverage?: PingwinCoverage;
 }
 
 export interface PingwinMonthlyCard extends PingwinMoneyPair {
     month: string; // "YYYY-MM"
+    coverage?: PingwinCoverage;
 }
 
 export interface PingwinDailyCard extends PingwinMoneyPair {
@@ -79,14 +93,22 @@ export interface PingwinDailyCard extends PingwinMoneyPair {
     delta_pct_invoiced: number | null;
     delta_pct_net: number | null;
     comparable: boolean;
+    coverage?: PingwinCoverage;
+}
+
+/** Um período de uma loja na tabela: valores (null = sem dados neste período) + estado e dias em falta. */
+export interface PingwinLocationPeriod extends PingwinMoneyPair {
+    status?: PingwinCoverageStatus;
+    missing_days?: number;
+    note?: string | null;
 }
 
 export interface PingwinLocationRow {
     id: number;
     display_name: string;
-    annual: PingwinMoneyPair;
-    monthly: PingwinMoneyPair;
-    daily: PingwinMoneyPair;
+    annual: PingwinLocationPeriod;
+    monthly: PingwinLocationPeriod;
+    daily: PingwinLocationPeriod;
     occupancy: PingwinOccupancy; // lotação (pessoas) por período, desta loja
     last_synced_at: string | null;
 }
@@ -301,25 +323,28 @@ export interface PingwinMonthlySeries {
     location_id: number;
     name: string;
     data: (number | null)[];
+    missing_days?: (number | null)[]; // por mês: dias sem vendas lidas (mês parcial)
 }
 export interface PingwinMonthlyBilling {
     year: number;
     series: PingwinMonthlySeries[];
 }
 
-/** Um dia no calendário de faturação (cêntimos; guests/ticket null = sem dados). */
+/** Um dia no calendário de faturação (cêntimos; null = sem dados — as vendas em falta não são zero). */
 export interface PingwinCalendarDay {
     date: string; // YYYY-MM-DD
-    invoiced_cents: number;
-    net_cents: number;
+    invoiced_cents: number | null;
+    net_cents: number | null;
     guests: number | null;
     avg_ticket_cents: number | null;
+    missing_locations?: string[]; // lojas abertas sem as vendas deste dia
 }
 
 export interface PingwinCalendarResponse {
     month: string; // YYYY-MM
     location_id: number | null;
     days: PingwinCalendarDay[];
+    coverage?: PingwinCoverage | null; // lojas sem dados no mês e dias em falta
     locations: { id: number; display_name: string | null; winrest_name: string | null; winrest_store_id: string }[];
 }
 

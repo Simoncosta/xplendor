@@ -126,6 +126,18 @@ Schedule::job(new ScheduledRestaurantSyncJob())
         \Illuminate\Support\Facades\Log::error('[Restaurant Daily Sync] Job falhou no scheduler');
     });
 
+// 05:45 (Lisboa) — Fatia 1: fichas técnicas do PingWin (SÓ LEITURA: abre, lê e fecha cada ficha;
+// nunca grava). Depois da sync de vendas das 05:00 (~7 min) e antes da conta corrente das 06:30:
+// ~170 artigos com ficha a ~2,6 s cada ≈ 8 min, em lotes de 25. Fora do horário de serviço.
+Schedule::job(new \App\Jobs\DispatchBomSyncJob())
+    ->dailyAt('05:45')
+    ->timezone('Europe/Lisbon')
+    ->name('pingwin-boms-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[PingWin Fichas] Despacho noturno falhou no scheduler');
+    });
+
 // 06:30 (Lisboa) — conta corrente dos fornecedores PingWin (S1, SÓ LEITURA). Depois da
 // sync de vendas das 05:00 (~7 min; mais ao domingo com o catálogo completo): margem
 // de 1h30. Só despacha lotes de 40 fornecedores para a queue; com um único worker,

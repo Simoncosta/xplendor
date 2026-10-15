@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Container, Row, Col } from "reactstrap";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -7,6 +7,7 @@ import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import XSelect from "Components/Common/Select";
 import PageCard from "Components/Common/PageCard";
+import Skeleton from "Components/Common/Skeleton";
 import { getPingwinCalendar } from "helpers/laravel_helper";
 import { PingwinCalendarDay, PingwinCalendarResponse } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -30,6 +31,14 @@ const currentMonth = () => {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
+/** Semanas (linhas) da grelha do mês, com a semana a começar à segunda (como o calendário). */
+const monthWeeks = (ym: string) => {
+    const [y, m] = ym.split("-").map(Number);
+    const first = (new Date(y, m - 1, 1).getDay() + 6) % 7; // 0 = segunda
+    const days = new Date(y, m, 0).getDate();
+    return Math.ceil((first + days) / 7);
+};
+
 export default function CalendarioPage() {
     document.title = "Calendário de faturação | Restauração | Xplendor";
 
@@ -39,6 +48,17 @@ export default function CalendarioPage() {
     const [locationId, setLocationId] = useState<number | "">("");
     const [data, setData] = useState<PingwinCalendarResponse | null>(null);
     const [loading, setLoading] = useState(false);
+    const calendarBox = useRef<HTMLDivElement | null>(null);
+
+    // O FullCalendar não aceita aria-label nos botões da barra (só o title, via buttonHints):
+    // põe-se aqui, a cada mudança de mês (a barra pode ser redesenhada).
+    const labelNavButtons = useCallback(() => {
+        const box = calendarBox.current;
+        box?.querySelector(".fc-prev-button")?.setAttribute("aria-label", "Mês anterior");
+        box?.querySelector(".fc-next-button")?.setAttribute("aria-label", "Mês seguinte");
+    }, []);
+    // Também depois de cada render (no 1.º datesSet o contentor ainda não está ligado ao ref).
+    useEffect(() => { labelNavButtons(); });
 
     const fetchCalendar = useCallback(async (m: string, loc: number | "") => {
         if (!companyId) return;
@@ -87,7 +107,7 @@ export default function CalendarioPage() {
                 <PageHeader
                     title="Calendário de faturação"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    info="A faturação com IVA, as pessoas que reservaram e o ticket médio de cada dia. Os dias sem dados sincronizados ficam vazios; o ticket médio só aparece com faturação e reservas."
+                    info="A faturação com IVA, as pessoas que reservaram e o ticket médio de cada dia. Os dias sem dados sincronizados ficam vazios (ou dizem «Vendas em falta» quando só há reservas); o ticket médio só aparece com faturação e reservas."
                     filters={<>
                         {/* Filtro por loja: por omissão "Todas as lojas" (somadas). */}
                         <XSelect small
@@ -104,14 +124,26 @@ export default function CalendarioPage() {
 
                 <Row className="pb-5 mb-5">
                     <Col xs={12}>
-                        <PageCard title="Faturação por dia" flush={false} loading={loading} className="mb-0">
+                        {/* 1.ª carga: a grelha do mês em esqueleto; ao mudar de mês ou de loja, os números
+                            ficam visíveis, esbatidos, com o indicador no título. */}
+                        <PageCard title="Faturação por dia" flush={false} loading={loading} className="mb-0"
+                            skeleton={data ? undefined : <Skeleton variant="calendar" toolbar weeks={monthWeeks(month)} weekHeight={101} />}>
+                                {/* Lojas sem dados no mês e dias de vendas em falta (nunca a zero). */}
+                                {data?.coverage?.note && (
+                                    <div className="alert alert-warning fs-13 py-2 mb-3" role="status" data-testid="calendar-coverage">
+                                        <i className="ri-information-line me-1" />{data.coverage.note}
+                                    </div>
+                                )}
+                                <div ref={calendarBox}>
                                 <FullCalendar
                                     plugins={[dayGridPlugin]}
                                     initialView="dayGridMonth"
+                                    initialDate={`${month}-01`} /* depois do esqueleto, volta ao mês escolhido */
                                     locale={ptLocale}
                                     firstDay={1}
                                     height="auto"
                                     headerToolbar={{ left: "prev,next today", center: "title", right: "" }}
+                                    buttonHints={{ prev: "Mês anterior", next: "Mês seguinte", today: "Mês atual" }}
                                     /* ⚠️ Só leitura: sem criar, arrastar ou selecionar. */
                                     editable={false}
                                     selectable={false}
@@ -119,6 +151,7 @@ export default function CalendarioPage() {
                                     dayMaxEvents={false}
                                     events={events}
                                     datesSet={(arg) => {
+                                        labelNavButtons();
                                         const d = arg.view.currentStart;
                                         const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
                                         setMonth((prev) => (prev === m ? prev : m));
@@ -127,15 +160,22 @@ export default function CalendarioPage() {
                                         // Texto LEVE (sem fundo colorido): faturação em destaque; pessoas
                                         // e ticket discretos por baixo. Cores theme-aware (claro/escuro).
                                         const p = arg.event.extendedProps as PingwinCalendarDay;
+                                        const missing = p.missing_locations ?? [];
                                         return (
                                             <div className="w-100 px-1" style={{ whiteSpace: "normal", lineHeight: 1.25, background: "transparent" }}>
-                                                <div className="fw-bold text-primary fs-12">{euro(p.invoiced_cents)}</div>
+                                                {p.invoiced_cents === null
+                                                    ? <div className="text-muted fs-11 fst-italic" title="Não há vendas sincronizadas deste dia (não é um dia sem vendas).">Vendas em falta</div>
+                                                    : <div className="fw-bold text-primary fs-12">{euro(p.invoiced_cents)}</div>}
+                                                {p.invoiced_cents !== null && missing.length > 0 && (
+                                                    <div className="text-warning fs-11" title={`Sem as vendas de: ${missing.join(", ")}`}>parcial · falta {missing.join(", ")}</div>
+                                                )}
                                                 {p.guests !== null && <div className="text-muted fs-11">{num(p.guests)} pessoas</div>}
                                                 {p.avg_ticket_cents !== null && <div className="text-muted fs-11">{euro(p.avg_ticket_cents)}/pessoa</div>}
                                             </div>
                                         );
                                     }}
                                 />
+                                </div>
                         </PageCard>
                     </Col>
                 </Row>

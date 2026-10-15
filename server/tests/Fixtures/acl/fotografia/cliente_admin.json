@@ -1,6 +1,6 @@
 {
     "ator": "cliente_admin",
-    "rotas": 418,
+    "rotas": 420,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "POST api/v1/companies/{id}/management/first-admin",
@@ -204,6 +204,8 @@
         "GET api/v1/companies/{id}/quotes": 200,
         "GET api/v1/companies/{id}/quotes/{quote}/pdf": 404,
         "GET api/v1/companies/{id}/recommendations": 200,
+        "GET api/v1/companies/{id}/restaurant/recipes": 200,
+        "GET api/v1/companies/{id}/restaurant/recipes/{productId}": 404,
         "GET api/v1/companies/{id}/scraper/executions": 200,
         "GET api/v1/companies/{id}/scraper/executions/{runId}": 404,
         "GET api/v1/companies/{id}/setup-link": 200,

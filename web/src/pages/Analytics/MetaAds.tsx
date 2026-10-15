@@ -7,6 +7,7 @@ import DataTable, { useDataColumns } from "Components/Common/DataTable";
 import { getMetaOverview } from "helpers/laravel_helper";
 import { MetaOverviewResponse, MetaOverviewState, eur, nfmt, pct } from "common/models/metaAds.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * XPLENDOR — Meta / Anúncios (LEITURA). Mostra os dados FACTUAIS que o pipeline
@@ -98,7 +99,7 @@ const MetaAds = () => {
                     filters={showData ? rangeToggle : undefined} />
 
                 {loading ? (
-                    <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
+                    <div aria-busy="true"><div className="row g-3 mb-3">{[0, 1, 2, 3].map((i) => <div key={i} className="col-sm-6 col-xl-3"><div className="card mb-0"><div className="card-body"><Skeleton variant="kpi" height={60} label={i === 0 ? "A carregar…" : ""} /></div></div></div>)}</div><div className="card"><div className="card-body"><Skeleton variant="chart" height={300} label="" /></div></div></div>
                 ) : error || !data ? (
                     <PageCard title="Meta Ads" flush={false}><div className="text-center py-4">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-danger-subtle text-danger rounded fs-24"><i className="ri-error-warning-line" /></span></div>

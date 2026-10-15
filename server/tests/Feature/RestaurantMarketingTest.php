@@ -71,15 +71,21 @@ class RestaurantMarketingTest extends TestCase
 
     private function sale(string $date, int $cents): void
     {
-        PingwinDailySale::create(['company_id' => $this->company->id, 'location_id' => $this->loc->id, 'business_date' => $date, 'invoiced_cents' => $cents, 'net_cents' => $cents, 'synced_at' => now()]);
         $this->synced($date, $date);
+        PingwinDailySale::where('location_id', $this->loc->id)->whereDate('business_date', $date)
+            ->update(['invoiced_cents' => $cents, 'net_cents' => $cents]);
     }
 
-    /** Marca como sincronizados todos os dias [from, to] (sem vendas = 0 real). */
+    /**
+     * Marca como sincronizados todos os dias [from, to]: como a sincronização real, cada dia lido
+     * fica com a linha da loja (a zero se não vendeu = 0 real). Sem a linha, o dia está em falta.
+     */
     private function synced(string $from, string $to): void
     {
         for ($d = CarbonImmutable::parse($from); $d->lte(CarbonImmutable::parse($to)); $d = $d->addDay()) {
             PingwinSyncRun::firstOrCreate(['company_id' => $this->company->id, 'business_date' => $d->toDateString()], ['status' => 'success', 'synced_at' => now()]);
+            PingwinDailySale::firstOrCreate(['location_id' => $this->loc->id, 'business_date' => $d->toDateString()],
+                ['company_id' => $this->company->id, 'invoiced_cents' => 0, 'net_cents' => 0, 'synced_at' => now()]);
         }
     }
 

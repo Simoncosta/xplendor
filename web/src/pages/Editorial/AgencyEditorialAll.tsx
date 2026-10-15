@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner, Tooltip } from "reactstrap";
+import { Badge, Button, Label, Modal, ModalBody, ModalFooter, ModalHeader, Tooltip } from "reactstrap";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import listPlugin from "@fullcalendar/list";
@@ -14,6 +14,7 @@ import XSelect, { XOption } from "Components/Common/Select";
 import MonthResults from "./MonthResults";
 import CompanyPostPanel from "./CompanyPostPanel";
 import type { PanelTarget } from "./PostPanel";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Linha Editorial da agência, "Todos os clientes": as publicações de todas as empresas da
@@ -171,7 +172,7 @@ export default function AgencyEditorialAll({ agencyId, clients, initialView, ini
                 {view === "results" ? (
                     <MonthResults companyId={agencyId} month={month} monthLabel={monthLabel(month)} agency={{ agencyId }}
                         onOpen={(id, companyId) => companyId && setOpen({ companyId, target: { mode: "edit", postId: id } })} />
-                ) : posts === null ? <div className="text-center py-5"><Spinner /></div> : view === "board" ? (
+                ) : posts === null ? <Skeleton variant="calendar" /> : view === "board" ? (
                     <>
                         <div className="d-flex gap-2 overflow-auto pb-2" style={{ scrollSnapType: "x mandatory" }} data-testid="agency-board">
                             {columns.map((col) => (

@@ -35,6 +35,7 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { confirmAction } from "helpers/swal";
 import { useAccess } from "contexts/ModulesContext";
 import RadarNowPanel from "pages/Marketing/bussola/radar/RadarNowPanel";
+import Skeleton from "Components/Common/Skeleton";
 
 // O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
 const HowItWorksModal = lazy(() => import("./HowItWorksModal"));
@@ -407,7 +408,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                 <PageHeader title="Linha Editorial" breadcrumbs={[{ label: "Marketing" }]} filters={clientFilter} />
 
                 {loading ? (
-                    <div className="text-center py-5"><Spinner color="primary" /></div>
+                    <div className="card"><div className="card-body"><Skeleton variant="calendar" /></div></div>
                 ) : hasSector === false ? (
                     <Row className="justify-content-center"><Col xl={8}>
                         <SectorChooser companyId={companyId} busy={saving} onChoose={chooseSector} />
@@ -577,7 +578,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
 
             {/* "Como funciona" (diagrama carregado só ao abrir) e legenda das etapas. */}
             {howOpen && (
-                <Suspense fallback={<Modal isOpen centered><ModalBody className="text-center py-5"><Spinner /></ModalBody></Modal>}>
+                <Suspense fallback={<Modal isOpen centered><ModalBody><Skeleton variant="lines" lines={6} /></ModalBody></Modal>}>
                     <HowItWorksModal isOpen={howOpen} toggle={() => setHowOpen(false)} companyId={companyId} profileReady={ideasGate ? ideasGate.ready : null}
                         blockedReason={ideasGate?.reason ?? null} canProduce={canProduce} stageCounts={stageCounts} />
                 </Suspense>

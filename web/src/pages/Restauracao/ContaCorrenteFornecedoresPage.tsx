@@ -10,6 +10,7 @@ import { getSupplierCcOverview } from "helpers/laravel_helper";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { SupplierCcCards, SupplierCcRow } from "common/models/supplierCc.model";
 import { CcStatusBadge, DIFF_TOOLTIP, eur, fmtDay, fmtInstant, useSupplierCcRefresh } from "./contaCorrente.shared";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * XPLENDOR — Restauração › Conta Corrente Fornecedores (S2). Saldo REAL de cada fornecedor
@@ -42,13 +43,13 @@ export default function ContaCorrenteFornecedoresPage() {
 
     const [rows, setRows] = useState<SupplierCcRow[]>([]);
     const [cards, setCards] = useState<SupplierCcCards | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // começa a carregar (sem "sem dados" no 1.º render)
     const [search, setSearch] = useState("");
     const [quick, setQuick] = useState<QuickFilter[]>([]);
     const [showZero, setShowZero] = useState(false);
 
     const load = useCallback(async () => {
-        if (!companyId) return;
+        if (!companyId) { setLoading(false); return; }
         setLoading(true);
         try {
             const res: any = await getSupplierCcOverview(companyId);
@@ -85,6 +86,8 @@ export default function ContaCorrenteFornecedoresPage() {
         </Button>
     );
 
+    // 1.ª carga: o valor dos cartões em esqueleto (não "—" a piscar até chegarem os números).
+    const kpiPending = loading && !cards;
     const Kpi = ({ label, value, sub, id, tip, tone }: { label: string; value: React.ReactNode; sub?: React.ReactNode; id: string; tip?: string; tone?: string }) => (
         <Card className="mb-3 h-100">
             <CardBody>
@@ -92,8 +95,14 @@ export default function ContaCorrenteFornecedoresPage() {
                     {label}{tip && <i className="ri-information-line ms-1" />}
                 </div>
                 {tip && <UncontrolledTooltip target={id}>{tip}</UncontrolledTooltip>}
-                <div className={`fs-4 fw-semibold ${tone ?? ""}`}>{value}</div>
-                {sub && <div className="text-muted fs-12 mt-1">{sub}</div>}
+                {kpiPending ? (
+                    <Skeleton variant="value" lines={sub ? 2 : 1} label={id === "kpi-real" ? "A carregar…" : ""} />
+                ) : (
+                    <>
+                        <div className={`fs-4 fw-semibold ${tone ?? ""}`}>{value}</div>
+                        {sub && <div className="text-muted fs-12 mt-1">{sub}</div>}
+                    </>
+                )}
             </CardBody>
         </Card>
     );

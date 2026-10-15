@@ -1465,10 +1465,14 @@ class CompanyPingwinController extends Controller
             $locationId = $loc?->id;
         }
 
+        $coverage = $dashboard->monthCoverage($companyId, $year, $month, $locationId);
+
         return ApiResponse::success([
             'month' => $data['month'],
             'location_id' => $locationId,
             'days' => $dashboard->calendar($companyId, $year, $month, $locationId),
+            // Lojas sem dados no mês e dias em falta (null = mês no futuro).
+            'coverage' => $coverage ? \App\Services\Restaurant\RestaurantSalesCoverage::compact($coverage) : null,
             'locations' => PingwinLocation::where('company_id', $companyId)->where('is_active', true)
                 ->orderBy('display_name')->get(['id', 'display_name', 'winrest_name', 'winrest_store_id']),
         ], 'Calendário carregado.');

@@ -1207,6 +1207,43 @@ class PingwinService
     }
 
     /**
+     * FICHAS TÉCNICAS (Fatia 1, SÓ LEITURA): todas as versões, as lojas de cada versão e as linhas
+     * com custo em "" e em cada armazém, dos artigos pedidos e dos seus semi-produtos (recursivo,
+     * até 5 níveis). Sem $productIds lê a lista do seletor da ficha (isproduct_bom) e todas as que
+     * têm ficha; $probeId é um artigo qualquer para abrir essa lista. Devolve {boms, errors, product_list}.
+     *
+     * @param  list<string>  $productIds
+     */
+    public function fetchBoms(int $companyId, array $productIds, ?string $probeId = null, int $timeout = 3600): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $this->invokeTimeout = $timeout;
+        $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, array_filter([
+            'mode'             => 'boms',
+            'product_ids'      => array_values(array_map('strval', $productIds)),
+            'probe_product_id' => $probeId,
+            'max_depth'        => 5,
+        ], static fn ($v) => $v !== null)));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura das fichas técnicas PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return [
+            'boms'         => (array) ($result['boms'] ?? []),
+            'errors'       => (array) ($result['errors'] ?? []),
+            'product_list' => $result['product_list'] ?? null,
+        ];
+    }
+
+    /**
      * F4 (SÓ LEITURA): header + linhas de uma lista de documentos de fornecedor
      * ([{docconfig_id, docheader_id}]). Um docker exec por lote; no Python cada documento é
      * aberto (OPEN), lido (GET header,details) e FECHADO (CLOSE, sempre). Uma falha num
@@ -2293,6 +2330,7 @@ class PingwinService
         // Mapa nome(lower) → location_id a partir das lojas CADASTRADAS da empresa
         // (winrest_name e display_name, para maximizar o match).
         $locationByName = [];
+        $startByLocation = []; // início das vendas de cada loja (abertura, senão sales_since)
         foreach (PingwinLocation::where('company_id', $companyId)->get() as $loc) {
             foreach ([$loc->winrest_name, $loc->display_name] as $n) {
                 $n = mb_strtolower(trim((string) $n));
@@ -2300,6 +2338,7 @@ class PingwinService
                     $locationByName[$n] = $loc->id;
                 }
             }
+            $startByLocation[$loc->id] = ($loc->opened_on ?? $loc->sales_since)?->toDateString();
         }
 
         $now = now();
@@ -2314,6 +2353,11 @@ class PingwinService
             if (! $locationId) {
                 // Sem correspondência → avisa (não cria; fase futura). Não parte o sync.
                 $unmatched[] = $name;
+                continue;
+            }
+            // Antes do início da loja o relatório traz uma linha a zero: não é uma venda zero,
+            // é uma loja que ainda não existia → não se grava (era um zero falso).
+            if (($start = $startByLocation[$locationId] ?? null) !== null && substr($businessDate, 0, 10) < $start) {
                 continue;
             }
 

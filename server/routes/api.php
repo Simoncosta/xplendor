@@ -313,6 +313,9 @@ Route::prefix('v1')->group(function () {
                     // F2d: códigos dos fornecedores do artigo (principal + alternativos) e o relatório "IVA a rever".
                     Route::get('/integrations/pingwin/articles/{catalogItemId}/supplier-codes', [\App\Http\Controllers\Api\V1\CompanyArticleCodesController::class, 'supplierCodes'])->whereNumber('catalogItemId');
                     Route::get('/integrations/pingwin/catalog/vat-divergences', [\App\Http\Controllers\Api\V1\CompanyArticleCodesController::class, 'vatDivergences']);
+                    // Fatia 1: fichas técnicas (só leitura) — lista por Pareto e detalhe de um artigo.
+                    Route::get('/restaurant/recipes', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'index']);
+                    Route::get('/restaurant/recipes/{productId}', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'show'])->whereNumber('productId');
                     // Artigos — CRIAR (escrita; exige confirm) + poll do resultado.
                     Route::post('/integrations/pingwin/articles', [CompanyPingwinController::class, 'createArticle']);
                     Route::get('/integrations/pingwin/articles/creation/{creationId}', [CompanyPingwinController::class, 'articleCreation']);

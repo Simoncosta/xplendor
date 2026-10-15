@@ -16,6 +16,7 @@ import {
 } from "common/models/files.model";
 import { ConfirmModal, FolderPickerModal, NameModal } from "./FileModals";
 import "./files.css";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Ficheiros: o gestor de ficheiros da empresa, a partir da página File Manager do Velzon (pastas à
@@ -495,7 +496,7 @@ function FileDetail({ file, loadingDetail, actions, onClose }: { file: FileDetai
                 </table>
                 <div className="mb-3" data-testid="files-usage-list">
                     <h6 className="fs-12 text-uppercase text-muted mb-2">Onde está em uso</h6>
-                    {loadingDetail ? <Spinner size="sm" />
+                    {loadingDetail ? <Skeleton variant="lines" lines={2} />
                         : file.usage?.length ? (
                             <ul className="list-unstyled mb-0 fs-13">
                                 {file.usage.map((u) => <li key={u.id} className="mb-1"><Link to={`/editorial?publicacao=${u.id}`}><i className="ri-calendar-todo-line me-1" />{u.title}</Link>{u.publish_date ? <span className="text-muted"> · {fmtDate(u.publish_date)}</span> : null}</li>)}

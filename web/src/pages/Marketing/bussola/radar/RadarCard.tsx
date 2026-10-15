@@ -9,6 +9,7 @@ import { useCan } from "contexts/ModulesContext";
 import { MEDIA_FORMATS } from "common/models/editorialPost.model";
 import { getRadar, ignoreRadar, muteRadar, reactRadar, unmuteRadar, updateRadarSettings } from "helpers/laravel_helper";
 import type { RadarCalendarEntry, RadarPageData, RadarSettings, RadarSignal, RadarSource } from "common/models/radar.model";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * Radar de oportunidade (Bússola Master): "Está a subir" (o que está a acontecer agora) e "Vem aí"
@@ -296,7 +297,7 @@ export default function RadarCard({ companyId }: { companyId: number }) {
             status={data ? <span className="text-muted fs-12">{updated}</span> : undefined}
             actions={data ? <ActionsMenu items={[{ label: "Definições do Radar", icon: "ri-settings-3-line", onClick: () => setSettingsOpen(true), disabledReason: canEdit ? null : editReason }]} /> : undefined}>
             <div className="p-3">
-                {!data && loading && <div className="text-center py-4"><Spinner color="primary" /></div>}
+                {!data && loading && <Skeleton variant="lines" lines={4} className="py-2" />}
                 {failed && !data && <div className="alert alert-warning mb-0">Não foi possível carregar o Radar. Tente novamente dentro de momentos.</div>}
                 {data && data.sector_missing && (
                     <p className="text-muted mb-0" data-testid="radar-sector-missing">Escolha o ramo da sua marca na Linha Editorial para o Radar saber o que lhe interessa.</p>

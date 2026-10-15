@@ -1,0 +1,1189 @@
+{
+ "open": {
+  "product": {
+   "maindataset": [
+    {
+     "key": "00000000",
+     "id": "1649601156985",
+     "code": "23",
+     "description": "Coca Cola 0",
+     "base_unit_id": "11001",
+     "default_sale_unit_id": "11001",
+     "default_purchase_unit_id": "11001",
+     "default_stock_unit_id": "11001",
+     "forsale": 1,
+     "forpurchase": 0,
+     "forproduction": 0,
+     "stockconfig_id": "7501",
+     "cost_warehouse_id": "",
+     "taxgroup_id": "1003001",
+     "status": 1
+    }
+   ],
+   "productunits.baseunit": [
+    {
+     "key": "00000000",
+     "id": "11001",
+     "shortname": "UN",
+     "description": "Unidade"
+    },
+    {
+     "key": "00000001",
+     "id": "11002",
+     "shortname": "KG",
+     "description": "Quilograma"
+    },
+    {
+     "key": "00000002",
+     "id": "11003",
+     "shortname": "LT",
+     "description": "Litro"
+    }
+   ],
+   "productunits.lkunitsale": [
+    {
+     "key": "0000000100000010000000010000000000000001",
+     "id": "11001",
+     "parent_id": "",
+     "product_id": "",
+     "shortname": "UN",
+     "description": "Unidade",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 0,
+     "stock": 0,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "0000000100000010000000020000000000000002",
+     "id": "584955579139625325",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX 6",
+     "description": "Caixa 6 Unidades",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "0000000100000010000000030000000000000003",
+     "id": "584955579139625329",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX 24",
+     "description": "Caixa 24 Unidades",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "0000000100000010000000040000000000000004",
+     "id": "584955579139626529",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "GRD24",
+     "description": "Grade 24",
+     "unit_value": 24.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 24.0
+    },
+    {
+     "key": "0000000100000010000000050000000000000005",
+     "id": "584955579139626650",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "GRD28",
+     "description": "Grade 28",
+     "unit_value": 28.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 28.0
+    },
+    {
+     "key": "0000000100000010000000060000000000000006",
+     "id": "584955579139627352",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX60",
+     "description": "Caixa 60 sticks",
+     "unit_value": 60.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 60.0
+    },
+    {
+     "key": "0000000100000010000000070000000000000007",
+     "id": "584955579139629749",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PCT 9",
+     "description": "Pacote 90U",
+     "unit_value": 90.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 90.0
+    },
+    {
+     "key": "0000000100000010000000080000000000000008",
+     "id": "584955579139629752",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PCT 1",
+     "description": "Pacote 150U",
+     "unit_value": 150.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 150.0
+    },
+    {
+     "key": "0000000100000010000000090000000000000009",
+     "id": "584955579139629756",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX 10",
+     "description": "Caixa 100 Unidades",
+     "unit_value": 100.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 100.0
+    },
+    {
+     "key": "00000001000000100000000A000000000000000A",
+     "id": "584955579139629761",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PCT 1",
+     "description": "Pacote 100U",
+     "unit_value": 100.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 100.0
+    },
+    {
+     "key": "00000001000000100000000B000000000000000B",
+     "id": "584955579139629776",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PCT 4",
+     "description": "Pacote 4U",
+     "unit_value": 4.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 4.0
+    },
+    {
+     "key": "00000001000000100000000C000000000000000C",
+     "id": "584955579139633524",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PACOT",
+     "description": "BAGUETE - C6 COLHER CAFE",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "00000001000000100000000D000000000000000D",
+     "id": "584955579139633739",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "12UN",
+     "description": "CAIXA 12UN",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "00000001000000100000000E000000000000000E",
+     "id": "584955579139641651",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX 18",
+     "description": "Caixa 180 ovos",
+     "unit_value": 180.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 180.0
+    },
+    {
+     "key": "00000001000000100000000F000000000000000F",
+     "id": "584955579139771062",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "UND",
+     "description": "UND",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    }
+   ],
+   "productunits.lkunitpurchase": [
+    {
+     "key": "0000000100000010000000010000000000000001",
+     "id": "11001",
+     "parent_id": "",
+     "product_id": "",
+     "shortname": "UN",
+     "description": "Unidade",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 0,
+     "stock": 0,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "0000000100000010000000020000000000000002",
+     "id": "584955579139625325",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX 6",
+     "description": "Caixa 6 Unidades",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "0000000100000010000000030000000000000003",
+     "id": "584955579139625329",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX 24",
+     "description": "Caixa 24 Unidades",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "0000000100000010000000040000000000000004",
+     "id": "584955579139626529",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "GRD24",
+     "description": "Grade 24",
+     "unit_value": 24.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 24.0
+    },
+    {
+     "key": "0000000100000010000000050000000000000005",
+     "id": "584955579139626650",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "GRD28",
+     "description": "Grade 28",
+     "unit_value": 28.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 28.0
+    },
+    {
+     "key": "0000000100000010000000060000000000000006",
+     "id": "584955579139627352",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX60",
+     "description": "Caixa 60 sticks",
+     "unit_value": 60.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 60.0
+    },
+    {
+     "key": "0000000100000010000000070000000000000007",
+     "id": "584955579139629749",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PCT 9",
+     "description": "Pacote 90U",
+     "unit_value": 90.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 90.0
+    },
+    {
+     "key": "0000000100000010000000080000000000000008",
+     "id": "584955579139629752",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PCT 1",
+     "description": "Pacote 150U",
+     "unit_value": 150.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 150.0
+    },
+    {
+     "key": "0000000100000010000000090000000000000009",
+     "id": "584955579139629756",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX 10",
+     "description": "Caixa 100 Unidades",
+     "unit_value": 100.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 100.0
+    },
+    {
+     "key": "00000001000000100000000A000000000000000A",
+     "id": "584955579139629761",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PCT 1",
+     "description": "Pacote 100U",
+     "unit_value": 100.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 100.0
+    },
+    {
+     "key": "00000001000000100000000B000000000000000B",
+     "id": "584955579139629776",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PCT 4",
+     "description": "Pacote 4U",
+     "unit_value": 4.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 4.0
+    },
+    {
+     "key": "00000001000000100000000C000000000000000C",
+     "id": "584955579139633524",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "PACOT",
+     "description": "BAGUETE - C6 COLHER CAFE",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "00000001000000100000000D000000000000000D",
+     "id": "584955579139633739",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "12UN",
+     "description": "CAIXA 12UN",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    },
+    {
+     "key": "00000001000000100000000E000000000000000E",
+     "id": "584955579139641651",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "CX 18",
+     "description": "Caixa 180 ovos",
+     "unit_value": 180.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 180.0
+    },
+    {
+     "key": "00000001000000100000000F000000000000000F",
+     "id": "584955579139771062",
+     "parent_id": "11001",
+     "product_id": "",
+     "shortname": "UND",
+     "description": "UND",
+     "unit_value": 1.0,
+     "forpurchase": "",
+     "sale": 1,
+     "stock": 1,
+     "parent_qnt": 1.0
+    }
+   ],
+   "lk_stockconfig": [
+    {
+     "key": "00000000",
+     "id": "7500",
+     "settype_id": "7001",
+     "description": "Sem stock",
+     "movestock": 0,
+     "allow_negative_sale": 1,
+     "allowfifo": 0
+    },
+    {
+     "key": "00000001",
+     "id": "7501",
+     "settype_id": "7001",
+     "description": "Stock normal",
+     "movestock": 1,
+     "allow_negative_sale": 1,
+     "allowfifo": 1
+    },
+    {
+     "key": "00000002",
+     "id": "7502",
+     "settype_id": "7002",
+     "description": "Lotes",
+     "movestock": 1,
+     "allow_negative_sale": 1,
+     "allowfifo": 1
+    },
+    {
+     "key": "00000003",
+     "id": "7503",
+     "settype_id": "7003",
+     "description": "Edições",
+     "movestock": 1,
+     "allow_negative_sale": 1,
+     "allowfifo": 0
+    },
+    {
+     "key": "00000004",
+     "id": "7504",
+     "settype_id": "7004",
+     "description": "Séries",
+     "movestock": 1,
+     "allow_negative_sale": 1,
+     "allowfifo": 0
+    }
+   ],
+   "prices": [
+    {
+     "key": "0000000100000001000000010000000000000001",
+     "saleprice": 2.9,
+     "purchaseprice": 0.0,
+     "markup": 0.0,
+     "margin_value": 2.36,
+     "margin_percent": 100.0,
+     "saleprice_w_tax": 2.9,
+     "saleprice_wo_tax": 2.357724,
+     "purchaseprice_w_tax": 0.0,
+     "purchaseprice_wo_tax": 0.0
+    }
+   ],
+   "productbom.maindataset": [
+    {
+     "key": "00000000",
+     "id": "584955579139626657",
+     "product_id": "1649601156985",
+     "cashbox_date": "20260506T00:00:00",
+     "cronano": "2896263903326941396",
+     "deleted": 0,
+     "bom_type": "",
+     "product_id_descr": "Coca Cola 0"
+    }
+   ]
+  }
+ },
+ "info": {
+  "product": {
+   "productbom.lkunits": [
+    {
+     "key": "00000000",
+     "id": "11001",
+     "description": "Unidade",
+     "unit_value": 1.0
+    }
+   ],
+   "productbom.lkprodunits": [
+    {
+     "key": "00000000",
+     "id": "11001",
+     "parent_id": "",
+     "product_id": "",
+     "description": "Unidade",
+     "shortname": "UN",
+     "unit_value": 1.0,
+     "purchase": 0,
+     "sale": 0,
+     "stock": 0
+    },
+    {
+     "key": "00000001",
+     "id": "584955579139625325",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 6 Unidades",
+     "shortname": "CX 6",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000002",
+     "id": "584955579139625329",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 24 Unidades",
+     "shortname": "CX 24",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000003",
+     "id": "584955579139626529",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Grade 24",
+     "shortname": "GRD24",
+     "unit_value": 24.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000004",
+     "id": "584955579139626650",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Grade 28",
+     "shortname": "GRD28",
+     "unit_value": 28.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000005",
+     "id": "584955579139627352",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 60 sticks",
+     "shortname": "CX60",
+     "unit_value": 60.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000006",
+     "id": "584955579139629749",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Pacote 90U",
+     "shortname": "PCT 9",
+     "unit_value": 90.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000007",
+     "id": "584955579139629752",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Pacote 150U",
+     "shortname": "PCT 1",
+     "unit_value": 150.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000008",
+     "id": "584955579139629756",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 100 Unidades",
+     "shortname": "CX 10",
+     "unit_value": 100.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000009",
+     "id": "584955579139629761",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Pacote 100U",
+     "shortname": "PCT 1",
+     "unit_value": 100.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000A",
+     "id": "584955579139629776",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Pacote 4U",
+     "shortname": "PCT 4",
+     "unit_value": 4.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000B",
+     "id": "584955579139633524",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "BAGUETE - C6 COLHER CAFE",
+     "shortname": "PACOT",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000C",
+     "id": "584955579139633739",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "CAIXA 12UN",
+     "shortname": "12UN",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000D",
+     "id": "584955579139641651",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 180 ovos",
+     "shortname": "CX 18",
+     "unit_value": 180.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000E",
+     "id": "584955579139771062",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "UND",
+     "shortname": "UND",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    }
+   ],
+   "productbom.prodbomdetail": [
+    {
+     "key": "00000000",
+     "product_code": "100366",
+     "product_description": "COCA-COLA ZERO GARRAFA",
+     "productbom_id": "584955579139626657",
+     "product_id": "62590249681593592",
+     "unit_id": "11001",
+     "qnt": 1.0,
+     "qnt_base": 1.0,
+     "waste": 0.0,
+     "recovery": 0.0,
+     "deleted": 0,
+     "unit_cost": 4.571667,
+     "unit_desc": "Unidade",
+     "cost": 4.571667,
+     "isbom": 0,
+     "product_status": 1
+    }
+   ],
+   "productbom.storerelation.storedata": [
+    {
+     "key": "0000000100000003000000010000000000000001",
+     "store_id": "1099511639284",
+     "store_code": "BO",
+     "store_name": "Yuko BO",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    },
+    {
+     "key": "0000000100000003000000020000000000000002",
+     "store_id": "1099845342604",
+     "store_code": "YUKOPORTO",
+     "store_name": "Tabern Yuko Baixa",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    },
+    {
+     "key": "0000000100000003000000030000000000000003",
+     "store_id": "584955579139649880",
+     "store_code": "YUKOORIGEM",
+     "store_name": "Tabern Yuko Original",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    }
+   ],
+   "productbom.storerelation.storegroup": [
+    {
+     "key": "0000000100000004000000010000000000000001",
+     "id": "1099511639284",
+     "parent_id": "1649601156492",
+     "description": "Yuko BO",
+     "hq_store": 1
+    },
+    {
+     "key": "0000000100000004000000020000000000000002",
+     "id": "1099845342604",
+     "parent_id": "1649601156492",
+     "description": "Tabern Yuko Baixa",
+     "hq_store": 0
+    },
+    {
+     "key": "0000000100000004000000030000000000000003",
+     "id": "1649601156492",
+     "parent_id": "",
+     "description": "Yuko BO",
+     "hq_store": 0
+    },
+    {
+     "key": "0000000100000004000000040000000000000004",
+     "id": "584955579139649880",
+     "parent_id": "1649601156492",
+     "description": "Tabern Yuko Original",
+     "hq_store": 0
+    }
+   ],
+   "productbom.lkwarehouses": [
+    {
+     "key": "00000000",
+     "id": "",
+     "description": ""
+    },
+    {
+     "key": "00000001",
+     "id": "584955579139649883",
+     "description": "Armazém Yuko"
+    },
+    {
+     "key": "00000002",
+     "id": "584955579139620864",
+     "description": "Armazém Yuko BO"
+    },
+    {
+     "key": "00000003",
+     "id": "1649601156541",
+     "description": "Armazém Yuko Baixa"
+    }
+   ]
+  }
+ },
+ "select_v0": {
+  "product": {
+   "productbom.maindataset": [
+    {
+     "key": "00000000",
+     "id": "584955579139626657",
+     "product_id": "1649601156985",
+     "cashbox_date": "20260506T00:00:00",
+     "cronano": "2896263903326941396",
+     "deleted": 0,
+     "bom_type": "",
+     "product_id_descr": "Coca Cola 0"
+    }
+   ],
+   "productbom.storerelation.storedata": [
+    {
+     "key": "0000000100000003000000010000000000000001",
+     "store_id": "1099511639284",
+     "store_code": "BO",
+     "store_name": "Yuko BO",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    },
+    {
+     "key": "0000000100000003000000020000000000000002",
+     "store_id": "1099845342604",
+     "store_code": "YUKOPORTO",
+     "store_name": "Tabern Yuko Baixa",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    },
+    {
+     "key": "0000000100000003000000030000000000000003",
+     "store_id": "584955579139649880",
+     "store_code": "YUKOORIGEM",
+     "store_name": "Tabern Yuko Original",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    }
+   ],
+   "productbom.storerelation.storegroup": [
+    {
+     "key": "0000000100000004000000010000000000000001",
+     "id": "1099511639284",
+     "parent_id": "1649601156492",
+     "description": "Yuko BO",
+     "hq_store": 1
+    },
+    {
+     "key": "0000000100000004000000020000000000000002",
+     "id": "1099845342604",
+     "parent_id": "1649601156492",
+     "description": "Tabern Yuko Baixa",
+     "hq_store": 0
+    },
+    {
+     "key": "0000000100000004000000030000000000000003",
+     "id": "1649601156492",
+     "parent_id": "",
+     "description": "Yuko BO",
+     "hq_store": 0
+    },
+    {
+     "key": "0000000100000004000000040000000000000004",
+     "id": "584955579139649880",
+     "parent_id": "1649601156492",
+     "description": "Tabern Yuko Original",
+     "hq_store": 0
+    }
+   ]
+  }
+ },
+ "lines_all": {
+  "product": {
+   "productbom.prodbomdetail": [
+    {
+     "key": "00000000",
+     "product_code": "100366",
+     "product_description": "COCA-COLA ZERO GARRAFA",
+     "productbom_id": "584955579139626657",
+     "product_id": "62590249681593592",
+     "unit_id": "11001",
+     "qnt": 1.0,
+     "qnt_base": 1.0,
+     "waste": 0.0,
+     "recovery": 0.0,
+     "deleted": 0,
+     "unit_cost": 0.5275,
+     "unit_desc": "Unidade",
+     "cost": 0.5275,
+     "isbom": 0,
+     "product_status": 1
+    }
+   ],
+   "productbom.lkunits": [
+    {
+     "key": "00000000",
+     "id": "11001",
+     "description": "Unidade",
+     "unit_value": 1.0
+    }
+   ],
+   "productbom.lkprodunits": [
+    {
+     "key": "00000000",
+     "id": "11001",
+     "parent_id": "",
+     "product_id": "",
+     "description": "Unidade",
+     "shortname": "UN",
+     "unit_value": 1.0,
+     "purchase": 0,
+     "sale": 0,
+     "stock": 0
+    },
+    {
+     "key": "00000001",
+     "id": "584955579139625325",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 6 Unidades",
+     "shortname": "CX 6",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000002",
+     "id": "584955579139625329",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 24 Unidades",
+     "shortname": "CX 24",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000003",
+     "id": "584955579139626529",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Grade 24",
+     "shortname": "GRD24",
+     "unit_value": 24.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000004",
+     "id": "584955579139626650",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Grade 28",
+     "shortname": "GRD28",
+     "unit_value": 28.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000005",
+     "id": "584955579139627352",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 60 sticks",
+     "shortname": "CX60",
+     "unit_value": 60.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000006",
+     "id": "584955579139629749",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Pacote 90U",
+     "shortname": "PCT 9",
+     "unit_value": 90.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000007",
+     "id": "584955579139629752",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Pacote 150U",
+     "shortname": "PCT 1",
+     "unit_value": 150.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000008",
+     "id": "584955579139629756",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 100 Unidades",
+     "shortname": "CX 10",
+     "unit_value": 100.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "00000009",
+     "id": "584955579139629761",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Pacote 100U",
+     "shortname": "PCT 1",
+     "unit_value": 100.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000A",
+     "id": "584955579139629776",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Pacote 4U",
+     "shortname": "PCT 4",
+     "unit_value": 4.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000B",
+     "id": "584955579139633524",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "BAGUETE - C6 COLHER CAFE",
+     "shortname": "PACOT",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000C",
+     "id": "584955579139633739",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "CAIXA 12UN",
+     "shortname": "12UN",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000D",
+     "id": "584955579139641651",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "Caixa 180 ovos",
+     "shortname": "CX 18",
+     "unit_value": 180.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    },
+    {
+     "key": "0000000E",
+     "id": "584955579139771062",
+     "parent_id": "11001",
+     "product_id": "",
+     "description": "UND",
+     "shortname": "UND",
+     "unit_value": 1.0,
+     "purchase": 1,
+     "sale": 1,
+     "stock": 1
+    }
+   ]
+  }
+ },
+ "select_v0_original_inactive": {
+  "product": {
+   "productbom.maindataset": [
+    {
+     "key": "00000000",
+     "id": "584955579139626657",
+     "product_id": "1649601156985",
+     "cashbox_date": "20260506T00:00:00",
+     "cronano": "2896263903326941396",
+     "deleted": 0,
+     "bom_type": "",
+     "product_id_descr": "Coca Cola 0"
+    }
+   ],
+   "productbom.storerelation.storedata": [
+    {
+     "key": "0000000100000003000000010000000000000001",
+     "store_id": "1099511639284",
+     "store_code": "BO",
+     "store_name": "Yuko BO",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    },
+    {
+     "key": "0000000100000003000000020000000000000002",
+     "store_id": "1099845342604",
+     "store_code": "YUKOPORTO",
+     "store_name": "Tabern Yuko Baixa",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    },
+    {
+     "key": "0000000100000003000000030000000000000003",
+     "store_id": "584955579139649880",
+     "store_code": "YUKOORIGEM",
+     "store_name": "Tabern Yuko Original",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 1,
+     "productbom_id": "584955579139626657",
+     "readonly": 0
+    }
+   ],
+   "productbom.storerelation.storegroup": [
+    {
+     "key": "0000000100000004000000010000000000000001",
+     "id": "1099511639284",
+     "parent_id": "1649601156492",
+     "description": "Yuko BO",
+     "hq_store": 1
+    },
+    {
+     "key": "0000000100000004000000020000000000000002",
+     "id": "1099845342604",
+     "parent_id": "1649601156492",
+     "description": "Tabern Yuko Baixa",
+     "hq_store": 0
+    },
+    {
+     "key": "0000000100000004000000030000000000000003",
+     "id": "1649601156492",
+     "parent_id": "",
+     "description": "Yuko BO",
+     "hq_store": 0
+    },
+    {
+     "key": "0000000100000004000000040000000000000004",
+     "id": "584955579139649880",
+     "parent_id": "1649601156492",
+     "description": "Tabern Yuko Original",
+     "hq_store": 0
+    }
+   ]
+  }
+ }
+}

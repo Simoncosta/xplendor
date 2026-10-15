@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Alert, Col, Row, Spinner } from "reactstrap";
+import { Alert, Col, Row } from "reactstrap";
 import { getAutomotiveHub, getAutomotiveHubFunnel } from "helpers/laravel_helper";
 import type { AutomotiveFunnel, AutomotiveHub, FunnelRow, FunnelSortKey, HubPrice, SortDirection } from "common/models/automotiveHub.model";
 import type { Recommendation, RecommendationLevel } from "common/models/recommendation.model";
@@ -9,6 +9,7 @@ import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable
 import { MetricCard } from "./AutomotiveMarketingBlock";
 import { eur2 } from "./automotiveMarketingText";
 import { eur0, int } from "./restaurantMarketingText";
+import Skeleton from "Components/Common/Skeleton";
 
 /**
  * XPLENDOR — Hub do Automóvel: separador "Stock" do dashboard.
@@ -244,7 +245,7 @@ export default function AutomotiveHubStock({ companyId, onHighCount }: {
         return () => { alive = false; };
     }, [companyId, onHighCount]);
 
-    if (loading && !hub) return <div className="text-center py-4"><Spinner color="primary" size="sm" /></div>;
+    if (loading && !hub) return <Skeleton variant="lines" lines={4} className="py-2" />;
     if (error || !hub) {
         return <Alert color="light" className="fs-13">Não foi possível carregar o resumo do stock. Tente novamente dentro de momentos.</Alert>;
     }
