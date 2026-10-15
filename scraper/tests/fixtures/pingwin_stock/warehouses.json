@@ -1,0 +1,1061 @@
+{
+ "_source": "HAR armazem.har de 15/10/2026 (armazém de teste XPLENDOR TESTE, Yuko). Só os corpos JSON; sem cabeçalhos, cookies nem identificadores de sessão.",
+ "list": {
+  "browser": {
+   "browserdataset": [
+    {
+     "key": "00000000",
+     "id": "584955579139620864",
+     "code": "1",
+     "description": "Armazém Yuko BO",
+     "deleted": 0,
+     "exit_costmethod": "PCM",
+     "inv_costmethod": "PCM"
+    },
+    {
+     "key": "00000000",
+     "id": "1649601156541",
+     "code": "BAIXA",
+     "description": "Armazém Yuko Baixa",
+     "deleted": 0,
+     "exit_costmethod": "PCM",
+     "inv_costmethod": "PCM"
+    },
+    {
+     "key": "00000000",
+     "id": "584955579139649883",
+     "code": "2",
+     "description": "Armazém Yuko",
+     "deleted": 0,
+     "exit_costmethod": "PCM",
+     "inv_costmethod": "PCM"
+    }
+   ]
+  }
+ },
+ "list_after_create": {
+  "browser": {
+   "browserdataset": [
+    {
+     "key": "00000000",
+     "id": "584955579139620864",
+     "code": "1",
+     "description": "Armazém Yuko BO",
+     "deleted": 0,
+     "exit_costmethod": "PCM",
+     "inv_costmethod": "PCM"
+    },
+    {
+     "key": "00000000",
+     "id": "1649601156541",
+     "code": "BAIXA",
+     "description": "Armazém Yuko Baixa",
+     "deleted": 0,
+     "exit_costmethod": "PCM",
+     "inv_costmethod": "PCM"
+    },
+    {
+     "key": "00000000",
+     "id": "584955579139649883",
+     "code": "2",
+     "description": "Armazém Yuko",
+     "deleted": 0,
+     "exit_costmethod": "PCM",
+     "inv_costmethod": "PCM"
+    },
+    {
+     "key": "00000000",
+     "id": "584955579139801487",
+     "code": "3",
+     "description": "XPLENDOR TESTE",
+     "deleted": 0,
+     "exit_costmethod": "PCU",
+     "inv_costmethod": "PCU"
+    }
+   ]
+  }
+ },
+ "new": {
+  "entity": {
+   "maindataset": [
+    {
+     "key": "00000000",
+     "isclient": 0,
+     "issupplier": 0,
+     "isemployee": 0,
+     "iswarehouse": 1,
+     "isresource": 0,
+     "auth_status": "",
+     "auth_date": "",
+     "currency_id_descr": "",
+     "parent_id_descr": "",
+     "image_id_descr": "",
+     "region_id_descr": "",
+     "taxscenario_id_descr": "",
+     "timetable_id_descr": "",
+     "id": "584955579139801487",
+     "parent_id": "",
+     "code": "3",
+     "description": "",
+     "fiscalname": "",
+     "tax_number": "",
+     "taxscenario_id": "",
+     "region_id": "",
+     "creation_date": "20261015T18:44:26",
+     "deleted": 0,
+     "image_id": "",
+     "timetable_id": "",
+     "currency_id": "5001",
+     "cost_factor": "",
+     "integration_code": "",
+     "sys_create_timestamp": "",
+     "sys_update_timestamp": "",
+     "obs": "",
+     "tax_number_count": 0
+    }
+   ]
+  }
+ },
+ "form_main": {
+  "entity": {
+   "maindataset": [
+    {
+     "key": "00000000",
+     "isclient": 0,
+     "issupplier": 0,
+     "isemployee": 0,
+     "iswarehouse": 1,
+     "isresource": 0,
+     "auth_status": "",
+     "auth_date": "",
+     "currency_id_descr": "",
+     "parent_id_descr": "",
+     "image_id_descr": "",
+     "region_id_descr": "",
+     "taxscenario_id_descr": "",
+     "timetable_id_descr": "",
+     "id": "584955579139801487",
+     "parent_id": "",
+     "code": "3",
+     "description": "",
+     "fiscalname": "",
+     "tax_number": "",
+     "taxscenario_id": "",
+     "region_id": "",
+     "creation_date": "20261015T18:44:26",
+     "deleted": 0,
+     "image_id": "",
+     "timetable_id": "",
+     "currency_id": "5001",
+     "cost_factor": "",
+     "integration_code": "",
+     "sys_create_timestamp": "",
+     "sys_update_timestamp": "",
+     "obs": "",
+     "tax_number_count": 0
+    }
+   ],
+   "lktaxscenario": [
+    {
+     "key": "00000000",
+     "id": "",
+     "code": "",
+     "description": ""
+    },
+    {
+     "key": "00000001",
+     "id": "3100",
+     "code": "VENDA",
+     "description": "Venda"
+    },
+    {
+     "key": "00000002",
+     "id": "3101",
+     "code": "COMPRA",
+     "description": "Compra"
+    },
+    {
+     "key": "00000003",
+     "id": "990961251229",
+     "code": "TAXFREE",
+     "description": "Tax free"
+    }
+   ],
+   "lkregion_id": [
+    {
+     "key": "00000000",
+     "id": "21000",
+     "parent_id": "",
+     "code": "RG",
+     "description": "Região",
+     "deleted": 0
+    }
+   ],
+   "lkcurrency": [
+    {
+     "key": "00000000",
+     "id": "5001",
+     "code": "EUR",
+     "description": "Euro"
+    },
+    {
+     "key": "00000001",
+     "id": "5002",
+     "code": "USD",
+     "description": "Dollar"
+    },
+    {
+     "key": "00000002",
+     "id": "5003",
+     "code": "AOA",
+     "description": "Kwanza"
+    },
+    {
+     "key": "00000003",
+     "id": "5004",
+     "code": "MXN",
+     "description": "Peso"
+    },
+    {
+     "key": "00000004",
+     "id": "5005",
+     "code": "BRL",
+     "description": "Real"
+    },
+    {
+     "key": "00000005",
+     "id": "5006",
+     "code": "CVE",
+     "description": "Escudo"
+    },
+    {
+     "key": "00000006",
+     "id": "5007",
+     "code": "MZN",
+     "description": "Metical"
+    },
+    {
+     "key": "00000007",
+     "id": "5008",
+     "code": "CHF",
+     "description": "Swiss franc"
+    },
+    {
+     "key": "00000008",
+     "id": "5009",
+     "code": "MAD",
+     "description": "Moroccan dirham"
+    },
+    {
+     "key": "00000009",
+     "id": "5010",
+     "code": "GBP",
+     "description": "Libra esterlina britânica"
+    }
+   ],
+   "datasetwarehouse": [
+    {
+     "key": "00000000",
+     "entity_id": "584955579139801487",
+     "inv_costmethod": 0,
+     "exit_costmethod": 0,
+     "deleted": 0,
+     "entity_id_descr": ""
+    }
+   ],
+   "address.defaultaddress": [
+    {
+     "key": "00000000",
+     "id": "584955579139801488",
+     "entity_id": "584955579139801487",
+     "contact_type_id": "6001",
+     "address": "",
+     "postalcode": "",
+     "postalcode_description": "",
+     "city": "",
+     "country_id": "30000",
+     "deleted": 0,
+     "state_province": "",
+     "isdefault": 1,
+     "obs": "",
+     "contact_type_id_descr": "",
+     "country_id_descr": "",
+     "entity_id_descr": ""
+    }
+   ],
+   "entitygroup": [],
+   "additionalfields.fieldsinfo": [
+    {
+     "key": "0000000100000008000000080000000000000001",
+     "sys_field_id": "584955579139637361",
+     "table_name": "ENTITY",
+     "field_name": "STORE_GROUP",
+     "field_type": 1,
+     "field_size": 0,
+     "field_label": "Agrupador de loja",
+     "isvisible": 1,
+     "not_null": 0,
+     "field_type_description": "Integer  ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": ""
+    },
+    {
+     "key": "0000000100000008000000090000000000000002",
+     "sys_field_id": "584955579139637360",
+     "table_name": "ENTITY",
+     "field_name": "FO_CODE",
+     "field_type": 1,
+     "field_size": 0,
+     "field_label": "Código do WinRest",
+     "isvisible": 1,
+     "not_null": 0,
+     "field_type_description": "Integer  ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": ""
+    },
+    {
+     "key": "00000001000000080000000A0000000000000003",
+     "sys_field_id": "999002129593",
+     "table_name": "ENTITY",
+     "field_name": "MAIN_STORE",
+     "field_type": 7,
+     "field_size": 0,
+     "field_label": "Loja principal",
+     "isvisible": 1,
+     "not_null": 0,
+     "field_type_description": "BIGINT   ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": "select ID, DESCRIPTION from STORE where DELETED = 0 order by DESCRIPTION"
+    },
+    {
+     "key": "00000001000000080000000B0000000000000004",
+     "sys_field_id": "927944985615",
+     "table_name": "ENTITY",
+     "field_name": "PRINT_METHOD",
+     "field_type": 1,
+     "field_size": 0,
+     "field_label": "Método de envio",
+     "isvisible": 1,
+     "not_null": 0,
+     "field_type_description": "Integer  ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": "1,\"Mail\";2,\"CTT\""
+    },
+    {
+     "key": "00000001000000080000000C0000000000000005",
+     "sys_field_id": "1054680649334",
+     "table_name": "STORE_ENTITY",
+     "field_name": "PASS_FAILS",
+     "field_type": 1,
+     "field_size": 0,
+     "field_label": "Pass fails",
+     "isvisible": 0,
+     "not_null": 0,
+     "field_type_description": "Integer  ",
+     "store_relation": 1,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": ""
+    },
+    {
+     "key": "00000001000000080000000D0000000000000006",
+     "sys_field_id": "24325",
+     "table_name": "ENTITY",
+     "field_name": "SAFT_INTEGRATION_CODE",
+     "field_type": 6,
+     "field_size": 100,
+     "field_label": "SAFT Integration Code",
+     "isvisible": 0,
+     "not_null": 0,
+     "field_type_description": "String   ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": ""
+    }
+   ],
+   "additionalfields.maindataset": [
+    {
+     "key": "0000000100000001000000010000000000000001",
+     "key1_id": "584955579139801487",
+     "key2_id": "-1",
+     "store_group": "",
+     "fo_code": "",
+     "main_store": "",
+     "print_method": "",
+     "saft_integration_code": "",
+     "changed": 0
+    }
+   ]
+  }
+ },
+ "form_stores": {
+  "entity": {
+   "storerelation.storedata": [
+    {
+     "key": "0000000100000003000000010000000000000001",
+     "store_id": "1099511639284",
+     "store_code": "BO",
+     "store_name": "Yuko BO",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "readonly": 0
+    },
+    {
+     "key": "0000000100000003000000020000000000000002",
+     "store_id": "1099845342604",
+     "store_code": "YUKOPORTO",
+     "store_name": "Tabern Yuko Baixa",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "readonly": 0
+    },
+    {
+     "key": "0000000100000003000000030000000000000003",
+     "store_id": "584955579139649880",
+     "store_code": "YUKOORIGEM",
+     "store_name": "Tabern Yuko Original",
+     "fiscalmodule": 1,
+     "company_id": "1649601156492",
+     "deleted": 0,
+     "readonly": 0
+    }
+   ],
+   "storerelation.storegroup": [
+    {
+     "key": "0000000100000004000000010000000000000001",
+     "id": "1099511639284",
+     "parent_id": "1649601156492",
+     "description": "Yuko BO",
+     "hq_store": 1
+    },
+    {
+     "key": "0000000100000004000000020000000000000002",
+     "id": "1099845342604",
+     "parent_id": "1649601156492",
+     "description": "Tabern Yuko Baixa",
+     "hq_store": 0
+    },
+    {
+     "key": "0000000100000004000000030000000000000003",
+     "id": "1649601156492",
+     "parent_id": "",
+     "description": "Yuko BO",
+     "hq_store": 0
+    },
+    {
+     "key": "0000000100000004000000040000000000000004",
+     "id": "584955579139649880",
+     "parent_id": "1649601156492",
+     "description": "Tabern Yuko Original",
+     "hq_store": 0
+    }
+   ]
+  }
+ },
+ "form_extra": {
+  "entity": {
+   "additionalfields.lk_main_store": [
+    {
+     "key": "00000000",
+     "id": "1099845342604",
+     "description": "Tabern Yuko Baixa"
+    },
+    {
+     "key": "00000001",
+     "id": "584955579139649880",
+     "description": "Tabern Yuko Original"
+    },
+    {
+     "key": "00000002",
+     "id": "1099511639284",
+     "description": "Yuko BO"
+    }
+   ],
+   "additionalfields.lk_print_method": [
+    {
+     "key": "0000000100000002000000010000000000000001",
+     "code": "1",
+     "description": "Mail"
+    },
+    {
+     "key": "0000000100000002000000020000000000000002",
+     "code": "2",
+     "description": "CTT"
+    }
+   ],
+   "additionalfields.storedataset": [
+    {
+     "key": "0000000100000003000000010000000000000001",
+     "key1_id": "1099511639284",
+     "key2_id": "584955579139801487",
+     "store_description": "Yuko BO",
+     "pass_fails": ""
+    },
+    {
+     "key": "0000000100000003000000020000000000000002",
+     "key1_id": "1099845342604",
+     "key2_id": "584955579139801487",
+     "store_description": "Tabern Yuko Baixa",
+     "pass_fails": ""
+    },
+    {
+     "key": "0000000100000003000000030000000000000003",
+     "key1_id": "584955579139649880",
+     "key2_id": "584955579139801487",
+     "store_description": "Tabern Yuko Original",
+     "pass_fails": ""
+    }
+   ]
+  }
+ },
+ "merge_create_req": {
+  "maindataset": [
+   {
+    "key": "00000000",
+    "isclient": 0,
+    "issupplier": 0,
+    "isemployee": 0,
+    "iswarehouse": 1,
+    "isresource": 0,
+    "auth_status": "",
+    "auth_date": "",
+    "currency_id_descr": "",
+    "parent_id_descr": "",
+    "image_id_descr": "",
+    "region_id_descr": "",
+    "taxscenario_id_descr": "",
+    "timetable_id_descr": "",
+    "id": "584955579139801487",
+    "parent_id": "",
+    "code": "3",
+    "description": "XPLENDOR TESTE",
+    "fiscalname": "XPLENDOR TESTE",
+    "tax_number": "",
+    "taxscenario_id": "",
+    "region_id": "",
+    "creation_date": "20261015T18:44:26",
+    "deleted": 0,
+    "image_id": "",
+    "timetable_id": "",
+    "currency_id": "5001",
+    "cost_factor": "",
+    "integration_code": "",
+    "sys_create_timestamp": "",
+    "sys_update_timestamp": "",
+    "obs": "",
+    "tax_number_count": 0
+   }
+  ],
+  "storerelation.storedata": [
+   {
+    "key": "0000000100000003000000010000000000000001",
+    "store_id": "1099511639284",
+    "store_code": "BO",
+    "store_name": "Yuko BO",
+    "fiscalmodule": 1,
+    "company_id": "1649601156492",
+    "deleted": 0,
+    "readonly": 0
+   },
+   {
+    "key": "0000000100000003000000020000000000000002",
+    "store_id": "1099845342604",
+    "store_code": "YUKOPORTO",
+    "store_name": "Tabern Yuko Baixa",
+    "fiscalmodule": 1,
+    "company_id": "1649601156492",
+    "deleted": 0,
+    "readonly": 0
+   },
+   {
+    "key": "0000000100000003000000030000000000000003",
+    "store_id": "584955579139649880",
+    "store_code": "YUKOORIGEM",
+    "store_name": "Tabern Yuko Original",
+    "fiscalmodule": 1,
+    "company_id": "1649601156492",
+    "deleted": 0,
+    "readonly": 0
+   }
+  ],
+  "datasetwarehouse": [
+   {
+    "key": "00000000",
+    "entity_id": "584955579139801487",
+    "inv_costmethod": "1",
+    "exit_costmethod": "1",
+    "deleted": 0,
+    "entity_id_descr": ""
+   }
+  ],
+  "address.defaultaddress": [
+   {
+    "key": "00000000",
+    "id": "584955579139801488",
+    "entity_id": "584955579139801487",
+    "contact_type_id": "6001",
+    "address": "",
+    "postalcode": "",
+    "postalcode_description": "",
+    "city": "",
+    "country_id": "30000",
+    "deleted": 0,
+    "state_province": "",
+    "isdefault": 1,
+    "obs": "",
+    "contact_type_id_descr": "",
+    "country_id_descr": "",
+    "entity_id_descr": ""
+   }
+  ],
+  "additionalfields.maindataset": [
+   {
+    "key": "0000000100000001000000010000000000000001",
+    "key1_id": "584955579139801487",
+    "key2_id": "-1",
+    "store_group": "",
+    "fo_code": "",
+    "main_store": "",
+    "print_method": "",
+    "saft_integration_code": "",
+    "changed": 0
+   }
+  ],
+  "additionalfields.storedataset": [
+   {
+    "key": "0000000100000003000000010000000000000001",
+    "key1_id": "1099511639284",
+    "key2_id": "584955579139801487",
+    "store_description": "Yuko BO",
+    "pass_fails": ""
+   },
+   {
+    "key": "0000000100000003000000020000000000000002",
+    "key1_id": "1099845342604",
+    "key2_id": "584955579139801487",
+    "store_description": "Tabern Yuko Baixa",
+    "pass_fails": ""
+   },
+   {
+    "key": "0000000100000003000000030000000000000003",
+    "key1_id": "584955579139649880",
+    "key2_id": "584955579139801487",
+    "store_description": "Tabern Yuko Original",
+    "pass_fails": ""
+   }
+  ]
+ },
+ "merge_update_req": {
+  "maindataset": [
+   {
+    "key": "00000000",
+    "isclient": 0,
+    "issupplier": 0,
+    "isemployee": 0,
+    "iswarehouse": 1,
+    "isresource": 0,
+    "auth_status": 0,
+    "auth_date": "",
+    "currency_id_descr": "Euro",
+    "parent_id_descr": "",
+    "image_id_descr": "",
+    "region_id_descr": "",
+    "taxscenario_id_descr": "",
+    "timetable_id_descr": "",
+    "id": "584955579139801487",
+    "parent_id": "",
+    "code": "3",
+    "description": "XPLENDOR TESTE",
+    "fiscalname": "XPLENDOR TESTE",
+    "tax_number": "",
+    "taxscenario_id": "",
+    "region_id": "",
+    "creation_date": "20261015T18:44:50",
+    "deleted": 0,
+    "image_id": "",
+    "timetable_id": "",
+    "currency_id": "5001",
+    "cost_factor": "",
+    "integration_code": "",
+    "sys_create_timestamp": "20261015T18:44:28",
+    "sys_update_timestamp": "20261015T18:44:52",
+    "obs": "",
+    "tax_number_count": 0
+   }
+  ],
+  "datasetwarehouse": [
+   {
+    "key": "00000000",
+    "entity_id": "584955579139801487",
+    "inv_costmethod": "0",
+    "exit_costmethod": "0",
+    "deleted": 0,
+    "entity_id_descr": "XPLENDOR TESTE"
+   }
+  ],
+  "address.defaultaddress": [
+   {
+    "key": "00000000",
+    "id": "584955579139801488",
+    "entity_id": "584955579139801487",
+    "contact_type_id": "6001",
+    "address": "",
+    "postalcode": "",
+    "postalcode_description": "",
+    "city": "",
+    "country_id": "30000",
+    "deleted": 0,
+    "state_province": "",
+    "isdefault": 1,
+    "obs": "",
+    "contact_type_id_descr": "Endereço Base",
+    "country_id_descr": "Portugal",
+    "entity_id_descr": "XPLENDOR TESTE"
+   }
+  ],
+  "additionalfields.maindataset": [
+   {
+    "key": "0000000100000001000000010000000000000001",
+    "key1_id": "584955579139801487",
+    "key2_id": "-1",
+    "store_group": "",
+    "fo_code": "",
+    "main_store": "",
+    "print_method": "",
+    "saft_integration_code": "",
+    "changed": 0
+   }
+  ]
+ },
+ "edit_main": {
+  "entity": {
+   "maindataset": [
+    {
+     "key": "00000000",
+     "isclient": 0,
+     "issupplier": 0,
+     "isemployee": 0,
+     "iswarehouse": 1,
+     "isresource": 0,
+     "auth_status": 0,
+     "auth_date": "",
+     "currency_id_descr": "Euro",
+     "parent_id_descr": "",
+     "image_id_descr": "",
+     "region_id_descr": "",
+     "taxscenario_id_descr": "",
+     "timetable_id_descr": "",
+     "id": "584955579139801487",
+     "parent_id": "",
+     "code": "3",
+     "description": "XPLENDOR TESTE",
+     "fiscalname": "XPLENDOR TESTE",
+     "tax_number": "",
+     "taxscenario_id": "",
+     "region_id": "",
+     "creation_date": "20261015T18:44:50",
+     "deleted": 0,
+     "image_id": "",
+     "timetable_id": "",
+     "currency_id": "5001",
+     "cost_factor": "",
+     "integration_code": "",
+     "sys_create_timestamp": "20261015T18:44:28",
+     "sys_update_timestamp": "20261015T18:44:52",
+     "obs": "",
+     "tax_number_count": 0
+    }
+   ],
+   "lktaxscenario": [
+    {
+     "key": "00000000",
+     "id": "",
+     "code": "",
+     "description": ""
+    },
+    {
+     "key": "00000001",
+     "id": "3100",
+     "code": "VENDA",
+     "description": "Venda"
+    },
+    {
+     "key": "00000002",
+     "id": "3101",
+     "code": "COMPRA",
+     "description": "Compra"
+    },
+    {
+     "key": "00000003",
+     "id": "990961251229",
+     "code": "TAXFREE",
+     "description": "Tax free"
+    }
+   ],
+   "lkregion_id": [
+    {
+     "key": "00000000",
+     "id": "21000",
+     "parent_id": "",
+     "code": "RG",
+     "description": "Região",
+     "deleted": 0
+    }
+   ],
+   "lkcurrency": [
+    {
+     "key": "00000000",
+     "id": "5001",
+     "code": "EUR",
+     "description": "Euro"
+    },
+    {
+     "key": "00000001",
+     "id": "5002",
+     "code": "USD",
+     "description": "Dollar"
+    },
+    {
+     "key": "00000002",
+     "id": "5003",
+     "code": "AOA",
+     "description": "Kwanza"
+    },
+    {
+     "key": "00000003",
+     "id": "5004",
+     "code": "MXN",
+     "description": "Peso"
+    },
+    {
+     "key": "00000004",
+     "id": "5005",
+     "code": "BRL",
+     "description": "Real"
+    },
+    {
+     "key": "00000005",
+     "id": "5006",
+     "code": "CVE",
+     "description": "Escudo"
+    },
+    {
+     "key": "00000006",
+     "id": "5007",
+     "code": "MZN",
+     "description": "Metical"
+    },
+    {
+     "key": "00000007",
+     "id": "5008",
+     "code": "CHF",
+     "description": "Swiss franc"
+    },
+    {
+     "key": "00000008",
+     "id": "5009",
+     "code": "MAD",
+     "description": "Moroccan dirham"
+    },
+    {
+     "key": "00000009",
+     "id": "5010",
+     "code": "GBP",
+     "description": "Libra esterlina britânica"
+    }
+   ],
+   "datasetwarehouse": [
+    {
+     "key": "00000000",
+     "entity_id": "584955579139801487",
+     "inv_costmethod": 1,
+     "exit_costmethod": 1,
+     "deleted": 0,
+     "entity_id_descr": "XPLENDOR TESTE"
+    }
+   ],
+   "address.defaultaddress": [
+    {
+     "key": "00000000",
+     "id": "584955579139801488",
+     "entity_id": "584955579139801487",
+     "contact_type_id": "6001",
+     "address": "",
+     "postalcode": "",
+     "postalcode_description": "",
+     "city": "",
+     "country_id": "30000",
+     "deleted": 0,
+     "state_province": "",
+     "isdefault": 1,
+     "obs": "",
+     "contact_type_id_descr": "Endereço Base",
+     "country_id_descr": "Portugal",
+     "entity_id_descr": "XPLENDOR TESTE"
+    }
+   ],
+   "entitygroup": [],
+   "additionalfields.fieldsinfo": [
+    {
+     "key": "0000000100000008000000080000000000000001",
+     "sys_field_id": "584955579139637361",
+     "table_name": "ENTITY",
+     "field_name": "STORE_GROUP",
+     "field_type": 1,
+     "field_size": 0,
+     "field_label": "Agrupador de loja",
+     "isvisible": 1,
+     "not_null": 0,
+     "field_type_description": "Integer  ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": ""
+    },
+    {
+     "key": "0000000100000008000000090000000000000002",
+     "sys_field_id": "584955579139637360",
+     "table_name": "ENTITY",
+     "field_name": "FO_CODE",
+     "field_type": 1,
+     "field_size": 0,
+     "field_label": "Código do WinRest",
+     "isvisible": 1,
+     "not_null": 0,
+     "field_type_description": "Integer  ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": ""
+    },
+    {
+     "key": "00000001000000080000000A0000000000000003",
+     "sys_field_id": "999002129593",
+     "table_name": "ENTITY",
+     "field_name": "MAIN_STORE",
+     "field_type": 7,
+     "field_size": 0,
+     "field_label": "Loja principal",
+     "isvisible": 1,
+     "not_null": 0,
+     "field_type_description": "BIGINT   ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": "select ID, DESCRIPTION from STORE where DELETED = 0 order by DESCRIPTION"
+    },
+    {
+     "key": "00000001000000080000000B0000000000000004",
+     "sys_field_id": "927944985615",
+     "table_name": "ENTITY",
+     "field_name": "PRINT_METHOD",
+     "field_type": 1,
+     "field_size": 0,
+     "field_label": "Método de envio",
+     "isvisible": 1,
+     "not_null": 0,
+     "field_type_description": "Integer  ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": "1,\"Mail\";2,\"CTT\""
+    },
+    {
+     "key": "00000001000000080000000C0000000000000005",
+     "sys_field_id": "1054680649334",
+     "table_name": "STORE_ENTITY",
+     "field_name": "PASS_FAILS",
+     "field_type": 1,
+     "field_size": 0,
+     "field_label": "Pass fails",
+     "isvisible": 0,
+     "not_null": 0,
+     "field_type_description": "Integer  ",
+     "store_relation": 1,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": ""
+    },
+    {
+     "key": "00000001000000080000000D0000000000000006",
+     "sys_field_id": "24325",
+     "table_name": "ENTITY",
+     "field_name": "SAFT_INTEGRATION_CODE",
+     "field_type": 6,
+     "field_size": 100,
+     "field_label": "SAFT Integration Code",
+     "isvisible": 0,
+     "not_null": 0,
+     "field_type_description": "String   ",
+     "store_relation": 0,
+     "lookup_mode": 1,
+     "fieldgroup_id": "0",
+     "fieldgroup_code": "ADD_FLDS",
+     "fieldgroup_description": "Campos adicionais",
+     "is_private": 0,
+     "lookup_sql": ""
+    }
+   ],
+   "additionalfields.maindataset": [
+    {
+     "key": "0000000100000001000000010000000000000001",
+     "key1_id": "584955579139801487",
+     "key2_id": "-1",
+     "store_group": "",
+     "fo_code": "",
+     "main_store": "",
+     "print_method": "",
+     "saft_integration_code": "",
+     "changed": 0
+    }
+   ]
+  }
+ },
+ "delete": {
+  "warehouse": {}
+ }
+}

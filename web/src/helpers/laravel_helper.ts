@@ -1241,3 +1241,73 @@ export const getSupplierDocumentLines = (companyId: number, docheaderId: string)
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/${docheaderId}/lines`);
 export const getRecipeConversionInfo = (companyId: number, productId: string, unitKey?: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/conversion`, { unit_key: unitKey });
+// Fatia 7a: stock (leitura do espelho; mínimo/máximo no PingWin, em fila) e armazéns.
+const STK = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/stock`;
+const WH = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/warehouses`;
+export const getStock = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; search?: string; warehouse_id?: string; family?: string; state?: string; sort?: string; dir?: "asc" | "desc" }
+) => api.get(STK(companyId), params);
+export const getStockArticle = (companyId: number, productId: string) => api.get(STK(companyId) + `/${productId}`);
+export const writeStockLimits = (companyId: number, productId: string, body: { warehouse_id: string; min_stock?: number | null; max_stock?: number | null; disable_generic?: boolean }) =>
+    api.create(STK(companyId) + `/${productId}/limits`, body, JSON_BODY);
+export const getStockWrite = (companyId: number, writeId: number) => api.get(STK(companyId) + `/writes/${writeId}`);
+export const refreshStockArticle = (companyId: number, productId: string) => api.create(STK(companyId) + `/${productId}/refresh`, {}, JSON_BODY);
+export const getStockRun = (companyId: number, runId: number) => api.get(STK(companyId) + `/runs/${runId}`);
+export const getWarehouses = (companyId: number) => api.get(WH(companyId));
+export const createWarehouse = (companyId: number, body: { description: string; store_ids: string[]; inv_costmethod: number; exit_costmethod: number }) =>
+    api.create(WH(companyId), body, JSON_BODY);
+export const updateWarehouse = (companyId: number, warehouseId: string, body: { description?: string; store_ids?: string[]; inv_costmethod?: number; exit_costmethod?: number }) =>
+    api.put(WH(companyId) + `/${warehouseId}`, body);
+export const deleteWarehouse = (companyId: number, warehouseId: string, confirmName: string) =>
+    api.delete(WH(companyId) + `/${warehouseId}`, { data: { confirm_name: confirmName } });
+export const setStoreWarehouse = (companyId: number, storeId: string, warehouseId: string | null) =>
+    api.put(WH(companyId) + `/store-defaults`, { store_id: storeId, warehouse_id: warehouseId });
+// Fatia 7b: contagens, zonas, desperdício e movimentos.
+const SC = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/stock-counts`;
+const WS = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/waste`;
+export const getStockCounts = (companyId: number) => api.get(SC(companyId));
+export const createStockCount = (companyId: number, body: { warehouse_id: string; scope: string; zone_id?: number | null; moment: string; blind?: boolean }) =>
+    api.create(SC(companyId), body, JSON_BODY);
+export const getStockCount = (companyId: number, countId: number) => api.get(SC(companyId) + `/${countId}`);
+export const saveStockCountLine = (companyId: number, countId: number, lineId: number, entries: { qty: number | string | null; unit: string }[]) =>
+    api.put(SC(companyId) + `/${countId}/lines/${lineId}`, { entries });
+export const finishStockCount = (companyId: number, countId: number) => api.create(SC(companyId) + `/${countId}/finish`, {}, JSON_BODY);
+export const recountStockCount = (companyId: number, countId: number, lineIds: number[]) => api.create(SC(companyId) + `/${countId}/recount`, { line_ids: lineIds }, JSON_BODY);
+export const sendStockCount = (companyId: number, countId: number) => api.create(SC(companyId) + `/${countId}/send`, {}, JSON_BODY);
+export const voidStockCount = (companyId: number, countId: number) => api.create(SC(companyId) + `/${countId}/void`, {}, JSON_BODY);
+export const discardStockCount = (companyId: number, countId: number) => api.delete(SC(companyId) + `/${countId}`);
+export const getCountableProducts = (companyId: number, search: string) => api.get(SC(companyId) + `/countable`, { search });
+export const refreshCountableProducts = (companyId: number) => api.create(SC(companyId) + `/countable/refresh`, {}, JSON_BODY);
+export const getRealConsumption = (companyId: number, warehouseId: string) => api.get(SC(companyId) + `/consumption`, { warehouse_id: warehouseId });
+export const getStockMovements = (companyId: number, productId: string, params: { from?: string; to?: string; warehouse_id?: string }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/restaurant/stock/${productId}/movements`, params);
+export const getStockZones = (companyId: number, warehouseId: string) => api.get(url.GET_COMPANIES + `/${companyId}/restaurant/stock-zones`, { warehouse_id: warehouseId });
+export const createStockZone = (companyId: number, body: { warehouse_id: string; name: string }) => api.create(url.GET_COMPANIES + `/${companyId}/restaurant/stock-zones`, body, JSON_BODY);
+export const updateStockZone = (companyId: number, zoneId: number, body: { name?: string; position?: number; product_ids?: string[] }) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/restaurant/stock-zones/${zoneId}`, body);
+export const deleteStockZone = (companyId: number, zoneId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/restaurant/stock-zones/${zoneId}`);
+export const getWaste = (companyId: number, params: { warehouse_id?: string; date?: string }) => api.get(WS(companyId), params);
+export const getWasteProducts = (companyId: number, search: string) => api.get(WS(companyId) + `/products`, { search });
+export const saveWaste = (companyId: number, body: { warehouse_id: string; product_id: string; qty: string; unit: string; reason: string; note?: string }, id?: number) =>
+    id ? api.put(WS(companyId) + `/${id}`, body) : api.create(WS(companyId), body, JSON_BODY);
+export const deleteWaste = (companyId: number, id: number) => api.delete(WS(companyId) + `/${id}`);
+export const sendWaste = (companyId: number, warehouseId: string) => api.create(WS(companyId) + `/send`, { warehouse_id: warehouseId }, JSON_BODY);
+export const voidWasteBatch = (companyId: number, batchId: number) => api.create(WS(companyId) + `/batches/${batchId}/void`, {}, JSON_BODY);
+export const getWasteReport = (companyId: number, params: { from?: string; to?: string; warehouse_id?: string }) => api.get(WS(companyId) + `/report`, params);
+
+// ── Transferências (Fatia 7c) ──
+const TR = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/transfers`;
+export type TransferLineInput = { product_id: string; qty: string | number; unit?: string; request_line_id?: number; price_confirmed?: boolean; factor_ack?: boolean };
+export const getStockTransfers = (companyId: number) => api.get(TR(companyId));
+export const refreshTransferOrders = (companyId: number) => api.create(TR(companyId) + `/orders/refresh`, {}, JSON_BODY);
+export const getTransferProducts = (companyId: number, search: string) => api.get(TR(companyId) + `/products`, { search });
+export const prepareStockTransfer = (companyId: number, body: { route_id: number; request_id?: number | null; lines: TransferLineInput[] }) =>
+    api.create(TR(companyId) + `/prepare`, body, JSON_BODY);
+export const sendStockTransfer = (companyId: number, body: { route_id: number; request_id?: number | null; lines: TransferLineInput[]; note?: string }) =>
+    api.create(TR(companyId), body, JSON_BODY);
+export const getStockTransfer = (companyId: number, id: number) => api.get(TR(companyId) + `/${id}`);
+export const receiveStockTransfer = (companyId: number, id: number, received: Record<string, string | number>) =>
+    api.create(TR(companyId) + `/${id}/receive`, { received }, JSON_BODY);
+export const voidStockTransfer = (companyId: number, id: number) => api.create(TR(companyId) + `/${id}/void`, {}, JSON_BODY);
+export const updateTransferRoute = (companyId: number, routeId: number, body: Record<string, unknown>) => api.put(TR(companyId) + `/routes/${routeId}`, body);

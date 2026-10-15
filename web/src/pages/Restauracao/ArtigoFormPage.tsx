@@ -20,6 +20,7 @@ import { useArticleReadPolling } from "./useArticleReadPolling";
 import { useSupplierPricesStaging } from "./useSupplierPricesStaging";
 import ArtigoComprasTab from "./ArtigoComprasTab";
 import FichaTecnicaResumo from "./fichas/FichaTecnicaResumo";
+import ArtigoStockTab from "./stock/ArtigoStockTab";
 import ArticleSupplierCodes from "./faturas/ArticleSupplierCodes";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PageHeader from "Components/Common/PageHeader";
@@ -79,7 +80,9 @@ export default function ArtigoFormPage() {
 
     const [loading, setLoading] = useState(true);
     const [lookups, setLookups] = useState<any | null>(null);
-    const [tab, setTab] = useState<"geral" | "frontoffice" | "unidades" | "compras" | "ficha">("geral");
+    const [tab, setTab] = useState<"geral" | "frontoffice" | "unidades" | "compras" | "ficha" | "stock">(
+        () => (!isCreate && new URLSearchParams(location.search).get("tab") === "stock" ? "stock" : "geral"),
+    );
     const compras = useSupplierPricesStaging();
     const [supplierTables, setSupplierTables] = useState<any[]>([]);
     const [created, setCreated] = useState<{ code?: string } | null>(null);
@@ -431,7 +434,10 @@ export default function ArtigoFormPage() {
                                     {!isCreate && (
                                         <NavItem><NavLink className={classnames({ active: tab === "ficha" })} onClick={() => setTab("ficha")} style={{ cursor: "pointer" }} data-testid="tab-ficha">Ficha técnica</NavLink></NavItem>
                                     )}
-                                    {[...(isCreate ? ["Ficha técnica"] : []), "Stocks", "Atributos"].map((t) => (
+                                    {!isCreate && (
+                                        <NavItem><NavLink className={classnames({ active: tab === "stock" })} onClick={() => setTab("stock")} style={{ cursor: "pointer" }} data-testid="tab-stock">Stock</NavLink></NavItem>
+                                    )}
+                                    {[...(isCreate ? ["Ficha técnica", "Stock"] : []), "Atributos"].map((t) => (
                                         <NavItem key={t}><NavLink disabled className="text-muted" style={{ cursor: "not-allowed" }} title="Em breve">{t}</NavLink></NavItem>
                                     ))}
                                 </Nav>
@@ -481,6 +487,12 @@ export default function ArtigoFormPage() {
                                         </TabPane>
                                     )}
 
+                                    {!isCreate && pingwinId && (
+                                        <TabPane tabId="stock">
+                                            {tab === "stock" && <ArtigoStockTab companyId={companyId} productId={pingwinId} />}
+                                        </TabPane>
+                                    )}
+
                                     <TabPane tabId="compras">
                                         <ArtigoComprasTab
                                             companyId={companyId}
@@ -505,6 +517,8 @@ export default function ArtigoFormPage() {
                                 </Button>
 {tab === "ficha" ? (
                                     <span className="text-muted fs-13" data-testid="ficha-footer-note">A ficha técnica grava-se no editor, com "Gravar no PingWin".</span>
+                                ) : tab === "stock" ? (
+                                    <span className="text-muted fs-13" data-testid="stock-footer-note">O mínimo e o máximo gravam-se em cada armazém, com "Gravar no PingWin".</span>
                                 ) : (
                                     <Button type="submit" color="primary" disabled={busy}>
                                         {busy

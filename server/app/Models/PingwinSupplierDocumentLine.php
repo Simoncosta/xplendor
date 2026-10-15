@@ -19,7 +19,7 @@ class PingwinSupplierDocumentLine extends Model
         'company_id', 'docheader_id', 'line_number', 'line_pingwin_id', 'product_pingwin_id', 'product_code',
         'article_id', 'supplier_code', 'description', 'qnt', 'unit_code', 'unit_desc', 'price', 'price_w_tax',
         'discount1', 'total_cents', 'tax_value_cents', 'total_w_tax_cents', 'taxgroup_id', 'tax_description',
-        'warehouse_pingwin_id', 'raw',
+        'warehouse_pingwin_id', 'raw', 'unit_id', 'unit_value', 'qnt_base',
     ];
 
     protected $casts = [

@@ -451,9 +451,16 @@ class AuditRestaurantRulesTest extends TestCase
     public function test_the_registry_has_every_restaurant_rule_and_the_screens(): void
     {
         $codes = array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'central'));
-        $this->assertCount(18, $codes);
+        $this->assertCount(30, $codes);   // 18 + as 4 do stock (Fatia 7a) + as 8 das transferências (Fatia 7c)
         $this->assertContains('restauracao.iva_venda', $codes);
-        $this->assertSame(['restauracao.preco_compra', 'restauracao.unidade_trocada', 'restauracao.unidade_fator', 'restauracao.unidade_sem_conversao', 'restauracao.documento_data_serie', 'restauracao.fatura_sem_linhas'],
+        $this->assertSame(['restauracao.unidade_fator', 'restauracao.stock_negativo', 'restauracao.comprado_nunca_consumido', 'restauracao.cobertura_impossivel', 'restauracao.armazem_sem_entradas',
+            'restauracao.transfer_pcm_armazens'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'stock')));
+        $this->assertSame(['restauracao.transfer_origem_errada', 'restauracao.transfer_custo_entrada', 'restauracao.transfer_sem_rececao', 'restauracao.transfer_sem_envio',
+            'restauracao.transfer_diferenca', 'restauracao.transfer_fator', 'restauracao.transfer_pcm_armazens', 'restauracao.transfer_encomenda_parada'],
+            array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'transferencias')));
+        $this->assertSame(['restauracao.armazem_sem_entradas'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'armazens')));
+        $this->assertSame(['restauracao.preco_compra', 'restauracao.unidade_trocada', 'restauracao.unidade_fator', 'restauracao.unidade_sem_conversao', 'restauracao.documento_data_serie', 'restauracao.fatura_sem_linhas',
+            'restauracao.transfer_fator'],
             array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'faturas')));
         $this->assertSame(['restauracao.familia_suspeita'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'familias')));
         $this->assertFalse(app(IvaVendaRule::class)->appliesTo(Company::create(['nipc' => '503504564', 'fiscal_name' => 'Stand', 'plan_id' => DB::table('plans')->value('id'), 'subscription_status' => 'active'])->id));

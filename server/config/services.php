@@ -140,6 +140,12 @@ return [
         // Fatia 4: os únicos artigos (ids do PingWin, separados por vírgulas) em que se pode gravar a
         // ficha técnica. Vazio = todos. Guarda dos testes reais (o artigo "TESTE XPLENDOR FICHA").
         'bom_write_allowlist' => env('PINGWIN_BOM_WRITE_ALLOWLIST', ''),
+        // Fatia 7a: a mesma guarda para o stock. Mínimo/máximo: ids de artigo; armazéns: nomes.
+        // Vazio (produção) = todos; "0" = nenhum; no dev, só o artigo e o armazém de teste.
+        'stock_write_allowlist' => env('PINGWIN_STOCK_WRITE_ALLOWLIST', ''),
+        'warehouse_write_allowlist' => env('PINGWIN_WAREHOUSE_WRITE_ALLOWLIST', ''),
+        // Fatia 7b: a mesma guarda para os documentos de stock (Contagem e Desperdício): códigos de artigo.
+        'stockdoc_write_allowlist' => env('PINGWIN_STOCKDOC_WRITE_ALLOWLIST', ''),
         // ⚠️ As UNIDADES vivem numa PORTA DIFERENTE (8138, não a 8136). Override
         // explícito opcional; vazio → o cliente deriva do api_url trocando a porta.
         'units_url' => env('PINGWIN_UNITS_URL', ''),

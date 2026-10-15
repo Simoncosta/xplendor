@@ -408,6 +408,108 @@ def run(cfg: dict) -> dict:
             return {"ok": True, "mode": "boms", **result,
                     "product_list": product_list}
 
+        if mode == "stock":
+            # SÓ LEITURA (Fatia 7a): o stock de cada artigo pedido, uma linha por armazém
+            # (OPEN → GET,INFO tbstock → CLOSE, artigo a artigo; uma falha não pára os outros).
+            ids = [str(i) for i in (cfg.get("product_ids") or []) if i]
+            if not ids:
+                return {"ok": False, "error": "product_ids em falta."}
+            return {"ok": True, "mode": "stock", **client.read_stock(ids)}
+
+        if mode == "warehouses":
+            # SÓ LEITURA (Fatia 7a): a lista de armazéns (ativos e anulados) e o formulário de cada
+            # ativo (lojas servidas, loja principal, valorização).
+            return {"ok": True, "mode": "warehouses", **client.fetch_warehouses_rich()}
+
+        if mode == "stock_limits_write":
+            # ⚠️ ESCRITA (Fatia 7a): mínimo, máximo ou "Não usa genéricos" de UM artigo num armazém,
+            # iniciada por uma pessoa; a guarda do dev (allowed_product_ids) vai para o cliente.
+            product_id = str(cfg.get("product_id") or "")
+            warehouse_id = str(cfg.get("warehouse_id") or "")
+            if not product_id or not warehouse_id:
+                return {"ok": False, "error": "product_id ou warehouse_id em falta."}
+            result = client.write_stock_limits(product_id, warehouse_id, cfg.get("changes") or {},
+                                               cfg.get("expected") or None, cfg.get("allowed_product_ids") or [])
+            return {"mode": "stock_limits_write", **result, "ok": bool(result.get("ok"))}
+
+        if mode in ("warehouse_create", "warehouse_update", "warehouse_delete"):
+            # ⚠️ ESCRITA (Fatia 7a): UM armazém de cada vez, iniciada por uma pessoa, com releitura.
+            # A guarda do dev (allowed_warehouse_names) vai para o cliente.
+            allowed = cfg.get("allowed_warehouse_names") or []
+            wid = str(cfg.get("warehouse_id") or "")
+            if mode != "warehouse_create" and not wid:
+                return {"ok": False, "error": "warehouse_id em falta."}
+            if mode == "warehouse_create":
+                result = client.create_warehouse(cfg.get("fields") or {}, allowed)
+            elif mode == "warehouse_update":
+                result = client.update_warehouse(wid, cfg.get("fields") or {}, cfg.get("expected") or None, allowed)
+            else:
+                result = client.delete_warehouse(wid, allowed)
+            return {"mode": mode, **result, "ok": bool(result.get("ok"))}
+
+        if mode == "countable_products":
+            # SÓ LEITURA (Fatia 7b): os artigos que a Contagem aceita (NEW 1106 → productlist → CANCEL).
+            return {"ok": True, "mode": mode, "products": client.fetch_countable_products(str(cfg.get("search") or ""))}
+
+        if mode == "stock_documents":
+            # SÓ LEITURA (Fatia 7b): contagens (which=count) ou documentos (which=docs, filtro pelo tipo).
+            return {"ok": True, "mode": mode, "documents": client.list_stock_documents(
+                str(cfg.get("start") or ""), str(cfg.get("end") or ""), str(cfg.get("which") or "count"), str(cfg.get("doctype_like") or ""))}
+
+        if mode == "movements":
+            # SÓ LEITURA (Fatia 7b): relatório Movimentos de um intervalo de códigos (uma chamada).
+            return {"ok": True, "mode": mode, "movements": client.fetch_movements(
+                str(cfg.get("start") or ""), str(cfg.get("end") or ""), str(cfg.get("code_from") or ""), str(cfg.get("code_to") or ""))}
+
+        if mode in ("count_write", "waste_write", "stockdoc_status"):
+            # ⚠️ ESCRITA (Fatia 7b): UM documento de stock por pedido, iniciado por uma pessoa; a guarda
+            # (allowed_codes) vai para o cliente, que recusa antes de qualquer pedido.
+            allowed = cfg.get("allowed_codes") or []
+            if mode == "count_write":
+                result = client.write_count(str(cfg.get("store_id") or ""), str(cfg.get("warehouse_id") or ""), str(cfg.get("inventory_date") or ""),
+                                            str(cfg.get("docstatus") or "8002"), cfg.get("lines") or [], allowed)
+            elif mode == "waste_write":
+                result = client.write_waste(str(cfg.get("warehouse_id") or ""), cfg.get("lines") or [], str(cfg.get("header_obs") or ""),
+                                            str(cfg.get("docstatus") or "8002"), allowed)
+            else:
+                if allowed == ["0"]:
+                    return {"ok": False, "error": "documento de stock: escrita recusada (guarda do dev)."}
+                result = client.change_stock_document_status(str(cfg.get("doc_id") or ""), str(cfg.get("status") or ""))
+            return {"mode": mode, **result, "ok": bool(result.get("ok"))}
+
+        if mode == "doc_list":
+            # SÓ LEITURA (Fatia 7c): encomendas, guias e entradas de um tipo, com as linhas se pedidas.
+            out = []
+            for dc in [str(x) for x in (cfg.get("docconfig_ids") or []) if x]:
+                for d in client.list_documents_of(str(cfg.get("start") or ""), str(cfg.get("end") or ""), dc, bool(cfg.get("hide_converted"))):
+                    d = dict(d)
+                    d["docconfig_id"] = d.get("docconfig_id") or dc
+                    if cfg.get("with_lines") and d.get("id"):
+                        try:
+                            d["read"] = client.read_document(dc, str(d["id"]))
+                        except Exception as exc:  # noqa: BLE001
+                            d["read_error"] = str(exc)[:300]
+                    out.append(d)
+            return {"ok": True, "mode": mode, "documents": out}
+
+        if mode == "doc_read":
+            # SÓ LEITURA (Fatia 7c): um documento (cabeçalho e linhas).
+            return {"ok": True, "mode": mode, **client.read_document(str(cfg.get("docconfig_id") or ""), str(cfg.get("doc_id") or ""))}
+
+        if mode == "doc_write":
+            # ⚠️ ESCRITA (Fatia 7c): UM documento (encomenda, guia ou entrada), iniciado por uma pessoa;
+            # a guarda (allowed_codes) vai para o cliente, que recusa antes de qualquer pedido.
+            result = client.write_doc(
+                str(cfg.get("docconfig_id") or ""), str(cfg.get("entity_id") or ""), cfg.get("lines") or [],
+                source_id=(str(cfg["source_id"]) if cfg.get("source_id") else None),
+                store_id=(str(cfg["store_id"]) if cfg.get("store_id") else None),
+                entity_search=cfg.get("entity_search") or None,
+                expected_warehouse=(str(cfg["expected_warehouse"]) if cfg.get("expected_warehouse") else None),
+                addresses=cfg.get("addresses") or None, header_obs=str(cfg.get("header_obs") or ""),
+                docstatus=str(cfg.get("docstatus") or "8002"), allowed_codes=cfg.get("allowed_codes") or [],
+                unit_change=bool(cfg.get("unit_change", True)))
+            return {"mode": mode, **result, "ok": bool(result.get("ok"))}
+
         if mode == "update_product":
             # ⚠️ ESCRITA: EDITAR um artigo (OPEN→(prices)→MERGE curto→SAVE→CLOSE→confirmar).
             product_id = str(cfg.get("product_id") or "")

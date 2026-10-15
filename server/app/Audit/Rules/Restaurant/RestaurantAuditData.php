@@ -26,6 +26,8 @@ final class RestaurantAuditData
     private ?array $sales90 = null;
     private ?array $recipeWarnings = null;
     private ?array $families = null;
+    private ?array $stock = null;
+    private ?\App\Services\Restaurant\StockConsumptionService $consumption = null;
     private RecipeCostService $cost;
 
     public function __construct(public readonly int $companyId)
@@ -143,6 +145,31 @@ final class RestaurantAuditData
         }
 
         return $this->sales90;
+    }
+
+    /** Fatia 7a: o consumo teórico (uma vez por corrida). */
+    public function consumption(): \App\Services\Restaurant\StockConsumptionService
+    {
+        return $this->consumption ??= new \App\Services\Restaurant\StockConsumptionService($this->companyId);
+    }
+
+    /**
+     * Fatia 7a: o stock do espelho, por artigo, nos armazéns ativos.
+     *
+     * @return array<string, list<\App\Models\PingwinStock>>
+     */
+    public function stock(): array
+    {
+        if ($this->stock === null) {
+            // Por armazém na ordem do código do PingWin (1, 2, BAIXA…), para os textos saírem sempre iguais.
+            $codes = \App\Models\PingwinWarehouse::where('company_id', $this->companyId)->where('deleted', false)->pluck('code', 'pingwin_id')
+                ->mapWithKeys(fn ($code, $id) => [(string) $id => (string) $code])->all();
+            $this->stock = \App\Models\PingwinStock::where('company_id', $this->companyId)->whereIn('warehouse_pingwin_id', array_keys($codes))->get()
+                ->sortBy(fn ($s) => [$codes[(string) $s->warehouse_pingwin_id] ?? '', (string) $s->warehouse_pingwin_id])
+                ->groupBy(fn ($s) => (string) $s->product_pingwin_id)->map(fn ($c) => $c->values()->all())->all();
+        }
+
+        return $this->stock;
     }
 
     /** Os avisos das fichas (o mesmo cálculo do detalhe da ficha técnica). */

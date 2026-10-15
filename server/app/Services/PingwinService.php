@@ -1301,6 +1301,174 @@ class PingwinService
             : ['mode' => 'lista', 'reason' => 'Neste ambiente só se grava nos artigos de teste autorizados.'];
     }
 
+    // ── Stock e armazéns (Fatia 7a) ────────────────────────────────────────────────────────────
+
+    /** A integração ligada da empresa, ou erro de validação. */
+    private function connectedIntegration(int $companyId): CompanyIntegration
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', self::PLATFORM)->first();
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        return $integration;
+    }
+
+    /**
+     * SÓ LEITURA: o stock de cada artigo, uma linha por armazém (OPEN → GET,INFO tbstock → CLOSE, artigo
+     * a artigo, num só docker exec). Devolve {stock: {id: {article, rows, warehouses}}, errors, seconds}.
+     */
+    public function fetchStock(int $companyId, array $productIds, int $timeout = 900): array
+    {
+        $integration = $this->connectedIntegration($companyId);
+        $this->invokeTimeout = $timeout;
+        $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode' => 'stock',
+            'product_ids' => array_values(array_map('strval', $productIds)),
+        ]));
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura do stock no PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return ['stock' => (array) ($result['stock'] ?? []), 'errors' => (array) ($result['errors'] ?? []), 'seconds' => (array) ($result['seconds'] ?? [])];
+    }
+
+    /** SÓ LEITURA: os armazéns (ativos e anulados) com as lojas servidas, a loja principal e a valorização. */
+    public function fetchWarehouses(int $companyId): array
+    {
+        $integration = $this->connectedIntegration($companyId);
+        $this->invokeTimeout = 300;
+        $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, ['mode' => 'warehouses']));
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura dos armazéns no PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return ['warehouses' => (array) ($result['warehouses'] ?? []), 'errors' => (array) ($result['errors'] ?? [])];
+    }
+
+    /**
+     * ⚠️ ESCRITA: mínimo, máximo ou "Não usa genéricos" de UM artigo num armazém, com releitura. A guarda
+     * do dev (services.pingwin.stock_write_allowlist) vai para o Python, que recusa os outros artigos.
+     * Devolve {ok, saved, conflict?, no_stock_rows?, before, after, checks, reread}.
+     */
+    public function writeStockLimits(int $companyId, string $productId, string $warehouseId, array $changes, ?array $expected = null): array
+    {
+        $integration = $this->connectedIntegration($companyId);
+        $this->invokeTimeout = 300;
+
+        return $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode' => 'stock_limits_write', 'product_id' => $productId, 'warehouse_id' => $warehouseId,
+            'changes' => $changes, 'expected' => $expected, 'allowed_product_ids' => self::stockWriteAllowlist(),
+        ]));
+    }
+
+    /**
+     * ⚠️ ESCRITA: criar, editar ou apagar UM armazém, com releitura. $op = create|update|delete. A guarda do
+     * dev (services.pingwin.warehouse_write_allowlist, por nome) vai para o Python.
+     */
+    public function writeWarehouse(int $companyId, string $op, ?string $warehouseId, array $fields = [], ?array $expected = null): array
+    {
+        $integration = $this->connectedIntegration($companyId);
+        $this->invokeTimeout = 300;
+
+        return $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, array_filter([
+            'mode' => 'warehouse_' . $op, 'warehouse_id' => $warehouseId, 'fields' => $fields ?: null, 'expected' => $expected,
+            'allowed_warehouse_names' => self::warehouseWriteAllowlist(),
+        ], static fn ($v) => $v !== null)));
+    }
+
+    // ── Documentos de stock (Fatia 7b): Contagem 1106, Desperdício 1100, Movimentos ─────────────────
+
+    /**
+     * Um pedido de documentos de stock ao Python. Leituras: countable_products, stock_documents, movements.
+     * Escritas (⚠️ uma por ação de uma pessoa): count_write, waste_write, stockdoc_status — a guarda
+     * (services.pingwin.stockdoc_write_allowlist, códigos de artigo) vai sempre no pedido.
+     */
+    public function stockDocument(int $companyId, string $mode, array $fields = [], int $timeout = 300): array
+    {
+        $integration = $this->connectedIntegration($companyId);
+        $this->invokeTimeout = $timeout;
+        $payload = ['mode' => $mode] + $fields;
+        if (in_array($mode, ['count_write', 'waste_write', 'stockdoc_status', 'doc_write'], true)) {
+            $payload['allowed_codes'] = self::stockDocWriteAllowlist();
+        }
+
+        return $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, $payload));
+    }
+
+    /** Os códigos de artigo em que se podem gravar contagens e desperdício (vazio = todos; "0" = nenhum). */
+    public static function stockDocWriteAllowlist(): array
+    {
+        return self::csvList((string) config('services.pingwin.stockdoc_write_allowlist', ''));
+    }
+
+    /**
+     * A guarda dos documentos de stock para um conjunto de códigos de artigo: null = pode gravar; senão
+     * o porquê (o botão aparece desativado com esta explicação).
+     *
+     * @param  list<string>  $codes
+     * @return array{mode: string, reason: string}|null
+     */
+    public static function stockDocWriteGuard(array $codes): ?array
+    {
+        $allow = self::stockDocWriteAllowlist();
+        if (! $allow) {
+            return null;
+        }
+        if ($allow === ['0']) {
+            return ['mode' => 'desligada', 'reason' => 'Neste ambiente a gravação de documentos de stock no PingWin está desligada (PINGWIN_STOCKDOC_WRITE_ALLOWLIST=0). Em produção está ligada.'];
+        }
+        $out = array_values(array_diff(array_map('strval', $codes), $allow));
+
+        return $out ? ['mode' => 'lista', 'reason' => 'Neste ambiente só se grava com os artigos de teste autorizados (' . implode(', ', $allow) . '). Fora da lista: ' . implode(', ', array_slice($out, 0, 5)) . '.'] : null;
+    }
+
+    /** Os artigos em que se pode gravar o mínimo/máximo (vazio = todos; "0" = nenhum). Guarda do dev. */
+    public static function stockWriteAllowlist(): array
+    {
+        return self::csvList((string) config('services.pingwin.stock_write_allowlist', ''));
+    }
+
+    /** Os armazéns (pelo nome) em que se pode escrever (vazio = todos; "0" = nenhum). Guarda do dev. */
+    public static function warehouseWriteAllowlist(): array
+    {
+        return self::csvList((string) config('services.pingwin.warehouse_write_allowlist', ''));
+    }
+
+    private static function csvList(string $csv): array
+    {
+        // Sem array_filter "nu": deitava fora o "0" (que quer dizer "nenhum").
+        return array_values(array_filter(array_map('trim', explode(',', $csv)), static fn ($v) => $v !== ''));
+    }
+
+    /**
+     * A guarda das escritas de stock neste ambiente, para o ecrã: null = pode gravar; senão o porquê,
+     * para o botão aparecer desativado em vez de deixar tentar e dar erro.
+     *
+     * @return array{mode: string, reason: string}|null
+     */
+    public static function stockWriteGuard(string $productId): ?array
+    {
+        return self::guardFor(self::stockWriteAllowlist(), $productId, 'PINGWIN_STOCK_WRITE_ALLOWLIST', 'no artigo de teste autorizado');
+    }
+
+    /** Como stockWriteGuard, para os armazéns (pelo nome; null no nome = criar um novo). */
+    public static function warehouseWriteGuard(?string $name): ?array
+    {
+        return self::guardFor(self::warehouseWriteAllowlist(), (string) $name, 'PINGWIN_WAREHOUSE_WRITE_ALLOWLIST', 'no armazém de teste autorizado');
+    }
+
+    private static function guardFor(array $allow, string $value, string $var, string $where): ?array
+    {
+        if (! $allow || in_array($value, $allow, true)) {
+            return null;
+        }
+
+        return $allow === ['0']
+            ? ['mode' => 'desligada', 'reason' => "Neste ambiente a gravação no PingWin está desligada ({$var}=0). Em produção está ligada."]
+            : ['mode' => 'lista', 'reason' => "Neste ambiente só se grava {$where} (" . implode(', ', $allow) . ').'];
+    }
+
     /**
      * Como invoke(), mas lê o stderr enquanto o Python corre: cada linha "XPPROGRESS {json}" é um
      * passo, entregue a $onProgress. Os testes fazem override (como do invoke).

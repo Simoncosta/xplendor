@@ -13,7 +13,7 @@ use App\Audit\Contracts\AuditRule;
 final class AuditRegistry
 {
     /** Os ecrãs com botão "Auditoria": correm só as regras dessa área que declaram o ecrã. */
-    public const SCREENS = ['artigos', 'familias', 'faturas', 'fornecedores', 'fichas'];
+    public const SCREENS = ['artigos', 'familias', 'faturas', 'fornecedores', 'fichas', 'stock', 'armazens', 'transferencias'];
     /** Origens que correm todas as regras da área. */
     public const WHOLE_AREA = ['central', 'noturna', 'diaria'];
 

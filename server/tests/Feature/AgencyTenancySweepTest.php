@@ -171,6 +171,8 @@ class AgencyTenancySweepTest extends TestCase
         'PUT api/v1/companies/{id}/integrations/pingwin/family-categories',
         // Bússola: voltar a incluir um artigo excluído das sugestões (página das categorias).
         'POST api/v1/companies/{id}/integrations/pingwin/excluded-items/{itemId}/include',
+        // Fatia 7c: configurar o circuito das transferências (moradas, receção automática) pede restauracao.configurar.
+        'PUT api/v1/companies/{id}/restaurant/transfers/routes/{routeId}',
     ];
 
     private Company $agency;

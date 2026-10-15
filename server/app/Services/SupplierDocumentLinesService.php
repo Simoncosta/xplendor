@@ -227,6 +227,10 @@ class SupplierDocumentLinesService
                 'qnt'                  => self::dec($d['qnt'] ?? null, 6),
                 'unit_code'            => self::str($d['unit_code'] ?? null),
                 'unit_desc'            => self::str($d['unit_desc'] ?? null),
+                'unit_id'              => self::str($d['unit_id'] ?? null),
+                // O fator da embalagem que o PingWin aplicou na linha (Fatia 7c, regra T6).
+                'unit_value'           => self::dec($d['unit_value'] ?? ($d['raw']['unit_value'] ?? null), 6),
+                'qnt_base'             => self::dec($d['qnt_base'] ?? ($d['raw']['qnt_base'] ?? null), 4),
                 'price'                => self::dec($d['price'] ?? null, 6),
                 'price_w_tax'          => self::dec($d['price_w_tax'] ?? null, 6),
                 'discount1'            => self::dec($d['discount1'] ?? null, 4),

@@ -117,6 +117,18 @@ Schedule::job(new SyncCarmineCarsJob())
 
 // 05:00 (Lisboa) — sync automático das vendas/reservas do DIA ANTERIOR de todas as
 // empresas de restauração com integração ativa (PingWin + CoverManager, em série).
+// 04:15 (Lisboa) — Fatia 7a: stock do PingWin (SÓ LEITURA: abre, lê e fecha cada artigo; nunca grava).
+// Antes da sync de vendas das 05:00. Artigo a artigo, ~0,9 s cada, em lotes de 50 encadeados (a
+// estimativa da leitura completa está na entrega da Fatia 7a). Fora do horário de serviço.
+Schedule::job(new \App\Jobs\DispatchStockSyncJob())
+    ->dailyAt('04:15')
+    ->timezone('Europe/Lisbon')
+    ->name('pingwin-stock-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[PingWin Stock] Despacho noturno falhou no scheduler');
+    });
+
 Schedule::job(new ScheduledRestaurantSyncJob())
     ->dailyAt('05:00')
     ->timezone('Europe/Lisbon')

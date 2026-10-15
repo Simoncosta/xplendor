@@ -348,6 +348,54 @@ Route::prefix('v1')->group(function () {
                     Route::post('/restaurant/recipes/{productId}/delete-version', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'deleteVersion'])->whereNumber('productId')->middleware('block_when_impersonating');
                     Route::post('/restaurant/recipes/{productId}/delete-all', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'deleteAll'])->whereNumber('productId')->middleware('block_when_impersonating');
                     Route::get('/restaurant/recipes/{productId}/history', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'history'])->whereNumber('productId');
+                    // Fatia 7a: stock (leitura do espelho; mínimo/máximo no PingWin, em fila) e armazéns.
+                    Route::get('/restaurant/stock', [\App\Http\Controllers\Api\V1\CompanyStockController::class, 'index']);
+                    Route::get('/restaurant/stock/writes/{writeId}', [\App\Http\Controllers\Api\V1\CompanyStockController::class, 'writeStatus'])->whereNumber('writeId');
+                    Route::get('/restaurant/stock/runs/{runId}', [\App\Http\Controllers\Api\V1\CompanyStockController::class, 'runStatus'])->whereNumber('runId');
+                    Route::get('/restaurant/stock/{productId}', [\App\Http\Controllers\Api\V1\CompanyStockController::class, 'show'])->whereNumber('productId');
+                    Route::post('/restaurant/stock/{productId}/limits', [\App\Http\Controllers\Api\V1\CompanyStockController::class, 'limits'])->whereNumber('productId');
+                    Route::post('/restaurant/stock/{productId}/refresh', [\App\Http\Controllers\Api\V1\CompanyStockController::class, 'refresh'])->whereNumber('productId');
+                    Route::get('/restaurant/warehouses', [\App\Http\Controllers\Api\V1\CompanyWarehouseController::class, 'index']);
+                    Route::post('/restaurant/warehouses', [\App\Http\Controllers\Api\V1\CompanyWarehouseController::class, 'store']);
+                    Route::put('/restaurant/warehouses/store-defaults', [\App\Http\Controllers\Api\V1\CompanyWarehouseController::class, 'storeDefault']);
+                    Route::put('/restaurant/warehouses/{warehouseId}', [\App\Http\Controllers\Api\V1\CompanyWarehouseController::class, 'update'])->where('warehouseId', '[0-9A-Za-z]+');
+                    Route::delete('/restaurant/warehouses/{warehouseId}', [\App\Http\Controllers\Api\V1\CompanyWarehouseController::class, 'destroy'])->where('warehouseId', '[0-9A-Za-z]+')->middleware('block_when_impersonating');
+                    // Fatia 7b: contagens, zonas, desperdício e movimentos.
+                    Route::get('/restaurant/stock-counts', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'index']);
+                    Route::post('/restaurant/stock-counts', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'store']);
+                    Route::get('/restaurant/stock-counts/countable', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'countable']);
+                    Route::post('/restaurant/stock-counts/countable/refresh', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'refreshCountable']);
+                    Route::get('/restaurant/stock-counts/consumption', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'consumption']);
+                    Route::get('/restaurant/stock-counts/{countId}', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'show'])->whereNumber('countId');
+                    Route::put('/restaurant/stock-counts/{countId}/lines/{lineId}', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'saveLine'])->whereNumber('countId')->whereNumber('lineId');
+                    Route::post('/restaurant/stock-counts/{countId}/finish', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'finish'])->whereNumber('countId');
+                    Route::post('/restaurant/stock-counts/{countId}/recount', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'recount'])->whereNumber('countId');
+                    Route::post('/restaurant/stock-counts/{countId}/send', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'send'])->whereNumber('countId');
+                    Route::post('/restaurant/stock-counts/{countId}/void', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'void'])->whereNumber('countId')->middleware('block_when_impersonating');
+                    Route::delete('/restaurant/stock-counts/{countId}', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'destroy'])->whereNumber('countId');
+                    Route::get('/restaurant/stock/{productId}/movements', [\App\Http\Controllers\Api\V1\CompanyStockCountController::class, 'movements'])->whereNumber('productId');
+                    Route::get('/restaurant/stock-zones', [\App\Http\Controllers\Api\V1\CompanyStockZoneController::class, 'index']);
+                    Route::post('/restaurant/stock-zones', [\App\Http\Controllers\Api\V1\CompanyStockZoneController::class, 'store']);
+                    Route::put('/restaurant/stock-zones/{zoneId}', [\App\Http\Controllers\Api\V1\CompanyStockZoneController::class, 'update'])->whereNumber('zoneId');
+                    Route::delete('/restaurant/stock-zones/{zoneId}', [\App\Http\Controllers\Api\V1\CompanyStockZoneController::class, 'destroy'])->whereNumber('zoneId');
+                    Route::get('/restaurant/waste', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'index']);
+                    Route::get('/restaurant/waste/products', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'products']);
+                    Route::get('/restaurant/waste/report', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'report']);
+                    Route::post('/restaurant/waste', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'store']);
+                    Route::put('/restaurant/waste/{entryId}', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'update'])->whereNumber('entryId');
+                    Route::delete('/restaurant/waste/{entryId}', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'destroy'])->whereNumber('entryId');
+                    Route::post('/restaurant/waste/send', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'send']);
+                    Route::post('/restaurant/waste/batches/{batchId}/void', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'void'])->whereNumber('batchId')->middleware('block_when_impersonating');
+                    // Fatia 7c: transferências do Economato para os restaurantes.
+                    Route::get('/restaurant/transfers', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'index']);
+                    Route::post('/restaurant/transfers/orders/refresh', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'refreshOrders']);
+                    Route::get('/restaurant/transfers/products', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'products']);
+                    Route::post('/restaurant/transfers/prepare', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'prepare']);
+                    Route::post('/restaurant/transfers', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'store'])->middleware('block_when_impersonating');
+                    Route::put('/restaurant/transfers/routes/{routeId}', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'updateRoute'])->whereNumber('routeId');
+                    Route::get('/restaurant/transfers/{transferId}', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'show'])->whereNumber('transferId');
+                    Route::post('/restaurant/transfers/{transferId}/receive', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'receive'])->whereNumber('transferId')->middleware('block_when_impersonating');
+                    Route::post('/restaurant/transfers/{transferId}/void', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'void'])->whereNumber('transferId')->middleware('block_when_impersonating');
                     // Artigos — CRIAR (escrita; exige confirm) + poll do resultado.
                     Route::post('/integrations/pingwin/articles', [CompanyPingwinController::class, 'createArticle']);
                     Route::get('/integrations/pingwin/articles/creation/{creationId}', [CompanyPingwinController::class, 'articleCreation']);

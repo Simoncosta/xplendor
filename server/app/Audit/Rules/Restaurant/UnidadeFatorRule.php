@@ -53,7 +53,7 @@ final class UnidadeFatorRule extends RestaurantRule
 
     public function screens(): array
     {
-        return ['artigos', 'faturas'];
+        return ['artigos', 'faturas', 'stock'];
     }
 
     /**

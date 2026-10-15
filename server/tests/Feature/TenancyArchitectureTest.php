@@ -39,6 +39,9 @@ class TenancyArchitectureTest extends TestCase
         'Agency/AgencyController.php' => 6,               // painel da agência (rotas /agencies, fora das rotas de empresa)
         'CompanyController.php' => 1,                     // criar empresas (rota sem empresa no endereço): só o root
         'CompanyRecipeEditController.php' => 1,           // gravar fichas no PingWin só nos artigos da guarda (PINGWIN_BOM_WRITE_ALLOWLIST; regra transversal)
+        'CompanyStockController.php' => 1,                // gravar o mínimo/máximo no PingWin só nos artigos da guarda (PINGWIN_STOCK_WRITE_ALLOWLIST; regra transversal)
+        'CompanyWarehouseController.php' => 3,            // criar, editar e apagar armazéns no PingWin só nos da guarda (PINGWIN_WAREHOUSE_WRITE_ALLOWLIST; regra transversal)
+        'CompanyStockTransferController.php' => 1,        // enviar, receber e anular transferências no PingWin só depois de provadas e nos artigos da guarda (STOCK_TRANSFER_SEND_PROVEN, PINGWIN_STOCKDOC_WRITE_ALLOWLIST)
         'EditorialLineController.php' => 1,               // modo de produção pela equipa (regra transversal)
         'EditorialWorkflowController.php' => 1,           // o modo de produção só o muda quem produz (regra transversal)
         'PlanController.php' => 1,                        // planos da plataforma (rota sem empresa no endereço)

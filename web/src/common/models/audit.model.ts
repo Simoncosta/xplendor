@@ -3,7 +3,7 @@
 export type AuditSeverity = "alta" | "media" | "baixa" | "info";
 export type AuditState = "aberto" | "aceite" | "ignorado" | "corrigido" | "resolvido";
 export type AuditArea = "restauracao" | "automovel" | "tracking";
-export type AuditOrigin = "central" | "artigos" | "familias" | "faturas" | "fornecedores" | "fichas";
+export type AuditOrigin = "central" | "artigos" | "familias" | "faturas" | "fornecedores" | "fichas" | "stock" | "armazens" | "transferencias";
 
 export type AuditFixAction =
     | { type: "confirmar_fator"; product_id: string; unit_key: string; description: string }

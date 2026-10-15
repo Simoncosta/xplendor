@@ -22,6 +22,13 @@ import FornecedoresPage from "pages/Restauracao/FornecedoresPage";
 import FaturasPage from "pages/Restauracao/FaturasPage";
 import FaturaValidacaoPage from "pages/Restauracao/FaturaValidacaoPage";
 import UnidadesPage from "pages/Restauracao/UnidadesPage";
+import StockPage from "pages/Restauracao/StockPage";
+import ArmazensPage from "pages/Restauracao/ArmazensPage";
+import StockCountsPage from "pages/Restauracao/StockCountsPage";
+import StockCountPage from "pages/Restauracao/StockCountPage";
+import StockZonesPage from "pages/Restauracao/StockZonesPage";
+import WastePage from "pages/Restauracao/WastePage";
+import TransferenciasPage from "pages/Restauracao/TransferenciasPage";
 import CondicoesPagamentoPage from "pages/Restauracao/CondicoesPagamentoPage";
 import ContaCorrenteFornecedoresPage from "pages/Restauracao/ContaCorrenteFornecedoresPage";
 import ContaCorrenteFornecedorPage from "pages/Restauracao/ContaCorrenteFornecedorPage";
@@ -167,6 +174,15 @@ const authProtectedRoutes = [
     { path: "/restauracao/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
     { path: "/restauracao/fichas-tecnicas", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><FichasTecnicasPage /></RequireModule> },
     { path: "/restauracao/fichas-tecnicas/:productId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><FichaTecnicaPage /></RequireModule> },
+    // Fatia 7a: stock (leitura) e armazéns.
+    { path: "/restauracao/stock", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><StockPage /></RequireModule> },
+    { path: "/restauracao/armazens", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArmazensPage /></RequireModule> },
+    // Fatia 7b: contagens, zonas e desperdício.
+    { path: "/restauracao/stock/contagens", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><StockCountsPage /></RequireModule> },
+    { path: "/restauracao/stock/contagens/:countId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><StockCountPage /></RequireModule> },
+    { path: "/restauracao/stock/zonas", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><StockZonesPage /></RequireModule> },
+    { path: "/restauracao/stock/desperdicio", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><WastePage /></RequireModule> },
+    { path: "/restauracao/transferencias", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><TransferenciasPage /></RequireModule> },
     { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias" permission="restauracao.ver"><FamiliasPage /></RequireModule> },
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).
     { path: "/restauracao/categorias", component: <RequireModule module="pingwin" permission="restauracao.ver"><CategoriasFamiliasPage /></RequireModule> },

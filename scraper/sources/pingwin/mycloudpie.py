@@ -41,6 +41,11 @@ from urllib3.util.ssl_ import create_urllib3_context
 
 log = logging.getLogger("mycloudpie")
 
+try:  # Fatia 7b (documentos de stock): como pacote (testes) ou como script (run.py)
+    from .stockdocs import StockDocsMixin  # noqa: E402
+except ImportError:  # pragma: no cover
+    from stockdocs import StockDocsMixin  # type: ignore  # noqa: E402
+
 # (connect, read) segundos. NENHUM pedido pode pendurar a sessão indefinidamente.
 DEFAULT_TIMEOUT = (10, 60)
 
@@ -253,7 +258,7 @@ class BrowserDatasetLimitError(RuntimeError):
     os dados podem estar cortados, por isso a leitura é recusada (nunca silenciosa)."""
 
 
-class MyCloudPieClient:
+class MyCloudPieClient(StockDocsMixin):
     def __init__(
         self,
         auth_url: str,
@@ -3812,6 +3817,7 @@ class MyCloudPieClient:
         "id", "line_number", "product_id", "product_code", "entity_product_id", "description", "qnt",
         "unit_id", "unit_code", "unit_desc", "price", "discount1", "discount_value", "total",
         "taxgroup_id", "tax_description", "tax_value", "price_w_tax", "total_w_tax", "warehouse_id",
+        "unit_value", "qnt_base", "qnt_delivered", "src_docmovdetail_id",
     )
 
     def _doc_close(self, docconfig_id: str, object_id: str) -> bool:
@@ -4065,6 +4071,506 @@ class MyCloudPieClient:
         except Exception:  # noqa: BLE001
             h = {}
         return {"ok": True, "docstatus_id": h.get("docstatus_id"), "doc_number": h.get("doc_number")}
+
+    # ═════════════════════════════════ STOCK E ARMAZÉNS (Fatia 7a) ═════════════════════════════════
+    # Protocolo dos HAR de 15/10 (stock, stock-generico, armazem), na porta da API (a da sessão
+    # principal, como as fichas):
+    # STOCK DE UM ARTIGO (SÓ LEITURA):
+    #   1. OPEN,GET,INFO /service/product/{id}/maindataset,lk_stockconfig → ObjectID no HEADER.
+    #   2. GET,INFO /service/product/tbstock,productset,lkwarehouse {"params":{"SHOW_TRANSIT":0}} →
+    #      tbstock, uma linha por armazém. O productset (lotes) vem vazio na Yuko: ignorado.
+    #   3. CLOSE (sempre, num finally).
+    #   Não há listagem de stock de todos os artigos numa só chamada (nem nos HAR nem aqui): lê-se
+    #   artigo a artigo, em lotes.
+    # MÍNIMO, MÁXIMO E "NÃO USA GENÉRICOS" (⚠️ ESCRITA, uma de cada vez, iniciada por uma pessoa):
+    #   OPEN (19 datasets) → GET,INFO tbstock → MERGE maindataset,productgroup,tbtaxtable,tbstock,
+    #   additionalfields.maindataset com o eco do artigo (sem as chaves de preço) e TODAS as linhas de
+    #   tbstock, só a do armazém mudada → SAVE → CLOSE (finally) → releitura.
+    # ARMAZÉNS (entidades, como os fornecedores):
+    #   lista: browserdataset 1099511639253 {"params":{"CODE":"","DESCRIPTION":"","STORE_ID":"","STATE":"0"}};
+    #   ler: OPEN /service/entity/{id} {"params":{"entitytype":"warehouse"}} → GET,INFO dos blocos, das
+    #        lojas (storerelation) e dos campos adicionais (loja principal) → CLOSE;
+    #   criar: NEW /service/entity → os mesmos GET,INFO → MERGE → SAVE → CLOSE;
+    #   editar: OPEN → GET,INFO → MERGE → SAVE → CLOSE;
+    #   apagar: DELETE,CLOSE /service/warehouse/{id}.
+    #   Valorização (datasetwarehouse.inv_costmethod e exit_costmethod): 0 = PCM e 1 = PCU, provado no
+    #   HAR (criado com "1", a lista mostrou "PCU"; editado para "0", voltou a "PCM"). O PingWin não
+    #   devolve a lista de escolha (o datasetinfo não tem lookup): não se conhecem outros valores.
+    WAREHOUSES_DATASET_ID = "1099511639253"
+    COSTMETHODS = {0: "PCM", 1: "PCU"}
+    _STOCK_OPEN_DATASETS = "maindataset,lk_stockconfig"
+    _STOCK_DATASETS = "tbstock,productset,lkwarehouse"
+    _STOCK_MERGE_PATH = "maindataset,productgroup,tbtaxtable,tbstock,additionalfields.maindataset"
+    _WH_BODY = {"params": {"entitytype": "warehouse"}}
+    _WH_READ_DATASETS = (
+        "maindataset,lktaxscenario,lkregion_id,lkcurrency,datasetwarehouse,address.defaultaddress,"
+        "entitygroup,additionalfields.fieldsinfo,additionalfields.maindataset"
+    )
+    _WH_STORES_DATASETS = "storerelation.storedata,storerelation.storegroup"
+    _WH_EXTRA_DATASETS = "additionalfields.lk_main_store,additionalfields.lk_print_method,additionalfields.storedataset"
+    _WH_MERGE_CREATE = (
+        "maindataset,storerelation.storedata,datasetwarehouse,address.defaultaddress,"
+        "additionalfields.maindataset,additionalfields.storedataset"
+    )
+    _WH_MERGE_UPDATE = "maindataset,datasetwarehouse,address.defaultaddress,additionalfields.maindataset"
+    _WH_MERGE_UPDATE_STORES = "maindataset,storerelation.storedata,datasetwarehouse,address.defaultaddress,additionalfields.maindataset"
+    # Só estas combinações caminho+ação passam (o {id} é normalizado). Tudo o resto é recusado.
+    _STOCK_ACTIONS = {
+        "{id}/" + _STOCK_OPEN_DATASETS: {"OPEN,GET,INFO"},
+        "{id}/" + _PRODUCT_FORM_DATASETS: {"OPEN,GET,INFO"},
+        _STOCK_DATASETS: {"GET,INFO"},
+        _STOCK_MERGE_PATH: {"MERGE"},
+        "": {"SAVE", "CLOSE"},
+    }
+    _WH_ACTIONS = {
+        "entity": {"NEW", "SAVE", "CLOSE"},
+        "entity/{id}": {"OPEN"},
+        "entity/" + _WH_READ_DATASETS: {"GET,INFO"},
+        "entity/" + _WH_STORES_DATASETS: {"GET,INFO"},
+        "entity/" + _WH_EXTRA_DATASETS: {"GET,INFO"},
+        "entity/" + _WH_MERGE_CREATE: {"MERGE"},
+        "entity/" + _WH_MERGE_UPDATE: {"MERGE"},
+        "entity/" + _WH_MERGE_UPDATE_STORES: {"MERGE"},
+        "warehouse/{id}": {"DELETE,CLOSE"},
+    }
+
+    @staticmethod
+    def _norm_path(path: str) -> str:
+        return re.sub(r"(^|/)\d+(?=/|$)", r"\1{id}", path)
+
+    def _stock_post(self, path: str, action: str, object_id: str | None, body: Any = None) -> requests.Response:
+        """Um pedido do stock do artigo na porta da API. Só as combinações do protocolo passam."""
+        if action not in self._STOCK_ACTIONS.get(self._norm_path(path), set()):
+            raise RuntimeError(f"stock: '{action}' em '{path or 'product'}' recusado (fora do protocolo).")
+        url = f"{self.api_url}/service/product{('/' + path) if path else ''}"
+        data = b"" if body is None else json.dumps(body)
+        return self.session.post(url, data=data, headers=self._bom_headers(action, object_id))
+
+    def _wh_post(self, path: str, action: str, object_id: str | None = None, body: Any = None) -> requests.Response:
+        """Um pedido de armazém (entidade) na porta da API. Só as combinações do protocolo passam."""
+        if action not in self._WH_ACTIONS.get(self._norm_path(path), set()):
+            raise RuntimeError(f"armazém: '{action}' em '{path}' recusado (fora do protocolo).")
+        data = b"" if body is None else json.dumps(body)
+        return self.session.post(f"{self.api_url}/service/{path}", data=data, headers=self._entity_headers(action, object_id))
+
+    @staticmethod
+    def _num_or_none(value: Any) -> float | None:
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def parse_stock_rows(cls, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """tbstock → uma linha por armazém. Mínimo e máximo vazios ("") ficam None (não 0)."""
+        out = []
+        for r in rows or []:
+            wid = str(r.get("warehouse_id") or "")
+            if not wid:
+                continue
+            out.append({
+                "warehouse_id": wid,
+                "warehouse_code": str(r.get("warehouse_code") or ""),
+                "warehouse_name": str(r.get("warehouse_name") or ""),
+                "unit_name": str(r.get("unit_name") or ""),
+                "unit_value": cls._num_or_none(r.get("unit_value")),
+                "qnt": cls._num_or_none(r.get("qnt")) or 0.0,
+                "pcm": cls._num_or_none(r.get("acp")),
+                "pcu": cls._num_or_none(r.get("lcp")),
+                "valorization_date": _bom_date(r.get("valorization_date")),
+                "min_stock": cls._num_or_none(r.get("min_stock")),
+                "max_stock": cls._num_or_none(r.get("max_stock")),
+                "disable_generic": int(r.get("disable_generic") or 0),
+                "qnt_pend_cli": cls._num_or_none(r.get("qnt_pend_cli")) or 0.0,
+                "qnt_pend_sup": cls._num_or_none(r.get("qnt_pend_sup")) or 0.0,
+                "stk_prov": cls._num_or_none(r.get("stk_prov")),
+            })
+        return out
+
+    @staticmethod
+    def parse_stock_article(main: Dict[str, Any], stockconfigs: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Do OPEN: a configuração de stock do artigo (e se mexe stock) e as unidades."""
+        cfg_id = str(main.get("stockconfig_id") or "")
+        cfg = next((c for c in stockconfigs or [] if str(c.get("id") or "") == cfg_id), None)
+        return {
+            "id": str(main.get("id") or ""), "code": str(main.get("code") or ""), "description": main.get("description"),
+            "stockconfig_id": cfg_id or None, "stockconfig": (cfg or {}).get("description") or main.get("stockconfig_id_descr"),
+            "movestock": int(cfg["movestock"]) if cfg and cfg.get("movestock") not in (None, "") else None,
+            "base_unit_id": str(main.get("base_unit_id") or "") or None,
+            "stock_unit_id": str(main.get("default_stock_unit_id") or "") or None,
+            "stock_unit": main.get("default_stock_unit_id_descr") or None,
+            "status": main.get("status"), "deleted": int(main.get("deleted") or 0),
+        }
+
+    def _read_stock_one(self, product_id: str) -> Dict[str, Any]:
+        r = self._stock_post(f"{product_id}/{self._STOCK_OPEN_DATASETS}", "OPEN,GET,INFO", None)
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"OPEN falhou (HTTP {r.status_code}) — {self._soa_message(r.text)}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError("header 'ObjectID' ausente no OPEN.")
+        try:
+            product = r.json().get("product", {})
+            main = (product.get("maindataset") or [{}])[0] or {}
+            if str(main.get("id") or "") != str(product_id):
+                raise RuntimeError("o OPEN não devolveu este artigo.")
+            g = self._stock_post(self._STOCK_DATASETS, "GET,INFO", object_id, {"params": {"SHOW_TRANSIT": 0}})
+            if g.status_code not in (200, 206):
+                raise RuntimeError(f"GET,INFO tbstock falhou (HTTP {g.status_code}) — {self._soa_message(g.text)}")
+            body = g.json().get("product", {})
+            return {
+                "article": self.parse_stock_article(main, product.get("lk_stockconfig") or []),
+                "rows": self.parse_stock_rows(body.get("tbstock") or []),
+                "warehouses": [{"id": str(w.get("id")), "code": w.get("code"), "name": w.get("name")}
+                               for w in body.get("lkwarehouse") or [] if w.get("id")],
+            }
+        finally:
+            try:
+                self._stock_post("", "CLOSE", object_id)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("stock %s: CLOSE falhou (ignorado): %s", product_id, type(exc).__name__)
+
+    def read_stock(self, product_ids: List[str]) -> Dict[str, Any]:
+        """SÓ LEITURA: o stock de cada artigo (uma linha por armazém). Uma falha num artigo não pára
+        os outros. Devolve {stock: {id: {article, rows, warehouses}}, errors: {id: msg}, seconds: {id: s}}."""
+        out: Dict[str, Any] = {"stock": {}, "errors": {}, "seconds": {}}
+        for pid in [str(p) for p in product_ids if str(p).strip()]:
+            t0 = time.monotonic()
+            try:
+                out["stock"][pid] = self._read_stock_one(pid)
+            except Exception as exc:  # noqa: BLE001
+                out["errors"][pid] = f"{type(exc).__name__}: {exc}"[:300]
+            out["seconds"][pid] = round(time.monotonic() - t0, 3)
+        return out
+
+    def write_stock_limits(self, product_id: str, warehouse_id: str, changes: Dict[str, Any],
+                           expected: Dict[str, Any] | None = None, allowed_product_ids: List[str] | None = None) -> Dict[str, Any]:
+        """⚠️ ESCRITA: muda o mínimo, o máximo ou o "Não usa genéricos" de UM artigo num armazém.
+        `changes` = {min_stock?, max_stock?, disable_generic?} (None = vazio). `expected` = os valores
+        que a pessoa viu: se o PingWin tiver outros, pára sem escrever (conflict). `allowed_product_ids`
+        não vazio = os únicos artigos autorizados (guarda do dev; ["0"] = nenhum)."""
+        product_id, warehouse_id = str(product_id), str(warehouse_id)
+        allowed = [str(a) for a in (allowed_product_ids or []) if str(a).strip()]
+        if allowed and product_id not in allowed:
+            raise RuntimeError(f"stock: escrita recusada no artigo {product_id} (só autorizado em {', '.join(allowed)}).")
+        fields = {k: changes[k] for k in ("min_stock", "max_stock", "disable_generic") if k in (changes or {})}
+        if not fields:
+            return {"ok": False, "saved": False, "error": "Nada a mudar."}
+        for k in ("min_stock", "max_stock"):
+            if k in fields and fields[k] is not None:
+                v = self._num_or_none(fields[k])
+                if v is None or v < 0:
+                    return {"ok": False, "saved": False, "error": f"{k}: tem de ser um número maior ou igual a 0."}
+                fields[k] = v
+        if "disable_generic" in fields:
+            fields["disable_generic"] = 1 if int(fields["disable_generic"] or 0) else 0
+
+        r = self._stock_post(f"{product_id}/{self._PRODUCT_FORM_DATASETS}", "OPEN,GET,INFO", None)
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"stock {product_id}: OPEN falhou (HTTP {r.status_code}) — {self._soa_message(r.text)}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError(f"stock {product_id}: header 'ObjectID' ausente.")
+        before: Dict[str, Any] = {}
+        try:
+            product = r.json().get("product", {})
+            main = [dict(row) for row in product.get("maindataset") or []]
+            if not main or str(main[0].get("id") or "") != product_id:
+                raise RuntimeError(f"stock {product_id}: o OPEN não devolveu este artigo.")
+            for row in main:
+                for k in self._MERGE_PRICE_KEYS:
+                    row.pop(k, None)
+            g = self._stock_post(self._STOCK_DATASETS, "GET,INFO", object_id, {"params": {"SHOW_TRANSIT": 0}})
+            if g.status_code not in (200, 206):
+                raise RuntimeError(f"stock {product_id}: GET,INFO tbstock falhou (HTTP {g.status_code}).")
+            rows = [dict(x) for x in g.json().get("product", {}).get("tbstock") or []]
+            if not rows:
+                return {"ok": False, "saved": False, "no_stock_rows": True,
+                        "error": "O artigo não tem linhas de stock no PingWin: nada foi gravado."}
+            idx = next((i for i, x in enumerate(rows) if str(x.get("warehouse_id") or "") == warehouse_id), None)
+            if idx is None:
+                return {"ok": False, "saved": False, "error": "O artigo não tem linha de stock neste armazém: nada foi gravado."}
+            before = self.parse_stock_rows([rows[idx]])[0]
+            if expected:
+                diff = {k: {"esperado": expected.get(k), "pingwin": before.get(k)} for k in fields
+                        if k in expected and not self._same_limit(expected.get(k), before.get(k))}
+                if diff:
+                    return {"ok": False, "saved": False, "conflict": True, "diff": diff, "before": before}
+            for k, v in fields.items():
+                rows[idx][k] = "" if v is None else v
+            merge_body = {
+                "maindataset": main,
+                "productgroup": product.get("productgroup") or [],
+                "tbtaxtable": product.get("tbtaxtable") or [],
+                "tbstock": rows,
+                "additionalfields.maindataset": product.get("additionalfields.maindataset") or [],
+            }
+            rm = self._stock_post(self._STOCK_MERGE_PATH, "MERGE", object_id, merge_body)
+            if rm.status_code not in (200, 206):
+                return {"ok": False, "saved": False, "before": before, "error": f"MERGE falhou (HTTP {rm.status_code}) — {self._soa_message(rm.text)}"}
+            rs = self._stock_post("", "SAVE", object_id)
+            if rs.status_code not in (200, 206):
+                return {"ok": False, "saved": False, "before": before, "error": f"SAVE falhou (HTTP {rs.status_code}) — {self._soa_message(rs.text)}"}
+        finally:
+            try:
+                self._stock_post("", "CLOSE", object_id)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("stock %s: CLOSE falhou (ignorado): %s", product_id, type(exc).__name__)
+
+        try:
+            reread = self._read_stock_one(product_id)
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "saved": True, "before": before, "reread": None, "reread_error": str(exc)[:300]}
+        after = next((x for x in reread["rows"] if x["warehouse_id"] == warehouse_id), None)
+        checks = {k: after is not None and self._same_limit(v, after.get(k)) for k, v in fields.items()}
+        return {"ok": all(checks.values()), "saved": True, "before": before, "after": after, "checks": checks, "reread": reread}
+
+    @staticmethod
+    def _same_limit(a: Any, b: Any) -> bool:
+        fa = None if a in (None, "") else float(a)
+        fb = None if b in (None, "") else float(b)
+        return (fa is None and fb is None) or (fa is not None and fb is not None and abs(fa - fb) < 1e-9)
+
+    # ---------------------------------------------------------------- ARMAZÉNS
+    @classmethod
+    def parse_warehouse_row(cls, r: Dict[str, Any]) -> Dict[str, Any]:
+        """Linha da lista (browserdataset): a valorização vem como texto ("PCM")."""
+        by_label = {v: k for k, v in cls.COSTMETHODS.items()}
+        return {
+            "id": str(r.get("id") or ""), "code": str(r.get("code") or ""), "description": r.get("description"),
+            "deleted": int(r.get("deleted") or 0),
+            "inv_costmethod": by_label.get(str(r.get("inv_costmethod") or "")), "inv_costmethod_label": r.get("inv_costmethod"),
+            "exit_costmethod": by_label.get(str(r.get("exit_costmethod") or "")), "exit_costmethod_label": r.get("exit_costmethod"),
+        }
+
+    @staticmethod
+    def parse_warehouse_form(body: Dict[str, Any]) -> Dict[str, Any]:
+        """Do formulário do armazém: nome, valorização, lojas servidas e loja principal."""
+        main = (body.get("maindataset") or [{}])[0] or {}
+        wh = (body.get("datasetwarehouse") or [{}])[0] or {}
+        af = (body.get("additionalfields.maindataset") or [{}])[0] or {}
+        main_store = str(af.get("main_store") or "") or None
+        lk = {str(s.get("id")): s.get("description") for s in body.get("additionalfields.lk_main_store") or []}
+        return {
+            "id": str(main.get("id") or ""), "code": str(main.get("code") or ""),
+            "description": main.get("description"), "fiscalname": main.get("fiscalname"),
+            "deleted": int(main.get("deleted") or 0) or int(wh.get("deleted") or 0),
+            "inv_costmethod": _int_or_none(wh.get("inv_costmethod")), "exit_costmethod": _int_or_none(wh.get("exit_costmethod")),
+            "stores": [{"store_id": str(s.get("store_id") or ""), "code": s.get("store_code"), "name": s.get("store_name"),
+                        "served": int(s.get("deleted") or 0) == 0} for s in body.get("storerelation.storedata") or [] if s.get("store_id")],
+            "main_store_id": main_store, "main_store_name": lk.get(main_store) if main_store else None,
+            "address": {k: ((body.get("address.defaultaddress") or [{}])[0] or {}).get(k)
+                        for k in ("id", "address", "postalcode", "postalcode_description", "city")},
+        }
+
+    def fetch_warehouses(self, state: str = "0") -> List[Dict[str, Any]]:
+        """SÓ LEITURA: a lista de armazéns (STATE "0" ativos, "1" anulados)."""
+        body = {"params": {"CODE": "", "DESCRIPTION": "", "STORE_ID": "", "STATE": str(state)}}
+        return [self.parse_warehouse_row(r) for r in self.fetch_browserdataset(self.WAREHOUSES_DATASET_ID, body)]
+
+    def _wh_close(self, object_id: str) -> None:
+        try:
+            self._wh_post("entity", "CLOSE", object_id)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("armazém: CLOSE falhou (ignorado): %s", type(exc).__name__)
+
+    def _wh_form(self, warehouse_id: str | None) -> tuple[str, Dict[str, Any]]:
+        """Abre o formulário (NEW para criar; OPEN pelo id para editar) e lê os blocos. NÃO fecha:
+        quem chama fecha (finally)."""
+        if warehouse_id:
+            r = self._wh_post(f"entity/{warehouse_id}", "OPEN", None, self._WH_BODY)
+        else:
+            r = self._wh_post("entity", "NEW", None, self._WH_BODY)
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"armazém {'OPEN' if warehouse_id else 'NEW'} falhou (HTTP {r.status_code}) — {self._soa_message(r.text)}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError("armazém: header 'ObjectID' ausente na abertura do formulário.")
+        try:
+            body: Dict[str, Any] = {}
+            for ds in (self._WH_READ_DATASETS, self._WH_STORES_DATASETS, self._WH_EXTRA_DATASETS):
+                g = self._wh_post(f"entity/{ds}", "GET,INFO", object_id)
+                if g.status_code not in (200, 206):
+                    raise RuntimeError(f"armazém GET,INFO falhou (HTTP {g.status_code}) — {self._soa_message(g.text)}")
+                body.update({k: v for k, v in (g.json().get("entity") or {}).items() if k != "service.datasetinfo"})
+            main = (body.get("maindataset") or [{}])[0] or {}
+            if int(main.get("iswarehouse") or 0) != 1 or not body.get("datasetwarehouse"):
+                raise RuntimeError("armazém: a entidade aberta não é um armazém — abortado.")
+            if warehouse_id and str(main.get("id") or "") != str(warehouse_id):
+                raise RuntimeError("armazém: o OPEN não devolveu este armazém — abortado.")
+        except Exception:
+            self._wh_close(object_id)
+            raise
+        return object_id, body
+
+    def read_warehouse(self, warehouse_id: str) -> Dict[str, Any]:
+        """SÓ LEITURA: o formulário VIVO de um armazém (OPEN → GET,INFO → CLOSE)."""
+        object_id, body = self._wh_form(str(warehouse_id))
+        try:
+            return self.parse_warehouse_form(body)
+        finally:
+            self._wh_close(object_id)
+
+    def fetch_warehouses_rich(self) -> Dict[str, Any]:
+        """SÓ LEITURA: a lista (ativos e anulados) e o formulário de cada ativo (lojas servidas,
+        loja principal e valorização)."""
+        active = self.fetch_warehouses("0")
+        deleted = self.fetch_warehouses("1")
+        out, errors = [], {}
+        for w in active:
+            try:
+                out.append({**w, **self.read_warehouse(w["id"]), "deleted": 0})
+            except Exception as exc:  # noqa: BLE001
+                errors[w["id"]] = f"{type(exc).__name__}: {exc}"[:300]
+                out.append(w)
+        return {"warehouses": out + [{**w, "deleted": 1} for w in deleted if w["id"] not in {x["id"] for x in active}], "errors": errors}
+
+    @staticmethod
+    def _wh_guard(name: str, allowed_names: List[str] | None) -> None:
+        allowed = [str(a).strip() for a in (allowed_names or []) if str(a).strip()]
+        if allowed and str(name or "").strip() not in allowed:
+            raise RuntimeError(f"armazém: escrita recusada em «{name}» (só autorizado em {', '.join(allowed)}).")
+
+    @classmethod
+    def _wh_fields(cls, fields: Dict[str, Any]) -> Dict[str, Any]:
+        out: Dict[str, Any] = {}
+        if "description" in fields:
+            d = str(fields.get("description") or "").strip()
+            if not d or len(d) > 50:
+                raise ValueError("O nome do armazém é obrigatório (até 50 caracteres).")
+            out["description"] = d
+        for k in ("inv_costmethod", "exit_costmethod"):
+            if k in fields and fields[k] is not None:
+                if int(fields[k]) not in cls.COSTMETHODS:
+                    raise ValueError(f"{k}: método de valorização desconhecido.")
+                out[k] = int(fields[k])
+        if "store_ids" in fields and fields["store_ids"] is not None:
+            out["store_ids"] = [str(s) for s in fields["store_ids"]]
+        return out
+
+    def _wh_payload(self, body: Dict[str, Any], f: Dict[str, Any], create: bool) -> tuple[str, Dict[str, Any]]:
+        main = dict(body["maindataset"][0])
+        if "description" in f:
+            main["description"] = f["description"]
+            if create or not str(main.get("fiscalname") or "").strip() or main.get("fiscalname") == body["maindataset"][0].get("description"):
+                main["fiscalname"] = f["description"]
+        wh = dict(body["datasetwarehouse"][0])
+        for k in ("inv_costmethod", "exit_costmethod"):
+            if k in f:
+                wh[k] = str(f[k])
+        payload: Dict[str, Any] = {
+            "maindataset": [main], "datasetwarehouse": [wh],
+            "address.defaultaddress": body.get("address.defaultaddress") or [],
+            "additionalfields.maindataset": body.get("additionalfields.maindataset") or [],
+        }
+        stores_changed = False
+        if create or "store_ids" in f:
+            stores = [dict(s) for s in body.get("storerelation.storedata") or []]
+            if "store_ids" in f:
+                want = set(f["store_ids"])
+                for s in stores:
+                    new = 0 if str(s.get("store_id")) in want else 1
+                    stores_changed = stores_changed or int(s.get("deleted") or 0) != new
+                    s["deleted"] = new
+            payload["storerelation.storedata"] = stores
+        if create:
+            payload["additionalfields.storedataset"] = body.get("additionalfields.storedataset") or []
+            return self._WH_MERGE_CREATE, payload
+        if not stores_changed:
+            payload.pop("storerelation.storedata", None)
+            return self._WH_MERGE_UPDATE, payload
+        return self._WH_MERGE_UPDATE_STORES, payload
+
+    def _wh_commit(self, object_id: str, path: str, payload: Dict[str, Any]) -> str:
+        rm = self._wh_post(f"entity/{path}", "MERGE", object_id, payload)
+        if rm.status_code not in (200, 206):
+            raise RuntimeError(f"MERGE falhou (HTTP {rm.status_code}) — {self._soa_message(rm.text)}")
+        merged = ((rm.json().get("entity") or {}).get("maindataset") or [{}])[0]
+        rs = self._wh_post("entity", "SAVE", object_id)
+        if rs.status_code not in (200, 206):
+            raise RuntimeError(f"SAVE falhou (HTTP {rs.status_code}) — {self._soa_message(rs.text)}")
+        return str(merged.get("id") or payload["maindataset"][0].get("id") or "")
+
+    def _wh_checks(self, confirm: Dict[str, Any], f: Dict[str, Any]) -> Dict[str, bool]:
+        checks: Dict[str, bool] = {"ativo": confirm.get("deleted") == 0}
+        if "description" in f:
+            checks["description"] = confirm.get("description") == f["description"]
+        for k in ("inv_costmethod", "exit_costmethod"):
+            if k in f:
+                checks[k] = confirm.get(k) == f[k]
+        if "store_ids" in f:
+            checks["stores"] = sorted(s["store_id"] for s in confirm.get("stores") or [] if s["served"]) == sorted(f["store_ids"])
+        return checks
+
+    def create_warehouse(self, fields: Dict[str, Any], allowed_names: List[str] | None = None) -> Dict[str, Any]:
+        """⚠️ ESCRITA: cria UM armazém (nome, lojas servidas, valorização) e relê-o."""
+        f = self._wh_fields({"inv_costmethod": 0, "exit_costmethod": 0, **(fields or {})})
+        if "description" not in f:
+            return {"ok": False, "saved": False, "error": "O nome do armazém é obrigatório."}
+        self._wh_guard(f["description"], allowed_names)
+        object_id, body = self._wh_form(None)
+        new_id = ""
+        try:
+            path, payload = self._wh_payload(body, f, create=True)
+            new_id = self._wh_commit(object_id, path, payload)
+        finally:
+            self._wh_close(object_id)
+        confirm = self.read_warehouse(new_id)
+        listed = any(w["id"] == new_id for w in self.fetch_warehouses("0"))
+        checks = {**self._wh_checks(confirm, f), "na_lista": listed}
+        return {"ok": all(checks.values()), "saved": True, "pingwin_id": new_id, "code": confirm.get("code"),
+                "checks": checks, "reread": confirm}
+
+    def update_warehouse(self, warehouse_id: str, fields: Dict[str, Any], expected: Dict[str, Any] | None = None,
+                         allowed_names: List[str] | None = None) -> Dict[str, Any]:
+        """⚠️ ESCRITA: edita UM armazém ativo. `expected` = o que a pessoa viu (nome, valorização,
+        lojas): se o PingWin tiver outra coisa, pára sem escrever (conflict)."""
+        wid = str(warehouse_id)
+        f = self._wh_fields(fields or {})
+        if not f:
+            return {"ok": False, "saved": False, "error": "Nada a mudar."}
+        object_id, body = self._wh_form(wid)
+        before: Dict[str, Any] = {}
+        try:
+            before = self.parse_warehouse_form(body)
+            self._wh_guard(before.get("description"), allowed_names)
+            if "description" in f:
+                self._wh_guard(f["description"], allowed_names)
+            if before["deleted"]:
+                return {"ok": False, "saved": False, "error": "O armazém está anulado: editar recusado."}
+            if expected:
+                live = {"description": before.get("description"), "inv_costmethod": before.get("inv_costmethod"),
+                        "exit_costmethod": before.get("exit_costmethod"),
+                        "store_ids": sorted(s["store_id"] for s in before["stores"] if s["served"])}
+                diff = {k: {"esperado": v, "pingwin": live[k]} for k, v in expected.items()
+                        if k in live and (sorted(map(str, v)) if k == "store_ids" else v) != live[k]}
+                if diff:
+                    return {"ok": False, "saved": False, "conflict": True, "diff": diff, "before": before}
+            path, payload = self._wh_payload(body, f, create=False)
+            self._wh_commit(object_id, path, payload)
+        finally:
+            self._wh_close(object_id)
+        confirm = self.read_warehouse(wid)
+        checks = self._wh_checks(confirm, f)
+        return {"ok": all(checks.values()), "saved": True, "pingwin_id": wid, "before": before, "checks": checks, "reread": confirm}
+
+    def delete_warehouse(self, warehouse_id: str, allowed_names: List[str] | None = None) -> Dict[str, Any]:
+        """⚠️ ESCRITA: apaga UM armazém ativo (DELETE,CLOSE) e confirma que saiu da lista dos ativos.
+        Quem chama confirma antes que o armazém não tem stock."""
+        wid = str(warehouse_id)
+        before = self.read_warehouse(wid)
+        self._wh_guard(before.get("description"), allowed_names)
+        if before["deleted"]:
+            return {"ok": False, "deleted": False, "error": "O armazém já está anulado."}
+        r = self._wh_post(f"warehouse/{wid}", "DELETE,CLOSE")
+        if r.status_code not in (200, 206):
+            return {"ok": False, "deleted": False, "before": before, "error": f"Apagar falhou (HTTP {r.status_code}) — {self._soa_message(r.text)}"}
+        in_active = any(w["id"] == wid for w in self.fetch_warehouses("0"))
+        in_deleted = any(w["id"] == wid for w in self.fetch_warehouses("1"))
+        return {"ok": not in_active, "deleted": not in_active, "before": before,
+                "in_state0_ativos": in_active, "in_state1_anulados": in_deleted}
 
     # ------------------------------------------------------------- PARSE
     def fetch_sales_report(self, target_date: datetime) -> pd.DataFrame:
