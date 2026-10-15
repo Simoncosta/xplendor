@@ -72,16 +72,22 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
             if (pos === -1) continue;
             matches.push({ entry, startsAt: pos });
         }
+        // Um rótulo que existe em dois sítios (por exemplo, "ABS" nos 4 grupos de
+        // extras e na lista única das autocaravanas) aparece uma só vez: fica a
+        // entrada que vale para o tipo de viatura atual.
+        const appliesNow = (e: FormSearchEntry) => !e.vehicleTypes || e.vehicleTypes.includes(currentVehicleType);
+        const availableLabels = new Set(matches.filter((m) => appliesNow(m.entry)).map((m) => m.entry.normalizedLabel));
+        const deduped = matches.filter((m) => appliesNow(m.entry) || !availableLabels.has(m.entry.normalizedLabel));
         // Match no início (pos === 0) primeiro, depois resto;
         // desempate alfabético no label original.
-        matches.sort((a, b) => {
+        deduped.sort((a, b) => {
             const aStart = a.startsAt === 0 ? 0 : 1;
             const bStart = b.startsAt === 0 ? 0 : 1;
             if (aStart !== bStart) return aStart - bStart;
             return a.entry.label.localeCompare(b.entry.label, "pt");
         });
-        return matches.slice(0, MAX_RESULTS).map((m) => m.entry);
-    }, [index, normalizedQuery]);
+        return deduped.slice(0, MAX_RESULTS).map((m) => m.entry);
+    }, [index, normalizedQuery, currentVehicleType]);
 
     // Reset activeIndex quando os resultados mudam (Matilde escreveu mais).
     useEffect(() => {

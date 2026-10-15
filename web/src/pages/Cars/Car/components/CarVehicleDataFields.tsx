@@ -18,7 +18,7 @@ import { ICarUpdatePayload } from "common/models/car.model";
 import { getCarBrands } from "slices/car-brands/thunk";
 import { useEffect, useMemo, useRef } from "react";
 import { getCarModels } from "slices/car-models/thunk";
-import { fuelTypeOptions, monthsOptions, transmissionOptions } from "common/data/cars";
+import { fuelTypeOptions, gearCountOptions, monthsOptions, transmissionOptions } from "common/data/cars";
 import { createSelector } from "reselect";
 
 // M2.2 — marcas de motor aceites. A autocaravana tem marca COMERCIAL
@@ -30,12 +30,6 @@ import { createSelector } from "reselect";
 const engineBrandOptions = [
     "Fiat", "Renault", "Ford", "Citroën", "Mercedes", "Iveco", "Peugeot", "VW",
 ].map(b => ({ value: b, label: b }));
-
-// Ficha das autocaravanas (B): número de velocidades (opcional). "Sem indicação" limpa o valor.
-const gearCountOptions: { value: string; label: string }[] = [
-    { value: "", label: "Sem indicação" },
-    ...[4, 5, 6, 7, 8, 9].map((n) => ({ value: String(n), label: `${n} velocidades` })),
-];
 
 const selectCarBrandState = (state: any) => state.CarBrand;
 const selectCarModelState = (state: any) => state.CarModel;

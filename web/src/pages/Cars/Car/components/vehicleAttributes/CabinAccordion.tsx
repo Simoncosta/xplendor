@@ -1,5 +1,7 @@
 import { AccordionBody, AccordionHeader, AccordionItem, Col, Row } from "reactstrap";
+import { useFormikContext } from "formik";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
+import type { ICarUpdatePayload } from "common/models/car.model";
 
 /**
  * Accordion "Cabine" (2026-06-28) — equipamentos que dizem respeito ao
@@ -20,6 +22,10 @@ export interface AccordionProps {
 }
 
 export default function CabinAccordion({ accordionId }: AccordionProps) {
+    const { values } = useFormikContext<ICarUpdatePayload>();
+    // Nas autocaravanas, os Bancos giratórios estão na lista única "Cabine de condução e segurança".
+    const isMotorhome = values.vehicle_type === "motorhome";
+
     return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
@@ -35,13 +41,15 @@ export default function CabinAccordion({ accordionId }: AccordionProps) {
                             className="mb-3"
                         />
                     </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.interior_furniture.has_rotating_seats"
-                            label="Bancos giratórios"
-                            className="mb-3"
-                        />
-                    </Col>
+                    {!isMotorhome && (
+                        <Col lg={2}>
+                            <XInputCheckbox
+                                name="vehicle_attributes.interior_furniture.has_rotating_seats"
+                                label="Bancos giratórios"
+                                className="mb-3"
+                            />
+                        </Col>
+                    )}
                 </Row>
 
             </AccordionBody>

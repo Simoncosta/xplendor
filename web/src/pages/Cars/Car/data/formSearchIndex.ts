@@ -32,6 +32,7 @@
 // ═════════════════════════════════════════════════════════════════════════
 
 import { EXTRA_GROUPS } from "./extraGroups";
+import { MOTORHOME_CABIN_LIST, otherCatalogExtras } from "./motorhomeCabinList";
 
 /** Tipos de viatura suportados (espelha `cars.vehicle_type`). */
 export type FormSearchVehicleType = "car" | "motorcycle" | "motorhome" | "caravan";
@@ -42,6 +43,8 @@ const HABITATION_ONLY: FormSearchVehicleType[] = ["motorhome", "caravan"];
 const NON_CARAVAN:     FormSearchVehicleType[] = ["car", "motorcycle", "motorhome"];
 const NON_HABITATION:  FormSearchVehicleType[] = ["car", "motorcycle"];
 const MOTORHOME_ONLY:  FormSearchVehicleType[] = ["motorhome"];
+const NON_MOTORHOME:   FormSearchVehicleType[] = ["car", "motorcycle", "caravan"];
+const CARAVAN_ONLY:    FormSearchVehicleType[] = ["caravan"];
 
 /**
  * Anotação opcional de checkbox-pai. Quando presente, o campo só renderiza
@@ -167,6 +170,11 @@ const EXTRAS_COMFORT  = { kind: "extras" as const, accordionId: "1", accordionLa
 const EXTRAS_EXTERIOR = { kind: "extras" as const, accordionId: "2", accordionLabel: "Equipamento Exterior" };
 const EXTRAS_INTERIOR = { kind: "extras" as const, accordionId: "3", accordionLabel: "Equipamento Interior" };
 const EXTRAS_SAFETY   = { kind: "extras" as const, accordionId: "4", accordionLabel: "Segurança & Desempenho" };
+
+// Autocaravanas: a lista única e "Outros equipamentos" substituem os 4 grupos
+// (CarEquipmentDataFields, MOTORHOME_CABIN_ID e MOTORHOME_OTHERS_ID).
+const EXTRAS_MOTORHOME_CABIN  = { kind: "extras" as const, accordionId: "5", accordionLabel: "Cabine de condução e segurança", vehicleTypes: MOTORHOME_ONLY };
+const EXTRAS_MOTORHOME_OTHERS = { kind: "extras" as const, accordionId: "6", accordionLabel: "Outros equipamentos", vehicleTypes: MOTORHOME_ONLY };
 
 const EXTRA_GROUP_LOCATION: Record<string, typeof EXTRAS_COMFORT> = {
     comfort_multimedia: EXTRAS_COMFORT,
@@ -369,7 +377,8 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Garagem — altura ajustável", name: "vehicle_attributes.exterior.garage.has_height_adjuster", loc: HAB_EXTERIOR, parentField: { fieldName: "vehicle_attributes.exterior.garage.has_garage" } },
 
     // ── HAB.6 Segurança e Fechaduras (accordionId="6") ───────────────────
-    { label: "Alarme",            name: "vehicle_attributes.security.has_alarm", loc: HAB_SECURITY },
+    // Nas autocaravanas, o Alarme está na lista única (EXTRAS_MOTORHOME_CABIN).
+    { label: "Alarme",            name: "vehicle_attributes.security.has_alarm", loc: HAB_SECURITY, vehicleTypes: CARAVAN_ONLY },
     { label: "Fecho alçapão",     name: "vehicle_attributes.security.has_hatch_lock", loc: HAB_SECURITY },
     { label: "Fecho cabine",      name: "vehicle_attributes.security.has_cabin_lock", loc: HAB_SECURITY },
     { label: "Porta de cofre",    name: "vehicle_attributes.security.has_safe_door", loc: HAB_SECURITY },
@@ -433,13 +442,16 @@ const RAW_MANUAL: RawEntry[] = [
     // Chaves JSON permanecem nos sítios originais (chassis_structure e
     // interior_furniture). Só a apresentação vive aqui. Ver CLAUDE.md sec 6.1.
     { label: "Estores Remifront", name: "vehicle_attributes.chassis_structure.has_remifront", loc: HAB_CABINE },
-    { label: "Bancos giratórios", name: "vehicle_attributes.interior_furniture.has_rotating_seats", loc: HAB_CABINE },
+    // Nas autocaravanas, os Bancos giratórios estão na lista única (EXTRAS_MOTORHOME_CABIN).
+    { label: "Bancos giratórios", name: "vehicle_attributes.interior_furniture.has_rotating_seats", loc: HAB_CABINE, vehicleTypes: CARAVAN_ONLY },
 ];
 
 // ═════════════════════════════════════════════════════════════════════════
 // AUTO-DERIVADO — items dos 4 grupos de extras, lidos de EXTRA_GROUPS.
 // NÃO duplica — se "Traction+" for adicionado a extraGroups.ts, aparece
-// automaticamente na busca.
+// automaticamente na busca. Nas autocaravanas, os 4 grupos dão lugar à
+// lista única (rótulos de MOTORHOME_CABIN_LIST, mais a Caixa) e a "Outros
+// equipamentos" (os extras do catálogo que não estão na lista).
 // ═════════════════════════════════════════════════════════════════════════
 
 const buildExtrasEntries = (): FormSearchEntry[] => {
@@ -453,9 +465,21 @@ const buildExtrasEntries = (): FormSearchEntry[] => {
                 fieldName: null,
                 location,
                 normalizedLabel: normalizeForSearch(item),
+                vehicleTypes: NON_MOTORHOME,
             });
         }
     }
+    const motorhome = (label: string, location: FormSearchLocation): FormSearchEntry => ({
+        label,
+        fieldName: null,
+        location,
+        normalizedLabel: normalizeForSearch(label),
+        vehicleTypes: MOTORHOME_ONLY,
+    });
+    out.push(motorhome("Caixa", EXTRAS_MOTORHOME_CABIN));
+    for (const item of MOTORHOME_CABIN_LIST) out.push(motorhome(item.label, EXTRAS_MOTORHOME_CABIN));
+    out.push(motorhome("Outros equipamentos", EXTRAS_MOTORHOME_OTHERS));
+    for (const other of otherCatalogExtras()) out.push(motorhome(other.text, EXTRAS_MOTORHOME_OTHERS));
     return out;
 };
 

@@ -9,7 +9,9 @@ export interface AccordionProps {
 }
 
 export default function SecurityAccordion({ accordionId }: AccordionProps) {
-    useFormikContext<ICarUpdatePayload>();
+    const { values } = useFormikContext<ICarUpdatePayload>();
+    // Nas autocaravanas, o Alarme está na lista única "Cabine de condução e segurança".
+    const isMotorhome = values.vehicle_type === "motorhome";
 
     return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
@@ -19,13 +21,15 @@ export default function SecurityAccordion({ accordionId }: AccordionProps) {
             <AccordionBody accordionId={accordionId}>
 
                 <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.security.has_alarm"
-                            label="Alarme"
-                            className="mb-3"
-                        />
-                    </Col>
+                    {!isMotorhome && (
+                        <Col lg={2}>
+                            <XInputCheckbox
+                                name="vehicle_attributes.security.has_alarm"
+                                label="Alarme"
+                                className="mb-3"
+                            />
+                        </Col>
+                    )}
                     <Col lg={2}>
                         <XInputCheckbox
                             name="vehicle_attributes.security.has_hatch_lock"

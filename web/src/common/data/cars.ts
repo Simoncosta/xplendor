@@ -18,6 +18,12 @@ const transmissionOptions = [
     { value: "semi-automatic", label: "Semi-automática" },
 ];
 
+// Número de velocidades (autocaravanas; opcional). "Sem indicação" limpa o valor.
+const gearCountOptions: { value: string; label: string }[] = [
+    { value: "", label: "Sem indicação" },
+    ...[4, 5, 6, 7, 8, 9].map((n) => ({ value: String(n), label: `${n} velocidades` })),
+];
+
 const segmentOptions = [
     { value: "city_car", label: "Citadino" },
     { value: "suv_tt", label: "SUV" },
@@ -112,6 +118,7 @@ export {
     monthsOptions,
     fuelTypeOptions,
     transmissionOptions,
+    gearCountOptions,
     segmentOptions,
     seatsOptions,
     colorsOptions,
