@@ -46,12 +46,7 @@ class CarIndexRequest extends FormRequest
             // Habitation filters (motorhome / caravan)
             'category'        => ['nullable', 'string'],
             'bed_types'       => ['nullable', 'array'],
-            'bed_types.*'     => ['string', Rule::in([
-                'camas_gemeas', 'cama_central', 'cama_francesa', 'cama_basculante',
-                'cama_capucino', 'cama_garagem', 'beliche', 'cama_transversal',
-                'cama_elevatoria_eletrica', 'cama_suspensa', 'cama_convertivel',
-                'outra', 'cama_rebativel_cabine',
-            ])],
+            'bed_types.*'     => ['string', Rule::in(\App\Models\VehicleAttribute::bedSlugs())],
             'min_seats'       => ['nullable', 'integer', 'min:1'],
             'max_seats'       => ['nullable', 'integer', 'min:1'],
             'min_length_m'    => ['nullable', 'numeric', 'min:0'],

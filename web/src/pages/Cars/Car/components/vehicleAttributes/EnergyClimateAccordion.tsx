@@ -28,6 +28,7 @@ const inverterTypeOptions: InverterOpt[] = [
 export default function EnergyClimateAccordion({ accordionId }: AccordionProps) {
     const { values, setFieldValue } = useFormikContext<ICarUpdatePayload>();
     const ec = values.vehicle_attributes?.energy_climate;
+    const isMotorhome = values.vehicle_type === "motorhome";
 
     return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
@@ -211,6 +212,29 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
                         />
                     </Col>
                 </Row>
+
+                {/* Ficha das autocaravanas (B): uma marca e uma capacidade para todas as
+                    baterias de cabine (a quantidade é a "Baterias cabine" acima). Só nas
+                    autocaravanas: as caravanas não têm cabine de condução. */}
+                {isMotorhome && (
+                    <Row className="mb-2">
+                        <Col lg={3}>
+                            <XInput
+                                name="vehicle_attributes.energy_climate.cabin_battery_brand"
+                                label="Marca das baterias de cabine"
+                                className="mb-3"
+                            />
+                        </Col>
+                        <Col lg={3}>
+                            <XInput
+                                type="number"
+                                name="vehicle_attributes.energy_climate.cabin_battery_ah"
+                                label="Capacidade das baterias de cabine (Ah)"
+                                className="mb-3"
+                            />
+                        </Col>
+                    </Row>
+                )}
 
                 {/* 2026-06-29 — Baterias de lítio: quantidade + capacidade Ah.
                     Padrão SEM checkbox pai (igual às baterias existentes).

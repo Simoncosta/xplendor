@@ -20,6 +20,38 @@ class VehicleAttribute extends Model
     ];
 
     /**
+     * Tipos de cama (identificador → rótulo em português de Portugal). Fonte única: a
+     * normalização (normalizeBedTypes), a validação do editor (CarRequest), o filtro
+     * público bed_types (CarIndexRequest), a API pública (CarPublicResource) e os
+     * car-filters leem daqui. Um tipo que não esteja aqui passa a "outra" na leitura.
+     *
+     * @var array<string, string>
+     */
+    public const BED_LABELS = [
+        'camas_gemeas'             => 'Camas gémeas',
+        'cama_central'             => 'Cama central',
+        'cama_francesa'            => 'Cama francesa',
+        'cama_basculante'          => 'Cama basculante',
+        'cama_capucino'            => 'Cama capucino',
+        'cama_garagem'             => 'Cama de garagem',
+        'beliche'                  => 'Beliche',
+        'cama_transversal'         => 'Cama transversal',
+        'cama_elevatoria_eletrica' => 'Cama elevatória elétrica',
+        'cama_suspensa'            => 'Cama suspensa',
+        'cama_convertivel'         => 'Cama convertível de mesa',
+        'cama_sofa'                => 'Cama de sofá',
+        'cama_popup_panoramica'    => 'Cama pop-up panorâmica',
+        'outra'                    => 'Outra',
+        'cama_rebativel_cabine'    => 'Rebatível na cabine',
+    ];
+
+    /** @return list<string> */
+    public static function bedSlugs(): array
+    {
+        return array_keys(self::BED_LABELS);
+    }
+
+    /**
      * Canonical empty shape for the B1 attributes structure.
      */
     public static function emptyShape(): array
@@ -136,12 +168,7 @@ class VehicleAttribute extends Model
             'outra'                => 'outra',
         ];
 
-        $validSlugs = [
-            'camas_gemeas', 'cama_central', 'cama_francesa', 'cama_basculante',
-            'cama_capucino', 'cama_garagem', 'beliche', 'cama_transversal',
-            'cama_elevatoria_eletrica', 'cama_suspensa', 'cama_convertivel',
-            'cama_sofa', 'outra', 'cama_rebativel_cabine',
-        ];
+        $validSlugs = self::bedSlugs();
 
         return array_map(static function ($bed) use ($map, $validSlugs): array {
             // M2.1 — aceita 3 formas legacy:

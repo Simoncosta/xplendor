@@ -10,6 +10,7 @@ import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Button, Col, 
 
 // Components
 import XInput from "Components/Common/XInput";
+import XSelect from "Components/Common/Select";
 import FieldLabelWithHint from "Components/Common/FieldLabelWithHint";
 
 // Forms
@@ -39,6 +40,15 @@ const fridgeTypeOptions = [
     { value: "none", label: "Nenhum" },
 ];
 
+// Ficha das autocaravanas (B). "Sem indicação" limpa o valor.
+const stoveTypeOptions: { value: string; label: string }[] = [
+    { value: "", label: "Sem indicação" },
+    { value: "gas", label: "Gás" },
+    { value: "electric", label: "Elétrico" },
+    { value: "mixed", label: "Misto (gás e elétrico)" },
+    { value: "induction", label: "Indução" },
+];
+
 const showerTypeOptions = [
     { value: "separate", label: "Separado" },
     { value: "independent", label: "Independente" },
@@ -55,14 +65,20 @@ const BED_OPTIONS_DEFAULT: { value: BedType; label: string }[] = (
     ] as BedType[]
 ).map(slug => ({ value: slug, label: BED_LABELS[slug] }));
 
-function getBedOptions(currentType: string | undefined): { value: BedType; label: string }[] {
-    if (currentType === "cama_rebativel_cabine") {
-        return [
-            ...BED_OPTIONS_DEFAULT,
-            { value: "cama_rebativel_cabine", label: BED_LABELS.cama_rebativel_cabine },
-        ];
+// Ficha das autocaravanas (B): a cama pop-up panorâmica só se oferece nas autocaravanas
+// (as caravanas mantêm a lista de hoje); aparece sempre que a cama já a tem.
+const POPUP_BED: { value: BedType; label: string } = { value: "cama_popup_panoramica", label: BED_LABELS.cama_popup_panoramica };
+const POPUP_BED_DEFAULT_CAPACITY = 2;
+
+function getBedOptions(currentType: string | undefined, isMotorhome: boolean): { value: BedType; label: string }[] {
+    const options = [...BED_OPTIONS_DEFAULT];
+    if (isMotorhome || currentType === POPUP_BED.value) {
+        options.splice(options.length - 1, 0, POPUP_BED); // antes de "Outra"
     }
-    return BED_OPTIONS_DEFAULT;
+    if (currentType === "cama_rebativel_cabine") {
+        options.push({ value: "cama_rebativel_cabine", label: BED_LABELS.cama_rebativel_cabine });
+    }
+    return options;
 }
 
 /**
@@ -444,14 +460,19 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                                 styles={reactSelectTheme}
                                                                 menuPortalTarget={document.body}
                                                                 name={`vehicle_attributes.beds.${index}.type`}
-                                                                options={getBedOptions(bed?.type)}
-                                                                value={getBedOptions(bed?.type).find((option) => option.value === bed?.type) || null}
+                                                                options={getBedOptions(bed?.type, values.vehicle_type === "motorhome")}
+                                                                value={getBedOptions(bed?.type, values.vehicle_type === "motorhome").find((option) => option.value === bed?.type) || null}
                                                                 placeholder="Tipo de cama"
                                                                 onChange={(option: { value: BedType; label: string } | null) => {
                                                                     const nextBeds = [...beds];
+                                                                    const nextType = option?.value ?? "outra";
                                                                     nextBeds[index] = {
                                                                         ...nextBeds[index],
-                                                                        type: option?.value ?? "outra",
+                                                                        type: nextType,
+                                                                        // A cama pop-up panorâmica é para 2 pessoas por omissão.
+                                                                        ...(nextType === POPUP_BED.value && bed?.type !== POPUP_BED.value
+                                                                            ? { capacity: POPUP_BED_DEFAULT_CAPACITY }
+                                                                            : {}),
                                                                     };
                                                                     setFieldValue("vehicle_attributes.beds", nextBeds);
                                                                 }}
@@ -514,6 +535,27 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                 className="mb-3"
                                             />
                                         </Col>
+                                        {values.vehicle_attributes?.habitation_basics?.kitchen?.has_stove && (
+                                            <>
+                                                <Col lg={2}>
+                                                    <XInput
+                                                        type="number"
+                                                        name="vehicle_attributes.habitation_basics.kitchen.stove_burners"
+                                                        label="Bocas do fogão"
+                                                        className="mb-3"
+                                                    />
+                                                </Col>
+                                                <Col lg={2} className="mb-3">
+                                                    <Label for="stove_type">Tipo de fogão</Label>
+                                                    <XSelect
+                                                        id="stove_type"
+                                                        options={stoveTypeOptions}
+                                                        value={values.vehicle_attributes?.habitation_basics?.kitchen?.stove_type ?? null}
+                                                        onChange={(v) => setFieldValue("vehicle_attributes.habitation_basics.kitchen.stove_type", v || null)}
+                                                    />
+                                                </Col>
+                                            </>
+                                        )}
                                         <Col lg={2}>
                                             <XInputCheckbox
                                                 name="vehicle_attributes.habitation_basics.kitchen.has_oven"
@@ -542,6 +584,15 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                 className="mb-3"
                                             />
                                         </Col>
+                                        {values.vehicle_attributes?.habitation_basics?.kitchen?.has_extractor && (
+                                            <Col lg={2}>
+                                                <XInput
+                                                    name="vehicle_attributes.habitation_basics.kitchen.extractor_brand"
+                                                    label="Marca do exaustor"
+                                                    className="mb-3"
+                                                />
+                                            </Col>
+                                        )}
                                         <Col lg={2}>
                                             <XInputCheckbox
                                                 name="vehicle_attributes.habitation_basics.kitchen.has_fridge"
@@ -551,6 +602,13 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                         </Col>
                                         {values.vehicle_attributes?.habitation_basics?.kitchen?.has_fridge && (
                                             <>
+                                                <Col lg={2}>
+                                                    <XInput
+                                                        name="vehicle_attributes.habitation_basics.kitchen.fridge_brand"
+                                                        label="Marca do frigorífico"
+                                                        className="mb-3"
+                                                    />
+                                                </Col>
                                                 <Col lg={2}>
                                                     <Label>Tipo de frigorífico</Label>
                                                     <Select

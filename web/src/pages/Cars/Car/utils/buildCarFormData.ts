@@ -39,6 +39,7 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
         "engine_capacity_cc",
         "power_hp",
         "transmission",
+        "gear_count",
     ]);
 
     Object.entries(values).forEach(([key, value]) => {

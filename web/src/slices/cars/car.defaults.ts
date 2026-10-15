@@ -46,6 +46,7 @@ export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {
 
     doors: 5,
     transmission: "",
+    gear_count: null,
     segment: "",
     seats: 5,
 

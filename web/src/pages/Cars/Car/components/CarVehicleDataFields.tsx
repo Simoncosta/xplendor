@@ -6,6 +6,7 @@ import { Col, Label, Row } from "reactstrap";
 
 // Components
 import XInput from "Components/Common/XInput";
+import XSelect from "Components/Common/Select";
 
 // Forms
 import { useFormikContext } from "formik";
@@ -29,6 +30,12 @@ import { createSelector } from "reselect";
 const engineBrandOptions = [
     "Fiat", "Renault", "Ford", "Citroën", "Mercedes", "Iveco", "Peugeot", "VW",
 ].map(b => ({ value: b, label: b }));
+
+// Ficha das autocaravanas (B): número de velocidades (opcional). "Sem indicação" limpa o valor.
+const gearCountOptions: { value: string; label: string }[] = [
+    { value: "", label: "Sem indicação" },
+    ...[4, 5, 6, 7, 8, 9].map((n) => ({ value: String(n), label: `${n} velocidades` })),
+];
 
 const selectCarBrandState = (state: any) => state.CarBrand;
 const selectCarModelState = (state: any) => state.CarModel;
@@ -58,6 +65,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
     const { models } = useSelector(selectCarModelOptionsState);
     const hasMotorFields = values.vehicle_type !== "caravan";
     const isHabitationVehicle = values.vehicle_type === "motorhome" || values.vehicle_type === "caravan";
+    const isMotorhome = values.vehicle_type === "motorhome";
     // M2.2 — em motorhome/caravan, a Row 1 ganha Marca do motor ao lado
     // do Modelo; Marca/Modelo encolhem de lg=4 para lg=3 para acomodar 12.
     const brandModelLg = isHabitationVehicle ? 3 : 4;
@@ -122,6 +130,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
         setFieldValue("engine_capacity_cc", null);
         setFieldValue("power_hp", null);
         setFieldValue("transmission", null);
+        setFieldValue("gear_count", null);
     }, [hasMotorFields, setFieldValue]);
 
     return (
@@ -226,7 +235,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
 
             {hasMotorFields && (
                 <Row>
-                    <Col lg={3}>
+                    <Col lg={isMotorhome ? 2 : 3}>
                         <Label for="fuel_type">
                             Combustível:
                         </Label>
@@ -258,7 +267,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                             className="mb-3"
                         />
                     </Col>
-                    <Col lg={3}>
+                    <Col lg={isMotorhome ? 2 : 3}>
                         <Label for="transmission">
                             Transmissão:
                         </Label>
@@ -276,6 +285,20 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                             className="mb-3"
                         />
                     </Col>
+                    {isMotorhome && (
+                        <Col lg={2} className="mb-3">
+                            <Label for="gear_count">Número de velocidades:</Label>
+                            <XSelect
+                                id="gear_count"
+                                options={gearCountOptions}
+                                value={values.gear_count === null || values.gear_count === undefined || values.gear_count === "" ? null : String(values.gear_count)}
+                                onChange={(v) => {
+                                    setFieldValue("gear_count", v === "" ? "" : Number(v));
+                                    setFieldTouched("gear_count", true);
+                                }}
+                            />
+                        </Col>
+                    )}
                     <Col lg={2}>
                         <XInput
                             type="number"

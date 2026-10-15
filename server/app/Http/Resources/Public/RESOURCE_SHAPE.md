@@ -60,6 +60,7 @@ This version returns a curated, stable payload.
   "mileage_km": 42000,
   "fuel_type": "diesel",
   "transmission": "manual",
+  "gear_count": 6,               // número de velocidades (autocaravanas; opcional) ou null
   "doors": null,
   "power_hp": 140,
   "engine_capacity_cc": 1995,
@@ -102,6 +103,10 @@ This version returns a curated, stable payload.
     "has_fridge": true,
     "fridge_litres": 90,
     "fridge_type": "compressor",
+    "fridge_brand": "Dometic",     // ficha das autocaravanas: marca do frigorífico (só quando preenchida)
+    "stove_burners": 3,            // número de bocas do fogão
+    "stove_type": "gas",           // 'gas' | 'electric' | 'mixed' | 'induction'
+    "extractor_brand": "Thetford", // marca do exaustor
     "has_toilet": true,
     "has_shower": true,
     "shower_type": "independent",  // 'separate' | 'independent' | 'combined' | null
@@ -130,6 +135,8 @@ This version returns a curated, stable payload.
     "inverter_watts": 2000,
     "gpl_bottles_count": 2,
     "cabin_battery_count": 1,
+    "cabin_battery_brand": "Varta", // uma marca para todas as baterias de cabine (autocaravanas)
+    "cabin_battery_ah": 95,         // uma capacidade para todas as baterias de cabine (Ah)
     "cell_battery_count": 2,
     "has_awning": true,
     "awning_brand": "Fiamma",
@@ -297,9 +304,11 @@ The external site decides how to render each status:
 | `cama_garagem` | Cama de garagem |
 | `beliche` | Beliche |
 | `cama_transversal` | Cama transversal |
-| `cama_elevatoria_eletrica` | Cama elevatória eléctrica |
+| `cama_elevatoria_eletrica` | Cama elevatória elétrica |
 | `cama_suspensa` | Cama suspensa |
 | `cama_convertivel` | Cama convertível de mesa |
+| `cama_sofa` | Cama de sofá |
+| `cama_popup_panoramica` | Cama pop-up panorâmica |
 | `outra` | Outra |
 | `cama_rebativel_cabine` | Rebatível na cabine *(legacy — only shown when already stored)* |
 

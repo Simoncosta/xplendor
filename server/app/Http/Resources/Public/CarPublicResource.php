@@ -23,23 +23,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class CarPublicResource extends JsonResource
 {
-    /** @var array<string, string> */
-    private const BED_LABELS = [
-        'camas_gemeas'             => 'Camas gémeas',
-        'cama_central'             => 'Cama central',
-        'cama_francesa'            => 'Cama francesa',
-        'cama_basculante'          => 'Cama basculante',
-        'cama_capucino'            => 'Cama capucino',
-        'cama_garagem'             => 'Cama de garagem',
-        'beliche'                  => 'Beliche',
-        'cama_transversal'         => 'Cama transversal',
-        'cama_elevatoria_eletrica' => 'Cama elevatória eléctrica',
-        'cama_suspensa'            => 'Cama suspensa',
-        'cama_convertivel'         => 'Cama convertível de mesa',
-        'outra'                    => 'Outra',
-        'cama_rebativel_cabine'    => 'Rebatível na cabine',
-    ];
-
     public function toArray(Request $request): array
     {
         $va = VehicleAttribute::normalizeShape(
@@ -92,6 +75,7 @@ class CarPublicResource extends JsonResource
             'mileage_km'         => $this->mileage_km,
             'fuel_type'          => $this->fuel_type,
             'transmission'       => $this->transmission,
+            'gear_count'         => $this->gear_count !== null ? (int) $this->gear_count : null,
             'doors'              => $this->doors,
             'power_hp'           => $this->power_hp,
             'engine_capacity_cc' => $this->engine_capacity_cc,
@@ -208,6 +192,15 @@ class CarPublicResource extends JsonResource
         if (!empty($kitchen['fridge_type'])) {
             $result['fridge_type'] = $kitchen['fridge_type'];
         }
+        // Ficha das autocaravanas (B): marcas do frigorífico e do exaustor, fogão (bocas e tipo).
+        foreach (['fridge_brand', 'extractor_brand', 'stove_type'] as $key) {
+            if (!empty($kitchen[$key])) {
+                $result[$key] = $kitchen[$key];
+            }
+        }
+        if (isset($kitchen['stove_burners']) && $kitchen['stove_burners'] !== null && $kitchen['stove_burners'] !== '') {
+            $result['stove_burners'] = (int) $kitchen['stove_burners'];
+        }
 
         $boolBath = ['has_toilet', 'has_shower'];
         foreach ($boolBath as $key) {
@@ -249,12 +242,12 @@ class CarPublicResource extends JsonResource
         foreach (['water_heater_source', 'ambient_heating_source', 'inverter_type'] as $key) {
             if (!empty($ec[$key])) $result[$key] = $ec[$key];
         }
-        foreach (['water_heater_brand', 'ambient_heating_brand'] as $key) {
+        foreach (['water_heater_brand', 'ambient_heating_brand', 'cabin_battery_brand'] as $key) {
             if (!empty($ec[$key])) $result[$key] = $ec[$key];
         }
         $intEc = ['battery_count', 'solar_panel_count', 'solar_panel_watts', 'lithium_battery_ah',
                   'lithium_battery_count', 'inverter_watts', 'gpl_bottles_count',
-                  'cabin_battery_count', 'cell_battery_count'];
+                  'cabin_battery_count', 'cell_battery_count', 'cabin_battery_ah'];
         foreach ($intEc as $key) {
             if (isset($ec[$key]) && $ec[$key] !== null && $ec[$key] !== '') $result[$key] = (int) $ec[$key];
         }
@@ -334,7 +327,7 @@ class CarPublicResource extends JsonResource
             ->filter(fn($b) => !empty($b['type']))
             ->map(fn($b) => [
                 'type'  => $b['type'],
-                'label' => self::BED_LABELS[$b['type']] ?? $b['type'],
+                'label' => VehicleAttribute::BED_LABELS[$b['type']] ?? $b['type'],
             ])
             ->values()
             ->toArray();

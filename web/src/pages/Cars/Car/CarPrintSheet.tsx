@@ -74,6 +74,14 @@ const FRIDGE_TYPE_LABELS: Record<string, string> = {
     absorption: "absorção",
 };
 
+// Ficha das autocaravanas (B).
+const STOVE_TYPE_LABELS: Record<string, string> = {
+    gas:       "a gás",
+    electric:  "elétrico",
+    mixed:     "misto (gás e elétrico)",
+    induction: "de indução",
+};
+
 const SHOWER_TYPE_LABELS: Record<string, string> = {
     separate:    "cabine dentro do WC",
     independent: "cabine independente",
@@ -133,15 +141,20 @@ interface Group {
 const buildKitchen = (va: VA): Group => {
     const k = va?.habitation_basics?.kitchen ?? {};
     const items: string[] = [];
-    if (k.has_stove)           items.push("fogão");
+    if (k.has_stove) {
+        const type = enumLabel(k.stove_type, STOVE_TYPE_LABELS);
+        const burners = k.stove_burners ? `de ${k.stove_burners} bocas` : null;
+        items.push(collect("fogão", type, burners).join(" "));
+    }
     if (k.has_oven)            items.push("forno");
     if (k.has_extending_counter) items.push("acrescento de banca");
     if (k.has_microwave)       items.push("micro-ondas");
-    if (k.has_extractor)       items.push("exaustor");
+    if (k.has_extractor)       items.push(collect("exaustor", k.extractor_brand ? `(${k.extractor_brand})` : null).join(" "));
     if (k.has_fridge) {
         const type = enumLabel(k.fridge_type, FRIDGE_TYPE_LABELS);
         const litres = k.fridge_litres ? `${k.fridge_litres} L` : null;
-        const parts = collect("Frigorífico", type, litres);
+        const brand = k.fridge_brand ? `(${k.fridge_brand})` : null;
+        const parts = collect("Frigorífico", type, litres, brand);
         items.push(parts.join(" "));
     }
     return { title: "Cozinha", items: capAll(items) };
@@ -189,7 +202,12 @@ const buildEnergy = (va: VA): Group => {
     if (e.has_generator)             items.push("Gerador");
     if (e.has_external_power_socket) items.push("Ficha 220V exterior");
     if (e.battery_count)             items.push(`${e.battery_count} bateria(s)`);
-    if (e.cabin_battery_count)       items.push(`${e.cabin_battery_count} bat. cabine`);
+    if (e.cabin_battery_count || e.cabin_battery_brand || e.cabin_battery_ah) {
+        // Ficha das autocaravanas (B): uma marca e uma capacidade para todas as de cabine.
+        const details = collect(e.cabin_battery_brand, e.cabin_battery_ah ? `${e.cabin_battery_ah} Ah` : null).join(", ");
+        const count = e.cabin_battery_count ? `${e.cabin_battery_count} bat. cabine` : "Bat. cabine";
+        items.push(details ? `${count} (${details})` : count);
+    }
     if (e.cell_battery_count)        items.push(`${e.cell_battery_count} bat. célula`);
     // 2026-06-29 — Baterias de lítio (quantidade + capacidade Ah opcional).
     if (e.lithium_battery_count) {
@@ -414,6 +432,7 @@ const buildEngineBlock = (data: CarPrintSheetType): Group => {
         items.push(kv("Marca do motor", fmtOr(data.engine_brand)));
         items.push(kv("Combustível",    fuel));
         items.push(kv("Transmissão",    trans));
+        if (data.specs.gear_count) items.push(kv("Velocidades", String(data.specs.gear_count)));
         items.push(kv("Cilindrada",     fmtNum(data.specs.engine_capacity_cc, " cc")));
         items.push(kv("Potência",       fmtNum(data.specs.power_hp, " cv")));
     }

@@ -11,6 +11,7 @@ export type BedType =
     | "cama_suspensa"
     | "cama_convertivel"
     | "cama_sofa"
+    | "cama_popup_panoramica"
     | "outra"
     | "cama_rebativel_cabine"; // legacy — não mostrar em viatura nova
 
@@ -36,11 +37,13 @@ export const BED_LABELS: Record<BedType, string> = {
     cama_suspensa:           "Cama suspensa",
     cama_convertivel:        "Cama convertível de mesa",
     cama_sofa:               "Cama de sofá",
+    cama_popup_panoramica:   "Cama pop-up panorâmica",
     outra:                   "Outra",
     cama_rebativel_cabine:   "Rebatível na cabine",
 };
 
 export type FridgeType = "trivalent" | "compressor" | "absorption" | "none";
+export type StoveType = "gas" | "electric" | "mixed" | "induction";
 export type ShowerType = "separate" | "independent" | "combined";
 export type InverterType = "pure_sine" | "modified_sine";
 export type WaterHeaterSource = "electric" | "gas" | "diesel" | "none";
@@ -59,6 +62,11 @@ export interface VehicleAttributeKitchen {
     fridge_type?: FridgeType;
     fridge_litres?: number;
     fridge_shelves?: number;
+    /** Ficha das autocaravanas (B). */
+    fridge_brand?: string;
+    stove_burners?: number;
+    stove_type?: StoveType;
+    extractor_brand?: string;
 }
 
 export interface VehicleAttributeBathroom {
@@ -112,6 +120,9 @@ export interface VehicleAttributeEnergyClimate {
     has_external_power_socket?: boolean;
     battery_count?: number;
     cabin_battery_count?: number;
+    /** Ficha das autocaravanas (B): uma marca e uma capacidade para todas as baterias de cabine. */
+    cabin_battery_brand?: string;
+    cabin_battery_ah?: number;
     cell_battery_count?: number;
     /** 2026-06-29 — Baterias de lítio (quantidade + capacidade em Ah).
      *  Padrão SEM checkbox pai (igual às baterias existentes): null = "não tem". */

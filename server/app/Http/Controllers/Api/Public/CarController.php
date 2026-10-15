@@ -19,22 +19,6 @@ use Illuminate\Http\Request;
 
 class CarController extends Controller
 {
-    /** @var array<string, string> */
-    private const BED_LABELS = [
-        'camas_gemeas'             => 'Camas gémeas',
-        'cama_central'             => 'Cama central',
-        'cama_francesa'            => 'Cama francesa',
-        'cama_basculante'          => 'Cama basculante',
-        'cama_capucino'            => 'Cama capucino',
-        'cama_garagem'             => 'Cama de garagem',
-        'beliche'                  => 'Beliche',
-        'cama_transversal'         => 'Cama transversal',
-        'cama_elevatoria_eletrica' => 'Cama elevatória elétrica',
-        'cama_suspensa'            => 'Cama suspensa',
-        'cama_convertivel'         => 'Cama convertível de mesa',
-        'outra'                    => 'Outra',
-        'cama_rebativel_cabine'    => 'Rebatível na cabine',
-    ];
 
     public function __construct(
         protected CarService $carService,
@@ -224,7 +208,7 @@ class CarController extends Controller
         return collect($counts)
             ->map(fn($count, $slug) => [
                 'slug'  => $slug,
-                'label' => self::BED_LABELS[$slug] ?? $slug,
+                'label' => \App\Models\VehicleAttribute::BED_LABELS[$slug] ?? $slug,
                 'count' => $count,
             ])
             ->sortByDesc('count')

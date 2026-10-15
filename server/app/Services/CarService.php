@@ -720,7 +720,7 @@ class CarService extends BaseService
                 // acrescentados ao array de int keys.
                 ['solar_panel_watts', 'inverter_watts', 'gpl_bottles_count',
                  'battery_count', 'cabin_battery_count', 'cell_battery_count',
-                 'lithium_battery_count', 'lithium_battery_ah']
+                 'lithium_battery_count', 'lithium_battery_ah', 'cabin_battery_ah']
             );
         }
 

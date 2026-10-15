@@ -35,6 +35,7 @@ class CarRequest extends FormRequest
             $payload['engine_capacity_cc'] = null;
             $payload['power_hp'] = null;
             $payload['transmission'] = null;
+            $payload['gear_count'] = null;
         }
 
         $this->merge($payload);
@@ -208,6 +209,11 @@ class CarRequest extends FormRequest
             'vehicle_attributes.habitation_basics.kitchen.fridge_type'         => ['nullable', Rule::in(['trivalent', 'compressor', 'absorption', 'none'])],
             'vehicle_attributes.habitation_basics.kitchen.fridge_litres'       => ['nullable', 'integer', 'min:0', 'max:500'],
             'vehicle_attributes.habitation_basics.kitchen.fridge_shelves'      => ['nullable', 'integer', 'min:0', 'max:20'],
+            // Ficha das autocaravanas (B): marca do frigorífico, fogão (bocas e tipo) e marca do exaustor.
+            'vehicle_attributes.habitation_basics.kitchen.fridge_brand'        => ['nullable', 'string', 'max:100'],
+            'vehicle_attributes.habitation_basics.kitchen.stove_burners'       => ['nullable', 'integer', 'min:1', 'max:10'],
+            'vehicle_attributes.habitation_basics.kitchen.stove_type'          => ['nullable', Rule::in(['gas', 'electric', 'mixed', 'induction'])],
+            'vehicle_attributes.habitation_basics.kitchen.extractor_brand'     => ['nullable', 'string', 'max:100'],
             'vehicle_attributes.habitation_basics.bathroom'                    => ['nullable', 'array'],
             'vehicle_attributes.habitation_basics.bathroom.has_toilet'         => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.bathroom.has_shower'         => ['nullable', 'boolean'],
@@ -221,22 +227,7 @@ class CarRequest extends FormRequest
             'vehicle_attributes.habitation_basics.bathroom.has_clean_water_tank' => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.bathroom.has_waste_water_tank' => ['nullable', 'boolean'],
             'vehicle_attributes.beds'                                          => ['nullable', 'array'],
-            'vehicle_attributes.beds.*.type'                                   => ['nullable', Rule::in([
-                'camas_gemeas',
-                'cama_central',
-                'cama_francesa',
-                'cama_basculante',
-                'cama_capucino',
-                'cama_garagem',
-                'beliche',
-                'cama_transversal',
-                'cama_elevatoria_eletrica',
-                'cama_suspensa',
-                'cama_convertivel',
-                'cama_sofa',
-                'outra',
-                'cama_rebativel_cabine',
-            ])],
+            'vehicle_attributes.beds.*.type'                                   => ['nullable', Rule::in(\App\Models\VehicleAttribute::bedSlugs())],
             // M2.1 — capacity por cama (1-4); frontend envia o cálculo, validação é defesa.
             'vehicle_attributes.beds.*.capacity'                               => ['nullable', 'integer', 'min:1', 'max:4'],
             'vehicle_attributes.autonomy_km'                                   => ['nullable', 'integer', 'min:0', 'max:5000'],
@@ -260,6 +251,9 @@ class CarRequest extends FormRequest
             'vehicle_attributes.energy_climate.has_external_power_socket'               => ['nullable', 'boolean'],
             'vehicle_attributes.energy_climate.battery_count'                           => ['nullable', 'integer', 'min:0', 'max:10'],
             'vehicle_attributes.energy_climate.cabin_battery_count'                     => ['nullable', 'integer', 'min:0', 'max:5'],
+            // Ficha das autocaravanas (B): uma marca e uma capacidade para todas as baterias de cabine.
+            'vehicle_attributes.energy_climate.cabin_battery_brand'                     => ['nullable', 'string', 'max:100'],
+            'vehicle_attributes.energy_climate.cabin_battery_ah'                        => ['nullable', 'integer', 'min:0', 'max:2000'],
             'vehicle_attributes.energy_climate.cell_battery_count'                      => ['nullable', 'integer', 'min:0', 'max:10'],
             // 2026-06-29 — Baterias de lítio (quantidade + capacidade Ah).
             // Padrão SEM checkbox pai igual às baterias existentes: null = "não tem".
@@ -359,6 +353,8 @@ class CarRequest extends FormRequest
             'engine_capacity_cc' => ['nullable', 'required_unless:vehicle_type,caravan', 'integer', 'min:1', 'max:10000'],
             'doors' => ['required', 'integer', 'min:1', 'max:6'],
             'transmission' => ['nullable', 'required_unless:vehicle_type,caravan', 'string', 'max:50'],
+            // Número de velocidades (autocaravanas; opcional).
+            'gear_count' => ['nullable', 'integer', 'min:1', 'max:12'],
 
             // Details
             'segment' => ['required', 'string', 'max:50'],

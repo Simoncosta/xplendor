@@ -506,6 +506,7 @@ export interface CarPrintSheet {
     specs: {
         fuel_type: string | null;
         transmission: string | null;
+        gear_count?: number | null;
         power_hp: number | null;
         engine_capacity_cc: number | null;
         doors: number | null;

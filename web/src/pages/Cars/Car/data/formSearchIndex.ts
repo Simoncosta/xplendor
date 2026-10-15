@@ -229,6 +229,8 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Capacidade (CC)",   name: "engine_capacity_cc",  loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: NON_CARAVAN },
     { label: "Potência (CV)",     name: "power_hp",            loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: NON_CARAVAN },
     { label: "Transmissão",       name: "transmission",        loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: NON_CARAVAN },
+    // Ficha das autocaravanas (B): número de velocidades, ao lado da Transmissão.
+    { label: "Número de velocidades", name: "gear_count",      loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: MOTORHOME_ONLY },
     { label: "Portas",            name: "doors",               loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
     { label: "Versão",            name: "version",             loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
     { label: "Versão (web)",      name: "public_version_name", loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
@@ -284,9 +286,14 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Acrescento de banca",name: "vehicle_attributes.habitation_basics.kitchen.has_extending_counter", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
     { label: "Micro-ondas",       name: "vehicle_attributes.habitation_basics.kitchen.has_microwave", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
     { label: "Exaustor",          name: "vehicle_attributes.habitation_basics.kitchen.has_extractor", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
+    // Ficha das autocaravanas (B): fogão (bocas e tipo) e marca do exaustor.
+    { label: "Bocas do fogão",    name: "vehicle_attributes.habitation_basics.kitchen.stove_burners", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_stove" } },
+    { label: "Tipo de fogão",     name: "vehicle_attributes.habitation_basics.kitchen.stove_type", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_stove" } },
+    { label: "Marca do exaustor", name: "vehicle_attributes.habitation_basics.kitchen.extractor_brand", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_extractor" } },
     { label: "Frigorífico",       name: "vehicle_attributes.habitation_basics.kitchen.has_fridge", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
     // Pai imediato: has_fridge (CarVehicleDetailsDataFields:477).
     // CADEIA 3-CAMADAS: has_kitchen → has_fridge → estes 3. v1 só testa pai imediato.
+    { label: "Marca do frigorífico", name: "vehicle_attributes.habitation_basics.kitchen.fridge_brand", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_fridge" } },
     { label: "Tipo de frigorífico", name: "vehicle_attributes.habitation_basics.kitchen.fridge_type", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_fridge" } },
     { label: "Capacidade do frigorífico (L)", name: "vehicle_attributes.habitation_basics.kitchen.fridge_litres", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_fridge" } },
     { label: "Prateleiras do frigorífico", name: "vehicle_attributes.habitation_basics.kitchen.fridge_shelves", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_fridge" } },
@@ -326,6 +333,9 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Gerador (gasóleo)", name: "vehicle_attributes.energy_climate.has_generator", loc: HAB_ENERGY },
     { label: "Baterias (total)",  name: "vehicle_attributes.energy_climate.battery_count", loc: HAB_ENERGY },
     { label: "Baterias cabine",   name: "vehicle_attributes.energy_climate.cabin_battery_count", loc: HAB_ENERGY },
+    // Ficha das autocaravanas (B): marca e capacidade das baterias de cabine (só autocaravanas).
+    { label: "Marca das baterias de cabine", name: "vehicle_attributes.energy_climate.cabin_battery_brand", loc: HAB_ENERGY, vehicleTypes: MOTORHOME_ONLY },
+    { label: "Capacidade das baterias de cabine (Ah)", name: "vehicle_attributes.energy_climate.cabin_battery_ah", loc: HAB_ENERGY, vehicleTypes: MOTORHOME_ONLY },
     { label: "Baterias célula",   name: "vehicle_attributes.energy_climate.cell_battery_count", loc: HAB_ENERGY },
     // 2026-06-29 — Baterias de lítio (padrão sem checkbox pai).
     { label: "Baterias de lítio", name: "vehicle_attributes.energy_climate.lithium_battery_count", loc: HAB_ENERGY },

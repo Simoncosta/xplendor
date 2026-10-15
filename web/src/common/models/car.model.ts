@@ -34,6 +34,7 @@ export interface CarExtrasGroup {
 }
 
 export type FridgeType = "trivalent" | "compressor" | "absorption" | "none";
+export type StoveType = "gas" | "electric" | "mixed" | "induction";
 export type ShowerType = "separate" | "independent" | "combined";
 export type InverterType = "pure_sine" | "modified_sine";
 export type WaterHeaterSource = "electric" | "gas" | "diesel" | "none";
@@ -61,6 +62,11 @@ export interface VehicleAttributeKitchen {
     fridge_type?: FridgeType;
     fridge_litres?: number;
     fridge_shelves?: number;
+    /** Ficha das autocaravanas (B). */
+    fridge_brand?: string;
+    stove_burners?: number;
+    stove_type?: StoveType;
+    extractor_brand?: string;
 }
 
 export interface VehicleAttributeBathroom {
@@ -101,6 +107,9 @@ export interface VehicleAttributeEnergyClimate {
     has_external_power_socket?: boolean;
     battery_count?: number;
     cabin_battery_count?: number;
+    /** Ficha das autocaravanas (B): uma marca e uma capacidade para todas as baterias de cabine. */
+    cabin_battery_brand?: string;
+    cabin_battery_ah?: number;
     cell_battery_count?: number;
     // 2026-06-29 — Baterias de lítio.
     lithium_battery_count?: number;
@@ -240,6 +249,8 @@ export interface ICar {
 
     doors: number;
     transmission: string | null;
+    /** Número de velocidades (autocaravanas; opcional). "" limpa o valor ao gravar. */
+    gear_count?: number | "" | null;
     segment: string;
     seats: number;
 

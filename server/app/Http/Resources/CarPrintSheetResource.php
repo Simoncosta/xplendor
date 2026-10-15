@@ -96,6 +96,7 @@ class CarPrintSheetResource extends JsonResource
             'specs' => [
                 'fuel_type'          => $this->fuel_type,
                 'transmission'       => $this->transmission,
+                'gear_count'         => $this->gear_count,
                 'power_hp'           => $this->power_hp,
                 'engine_capacity_cc' => $this->engine_capacity_cc,
                 'doors'              => $this->doors,
