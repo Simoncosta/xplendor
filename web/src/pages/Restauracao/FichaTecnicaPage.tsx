@@ -8,14 +8,20 @@ import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable
 import Skeleton from "Components/Common/Skeleton";
 import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import { FinancialNote } from "Components/Common/HiddenMoney";
 import { useCan } from "contexts/ModulesContext";
-import { getRecipe } from "helpers/laravel_helper";
-import { RecipeDetail, RecipeLine, RecipeVersion, RecipeWarning } from "common/models/recipe.model";
+import { getRecipe, getRecipeEditor } from "helpers/laravel_helper";
+import { RecipeDetail, RecipeLine, RecipeVersion, RecipeWarning, RecipeWriteInfo } from "common/models/recipe.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { COST_SOURCES_TEXT, DiffBadge, Money, StateBadge, fmtDate, fmtPct, fmtQty } from "./fichas/recipeFormat";
 import ConfirmFactorModal from "./fichas/ConfirmFactorModal";
 import ConfirmYieldModal from "./fichas/ConfirmYieldModal";
+import RecipeEditor from "./fichas/RecipeEditor";
+import RecipeHistory from "./fichas/RecipeHistory";
+import DeleteRecipeModal from "./fichas/DeleteRecipeModal";
+import WriteProgressModal from "./fichas/WriteProgressModal";
+import { WarningLegend, WarningTip } from "./fichas/warningInfo";
 
 /**
  * XPLENDOR — Restauração › Fichas técnicas › artigo (Fatias 1 e 1b, só leitura na PingWin). As
@@ -70,11 +76,13 @@ const diffOf = (l: RecipeLine, wh: string) => {
 };
 
 /** As linhas de uma versão (e, por baixo, as fichas dos semi-produtos abertos). */
-function LinesTable({ lines, hidden, tableKey, depth = 0, total, wh, factorAction }: {
+function LinesTable({ lines, hidden, tableKey, depth = 0, total, wh, factorAction, toolbar }: {
     lines: RecipeLine[]; hidden: boolean; tableKey: string; depth?: number;
     total?: { cost: number | null; complete: boolean };
     wh: string;
     factorAction?: (l: RecipeLine) => React.ReactNode;
+    /** Fatia 4 (B2): as versões e o armazém, na mesma linha e com a mesma altura do "Colunas". */
+    toolbar?: React.ReactNode;
 }) {
     const [open, setOpen] = useState<Record<string, boolean>>({});
     const money = (v: number | null, seed: number, decimals = 4) => <Money value={v} hidden={hidden && v === null} decimals={decimals} seed={seed} />;
@@ -150,7 +158,12 @@ function LinesTable({ lines, hidden, tableKey, depth = 0, total, wh, factorActio
 
     return (
         <>
-            {depth === 0 && <div className="d-flex justify-content-end px-3 pt-2">{cols.selector}</div>}
+            {depth === 0 && (
+                <div className="d-flex flex-wrap align-items-center gap-2 px-3 pt-2 xp-lines-toolbar" data-testid="lines-toolbar">
+                    {toolbar}
+                    <div className="ms-auto">{cols.selector}</div>
+                </div>
+            )}
             <DataTable
                 columns={cols}
                 data={lines}
@@ -216,6 +229,11 @@ export default function FichaTecnicaPage() {
     const [wh, setWh] = useState("");
     const [factorLine, setFactorLine] = useState<RecipeLine | null>(null);
     const [yieldOpen, setYieldOpen] = useState(false);
+    // Fatia 4: editor, apagar e histórico.
+    const [editing, setEditing] = useState(false);
+    const [deleting, setDeleting] = useState<{ target: { bom_id: string; valid_from: string | null } | "all"; signature: string } | null>(null);
+    const [deleteWrite, setDeleteWrite] = useState<RecipeWriteInfo | null>(null);
+    const [historyKey, setHistoryKey] = useState(0);
 
     const load = useCallback(async () => {
         if (!companyId || !productId) return;
@@ -240,6 +258,17 @@ export default function FichaTecnicaPage() {
     const inForce = versions.find((v) => v.in_force) ?? null;
     const y = inForce?.yield ?? null;
     const noEditReason = canEdit ? null : (editReason ?? "Precisa da permissão de editar os artigos da restauração.");
+    const afterWrite = useCallback(() => { load(); setHistoryKey((k) => k + 1); }, [load]);
+    const askDelete = async (target: { bom_id: string; valid_from: string | null } | "all") => {
+        if (!companyId || !productId) return;
+        try {
+            const res: any = await getRecipeEditor(companyId, productId);
+            if (res?.data?.active_write) { setDeleteWrite(res.data.active_write); return; }
+            setDeleting({ target, signature: res?.data?.signature ?? "" });
+        } catch {
+            /* o erro já aparece no toast da API */
+        }
+    };
 
     const warehouseOptions = useMemo(() => [{ value: "", label: "Todos os armazéns" }, ...(data?.warehouses ?? []).map((w) => ({ value: w.id, label: w.name }))], [data?.warehouses]);
 
@@ -272,6 +301,7 @@ export default function FichaTecnicaPage() {
                     info="A ficha técnica do artigo na PingWin (só leitura), com o custo calculado pela XPLENDOR a partir das compras."
                 />
                 {hidden && <FinancialNote className="mb-3" />}
+                <WarningLegend />
 
                 {error && !data ? (
                     <PageCard title="Ficha técnica" flush={false}>
@@ -299,7 +329,7 @@ export default function FichaTecnicaPage() {
                                 <>
                                     {data.missing_stores.length > 0 && (
                                         <div className="alert alert-danger py-2 fs-13" role="alert">
-                                            <i className="ri-store-2-line me-1" />Sem versão da ficha em vigor em: <strong>{data.missing_stores.join(", ")}</strong> (vendeu nos últimos 90 dias).
+                                            <i className="ri-store-2-line me-1" />Sem versão da ficha em vigor em: <strong>{data.missing_stores.join(", ")}</strong> (vendeu nos últimos 90 dias). <WarningTip type="store_without" />
                                         </div>
                                     )}
                                     <Row className="g-3">
@@ -338,10 +368,15 @@ export default function FichaTecnicaPage() {
                             )}
                         </PageCard>
 
-                        {data && versions.length === 0 && (
-                            <PageCard title="Ficha técnica" flush={false}>
+                        {data && versions.length === 0 && !editing && (
+                            <PageCard title="Ficha técnica" flush={false}
+                                actions={<ReasonButton type="button" size="sm" color="primary" reason={noEditReason} onClick={() => setEditing(true)}><i className="ri-add-line me-1" aria-hidden />Criar ficha</ReasonButton>}>
                                 <p className="text-muted mb-0">Este artigo não tem ficha técnica na PingWin (ou ainda não foi lida: a leitura corre de noite).</p>
                             </PageCard>
+                        )}
+
+                        {editing && productId && (
+                            <RecipeEditor companyId={companyId} productId={productId} hidden={hidden} onSaved={afterWrite} onClose={() => setEditing(false)} />
                         )}
 
                         {current && (
@@ -349,21 +384,15 @@ export default function FichaTecnicaPage() {
                                 title="Versões da ficha"
                                 status={<>Em vigor: a de data mais recente até hoje, não anulada, com a loja ativa</>}
                                 actions={<>
-                                    {(data?.warehouses.length ?? 0) > 0 && (
-                                        <div style={{ minWidth: 190 }}>
-                                            <XSelect ariaLabel="Armazém do custo PingWin" small options={warehouseOptions} value={wh} onChange={setWh} searchable={false} />
-                                        </div>
+                                    {!editing && (
+                                        <ReasonButton type="button" size="sm" color="outline-primary" reason={noEditReason} onClick={() => setEditing(true)}>
+                                            <i className="ri-edit-line me-1" aria-hidden />Editar ficha
+                                        </ReasonButton>
                                     )}
-                                    {versions.length > 1 && (
-                                        <div className="xp-seg" role="tablist" aria-label="Versões">
-                                            {versions.map((v) => (
-                                                <button key={v.bom_id} type="button" role="tab" aria-selected={current.bom_id === v.bom_id}
-                                                    className={current.bom_id === v.bom_id ? "on" : ""} onClick={() => setTab(v.bom_id)}>
-                                                    {fmtDate(v.valid_from)}{versions.filter((x) => x.valid_from === v.valid_from).length > 1 && ` (versão ${Number(v.key) + 1})`}{v.in_force && <i className="ri-check-line ms-1" aria-label="em vigor" />}{v.deleted && " (anulada)"}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <ActionsMenu size="sm" label="Mais ações: ficha técnica" items={[
+                                        { label: `Apagar a versão de ${fmtDate(current.valid_from)}`, icon: "ri-delete-bin-line", danger: true, onClick: () => askDelete({ bom_id: current.bom_id, valid_from: current.valid_from }), disabledReason: noEditReason },
+                                        { label: "Apagar a ficha inteira", icon: "ri-delete-bin-2-line", danger: true, onClick: () => askDelete("all"), disabledReason: noEditReason },
+                                    ]} />
                                 </>}
                             >
                                 <div className="px-3 pt-3 d-flex flex-wrap align-items-center gap-2">
@@ -383,13 +412,30 @@ export default function FichaTecnicaPage() {
                                     wh={wh}
                                     total={{ cost: current.cost_eur, complete: current.cost_complete }}
                                     factorAction={factorAction}
+                                    toolbar={<>
+                                        {versions.length > 1 && (
+                                            <div className="xp-seg" role="tablist" aria-label="Versões">
+                                                {versions.map((v) => (
+                                                    <button key={v.bom_id} type="button" role="tab" aria-selected={current.bom_id === v.bom_id}
+                                                        className={current.bom_id === v.bom_id ? "on" : ""} onClick={() => setTab(v.bom_id)}>
+                                                        {fmtDate(v.valid_from)}{versions.filter((x) => x.valid_from === v.valid_from).length > 1 && ` (versão ${Number(v.key) + 1})`}{v.in_force && <i className="ri-check-line ms-1" aria-label="em vigor" />}{v.deleted && " (anulada)"}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {(data?.warehouses.length ?? 0) > 0 && (
+                                            <div style={{ minWidth: 190 }}>
+                                                <XSelect ariaLabel="Armazém do custo PingWin" small options={warehouseOptions} value={wh} onChange={setWh} searchable={false} />
+                                            </div>
+                                        )}
+                                    </>}
                                 />
                                 {current.warnings.length > 0 && (
                                     <div className="border-top px-3 py-3" data-testid="recipe-warnings">
                                         <div className="fw-semibold fs-13 mb-2"><i className="ri-alert-line text-warning me-1" />Avisos ({current.warnings.length})</div>
                                         <ul className="mb-0 fs-13 ps-3">
                                             {current.warnings.map((w, i) => (
-                                                <li key={i} className={w.level === "info" ? "text-muted" : undefined}>{w.line ? <><strong>{w.line}</strong>: </> : null}{w.text}</li>
+                                                <li key={i} className={w.level === "info" ? "text-muted" : undefined}>{w.line ? <><strong>{w.line}</strong>: </> : null}{w.text} <WarningTip type={w.type} /></li>
                                             ))}
                                         </ul>
                                     </div>
@@ -415,6 +461,16 @@ export default function FichaTecnicaPage() {
                             </PageCard>
                         )}
                     </>
+                )}
+
+                {data && productId && <RecipeHistory companyId={companyId} productId={productId} refreshKey={historyKey} />}
+
+                {deleting && companyId && productId && (
+                    <DeleteRecipeModal companyId={companyId} productId={productId} productName={article?.description ?? "artigo"} signature={deleting.signature}
+                        target={deleting.target} onClose={() => setDeleting(null)} onQueued={(w) => { setDeleting(null); setDeleteWrite(w); }} />
+                )}
+                {deleteWrite && companyId && (
+                    <WriteProgressModal companyId={companyId} write={deleteWrite} onClose={() => setDeleteWrite(null)} onFinished={afterWrite} />
                 )}
 
                 {factorLine?.conversion && (

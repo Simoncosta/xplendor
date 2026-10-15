@@ -1200,3 +1200,20 @@ export const confirmUnitConversion = (
     productId: string,
     body: { unit_key: string; unit_label?: string | null; factor: number; supplier_nif?: string | null; reason?: string | null }
 ) => api.create(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/conversion`, body);
+// Fatia 4: editor das fichas técnicas (rascunho na XPLENDOR; gravar na PingWin em fila, uma ficha de cada vez).
+const R = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/recipes`;
+export const getRecipeEditor = (companyId: number, productId: string) => api.get(R(companyId) + `/${productId}/editor`);
+export const searchRecipeComponents = (companyId: number, q: string) => api.get(R(companyId) + `/components`, { q });
+export const previewRecipe = (companyId: number, productId: string, body: object) => api.create(R(companyId) + `/${productId}/preview`, body, JSON_BODY);
+export const saveRecipeDraft = (companyId: number, productId: string, body: { payload: object; base_signature: string | null }) =>
+    api.put(R(companyId) + `/${productId}/draft`, body);
+export const deleteRecipeDraft = (companyId: number, productId: string) => api.delete(R(companyId) + `/${productId}/draft`);
+export const writeRecipe = (companyId: number, productId: string, body: object) => api.create(R(companyId) + `/${productId}/write`, body, JSON_BODY);
+export const getRecipeWrite = (companyId: number, writeId: number) => api.get(R(companyId) + `/writes/${writeId}`);
+export const getRecipeHistory = (companyId: number, productId: string) => api.get(R(companyId) + `/${productId}/history`);
+export const getRecipeDeleteEffects = (companyId: number, productId: string, bomIds: string[]) =>
+    api.get(R(companyId) + `/${productId}/delete-effects`, { bom_ids: bomIds.join(",") });
+export const deleteRecipeVersion = (companyId: number, productId: string, body: { bom_id: string; base_signature: string; confirm: boolean }) =>
+    api.create(R(companyId) + `/${productId}/delete-version`, body, JSON_BODY);
+export const deleteRecipeAll = (companyId: number, productId: string, body: { base_signature: string; confirm: boolean; confirm_all: boolean }) =>
+    api.create(R(companyId) + `/${productId}/delete-all`, body, JSON_BODY);

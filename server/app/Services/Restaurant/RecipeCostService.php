@@ -99,11 +99,15 @@ final class RecipeCostService
         return $this->today;
     }
 
-    /** Carrega o espelho das fichas (todas ou só destes artigos) e as compras dos componentes. */
-    public function load(?array $productIds = null): self
+    /**
+     * Carrega o espelho das fichas (todas ou só destes artigos) e as compras dos componentes.
+     * $extraComponents: componentes de um rascunho (Fatia 4), que ainda não estão em nenhuma ficha.
+     */
+    public function load(?array $productIds = null, array $extraComponents = []): self
     {
+        $extraComponents = array_values(array_unique(array_filter(array_map('strval', $extraComponents))));
         $boms = PingwinProductBom::where('company_id', $this->companyId)
-            ->when($productIds !== null, fn ($q) => $q->whereIn('product_pingwin_id', $productIds))
+            ->when($productIds !== null, fn ($q) => $q->whereIn('product_pingwin_id', array_merge($productIds, $extraComponents)))
             ->get();
         $this->addBoms($boms->all());
 
@@ -129,7 +133,7 @@ final class RecipeCostService
             $this->addBoms(PingwinProductBom::where('company_id', $this->companyId)->whereIn('product_pingwin_id', array_keys($next))->get()->all());
         }
 
-        $components = [];
+        $components = array_fill_keys($extraComponents, true);
         foreach ($this->versions as $versions) {
             foreach ($versions as $v) {
                 foreach ($v['lines'] as $l) {
@@ -519,7 +523,7 @@ final class RecipeCostService
 
         return [
             'key' => $l['key'], 'component_id' => $cid, 'code' => $l['code'], 'description' => $l['description'],
-            'qnt' => $l['qnt'], 'unit' => $l['unit'], 'qnt_base' => $l['qnt_base'],
+            'qnt' => $l['qnt'], 'unit' => $l['unit'], 'unit_id' => $l['unit_id'], 'qnt_base' => $l['qnt_base'],
             'waste' => $l['waste'], 'recovery' => $l['recovery'], 'is_bom' => $l['is_bom'], 'status' => $status,
             'cost_source' => $source,
             'cost_status' => $unit['status'],
@@ -616,6 +620,106 @@ final class RecipeCostService
         }
 
         return null;
+    }
+
+    /**
+     * A unidade de topo (família) de um componente: a unidade base do artigo; senão a unidade de
+     * compra ou de venda pelo nome (o catálogo traz o rótulo); senão a da linha; senão Unidade.
+     */
+    public function componentBaseRoot(string $componentId, ?string $lineUnitId = null): ?string
+    {
+        $item = $this->item($componentId);
+        $byLabel = function (?string $label) {
+            $label = mb_strtolower(trim((string) $label));
+            if ($label === '') {
+                return null;
+            }
+            foreach ($this->units as $id => $u) {
+                if (mb_strtolower((string) $u->description) === $label) {
+                    return $this->unitRoot((string) $id);
+                }
+            }
+
+            return null;
+        };
+
+        return $this->unitRoot((string) $item?->base_unit_id)
+            ?? $byLabel($item?->purchaseunit) ?? $byLabel($item?->saleunit)
+            ?? $this->unitRoot($lineUnitId)
+            ?? (isset($this->units['11001']) ? '11001' : null);
+    }
+
+    /**
+     * As unidades possíveis de um componente na ficha: as da família da unidade base (como as
+     * lkprodunits da PingWin), com quantas unidades base vale cada uma (unit_value ao longo dos pais).
+     *
+     * @return list<array{id:string, label:string, short:?string, factor:float, base:bool, suspicious:bool}>
+     */
+    public function unitsFor(string $componentId, ?string $lineUnitId = null): array
+    {
+        $root = $this->componentBaseRoot($componentId, $lineUnitId);
+        if ($root === null) {
+            return [];
+        }
+        $out = [];
+        foreach ($this->units as $id => $u) {
+            $id = (string) $id;
+            if (! $u->is_active && $id !== $lineUnitId && $id !== $root) {
+                continue;
+            }
+            if ($this->unitRoot($id) !== $root) {
+                continue;
+            }
+            $f = $this->factorToRoot($id) ?? 1.0;
+            $name = trim(($u->description ?? '') . ' ' . ($u->shortname ?? ''));
+            $out[] = [
+                'id' => $id, 'label' => (string) $u->description, 'short' => $u->shortname, 'factor' => $f, 'base' => $id === $root,
+                'suspicious' => $u->parent_pingwin_id && abs($f - 1.0) < 1e-9 && (bool) preg_match(self::PACK_NAME, $name),
+            ];
+        }
+        usort($out, fn ($a, $b) => [! $a['base'], $a['factor'], $a['label']] <=> [! $b['base'], $b['factor'], $b['label']]);
+
+        return $out;
+    }
+
+    /**
+     * O custo de um rascunho (Fatia 4): as linhas [{key?, component_id, unit_id, qnt, waste,
+     * recovery}] com a quantidade base (qnt × fator da unidade), como uma versão da ficha. As linhas
+     * que já existiam (key) trazem o custo PingWin da versão de origem.
+     */
+    public function costDraft(string $productId, array $lines, ?array $baseVersion = null): array
+    {
+        $baseLines = [];
+        foreach ($baseVersion['lines'] ?? [] as $l) {
+            $baseLines[$l['key']] = $l;
+        }
+        $synthetic = [];
+        foreach (array_values($lines) as $i => $l) {
+            $cid = (string) ($l['component_id'] ?? '');
+            $item = $this->item($cid);
+            $unitId = (string) ($l['unit_id'] ?? '');
+            $factor = $this->factorToRoot($unitId) ?? 1.0;
+            $base = isset($l['key']) && $l['key'] !== null ? ($baseLines[$l['key']] ?? null) : null;
+            $samePingwin = $base && $base['component_id'] === $cid && $base['unit_id'] === $unitId;
+            $synthetic[] = [
+                'key' => (string) ($l['key'] ?? sprintf('novo-%02d', $i)),
+                'component_id' => $cid,
+                'code' => $item?->code ? ltrim((string) $item->code, "\u{FEFF}") : ($base['code'] ?? null),
+                'description' => $item?->description ?? ($l['description'] ?? $base['description'] ?? $cid),
+                'unit_id' => $unitId,
+                'unit' => $this->units[$unitId]->description ?? ($base['unit'] ?? null),
+                'qnt' => (float) ($l['qnt'] ?? 0),
+                'qnt_base' => round((float) ($l['qnt'] ?? 0) * $factor, 6),
+                'waste' => (float) ($l['waste'] ?? 0),
+                'recovery' => (float) ($l['recovery'] ?? 0),
+                'is_bom' => (bool) $this->versionsOf($cid),
+                'status' => $item && ($item->product_status === 'Inativo' || ! $item->is_active) ? 2 : ($base['status'] ?? 1),
+                // O custo PingWin só vale para a linha como estava (mesmo componente e unidade).
+                'pingwin' => $samePingwin ? $base['pingwin'] : [],
+            ];
+        }
+
+        return $this->costVersion(['bom_id' => 'rascunho', 'key' => '', 'valid_from' => null, 'deleted' => false, 'stores' => [], 'lines' => $synthetic], $productId);
     }
 
     /** É semi-produto: usado como componente com ficha noutra ficha, ou artigo de produção. */

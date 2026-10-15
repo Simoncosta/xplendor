@@ -1244,6 +1244,92 @@ class PingwinService
     }
 
     /**
+     * ⚠️ FICHAS TÉCNICAS — ESCRITA (Fatia 4): aplica o plano de UMA ficha na PingWin, numa só sessão
+     * (abrir, ler e comparar com o espelho, versão, linhas, lojas, MERGE, SAVE, CLOSE) e relê-a.
+     * $onProgress recebe cada passo ({step, n?, m?}) enquanto corre. A guarda do teste real
+     * (services.pingwin.bom_write_allowlist) vai para o Python, que recusa os outros artigos.
+     * Devolve {ok, conflict?, diff?, saved, refs, reread}.
+     */
+    public function writeBom(int $companyId, string $productId, array $plan, ?callable $onProgress = null): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $this->invokeTimeout = 600;
+        $result = $this->invokeWithProgress($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode' => 'bom_write',
+            'product_id' => $productId,
+            'plan' => $plan,
+            'allowed_product_ids' => self::bomWriteAllowlist(),
+        ]), $onProgress ?? static fn () => null);
+
+        if (! ($result['ok'] ?? false) && ! ($result['conflict'] ?? false)) {
+            throw new \RuntimeException('Gravação da ficha técnica na PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result;
+    }
+
+    /** Os artigos em que se pode escrever a ficha (vazio = todos). Guarda do teste real. */
+    public static function bomWriteAllowlist(): array
+    {
+        // Sem array_filter "nu": deitava fora o "0" (que quer dizer "nenhum artigo").
+        return array_values(array_filter(array_map('trim', explode(',', (string) config('services.pingwin.bom_write_allowlist', ''))), static fn ($v) => $v !== ''));
+    }
+
+    /**
+     * Como invoke(), mas lê o stderr enquanto o Python corre: cada linha "XPPROGRESS {json}" é um
+     * passo, entregue a $onProgress. Os testes fazem override (como do invoke).
+     */
+    protected function invokeWithProgress(array $payload, callable $onProgress): array
+    {
+        $process = new Process(['docker', 'exec', '-i', env('SCRAPER_CONTAINER', 'xplendor-scraper'), 'python', self::ENTRYPOINT]);
+        $process->setTimeout($this->invokeTimeout);
+        $process->setInput(json_encode($payload));
+        $pending = '';
+        $process->run(function ($type, $buffer) use (&$pending, $onProgress) {
+            if ($type !== Process::ERR) {
+                return;
+            }
+            $pending .= $buffer;
+            while (($pos = strpos($pending, "\n")) !== false) {
+                $line = substr($pending, 0, $pos);
+                $pending = substr($pending, $pos + 1);
+                if (str_starts_with($line, 'XPPROGRESS ')) {
+                    $step = json_decode(substr($line, 11), true);
+                    if (is_array($step)) {
+                        $onProgress($step);
+                    }
+                }
+            }
+        });
+
+        $stdout = trim($process->getOutput());
+        $stderr = trim($process->getErrorOutput());
+        if ($stdout === '') {
+            Log::error('[PingWin] sem output do Python', ['exit' => $process->getExitCode(), 'stderr' => mb_substr($stderr, 0, 2000)]);
+            throw new \RuntimeException("Sem resposta do cliente PingWin (exit={$process->getExitCode()}): " . ($stderr !== '' ? mb_substr($stderr, 0, 500) : 'sem stderr'));
+        }
+        $data = json_decode($stdout, true);
+        if (! is_array($data)) {
+            $data = $this->extractJson($stdout);
+        }
+        if (! is_array($data)) {
+            throw new \RuntimeException('Resposta do cliente PingWin inválida: ' . mb_substr($stdout, 0, 300));
+        }
+        if (! ($data['ok'] ?? false)) {
+            Log::warning('[PingWin] cliente devolveu ok:false', ['error' => mb_substr((string) ($data['error'] ?? ''), 0, 500), 'stderr' => mb_substr($stderr, 0, 2000)]);
+        }
+
+        return $data;
+    }
+
+    /**
      * F4 (SÓ LEITURA): header + linhas de uma lista de documentos de fornecedor
      * ([{docconfig_id, docheader_id}]). Um docker exec por lote; no Python cada documento é
      * aberto (OPEN), lido (GET header,details) e FECHADO (CLOSE, sempre). Uma falha num

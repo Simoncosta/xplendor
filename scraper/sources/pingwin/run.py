@@ -377,6 +377,21 @@ def run(cfg: dict) -> dict:
             product = client.read_product(product_id)
             return {"ok": True, "mode": "read_product", "product": product}
 
+        if mode == "bom_write":
+            # ⚠️ ESCRITA (Fatia 4): o plano de UMA ficha (um artigo), iniciado por uma pessoa.
+            # O progresso vai para o stderr ("XPPROGRESS {json}"), linha a linha; o resultado
+            # (com a releitura) vai no stdout, como os outros modos.
+            product_id = str(cfg.get("product_id") or "")
+            plan = cfg.get("plan") or {}
+            if not product_id or not plan.get("ops"):
+                return {"ok": False, "error": "product_id ou plano em falta."}
+
+            def progress(**kw):
+                print("XPPROGRESS " + json.dumps(kw, ensure_ascii=False), file=sys.stderr, flush=True)
+
+            result = client.write_bom(product_id, plan, cfg.get("allowed_product_ids") or [], progress)
+            return {"mode": "bom_write", **result, "ok": bool(result.get("ok"))}
+
         if mode == "boms":
             # SÓ LEITURA (Fatia 1): fichas técnicas dos artigos pedidos (+ semi-produtos,
             # recursivo até 5 níveis). Sem product_ids → lista do seletor da ficha

@@ -319,6 +319,19 @@ Route::prefix('v1')->group(function () {
                     // Fatia 1b: confirmar o rendimento de um semi-produto e o fator de uma unidade de compra (só na XPLENDOR).
                     Route::post('/restaurant/recipes/{productId}/yield', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'confirmYield'])->whereNumber('productId');
                     Route::post('/restaurant/recipes/{productId}/conversion', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'confirmConversion'])->whereNumber('productId');
+                    // Fatia 4: editor das fichas técnicas (rascunho na XPLENDOR; "Gravar na PingWin" em fila, uma ficha de cada vez).
+                    Route::get('/restaurant/recipes/components', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'components']);
+                    Route::get('/restaurant/recipes/writes/{writeId}', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'writeStatus'])->whereNumber('writeId');
+                    Route::get('/restaurant/recipes/{productId}/editor', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'context'])->whereNumber('productId');
+                    Route::post('/restaurant/recipes/{productId}/preview', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'preview'])->whereNumber('productId');
+                    Route::get('/restaurant/recipes/{productId}/draft', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'draft'])->whereNumber('productId');
+                    Route::put('/restaurant/recipes/{productId}/draft', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'saveDraft'])->whereNumber('productId');
+                    Route::delete('/restaurant/recipes/{productId}/draft', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'deleteDraft'])->whereNumber('productId');
+                    Route::post('/restaurant/recipes/{productId}/write', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'write'])->whereNumber('productId');
+                    Route::get('/restaurant/recipes/{productId}/delete-effects', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'deleteEffects'])->whereNumber('productId');
+                    Route::post('/restaurant/recipes/{productId}/delete-version', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'deleteVersion'])->whereNumber('productId')->middleware('block_when_impersonating');
+                    Route::post('/restaurant/recipes/{productId}/delete-all', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'deleteAll'])->whereNumber('productId')->middleware('block_when_impersonating');
+                    Route::get('/restaurant/recipes/{productId}/history', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'history'])->whereNumber('productId');
                     // Artigos — CRIAR (escrita; exige confirm) + poll do resultado.
                     Route::post('/integrations/pingwin/articles', [CompanyPingwinController::class, 'createArticle']);
                     Route::get('/integrations/pingwin/articles/creation/{creationId}', [CompanyPingwinController::class, 'articleCreation']);

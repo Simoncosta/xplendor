@@ -20,6 +20,7 @@ import { useArticleReadPolling } from "./useArticleReadPolling";
 import { useSupplierPricesStaging } from "./useSupplierPricesStaging";
 import ArtigoComprasTab from "./ArtigoComprasTab";
 import FichaTecnicaResumo from "./fichas/FichaTecnicaResumo";
+import RecipeEditor from "./fichas/RecipeEditor";
 import ArticleSupplierCodes from "./faturas/ArticleSupplierCodes";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PageHeader from "Components/Common/PageHeader";
@@ -79,7 +80,10 @@ export default function ArtigoFormPage() {
 
     const [loading, setLoading] = useState(true);
     const [lookups, setLookups] = useState<any | null>(null);
-    const [tab, setTab] = useState<"geral" | "frontoffice" | "unidades" | "compras">("geral");
+    const [tab, setTab] = useState<"geral" | "frontoffice" | "unidades" | "compras" | "ficha">("geral");
+    // Fatia 4: o separador "Ficha técnica" (resumo + editor; o rascunho fica na XPLENDOR).
+    const [editingBom, setEditingBom] = useState(false);
+    const [bomRefresh, setBomRefresh] = useState(0);
     const compras = useSupplierPricesStaging();
     const [supplierTables, setSupplierTables] = useState<any[]>([]);
     const [created, setCreated] = useState<{ code?: string } | null>(null);
@@ -428,7 +432,10 @@ export default function ArtigoFormPage() {
                                     <NavItem><NavLink className={classnames({ active: tab === "compras" })} onClick={() => setTab("compras")} style={{ cursor: "pointer" }}>
                                         Compras{compras.hasPending && <span className="badge bg-warning-subtle text-warning ms-1">•</span>}
                                     </NavLink></NavItem>
-                                    {["Ficha técnica", "Stocks", "Atributos"].map((t) => (
+                                    {!isCreate && (
+                                        <NavItem><NavLink className={classnames({ active: tab === "ficha" })} onClick={() => setTab("ficha")} style={{ cursor: "pointer" }} data-testid="tab-ficha">Ficha técnica</NavLink></NavItem>
+                                    )}
+                                    {[...(isCreate ? ["Ficha técnica"] : []), "Stocks", "Atributos"].map((t) => (
                                         <NavItem key={t}><NavLink disabled className="text-muted" style={{ cursor: "not-allowed" }} title="Em breve">{t}</NavLink></NavItem>
                                     ))}
                                 </Nav>
@@ -471,6 +478,22 @@ export default function ArtigoFormPage() {
                                         </Row>
                                     </TabPane>
 
+                                    {!isCreate && pingwinId && (
+                                        <TabPane tabId="ficha">
+                                            {tab === "ficha" && (
+                                                <>
+                                                    <FichaTecnicaResumo companyId={companyId} productId={pingwinId} refreshKey={bomRefresh} editing={editingBom} onEdit={() => setEditingBom(true)} />
+                                                    {editingBom && (
+                                                        <div className="mt-3">
+                                                            <RecipeEditor companyId={companyId} productId={pingwinId}
+                                                                onSaved={() => setBomRefresh((k) => k + 1)} onClose={() => setEditingBom(false)} />
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </TabPane>
+                                    )}
+
                                     <TabPane tabId="compras">
                                         <ArtigoComprasTab
                                             companyId={companyId}
@@ -493,15 +516,17 @@ export default function ArtigoFormPage() {
                                 <Button type="button" color="outline-primary" onClick={goBack}>
                                     <i className="ri-arrow-left-line me-1" /> Voltar
                                 </Button>
-                                <Button type="submit" color="primary" disabled={busy}>
-                                    {busy
-                                        ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
-                                        : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Guardar"}</>}
-                                </Button>
+{tab === "ficha" ? (
+                                    <span className="text-muted fs-13" data-testid="ficha-footer-note">A ficha técnica grava-se no editor, com "Gravar na PingWin".</span>
+                                ) : (
+                                    <Button type="submit" color="primary" disabled={busy}>
+                                        {busy
+                                            ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
+                                            : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Guardar"}</>}
+                                    </Button>
+                                )}
                             </div>
                         </Card>
-                        {/* Fatia 1: o resumo da ficha técnica (só leitura), com "Ver ficha técnica". */}
-                        {!isCreate && pingwinId && <FichaTecnicaResumo companyId={companyId} productId={pingwinId} />}
                         <div className="mb-5" />
                     </Form>
                 )}

@@ -192,3 +192,77 @@ export type RecipeDetail = {
     window: { days: number; since: string; until: string };
     financial: RecipeFinancial;
 };
+
+// ── Fatia 4: editor (criar, editar e apagar na PingWin) ───────────────────────
+
+export type RecipeUnitOption = { id: string; label: string; short: string | null; factor: number; base: boolean; suspicious: boolean };
+
+export type RecipeEditorLine = {
+    key: string; component_id: string; description: string | null; unit_id: string; qnt: number; waste: number; recovery: number;
+    units: RecipeUnitOption[];
+};
+
+export type RecipeEditorVersion = {
+    id: string; key: string; valid_from: string | null; deleted: boolean;
+    stores: { store_id: string; name: string | null; active: boolean }[];
+    lines: RecipeEditorLine[];
+};
+
+export type RecipeWriteMode = "criar" | "nova_versao" | "corrigir";
+
+/** O rascunho (fica na XPLENDOR até "Gravar na PingWin"). */
+export type RecipeDraftLine = {
+    uid: string; key: string | null; component_id: string; description: string; code: string | null;
+    unit_id: string; units: RecipeUnitOption[]; qnt: string; waste: string; recovery: string; advanced: boolean;
+};
+export type RecipeDraftPayload = {
+    mode: RecipeWriteMode; bom_id: string | null; valid_from: string; stores: Record<string, boolean>; lines: RecipeDraftLine[];
+};
+
+export type RecipeWriteStep = { step: string; n?: number; m?: number; at?: string; new?: boolean; delete?: string; version?: string };
+export type RecipeWriteInfo = {
+    id: number; operation: "criar" | "nova_versao" | "corrigir" | "apagar_versao" | "apagar_ficha";
+    status: "queued" | "running" | "ok" | "mismatch" | "conflict" | "failed";
+    bom_id: string | null; valid_from: string | null;
+    progress: { steps: RecipeWriteStep[]; current: string | null; n?: number; m?: number } | null;
+    result: { saved?: boolean; refs?: Record<string, { id: string; key: string }>; diff?: string[] } | null;
+    error: string | null; user: string | null; created_at: string | null; started_at: string | null; finished_at: string | null; ops: number;
+};
+
+export type RecipeEditorContext = {
+    product: { product_id: string; code: string | null; description: string | null };
+    versions: RecipeEditorVersion[];
+    signature: string;
+    in_force: string | null;
+    stores: { store_id: string; name: string }[];
+    today: string;
+    draft: { payload: RecipeDraftPayload; base_signature: string | null; updated_at: string | null } | null;
+    active_write: RecipeWriteInfo | null;
+    write_allowed: boolean;
+};
+
+export type RecipeComponentHit = {
+    component_id: string; code: string | null; description: string; family: string | null; unit: string | null;
+    inactive: boolean; is_semi: boolean; approximate: boolean;
+    last_purchase: { date: string | null; supplier: string | null } | null;
+    units: RecipeUnitOption[]; default_unit_id: string | null;
+};
+
+export type RecipeStoreEffect = {
+    store_id: string; name: string; from: string; before: string | null; before_key: string | null;
+    after: string | null; after_key: string | null; changes: boolean; loses_bom: boolean; without_bom: boolean;
+};
+
+export type RecipePreview = {
+    lines: (RecipeLine & { units: RecipeUnitOption[]; input_key: string | null; yield: RecipeYield | null })[];
+    cost_eur: number | null; cost_complete: boolean; low_confidence: boolean;
+    price_eur: number | null; food_cost_pct: number | null; margin_eur: number | null;
+    store_effects: RecipeStoreEffect[];
+    financial: RecipeFinancial;
+};
+
+export type RecipeHistoryRow = RecipeWriteInfo & {
+    before: { versions: RecipeEditorVersion[] } | null;
+    after: { valid_from?: string | null; stores?: Record<string, boolean>; lines?: { component_id: string; unit_id: string; qnt: number; waste: number; recovery: number }[]; deleted_versions?: string[] } | null;
+    names: { components: Record<string, string>; units: Record<string, string> };
+};

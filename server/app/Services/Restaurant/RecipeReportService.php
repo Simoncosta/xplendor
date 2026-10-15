@@ -376,13 +376,13 @@ final class RecipeReportService
         ];
     }
 
-    private function shapeLine(array $l): array
+    public function shapeLine(array $l): array
     {
         $sub = $l['sub'] ?? null;
 
         return [
             'key' => $l['key'], 'component_id' => $l['component_id'], 'code' => $l['code'], 'description' => $l['description'],
-            'qnt' => $l['qnt'], 'unit' => $l['unit'], 'qnt_base' => $l['qnt_base'],
+            'qnt' => $l['qnt'], 'unit' => $l['unit'], 'unit_id' => $l['unit_id'] ?? null, 'qnt_base' => $l['qnt_base'],
             'waste_pct' => $l['waste'], 'recovery_pct' => $l['recovery'], 'is_bom' => $l['is_bom'],
             'inactive' => $l['status'] === 2,
             'cost_source' => $l['cost_source'], 'cost_status' => $l['cost_status'],

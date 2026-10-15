@@ -79,13 +79,3 @@ echo "🔁 Reload nginx (docker)"
 docker restart xplendor-nginx
 
 echo "✅ Deploy OK"
-
-
---- 
-
-# PROD
-docker exec xplendor-php php artisan schedule:list | grep pingwin-boms # (deve mostrar 05:45 em Lisboa).
-# Primeira carga opcional, só fora do horário de serviço: 
-docker exec xplendor-worker php artisan pingwin:sync-boms 5 --limit=10 --dry-run. # Sem isto, a leitura completa corre às 05:45.
-# Para confirmar a Coca Cola 0 (compras do 100366): 
-docker exec xplendor-php php artisan tinker --execute 'echo DB::table("pingwin_supplier_document_lines")->where("company_id",5)->where("product_pingwin_id","62590249681593592")->count();'

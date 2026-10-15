@@ -2789,6 +2789,289 @@ class MyCloudPieClient:
                         queue.append((line["component_id"], depth + 1))
         return {"boms": boms, "errors": errors}
 
+    # ════════════════ FICHA TÉCNICA: ESCRITA (Fatia 4) — uma ficha de cada vez ════════════════
+    # ⚠️ ESCREVE NA PINGWIN. Sequência do HAR de 15/10 (Coca Cola 0), numa só sessão (o ObjectID
+    # do OPEN em todos os passos), sempre iniciada por uma pessoa e confirmada por releitura:
+    #   1. OPEN,GET,INFO com os 19 datasets do form → ObjectID; guarda o maindataset, o
+    #      productgroup, o tbtaxtable e o additionalfields.maindataset para o MERGE (eco).
+    #   2. GET,INFO da ficha (sem corpo); para cada versão tocada: EDIT,GET [{"key"}] + linhas →
+    #      compara com o espelho (concorrência): se mudou, pára SEM gravar.
+    #   3. NEW productbom.maindataset [{"product_id","cashbox_date":"AAAAMMDD"}] (versão nova).
+    #   4. NEW,GET prodbomdetail [{"product_id","productbom_id","product_description"}] (linha nova)
+    #      e EDIT com a unidade, a quantidade, o desperdício e a recuperação.
+    #   5. LOCATE,GET (linha completa, como lida) + EDIT (linha existente).
+    #   6. DELETE prodbomdetail (linha completa, como lida).   7. DELETE productbom.maindataset.
+    #   8. EDIT storerelation.storedata com TODAS as lojas (deleted 0/1), só quando as lojas mudam.
+    #   9. MERGE (eco do passo 1, sem as chaves de preço) → SAVE → CLOSE (sempre, num finally).
+    #  10. Releitura (read_bom) para o PHP confirmar a versão, as linhas e as lojas.
+    # Sem SAVE nada fica gravado: uma falha a meio fecha a sessão sem gravar.
+    _BOM_WRITE_ACTIONS = {
+        "": {"SAVE", "CLOSE"},
+        "productbom.maindataset": {"NEW", "DELETE", "GET,INFO"},
+        "productbom.prodbomdetail": {"EDIT", "DELETE"},
+        "productbom.prodbomdetail/productbom.lkunits,productbom.lkprodunits": {"NEW,GET", "LOCATE,GET"},
+        "productbom.storerelation.storedata": {"EDIT"},
+        "productbom.maindataset,productbom.storerelation.storedata,productbom.storerelation.storegroup": {"GET,INFO"},
+        "maindataset,productgroup,tbtaxtable,additionalfields.maindataset": {"MERGE"},
+    }
+    _BOM_MERGE_PATH = "maindataset,productgroup,tbtaxtable,additionalfields.maindataset"
+    _BOM_STORES_INFO = "productbom.maindataset,productbom.storerelation.storedata,productbom.storerelation.storegroup"
+    # As chaves de preço não vão no eco do MERGE (senão sobrepõem o preço; ver update_product).
+    _MERGE_PRICE_KEYS = ("saleprice", "purchaseprice", "markup")
+
+    def _bom_write_post(self, path: str, action: str, object_id: str, body: Any = None) -> requests.Response:
+        """Um pedido de ESCRITA da ficha. Só as combinações caminho+ação do protocolo passam."""
+        if action not in self._BOM_WRITE_ACTIONS.get(path, set()):
+            raise RuntimeError(f"ficha técnica: '{action}' em '{path or 'product'}' recusado (fora do protocolo).")
+        url = f"{self.api_url}/service/product{('/' + path) if path else ''}"
+        headers = self._bom_headers(action, object_id)
+        data = b"" if body is None else json.dumps(body)
+        r = self.session.post(url, data=data, headers=headers)
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"ficha técnica: {action} {path or 'product'} falhou (HTTP {r.status_code}) — {r.text[:300]}")
+        return r
+
+    @staticmethod
+    def _bom_line_matches(line: Dict[str, Any], expected: Dict[str, Any]) -> bool:
+        def num(v: Any) -> float:
+            try:
+                return float(v or 0)
+            except (TypeError, ValueError):
+                return 0.0
+        return (
+            str(line.get("product_id") or "") == str(expected.get("component_id") or "")
+            and str(line.get("unit_id") or "") == str(expected.get("unit_id") or "")
+            and abs(num(line.get("qnt")) - num(expected.get("qnt"))) < 1e-6
+            and abs(num(line.get("waste")) - num(expected.get("waste"))) < 1e-6
+            and abs(num(line.get("recovery")) - num(expected.get("recovery"))) < 1e-6
+        )
+
+    def _bom_select(self, object_id: str, version_key: str) -> List[Dict[str, Any]]:
+        """Posiciona a versão (EDIT,GET: nada se grava sem SAVE). Devolve as lojas dessa versão."""
+        sel = self._bom_post(self._BOM_SELECT_PATH, "EDIT,GET", object_id, [{"key": version_key}])
+        sel.raise_for_status()
+        return sel.json().get("product", {}).get("productbom.storerelation.storedata") or []
+
+    def _bom_lines_raw(self, object_id: str) -> List[Dict[str, Any]]:
+        """As linhas (cruas, como a PingWin as devolve) da versão posicionada, armazém ""."""
+        lr = self._bom_post(self._BOM_LINES_DATASETS, "GET,INFO", object_id, {"params": {"warehouse_id": ""}})
+        lr.raise_for_status()
+        return [r for r in lr.json().get("product", {}).get("productbom.prodbomdetail") or [] if int(r.get("deleted") or 0) == 0]
+
+    def write_bom(self, product_id: str, plan: Dict[str, Any], allowed_product_ids: List[str] | None = None,
+                  progress=None) -> Dict[str, Any]:
+        """⚠️ ESCRITA: aplica um plano à ficha de UM artigo (ver o protocolo acima). `plan`:
+        {"expected": {"versions": [...]}, "ops": [...]}. `allowed_product_ids` (não vazio) = os únicos
+        artigos em que se pode escrever (guarda do teste real). Devolve {ok, conflict?, refs, reread}."""
+        product_id = str(product_id)
+        allowed = [str(a) for a in (allowed_product_ids or []) if str(a).strip()]
+        if allowed and product_id not in allowed:
+            raise RuntimeError(f"ficha técnica: escrita recusada no artigo {product_id} (só autorizado em {', '.join(allowed)}).")
+        ops = list(plan.get("ops") or [])
+        if not ops:
+            raise RuntimeError("ficha técnica: plano sem operações.")
+        emit = progress or (lambda **kw: None)
+        line_ops = [o for o in ops if o.get("op") in ("add_line", "edit_line", "delete_line")]
+        done_lines = 0
+
+        emit(step="abrir")
+        r = self._bom_post(f"{product_id}/{self._PRODUCT_FORM_DATASETS}", "OPEN,GET,INFO", None)
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"ficha {product_id}: OPEN falhou (HTTP {r.status_code}) — {r.text[:300]}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError(f"ficha {product_id}: header 'ObjectID' ausente.")
+        refs: Dict[str, Dict[str, Any]] = {}
+        saved = False
+        article: Dict[str, Any] = {}
+        try:
+            product = r.json().get("product", {})
+            main = [dict(row) for row in product.get("maindataset") or []]
+            if not main or str(main[0].get("id") or "") != product_id:
+                raise RuntimeError(f"ficha {product_id}: o OPEN não devolveu este artigo.")
+            for row in main:
+                for k in self._MERGE_PRICE_KEYS:
+                    row.pop(k, None)
+            merge_body = {
+                "maindataset": main,
+                "productgroup": product.get("productgroup") or [],
+                "tbtaxtable": product.get("tbtaxtable") or [],
+                "additionalfields.maindataset": product.get("additionalfields.maindataset") or [],
+            }
+            versions = {str(v.get("id")): v for v in product.get("productbom.maindataset") or [] if v.get("id")}
+            # Para a auditoria: o estado do artigo tal como o OPEN o mostrou (o MERGE é o eco disto).
+            # productgroup conta só os grupos ativos (deleted 0): a linha da família vem apagada.
+            article = {"status": main[0].get("status"), "forsale": main[0].get("forsale"),
+                       "productgroup": sum(1 for g in merge_body["productgroup"] if not int(g.get("deleted") or 0)),
+                       "button_order": main[0].get("button_order"), "description": main[0].get("description")}
+
+            # 2. Ler a ficha e comparar com o espelho (concorrência), antes de escrever.
+            emit(step="ler")
+            self._bom_post(self._BOM_INFO_DATASETS, "GET,INFO", object_id).raise_for_status()
+            conflict = self._bom_conflicts(object_id, versions, plan.get("expected") or {}, ops)
+            if conflict:
+                return {"ok": False, "conflict": True, "diff": conflict, "saved": False, "article": article}
+
+            current: str | None = None       # id da versão posicionada
+            current_lines: List[Dict[str, Any]] = []
+            current_stores: List[Dict[str, Any]] = []
+
+            def resolve(ref: Any) -> str:
+                ref = str(ref or "")
+                return str(refs[ref[4:]]["id"]) if ref.startswith("ref:") else ref
+
+            def position(version_id: str) -> None:
+                nonlocal current, current_lines, current_stores
+                if current == version_id:
+                    return
+                row = versions.get(version_id)
+                if not row:
+                    raise RuntimeError(f"ficha {product_id}: versão {version_id} não existe na PingWin.")
+                emit(step="versao", version=version_id)
+                current_stores = self._bom_select(object_id, str(row["key"]))
+                current_lines = self._bom_lines_raw(object_id)
+                current = version_id
+
+            for op in ops:
+                kind = op.get("op")
+                if kind == "new_version":
+                    emit(step="versao", new=True)
+                    day = str(op["valid_from"]).replace("-", "")[:8]
+                    nv = self._bom_write_post("productbom.maindataset", "NEW", object_id,
+                                              [{"product_id": product_id, "cashbox_date": day}])
+                    row = (nv.json().get("product", {}).get("productbom.maindataset") or [{}])[0]
+                    if not row.get("id"):
+                        raise RuntimeError(f"ficha {product_id}: a versão nova não veio com id.")
+                    versions[str(row["id"])] = row
+                    refs[str(op.get("ref") or "new")] = {"id": str(row["id"]), "key": str(row.get("key") or "")}
+                    info = self._bom_write_post(self._BOM_STORES_INFO, "GET,INFO", object_id)
+                    current = str(row["id"])
+                    current_lines = []
+                    current_stores = info.json().get("product", {}).get("productbom.storerelation.storedata") or []
+                elif kind in ("add_line", "edit_line", "delete_line"):
+                    position(resolve(op["version"]))
+                    done_lines += 1
+                    emit(step="linhas", n=done_lines, m=len(line_ops))
+                    if kind == "add_line":
+                        nl = self._bom_write_post("productbom.prodbomdetail/productbom.lkunits,productbom.lkprodunits", "NEW,GET", object_id, [{
+                            "product_id": str(op["component_id"]), "productbom_id": current,
+                            "product_description": op.get("description") or "",
+                        }])
+                        row = (nl.json().get("product", {}).get("productbom.prodbomdetail") or [{}])[0]
+                        if not row.get("key"):
+                            raise RuntimeError(f"ficha {product_id}: a linha nova não veio com key.")
+                        self._bom_edit_line(object_id, row, op)
+                        current_lines.append(row)
+                    else:
+                        row = next((l for l in current_lines if str(l.get("key")) == str(op["key"])), None)
+                        if not row:
+                            raise RuntimeError(f"ficha {product_id}: linha {op['key']} não encontrada na versão {current}.")
+                        if kind == "edit_line":
+                            self._bom_write_post("productbom.prodbomdetail/productbom.lkunits,productbom.lkprodunits", "LOCATE,GET", object_id, [row])
+                            self._bom_edit_line(object_id, row, op)
+                        else:
+                            self._bom_write_post("productbom.prodbomdetail", "DELETE", object_id, [row])
+                            current_lines = [l for l in current_lines if l is not row]
+                elif kind == "set_stores":
+                    position(resolve(op["version"]))
+                    emit(step="lojas")
+                    wanted = {str(k): bool(v) for k, v in (op.get("stores") or {}).items()}
+                    rows = [dict(s) for s in current_stores]
+                    changed = False
+                    for s in rows:
+                        sid = str(s.get("store_id") or "")
+                        if sid in wanted:
+                            deleted = 0 if wanted[sid] else 1
+                            if int(s.get("deleted") or 0) != deleted:
+                                s["deleted"] = deleted
+                                changed = True
+                    unknown = set(wanted) - {str(s.get("store_id")) for s in rows}
+                    if unknown:
+                        raise RuntimeError(f"ficha {product_id}: lojas desconhecidas na versão: {', '.join(sorted(unknown))}.")
+                    if changed:  # só quando as lojas mudam
+                        self._bom_write_post("productbom.storerelation.storedata", "EDIT", object_id, rows)
+                        current_stores = rows
+                elif kind == "delete_version":
+                    vid = resolve(op["version"])
+                    row = versions.get(vid)
+                    if not row:
+                        raise RuntimeError(f"ficha {product_id}: versão {vid} não existe na PingWin.")
+                    emit(step="versao", delete=vid)
+                    self._bom_write_post("productbom.maindataset", "DELETE", object_id, [row])
+                    versions.pop(vid, None)
+                    if current == vid:
+                        current = None
+                else:
+                    raise RuntimeError(f"ficha técnica: operação desconhecida '{kind}'.")
+
+            emit(step="gravar")
+            self._bom_write_post(self._BOM_MERGE_PATH, "MERGE", object_id, merge_body)
+            self._bom_write_post("", "SAVE", object_id)
+            saved = True
+        finally:
+            try:
+                self._bom_post("", "CLOSE", object_id)
+            except Exception as exc:  # noqa: BLE001 — fechar é best-effort; não mascara o erro real
+                log.warning("write_bom %s: CLOSE falhou (ignorado): %s", product_id, type(exc).__name__)
+
+        emit(step="confirmar")
+        # A releitura numa sessão nova. Se falhar, o que foi gravado fica dito (saved) e o PHP marca a
+        # operação como "não bate" — nunca como "nada gravado".
+        try:
+            reread = self.read_bom(product_id)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("write_bom %s: releitura falhou: %s", product_id, str(exc)[:200])
+            return {"ok": True, "saved": saved, "refs": refs, "reread": None, "reread_error": str(exc)[:300], "article": article}
+        return {"ok": True, "saved": saved, "refs": refs, "reread": reread, "article": article}
+
+    def _bom_edit_line(self, object_id: str, row: Dict[str, Any], op: Dict[str, Any]) -> None:
+        """EDIT de uma linha (nova ou existente) com a unidade, a quantidade, o desperdício e a
+        recuperação pedidos. Atualiza `row` com o que a PingWin devolveu (qnt_base, cost)."""
+        body = {
+            "key": row.get("key"), "product_code": row.get("product_code"),
+            "product_description": row.get("product_description"), "product_id": row.get("product_id"),
+            "unit_id": str(op.get("unit_id") or row.get("unit_id") or ""),
+            "qnt": op.get("qnt", row.get("qnt")), "waste": op.get("waste", row.get("waste") or 0),
+            "recovery": op.get("recovery", row.get("recovery") or 0), "deleted": 0,
+            "product_status": row.get("product_status", ""),
+        }
+        er = self._bom_write_post("productbom.prodbomdetail", "EDIT", object_id, [body])
+        back = (er.json().get("product", {}).get("productbom.prodbomdetail") or [{}])[0]
+        row.update({k: v for k, v in back.items() if k in ("unit_id", "qnt", "qnt_base", "waste", "recovery", "unit_cost", "cost", "unit_desc")})
+
+    def _bom_conflicts(self, object_id: str, versions: Dict[str, Dict[str, Any]], expected: Dict[str, Any],
+                       ops: List[Dict[str, Any]]) -> List[str]:
+        """Diferenças entre a ficha na PingWin e o espelho (o que a pessoa viu ao editar): as versões
+        (ids, datas, anuladas) e, nas versões tocadas, as linhas e as lojas. [] = igual."""
+        diff: List[str] = []
+        exp_versions = {str(v["id"]): v for v in expected.get("versions") or []}
+        live = {vid: v for vid, v in versions.items() if int(v.get("deleted") or 0) == 0}
+        for vid in sorted(set(live) - set(exp_versions)):
+            diff.append(f"versão {_bom_date(live[vid].get('cashbox_date'))} ({vid}) nova na PingWin")
+        for vid in sorted(set(exp_versions) - set(live)):
+            diff.append(f"versão {exp_versions[vid].get('valid_from')} ({vid}) já não existe na PingWin")
+        for vid in sorted(set(exp_versions) & set(live)):
+            if _bom_date(live[vid].get("cashbox_date")) != exp_versions[vid].get("valid_from"):
+                diff.append(f"versão {vid}: data mudou para {_bom_date(live[vid].get('cashbox_date'))}")
+        touched = {str(o["version"]) for o in ops if str(o.get("version") or "") and not str(o.get("version")).startswith("ref:")}
+        for vid in sorted(touched & set(exp_versions) & set(live)):
+            stores = self._bom_select(object_id, str(live[vid]["key"]))
+            lines = self._bom_lines_raw(object_id)
+            exp = exp_versions[vid]
+            exp_lines = {str(l["key"]): l for l in exp.get("lines") or []}
+            got = {str(l.get("key")): l for l in lines}
+            if set(exp_lines) != set(got):
+                diff.append(f"versão {exp.get('valid_from')}: as linhas mudaram ({len(got)} na PingWin, {len(exp_lines)} na XPLENDOR)")
+            else:
+                for k, l in exp_lines.items():
+                    if not self._bom_line_matches(got[k], l):
+                        diff.append(f"versão {exp.get('valid_from')}: a linha {got[k].get('product_description')} mudou")
+            exp_active = {str(s["store_id"]) for s in exp.get("stores") or [] if s.get("active")}
+            live_active = {str(s.get("store_id")) for s in stores if int(s.get("deleted") or 0) == 0}
+            if exp_active != live_active:
+                diff.append(f"versão {exp.get('valid_from')}: as lojas mudaram")
+        return diff
+
     def list_bom_products(self, any_product_id: str) -> List[Dict[str, Any]]:
         """A lista de artigos do seletor da ficha (productbom.productlist), com isproduct_bom.
         Precisa de uma ficha aberta (qualquer artigo); abre, lê e fecha."""

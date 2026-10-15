@@ -137,6 +137,9 @@ return [
         // F1 — lista "Documentos" do BO (browserdataset), filtrada por DOCTYPE 2002 = documentos de
         // fornecedores. Default = o id do HAR da Yuko (só confirmado na Yuko; noutra instalação, definir no .env).
         'supplier_documents_dataset_id' => env('PINGWIN_SUPPLIER_DOCUMENTS_DATASET_ID', '1099511639269'),
+        // Fatia 4: os únicos artigos (ids do PingWin, separados por vírgulas) em que se pode gravar a
+        // ficha técnica. Vazio = todos. Guarda dos testes reais (o artigo "TESTE XPLENDOR FICHA").
+        'bom_write_allowlist' => env('PINGWIN_BOM_WRITE_ALLOWLIST', ''),
         // ⚠️ As UNIDADES vivem numa PORTA DIFERENTE (8138, não a 8136). Override
         // explícito opcional; vazio → o cliente deriva do api_url trocando a porta.
         'units_url' => env('PINGWIN_UNITS_URL', ''),
