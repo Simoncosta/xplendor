@@ -10,6 +10,7 @@ use App\Repositories\CarAdSpendRepository;
 use App\Services\GoogleAnalyticsService;
 use App\Services\MetaAccountInsightsService;
 use App\Support\MonthComparison;
+use App\Support\Tracking\WhatsappContact;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,7 +30,9 @@ use Illuminate\Support\Facades\Log;
  *   · ga4_sessions   → visitas ao site por origem (GA4);
  *   · paid_cpl       → gasto Meta ÷ leads pagas; 0 leads → 'spend_without_lead'
  *                      (nunca divide por zero);
- *   · contacts       → WhatsApp + chamada + ver/copiar telefone (car_interactions);
+ *   · contacts       → WhatsApp (regra única WhatsappContact) + chamada + ver/copiar
+ *                      telefone (car_interactions), a mesma definição da coluna contacts
+ *                      do view do funil;
  *   · sales          → vendas do mês, SÓ contexto (sem delta nem comparação).
  * Comparação por métrica com o escalão usado (MonthComparison). Aviso de qualidade:
  * investimento com zero leads pagas e leads de social orgânico no mesmo período →
@@ -37,9 +40,6 @@ use Illuminate\Support\Facades\Log;
  */
 class AutomotiveMarketingService
 {
-    /** Contactos diretos (a mesma definição da coluna contacts do view do funil). */
-    public const CONTACT_TYPES = ['whatsapp_click', 'call_click', 'show_phone', 'copy_phone'];
-
     /**
      * Registo de visitas PARADO: o último evento (vista, interação ou lead) é mais
      * antigo do que isto em relação ao fim do período. Os zeros deixam de parecer
@@ -368,10 +368,10 @@ class AutomotiveMarketingService
     {
         return DB::table('car_interactions')
             ->where('company_id', $companyId)
-            ->whereIn('interaction_type', self::CONTACT_TYPES)
+            ->whereRaw(WhatsappContact::contactSql())
             ->whereRaw('DATE(created_at) BETWEEN ? AND ?', [$from, $to])
-            ->selectRaw("DATE(created_at) as d, COUNT(*) as total,
-                SUM(CASE WHEN interaction_type = 'whatsapp_click' THEN 1 ELSE 0 END) as whatsapp,
+            ->selectRaw('DATE(created_at) as d, COUNT(*) as total,
+                ' . WhatsappContact::countSql() . " as whatsapp,
                 SUM(CASE WHEN interaction_type = 'call_click' THEN 1 ELSE 0 END) as call_clicks,
                 SUM(CASE WHEN interaction_type IN ('show_phone', 'copy_phone') THEN 1 ELSE 0 END) as phone_reveal")
             ->groupByRaw('DATE(created_at)')

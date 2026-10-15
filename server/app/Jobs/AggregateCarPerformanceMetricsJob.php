@@ -142,7 +142,7 @@ class AggregateCarPerformanceMetricsJob implements ShouldQueue
             ->select([
                 DB::raw("COALESCE(channel, 'direct') AS channel"),
                 DB::raw('COUNT(*) AS interactions_count'),
-                DB::raw("SUM(CASE WHEN interaction_type = 'whatsapp_click' THEN 1 ELSE 0 END) AS whatsapp_clicks"),
+                DB::raw(\App\Support\Tracking\WhatsappContact::countSql() . ' AS whatsapp_clicks'),
                 DB::raw("SUM(CASE WHEN interaction_type IN ('call_click','show_phone','copy_phone') THEN 1 ELSE 0 END) AS phone_clicks"),
             ])
             ->where('car_id', $carId)

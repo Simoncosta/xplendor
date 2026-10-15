@@ -116,7 +116,7 @@ class SilentBuyerDetectionService
 
         $score = $viewsScore + $sessionsScore + $interactionsScore + $durationScore + $contactIntentBonus;
 
-        if (in_array('whatsapp_click', $interactionTypes, true) || in_array('call_click', $interactionTypes, true)) {
+        if (array_intersect(['whatsapp_click', 'whatsapp_send', 'call_click'], $interactionTypes) !== []) {
             $score += 6;
         }
 
@@ -125,7 +125,7 @@ class SilentBuyerDetectionService
 
     protected function recommendAction(object $buyer, array $interactionTypes, int $intentScore): string
     {
-        if (in_array('whatsapp_click', $interactionTypes, true) || in_array('call_click', $interactionTypes, true)) {
+        if (array_intersect(['whatsapp_click', 'whatsapp_send', 'call_click'], $interactionTypes) !== []) {
             return 'Ativar follow-up por WhatsApp';
         }
 

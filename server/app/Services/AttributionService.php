@@ -7,6 +7,7 @@ use App\Models\CarAdAttribution;
 use App\Models\CarAdCampaign;
 use App\Models\MetaAd;
 use App\Repositories\CarAdSpendRepository;
+use App\Support\Tracking\WhatsappContact;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -47,7 +48,8 @@ class AttributionService
             'last_interaction_at' => now(),
         ];
 
-        if ($type === 'whatsapp_click') {
+        // Contacto por WhatsApp pela regra única (o whatsapp_send conta; abrir o modal não).
+        if (WhatsappContact::isContact($type, $context['page_context'] ?? null)) {
             $updates['has_whatsapp_click'] = true;
         }
 

@@ -45,8 +45,7 @@ class CarAnalyticsService
         $views7d  = $this->viewRepository->countByCarSince($car->id, now()->subDays(7));
 
         $interactionsBreakdown = $this->interactionRepository->groupByType($car->id);
-        $whatsappClicks = collect($interactionsBreakdown)
-            ->firstWhere('interaction_type', 'whatsapp_click')?->total ?? 0;
+        $whatsappClicks = $this->interactionRepository->countWhatsappContacts($car->id);
         $trafficSources        = $this->viewRepository->groupByChannel($car->id);
 
         // ── Performance metrics (XPLDR-5) ─────────────────────────────────────
@@ -345,6 +344,7 @@ class CarAnalyticsService
     {
         return match ($interactionType) {
             'whatsapp_click' => 'Clique em WhatsApp',
+            'whatsapp_send' => 'Mensagem de WhatsApp enviada',
             'call_click' => 'Clique em chamada',
             'show_phone' => 'Visualização do telefone',
             'copy_phone' => 'Cópia do telefone',
@@ -361,6 +361,7 @@ class CarAnalyticsService
     {
         return match ($interactionType) {
             'whatsapp_click' => 'ri-whatsapp-line',
+            'whatsapp_send' => 'ri-whatsapp-line',
             'call_click' => 'ri-phone-line',
             'show_phone' => 'ri-smartphone-line',
             'copy_phone' => 'ri-file-copy-line',
@@ -377,6 +378,7 @@ class CarAnalyticsService
     {
         return match ($interactionType) {
             'whatsapp_click' => 'success',
+            'whatsapp_send' => 'success',
             'call_click' => 'info',
             'show_phone' => 'warning',
             'copy_phone' => 'secondary',

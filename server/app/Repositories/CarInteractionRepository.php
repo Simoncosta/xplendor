@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\CarInteraction;
 use App\Repositories\Contracts\CarInteractionRepositoryInterface;
+use App\Support\Tracking\WhatsappContact;
 use Illuminate\Support\Facades\DB;
 
 class CarInteractionRepository extends BaseRepository implements CarInteractionRepositoryInterface
@@ -25,6 +26,11 @@ class CarInteractionRepository extends BaseRepository implements CarInteractionR
             ->where('car_id', $carId)
             ->groupBy('interaction_type')
             ->get();
+    }
+
+    public function countWhatsappContacts(int $carId): int
+    {
+        return $this->model->where('car_id', $carId)->whereRaw(WhatsappContact::sql())->count();
     }
 
     public function getTimelineByCar(int $carId)

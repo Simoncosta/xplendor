@@ -8,6 +8,7 @@ use App\Support\StockAge;
 use App\Models\Car;
 use App\Repositories\Contracts\DashboardRepositoryInterface;
 use App\Repositories\CarAdSpendRepository;
+use App\Support\Tracking\WhatsappContact;
 use Illuminate\Support\Facades\DB;
 
 class DashboardRepository extends BaseRepository implements DashboardRepositoryInterface
@@ -678,9 +679,12 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             ->where('created_at', '>=', $since)
             ->count();
 
+        // Todas as interações da empresa, com ou sem viatura. A abertura do modal do WhatsApp
+        // (regra única WhatsappContact) não conta: o "Enviar" que se lhe segue já conta.
         $interactions = DB::table('car_interactions')
             ->where('company_id', $companyId)
             ->where('created_at', '>=', $since)
+            ->whereRaw('NOT ' . WhatsappContact::openOnlySql())
             ->count();
 
         $interestRate = $views > 0
@@ -712,6 +716,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
         $interactionChannels = DB::table('car_interactions')
             ->where('company_id', $companyId)
             ->where('created_at', '>=', $since)
+            ->whereRaw('NOT ' . WhatsappContact::openOnlySql())
             ->select(
                 DB::raw("COALESCE(channel, 'direct') as channel"),
                 DB::raw('COUNT(*) as total')

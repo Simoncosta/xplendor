@@ -87,7 +87,7 @@ class SpendWithoutLeadRule implements RecommendationRule
         $window = fn ($q) => $q->where('company_id', $companyId)->whereIn('car_id', $tagSpend->keys()->all())
             ->where('created_at', '>=', $from . ' 00:00:00')->where('created_at', '<=', $to . ' 23:59:59');
         $leads = $window(DB::table('car_leads'))->selectRaw('car_id, COUNT(*) as n')->groupBy('car_id')->pluck('n', 'car_id');
-        $interactions = $window(DB::table('car_interactions'))->whereIn('interaction_type', \App\Services\Automotive\AutomotiveMarketingService::CONTACT_TYPES)
+        $interactions = $window(DB::table('car_interactions'))->whereRaw(\App\Support\Tracking\WhatsappContact::contactSql())
             ->selectRaw('car_id, COUNT(*) as n')->groupBy('car_id')->pluck('n', 'car_id');
 
         $cars = Car::where('company_id', $companyId)

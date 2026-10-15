@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Repositories\Contracts\SilentBuyerDetectionRepositoryInterface;
+use App\Support\Tracking\WhatsappContact;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -149,6 +150,7 @@ class SilentBuyerDetectionRepository implements SilentBuyerDetectionRepositoryIn
     {
         $strongTypes = [
             'whatsapp_click',
+            'whatsapp_send',
             'call_click',
             'show_phone',
             'copy_phone',
@@ -159,11 +161,9 @@ class SilentBuyerDetectionRepository implements SilentBuyerDetectionRepositoryIn
             'contact_click',
         ];
 
+        // Intenção de contacto: o WhatsApp e o telefone pela regra única (WhatsappContact), mais
+        // os tipos genéricos de contacto.
         $contactIntentTypes = [
-            'whatsapp_click',
-            'call_click',
-            'show_phone',
-            'copy_phone',
             'contact',
             'contact_click',
         ];
@@ -176,7 +176,7 @@ class SilentBuyerDetectionRepository implements SilentBuyerDetectionRepositoryIn
                 visitor_id,
                 COUNT(*) as interactions_count,
                 SUM(CASE WHEN interaction_type IN (' . $this->quoteList($strongTypes) . ') THEN 1 ELSE 0 END) as strong_interactions_count,
-                SUM(CASE WHEN interaction_type IN (' . $this->quoteList($contactIntentTypes) . ') THEN 1 ELSE 0 END) as contact_intent_count,
+                SUM(CASE WHEN ' . WhatsappContact::contactSql() . ' OR interaction_type IN (' . $this->quoteList($contactIntentTypes) . ') THEN 1 ELSE 0 END) as contact_intent_count,
                 GROUP_CONCAT(DISTINCT interaction_type ORDER BY interaction_type SEPARATOR ",") as interaction_types,
                 MAX(created_at) as last_interaction_at
             '

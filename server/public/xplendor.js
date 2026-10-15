@@ -1,3 +1,20 @@
+/*
+ * XPLENDOR — script de tracking dos sites (servido em /xplendor.js).
+ *
+ * Snippet do stub (para chamar window.xplendor antes de o script carregar; as chamadas ficam
+ * na fila window.xplendor.q e são processadas por ordem quando o script arranca):
+ *
+ *   <script>
+ *     window.xplendor = window.xplendor || function () {
+ *       (window.xplendor.q = window.xplendor.q || []).push(arguments);
+ *     };
+ *     xplendor("init", { token: "TOKEN_DA_EMPRESA", api_base: "https://xplendor.tech" });
+ *   </script>
+ *   <script async src="https://xplendor.tech/xplendor.js"></script>
+ *
+ * Interações: data.car_id em falta → atribui a última viatura vista (meta.car_id_source =
+ * "last_car_view"); data.car_id: null explícito → "sem viatura" (não infere).
+ */
 ; (() => {
     const STORAGE_KEYS = {
         visitorId: "xpl_visitor_id",
@@ -268,6 +285,15 @@
             return interactionData;
         }
 
+        // car_id: null explícito = "sem viatura" (botão geral): não inferir a última viatura vista.
+        if (Object.prototype.hasOwnProperty.call(data, "car_id") && data.car_id === null) {
+            interactionData.meta = mergeMeta(interactionData.meta, {
+                car_id_source: "explicit_none",
+            });
+
+            return interactionData;
+        }
+
         const lastCar = getLastCarView();
 
         if (!lastCar) {
@@ -503,13 +529,17 @@
         }
     };
 
-    const previous = window.xplendor;
+    // Fila do stub: as chamadas feitas antes de o script carregar são processadas por ordem
+    // ANTES de o stub ser substituído; o que entrar na fila entretanto é processado a seguir.
+    const stub = window.xplendor;
+    const pending = Array.isArray(stub?.q) ? stub.q.slice() : [];
+    pending.forEach((args) => api(args[0], args[1], args[2]));
 
     window.xplendor = function () {
         api(arguments[0], arguments[1], arguments[2]);
     };
 
-    const q = previous?.q || window.xplendor.q || [];
-    q.forEach((args) => api(args[0], args[1], args[2]));
+    const late = Array.isArray(stub?.q) ? stub.q.slice(pending.length) : [];
+    late.forEach((args) => api(args[0], args[1], args[2]));
     window.xplendor.q = [];
 })();

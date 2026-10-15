@@ -184,13 +184,7 @@ class CarSalePotentialScoreService
         // Interações de intenção alta (WhatsApp + chamadas + mostrar telefone)
         $intentInteractions = DB::table('car_interactions')
             ->where('car_id', $car->id)
-            ->whereIn('interaction_type', [
-                'whatsapp_click',
-                'call_click',
-                'show_phone',
-                'copy_phone',
-                'form_start',
-            ])
+            ->where(fn ($q) => $q->whereRaw(\App\Support\Tracking\WhatsappContact::contactSql())->orWhere('interaction_type', 'form_start'))
             ->count();
 
         // Interações de intenção média (favorito, partilha, form_open)
@@ -244,7 +238,7 @@ class CarSalePotentialScoreService
             $leads  = DB::table('car_leads')->where('car_id', $carId)->count();
             $intent = DB::table('car_interactions')
                 ->where('car_id', $carId)
-                ->whereIn('interaction_type', ['whatsapp_click', 'call_click', 'show_phone', 'copy_phone', 'form_start'])
+                ->where(fn ($q) => $q->whereRaw(\App\Support\Tracking\WhatsappContact::contactSql())->orWhere('interaction_type', 'form_start'))
                 ->count();
             $soft = DB::table('car_interactions')
                 ->where('car_id', $carId)

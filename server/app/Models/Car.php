@@ -215,7 +215,7 @@ class Car extends Model implements AuditableContract
     public function whatsappInteractions(): HasMany
     {
         return $this->hasMany(CarInteraction::class)
-            ->where('interaction_type', 'whatsapp_click');
+            ->whereRaw(\App\Support\Tracking\WhatsappContact::sql());
     }
 
     public function callInteractions(): HasMany

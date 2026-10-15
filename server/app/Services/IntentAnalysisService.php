@@ -142,7 +142,7 @@ class IntentAnalysisService
             ->groupBy('car_id')
             ->selectRaw("
                 car_id,
-                SUM(CASE WHEN interaction_type = 'whatsapp_click' THEN 1 ELSE 0 END) as whatsapp_clicks,
+                " . \App\Support\Tracking\WhatsappContact::countSql() . " as whatsapp_clicks,
                 ROUND(AVG(
                     CASE
                         WHEN interaction_type IN ('scroll', 'scroll_depth') THEN
@@ -217,7 +217,7 @@ class IntentAnalysisService
             ->selectRaw("
                 car_id,
                 visitor_id as identity_key,
-                SUM(CASE WHEN interaction_type = 'whatsapp_click' THEN 1 ELSE 0 END) as whatsapp_clicks
+                " . \App\Support\Tracking\WhatsappContact::countSql() . " as whatsapp_clicks
             ")
             ->get()
             ->groupBy('car_id')

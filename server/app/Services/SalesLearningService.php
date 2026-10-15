@@ -115,7 +115,7 @@ class SalesLearningService
         return [
             'views' => (int) $views,
             'sessions' => (int) (clone $interactions)->distinct('session_id')->count('session_id'),
-            'whatsapp_clicks' => (int) (clone $interactions)->where('interaction_type', 'whatsapp_click')->count(),
+            'whatsapp_clicks' => (int) (clone $interactions)->whereRaw(\App\Support\Tracking\WhatsappContact::sql())->count(),
             'calls' => (int) (clone $interactions)->where('interaction_type', 'call_click')->count(),
             'forms' => (int) (clone $interactions)->where('interaction_type', 'form_open')->count(),
             'leads' => (int) DB::table('car_leads')
@@ -142,7 +142,7 @@ class SalesLearningService
                 ->where('company_id', $car->company_id)
                 ->where('car_id', $car->id)
                 ->whereBetween('created_at', [$dayStart, $dayEnd]);
-            $whatsapp = (clone $interactions)->where('interaction_type', 'whatsapp_click')->count();
+            $whatsapp = (clone $interactions)->whereRaw(\App\Support\Tracking\WhatsappContact::sql())->count();
             $calls = (clone $interactions)->where('interaction_type', 'call_click')->count();
             $forms = (clone $interactions)->where('interaction_type', 'form_open')->count();
             $leads = DB::table('car_leads')

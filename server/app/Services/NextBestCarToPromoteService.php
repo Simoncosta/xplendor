@@ -335,7 +335,7 @@ class NextBestCarToPromoteService
         $interactions = DB::table('car_interactions')
             ->select(
                 'car_id',
-                DB::raw("SUM(CASE WHEN interaction_type = 'whatsapp_click' THEN 1 ELSE 0 END) as whatsapp_clicks"),
+                DB::raw(\App\Support\Tracking\WhatsappContact::countSql() . ' as whatsapp_clicks'),
                 DB::raw("SUM(CASE WHEN interaction_type IN ('call_click', 'show_phone', 'copy_phone') THEN 1 ELSE 0 END) as calls"),
                 DB::raw("SUM(CASE WHEN interaction_type IN ('form_open', 'form_start') THEN 1 ELSE 0 END) as form_opens"),
                 DB::raw('COUNT(DISTINCT session_id) as interaction_sessions')
