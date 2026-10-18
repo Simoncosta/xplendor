@@ -1,4 +1,5 @@
 // src/common/models/company.model.ts
+import type { CompanyNameArticle } from "helpers/companyName";
 
 export type LeadDistribution =
     | "manual"
@@ -13,6 +14,8 @@ export interface ICompany {
 
     slug: string | null;
     trade_name: string | null;
+    /** Artigo do nome nos textos ("nos Pinheiros"); null = sem artigo. */
+    name_article: CompanyNameArticle | null;
     responsible_name: string | null;
 
     address: string | null;

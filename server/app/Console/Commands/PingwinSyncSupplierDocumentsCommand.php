@@ -20,7 +20,7 @@ use Illuminate\Console\Command;
 class PingwinSyncSupplierDocumentsCommand extends Command
 {
     protected $signature = 'pingwin:sync-supplier-documents
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--from= : Início (AAAA-MM-DD); por omissão há 7 dias}
         {--to= : Fim (AAAA-MM-DD); por omissão hoje}';
 

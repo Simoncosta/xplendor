@@ -87,7 +87,7 @@ class CoverManagerService
     /**
      * Mapa dos códigos de estado do CoverManager (documents/PINGWIN-F1-DESENHO.md §11).
      * Confirmados no ecrã do CoverManager a 8 de outubro de 2026: "1" e "2" reserva
-     * confirmada, "4" chegada, "-1" reserva cancelada. Do projeto yukotavern (lib/metrics.php):
+     * confirmada, "4" chegada, "-1" reserva cancelada. Do projeto anterior do cliente (lib/metrics.php):
      * "3" confirmada, "5" concluída, "-2" anulada, "-3" falta. Deduzido (por confirmar):
      * "-11" anulada. Qualquer outro código (ou estado vazio) fica "por classificar": não
      * conta nas válidas nem nas anuladas, para nunca ser contado às cegas.

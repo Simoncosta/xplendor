@@ -122,7 +122,7 @@ return [
         'app_grupopie'      => env('PINGWIN_APP_GRUPOPIE', 'PBOWEB'),          // constante do protocolo
         'report_id'         => env('PINGWIN_REPORT_ID_SALES'),  // relatório "Resumo de Vendas" (ver aviso no .env)
         // Relatório "Vendas por artigo" (loja × dia × artigo, F1 do marketing). Global da cloud
-        // GrupoPIE (documents/PINGWIN-RELATORIOS-F0.md); só confirmado na Yuko.
+        // GrupoPIE (documents/PINGWIN-RELATORIOS-F0.md); só confirmado numa instalação.
         'item_sales_report_id' => env('PINGWIN_REPORT_ID_ITEM_SALES') ?: '919525121217',
         // Relatório "Análise de vendas anual" (início de cada loja, F1-2). Global, como o anterior.
         'annual_report_id' => env('PINGWIN_REPORT_ID_ANNUAL') ?: '1093764095994',
@@ -130,12 +130,12 @@ return [
         'hourly_sales_report_id' => env('PINGWIN_REPORT_ID_HOURLY_SALES') ?: '1023875499019',
         // ⚠️ As 3 chaves seguintes são DIFERENTES (não confundir — ver .env.example):
         'stores'            => env('PINGWIN_STORES', ''),       // CSV de winrest_store_id (filtro do relatório); o sync sobrepõe-no com as lojas cadastradas. NÃO é um dataset.
-        'stores_dataset_id' => env('PINGWIN_STORES_DATASET_ID', ''), // dataset (browserdataset) de descoberta de lojas — fetch_stores (Yuko: 1099511639262)
-        'catalog_dataset_id' => env('PINGWIN_CATALOG_DATASET_ID', ''), // dataset (browserdataset) do catálogo de artigos — fetch_catalog (Yuko: 1099511639254)
-        'suppliers_dataset_id' => env('PINGWIN_SUPPLIERS_DATASET_ID', ''), // dataset (browserdataset) de fornecedores — fetch_suppliers (Yuko: 1099511639252)
-        'paycond_dataset_id' => env('PINGWIN_PAYCOND_DATASET_ID', ''), // dataset (browserdataset) de condições de pagamento — fetch_payment_conditions (Yuko: 1099511639195)
+        'stores_dataset_id' => env('PINGWIN_STORES_DATASET_ID', ''), // dataset (browserdataset) de descoberta de lojas — fetch_stores
+        'catalog_dataset_id' => env('PINGWIN_CATALOG_DATASET_ID', ''), // dataset (browserdataset) do catálogo de artigos — fetch_catalog
+        'suppliers_dataset_id' => env('PINGWIN_SUPPLIERS_DATASET_ID', ''), // dataset (browserdataset) de fornecedores — fetch_suppliers
+        'paycond_dataset_id' => env('PINGWIN_PAYCOND_DATASET_ID', ''), // dataset (browserdataset) de condições de pagamento — fetch_payment_conditions
         // F1 — lista "Documentos" do BO (browserdataset), filtrada por DOCTYPE 2002 = documentos de
-        // fornecedores. Default = o id do HAR da Yuko (só confirmado na Yuko; noutra instalação, definir no .env).
+        // fornecedores. Default = o id lido no HAR da primeira instalação (noutra, definir no .env).
         'supplier_documents_dataset_id' => env('PINGWIN_SUPPLIER_DOCUMENTS_DATASET_ID', '1099511639269'),
         // Fatia 4: os únicos artigos (ids do PingWin, separados por vírgulas) em que se pode gravar a
         // ficha técnica. Vazio = todos. Guarda dos testes reais (o artigo "TESTE XPLENDOR FICHA").

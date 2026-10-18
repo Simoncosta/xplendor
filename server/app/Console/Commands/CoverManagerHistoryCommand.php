@@ -28,7 +28,7 @@ class CoverManagerHistoryCommand extends Command
     public const SPACING_SECONDS = 5;
 
     protected $signature = 'covermanager:history
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--days=90 : Quantos dias para trás, a acabar ontem (máximo 90)}';
 
     protected $description = 'Relê as reservas do CoverManager dos últimos dias para os agregados por hora, canal, antecedência e estado.';

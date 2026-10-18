@@ -379,7 +379,7 @@ final class StandCompassService
         }
 
         return [
-            'title' => 'Esta semana em ' . ($company->trade_name ?: $company->fiscal_name),
+            'title' => 'Esta semana ' . \App\Support\CompanyName::with('em', $company),
             'context' => 'Stock de hoje; anúncios, vistas e contactos das últimas 4 semanas.',
             'numbers' => $numbers,
             'notes' => $notes,

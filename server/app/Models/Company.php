@@ -21,6 +21,7 @@ class Company extends Model
         'fiscal_name',
         'slug',
         'trade_name',
+        'name_article',
         'responsible_name',
         'address',
         'postal_code',

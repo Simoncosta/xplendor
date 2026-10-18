@@ -76,10 +76,10 @@ export default function CalendarioPage() {
 
     useEffect(() => { fetchCalendar(month, locationId); }, [fetchCalendar, month, locationId]);
 
-    // Opções do react-select do filtro de loja (default "Todas as lojas").
+    // Opções do react-select do filtro de loja (a primeira é "Todos os restaurantes").
     const locationOptions = useMemo(
         () => [
-            { value: "" as number | "", label: "Todas as lojas" },
+            { value: "" as number | "", label: "Todos os restaurantes" },
             ...(data?.locations ?? []).map((l) => ({
                 value: l.id as number | "",
                 label: l.display_name || l.winrest_name || l.winrest_store_id,
@@ -109,7 +109,7 @@ export default function CalendarioPage() {
                     breadcrumbs={[{ label: "Restauração" }]}
                     info="A faturação com IVA, as pessoas que reservaram e o ticket médio de cada dia. Os dias sem dados sincronizados ficam vazios (ou dizem «Vendas em falta» quando só há reservas); o ticket médio só aparece com faturação e reservas."
                     filters={<>
-                        {/* Filtro por loja: por omissão "Todas as lojas" (somadas). */}
+                        {/* Filtro por loja: por omissão "Todos os restaurantes" (somados). */}
                         <XSelect small
                             ariaLabel="Loja"
                             width={220}
@@ -117,7 +117,7 @@ export default function CalendarioPage() {
                             value={locationId}
                             onChange={(v) => setLocationId(v)}
                             searchable
-                            placeholder="Todas as lojas"
+                            placeholder="Todos os restaurantes"
                         />
                     </>}
                 />

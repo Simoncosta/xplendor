@@ -26,14 +26,4 @@ return [
     // Documentos de saída que o PingWin aceita a partir de uma encomenda.
     'exit_docconfigs' => ['1102' => 'Guia de ativos próprios', '1007' => 'Guia de transporte'],
     'entry_docconfig' => '1104',
-
-    // Circuitos iniciais por empresa (criados na primeira visita; editáveis no ecrã Circuito).
-    'default_routes' => [
-        5 => [
-            ['name' => 'Economato → Tabern Yuko Baixa', 'origin_warehouse_id' => '584955579139620864', 'origin_store_id' => '1099511639284',
-                'dest_warehouse_id' => '1649601156541', 'dest_store_id' => '1099845342604'],
-            ['name' => 'Economato → Tabern Yuko Original', 'origin_warehouse_id' => '584955579139620864', 'origin_store_id' => '1099511639284',
-                'dest_warehouse_id' => '584955579139649883', 'dest_store_id' => '584955579139649880'],
-        ],
-    ],
 ];

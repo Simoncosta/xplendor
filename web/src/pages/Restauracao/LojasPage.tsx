@@ -254,7 +254,7 @@ export default function LojasPage() {
                             </Col>
                             <Col md={5}>
                                 <label className="form-label fs-12 mb-1">Nome amigável</label>
-                                <input className="form-control" value={form.display_name} onChange={(e) => setField("display_name", e.target.value)} placeholder="ex.: Yuko Lisboa" disabled={saving} />
+                                <input className="form-control" value={form.display_name} onChange={(e) => setField("display_name", e.target.value)} placeholder="ex.: Restaurante Centro" disabled={saving} />
                             </Col>
                             <Col md={4}>
                                 <label className="form-label fs-12 mb-1">Data de abertura</label>
@@ -278,7 +278,7 @@ export default function LojasPage() {
                             <Row className="g-2">
                                 <Col md={6}>
                                     <label className="form-label fs-12 mb-1">Slug CoverManager</label>
-                                    <input className="form-control" value={form.cm_slug} onChange={(e) => setField("cm_slug", e.target.value)} placeholder="ex.: yuko-baixa" disabled={saving} />
+                                    <input className="form-control" value={form.cm_slug} onChange={(e) => setField("cm_slug", e.target.value)} placeholder="ex.: restaurante-centro" disabled={saving} />
                                 </Col>
                                 <Col md={6}>
                                     <label className="form-label fs-12 mb-1">Token da loja (override, opcional)</label>

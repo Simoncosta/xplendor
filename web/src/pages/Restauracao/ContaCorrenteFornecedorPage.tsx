@@ -280,8 +280,8 @@ export default function ContaCorrenteFornecedorPage() {
                                     </Col>
                                     <Col xs={12} md={6}>
                                         <label className="form-label fs-12 mb-1" htmlFor="cc-store">Loja</label>
-                                        <XSelect id="cc-store" ariaLabel="Loja" small value={store} onChange={(v) => setStore(v)} placeholder="Todas as lojas"
-                                            options={[{ value: "", label: "Todas as lojas" }, ...(detail?.stores ?? []).map((st) => ({ value: st.id, label: st.name || st.id }))]} />
+                                        <XSelect id="cc-store" ariaLabel="Loja" small value={store} onChange={(v) => setStore(v)} placeholder="Todos os restaurantes"
+                                            options={[{ value: "", label: "Todos os restaurantes" }, ...(detail?.stores ?? []).map((st) => ({ value: st.id, label: st.name || st.id }))]} />
                                     </Col>
                                 </Row>
                             }

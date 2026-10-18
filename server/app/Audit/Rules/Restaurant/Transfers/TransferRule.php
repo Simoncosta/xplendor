@@ -57,7 +57,7 @@ abstract class TransferRule extends StockRule
         $today = self::data($scope)->today();
         $docs = StockTransferRequest::where('company_id', $companyId)->where('docstatus_id', '!=', '8003')->with('lines')->get();
         $origins = StockTransferRoute::where('company_id', $companyId)->pluck('origin_warehouse_id')->map(fn ($v) => (string) $v)->unique()->values()->all()
-            ?: array_values(array_unique(array_map(fn ($r) => (string) $r['origin_warehouse_id'], (array) (config('stock_transfers.default_routes')[$companyId] ?? []))));
+            ?: array_values(array_filter([\App\Services\Restaurant\Transfers\TransferService::economato($companyId)['warehouse_id'] ?? null]));
         $stock = PingwinStock::where('company_id', $companyId)->get();
         $pcm = [];
         foreach ($stock as $s) {
@@ -154,7 +154,7 @@ abstract class TransferRule extends StockRule
         return '/restauracao/transferencias' . ($tab !== '' ? "?tab={$tab}" : '');
     }
 
-    /** "Armazém Yuko" ou o id. */
+    /** O nome do armazém ou o id. */
     protected function wh(int $companyId, ?string $id): string
     {
         return $id ? $this->warehouseName($companyId, $id) : 'armazém desconhecido';

@@ -18,7 +18,7 @@ use Illuminate\Console\Command;
  */
 class OcrBootstrapArticleMapCommand extends Command
 {
-    protected $signature = 'ocr:bootstrap-article-map {company : ID da empresa (ex.: 5 = Yuko)}';
+    protected $signature = 'ocr:bootstrap-article-map {company : ID da empresa (ex.: 5)}';
 
     protected $description = 'Constrói o mapa de aprendizagem fornecedor+código → artigo (F4 + fichas dos artigos).';
 

@@ -51,7 +51,7 @@ describe("dashboard do restaurante, separador Marketing e resultados", () => {
         expect(getBussola).toHaveBeenCalledWith(5, null, false, true);
         expect(within(box).getByText("As 3 jogadas da semana")).toBeInTheDocument();
         expect(within(box).getByRole("radiogroup", { name: "Loja" })).toBeInTheDocument();
-        expect(within(box).getByRole("radio", { name: "Todas as lojas" })).toBeInTheDocument();
+        expect(within(box).getByRole("radio", { name: "Todos os restaurantes" })).toBeInTheDocument();
         expect(screen.queryByText(/Esta semana em/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Abrir a Bússola completa/)).not.toBeInTheDocument();
         expect(screen.queryByText(/as vendas das últimas 4 semanas/)).not.toBeInTheDocument();

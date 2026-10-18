@@ -105,6 +105,20 @@ class TransferTest extends TestCase
 
     // ── Preparar: o preço e os bloqueios ────────────────────────────────────
 
+    public function test_without_routes_they_are_proposed_from_the_data_economato_to_each_restaurant(): void
+    {
+        // Nada de lojas ou armazéns no código: o Economato é o armazém que não serve nenhuma loja com vendas
+        // e o destino é o armazém de cada restaurante, com os nomes da base de dados.
+        StockTransferRoute::where('company_id', $this->c)->delete();
+        $this->assertSame(['warehouse_id' => 'WBO', 'store_id' => 'BO', 'name' => 'Armazém Yuko BO'], TransferService::economato($this->c));
+
+        $routes = (new TransferService($this->c))->routes();
+
+        $this->assertSame([['WBO', 'BO', 'WB', 'S1'], ['WBO', 'BO', 'WC', 'S2']],
+            $routes->map(fn ($r) => [$r->origin_warehouse_id, $r->origin_store_id, $r->dest_warehouse_id, $r->dest_store_id])->all());
+        $this->assertSame(['Armazém Yuko BO → Yuko Baixa', 'Armazém Yuko BO → Yuko Costa Cabral'], $routes->pluck('name')->all());
+    }
+
     public function test_price_is_origin_pcm_times_the_confirmed_factor_and_the_guide_goes_in_stock_units(): void
     {
         $req = $this->order();

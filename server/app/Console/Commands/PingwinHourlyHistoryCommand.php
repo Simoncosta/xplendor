@@ -22,7 +22,7 @@ use Illuminate\Console\Command;
 class PingwinHourlyHistoryCommand extends Command
 {
     protected $signature = 'pingwin:hourly-history
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--calls=10 : Pedidos de histórico nesta execução (máximo 60)}';
 
     protected $description = 'Importa o histórico das vendas por hora do PingWin até ao primeiro dia com vendas de cada loja.';

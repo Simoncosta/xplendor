@@ -2684,8 +2684,8 @@ class PingwinService
 
     /**
      * O frontend_url (Origin/Referer do SPA) VARIA por restaurante: segue o
-     * padrão https://{database}.mycloudpie.com (ex.: database "yuko" →
-     * https://yuko.mycloudpie.com). Deriva do X-Database da empresa. Aceita um
+     * padrão https://{database}.mycloudpie.com (ex.: database "cliente" →
+     * https://cliente.mycloudpie.com). Deriva do X-Database da empresa. Aceita um
      * override manual (config.frontend_url ou PINGWIN_FRONTEND_URL) para o caso
      * raro de um restaurante fugir ao padrão.
      */

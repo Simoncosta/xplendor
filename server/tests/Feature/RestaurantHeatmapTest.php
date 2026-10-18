@@ -87,6 +87,23 @@ class RestaurantHeatmapTest extends TestCase
         $this->assertEquals(10000.0, $data['sales']['cells'][2][21]);
     }
 
+    public function test_without_a_store_sums_all_restaurants_and_lists_only_stores_with_sales(): void
+    {
+        // Uma loja sem abertura nem vendas (por exemplo, recém-criada): não entra nas opções.
+        PingwinLocation::create(['company_id' => $this->company->id, 'winrest_store_id' => '3', 'display_name' => 'Nova', 'is_active' => true]);
+        $this->day($this->baixa, '2026-09-22', 'ok', [21 => 10000]);
+        $this->day($this->costa, '2026-09-22', 'ok', [21 => 5000]);
+        $this->day($this->baixa, '2026-09-29', 'ok', [21 => 20000]);
+
+        $data = $this->actingAs($this->user, 'sanctum')->getJson("/api/v1/companies/{$this->company->id}/integrations/pingwin/heatmap")->assertOk()->json('data');
+
+        $this->assertNull($data['location_id']);                          // todos os restaurantes
+        $this->assertSame(2, $data['sales']['days'][2]);                  // as terças lidas em alguma loja
+        $this->assertEquals(17500.0, $data['sales']['cells'][2][21]);     // (100 + 50 + 200) ÷ 2
+        $this->assertSame('2026-07-16', $data['from']);                    // a loja mais antiga já abrira
+        $this->assertSame(['Baixa', 'Costa Cabral'], array_column($data['locations'], 'name'));
+    }
+
     public function test_switch_off_returns_no_data_and_access_is_by_company(): void
     {
         $this->day($this->baixa, '2026-10-06', 'ok', [21 => 10000]);

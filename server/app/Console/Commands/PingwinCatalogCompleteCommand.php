@@ -22,7 +22,7 @@ use Illuminate\Console\Command;
  */
 class PingwinCatalogCompleteCommand extends Command
 {
-    protected $signature = 'pingwin:catalog-complete {company : ID da empresa (ex.: 5 = Yuko)}';
+    protected $signature = 'pingwin:catalog-complete {company : ID da empresa (ex.: 5)}';
 
     protected $description = 'Lê o catálogo completo do PingWin e mostra a cobertura dos artigos vendidos.';
 

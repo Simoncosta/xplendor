@@ -22,7 +22,7 @@ use Illuminate\Console\Command;
 class PingwinItemSalesCommand extends Command
 {
     protected $signature = 'pingwin:item-sales
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--from= : Primeiro dia (AAAA-MM-DD); por omissão, 7 dias antes de ontem}
         {--to= : Último dia (AAAA-MM-DD); por omissão, ontem}
         {--dry-run : Lê e confere, mas não grava nada}';

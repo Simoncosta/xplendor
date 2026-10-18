@@ -1473,7 +1473,8 @@ class CompanyPingwinController extends Controller
             'days' => $dashboard->calendar($companyId, $year, $month, $locationId),
             // Lojas sem dados no mês e dias em falta (null = mês no futuro).
             'coverage' => $coverage ? \App\Services\Restaurant\RestaurantSalesCoverage::compact($coverage) : null,
-            'locations' => PingwinLocation::where('company_id', $companyId)->where('is_active', true)
+            // Só as lojas com vendas (o Economato e as lojas sem vendas não entram), com o nome da base de dados.
+            'locations' => PingwinLocation::where('company_id', $companyId)->withSales()
                 ->orderBy('display_name')->get(['id', 'display_name', 'winrest_name', 'winrest_store_id']),
         ], 'Calendário carregado.');
     }

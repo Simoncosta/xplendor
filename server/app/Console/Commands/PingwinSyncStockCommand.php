@@ -21,7 +21,7 @@ use Illuminate\Console\Command;
 class PingwinSyncStockCommand extends Command
 {
     protected $signature = 'pingwin:sync-stock
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--product=* : Só estes artigos (id do PingWin; repetível ou separado por vírgulas)}
         {--limit= : Máximo de artigos nesta execução}
         {--dry-run : Lê e mostra, sem gravar}';

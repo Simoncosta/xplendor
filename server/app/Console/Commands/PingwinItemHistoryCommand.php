@@ -25,7 +25,7 @@ use Illuminate\Console\Command;
 class PingwinItemHistoryCommand extends Command
 {
     protected $signature = 'pingwin:item-history
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--detect-only : Só deteta o início de cada loja}
         {--redetect : Volta a detetar o início das lojas já detetadas}
         {--locals= : Postos de venda a pedir no relatório anual (IDs separados por vírgulas)}

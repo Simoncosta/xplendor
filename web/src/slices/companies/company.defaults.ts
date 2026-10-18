@@ -5,6 +5,7 @@ export const COMPANY_CREATE_DEFAULTS: ICompanyUpdatePayload = {
     fiscal_name: "",
     slug: null,
     trade_name: null,
+    name_article: null,
     responsible_name: null,
     address: null,
     postal_code: null,

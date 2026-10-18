@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
 class OcrLinkPingwinCommand extends Command
 {
     protected $signature = 'ocr:link-pingwin
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--invoice= : Só esta fatura OCR}
         {--live : Pesquisa viva do fornecedor por NIF no PingWin (só leitura; só no worker)}
         {--extract-guides : Relê o texto do PDF (sem IA) para as faturas sem guias guardadas}';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Casts\EncryptedLegacy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,5 +62,19 @@ class PingwinLocation extends Model
     public function dailySales(): HasMany
     {
         return $this->hasMany(PingwinDailySale::class, 'location_id');
+    }
+
+    /**
+     * As lojas com vendas (as que fazem sentido nos ecrãs de vendas): ativas e com a abertura indicada,
+     * o início das vendas detetado ou algum dia de vendas lido. O nome continua o da base de dados.
+     */
+    public function scopeWithSales(Builder $query): Builder
+    {
+        return $query->where('is_active', true)->where(fn (Builder $q) => $q
+            ->whereNotNull('opened_on')
+            ->orWhereNotNull('sales_since')
+            ->orWhereNotNull('sales_first_month')
+            ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('pingwin_daily_sales')
+                ->whereColumn('pingwin_daily_sales.location_id', 'pingwin_locations.id')->where('pingwin_daily_sales.net_cents', '<>', 0)));
     }
 }

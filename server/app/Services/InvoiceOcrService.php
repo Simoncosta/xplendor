@@ -1142,7 +1142,7 @@ REGRAS:
   · totalMercadorias − descontoComercial ≈ baseTributavel
   · baseTributavel + valorIvaTotal − retencaoFonte − descontoFinanceiro ≈ total
 
-EXEMPLO (fatura de fornecedor PT, ilustrativo — repara: "Forno Tradicional" é o EMISSOR/fornecedor no topo; um eventual "Exmo. Sr. Restaurante Yuko" seria o CLIENTE, a ignorar):
+EXEMPLO (fatura de fornecedor PT, ilustrativo — repara: "Forno Tradicional" é o EMISSOR/fornecedor no topo; um eventual "Exmo. Sr. Restaurante Central" seria o CLIENTE, a ignorar):
 {
   "fornecedor": {"nome": "Recheio Cash & Carry SA", "nif": "500829993"},
   "numeroFatura": "FT 2024A/12345",

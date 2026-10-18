@@ -50,6 +50,8 @@ class CompanyRequest extends FormRequest
 
             'fiscal_name' => [$isUpdate ? 'sometimes' : 'required', 'string', 'max:255'],
             'trade_name' => ['nullable', 'string', 'max:255'],
+            // O artigo do nome nos textos ("nos Pinheiros"); vazio = sem artigo.
+            'name_article' => ['nullable', Rule::in(\App\Support\CompanyName::ARTICLES)],
             'responsible_name' => ['nullable', 'string', 'max:255'],
 
             // Endereço

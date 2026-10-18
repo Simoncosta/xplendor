@@ -30,7 +30,7 @@ export function StoreSelector({ data, onLocation }: { data: CompassData; onLocat
     if (data.locations.length < 2) return null;
     return (
         <div className="xp-seg flex-shrink-0" role="radiogroup" aria-label="Loja">
-            {[{ id: 0, name: "Todas as lojas" }, ...data.locations].map((l) => (
+            {[{ id: 0, name: "Todos os restaurantes" }, ...data.locations].map((l) => (
                 <button key={l.id} type="button" role="radio" aria-checked={data.location_id === l.id} className={data.location_id === l.id ? "on" : ""} onClick={() => onLocation(l.id)}>{l.name}</button>
             ))}
         </div>

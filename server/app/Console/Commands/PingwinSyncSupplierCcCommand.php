@@ -19,7 +19,7 @@ use Illuminate\Console\Command;
 class PingwinSyncSupplierCcCommand extends Command
 {
     protected $signature = 'pingwin:sync-supplier-cc
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--supplier= : Só este fornecedor — código no PingWin (ex.: 44) ou pingwin_id}';
 
     protected $description = 'Sincroniza (leitura) a conta corrente dos fornecedores PingWin da empresa.';

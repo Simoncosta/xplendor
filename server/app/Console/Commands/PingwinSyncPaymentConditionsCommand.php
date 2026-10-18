@@ -18,7 +18,7 @@ use Illuminate\Console\Command;
  */
 class PingwinSyncPaymentConditionsCommand extends Command
 {
-    protected $signature = 'pingwin:sync-paycond {company : ID da empresa (ex.: 5 = Yuko)}';
+    protected $signature = 'pingwin:sync-paycond {company : ID da empresa (ex.: 5)}';
 
     protected $description = 'Sincroniza (leitura) as Condições de Pagamento do PingWin para o espelho da empresa.';
 

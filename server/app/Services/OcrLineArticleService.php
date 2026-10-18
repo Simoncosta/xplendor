@@ -45,7 +45,7 @@ class OcrLineArticleService
 {
     public const SUGGEST_MIN = 0.6;
     public const SUGGEST_MAX = 3;
-    /** Taxa de IVA → taxgroup do PingWin (lktaxgroup da Yuko). */
+    /** Taxa de IVA → taxgroup do PingWin (lktaxgroup da instalação). */
     public const TAXGROUPS = [23 => '1003001', 13 => '1003002', 6 => '1003003', 0 => '1003004'];
     /** Unidades base do PingWin. */
     public const UNITS = ['UN' => '11001', 'KG' => '11002', 'LT' => '11003'];

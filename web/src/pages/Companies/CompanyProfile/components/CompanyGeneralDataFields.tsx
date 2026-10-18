@@ -4,12 +4,14 @@ import XInput from "Components/Common/XInput";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 import XInputMask from "Components/Common/XInputMask";
 import AddressFields from "Components/Common/AddressFields";
-import { Row, Col } from "reactstrap";
+import { Row, Col, Input, Label } from "reactstrap";
 import { useField } from "formik";
 
 export default function CompanyGeneralDataFields({ isEdit, managed = false }: { isEdit: boolean; managed?: boolean }) {
     // NIPC: fixo depois de criado, salvo numa empresa gerida que nasceu sem ele.
     const [nipc] = useField("nipc");
+    // O artigo do nome nos textos ("Esta semana nos Pinheiros"); vazio = sem artigo.
+    const [article, , articleHelpers] = useField("name_article");
     return (
         <Row>
             {!isEdit && (
@@ -68,6 +70,25 @@ export default function CompanyGeneralDataFields({ isEdit, managed = false }: { 
                     label="Nome Comercial"
                     placeholder="Nome comercial"
                 />
+            </Col>
+            <Col lg={6}>
+                <div className="mb-2">
+                    <Label className="form-label" htmlFor="name_article">Artigo do nome nos textos:</Label>
+                    <Input
+                        type="select"
+                        id="name_article"
+                        name="name_article"
+                        value={article.value ?? ""}
+                        // "" (e não null) para seguir no envio; o servidor guarda-o como null.
+                        onChange={(e) => articleHelpers.setValue(e.target.value)}
+                    >
+                        <option value="">Sem artigo (em Pinheiro)</option>
+                        <option value="o">o (no Pinheiro)</option>
+                        <option value="a">a (na Adega)</option>
+                        <option value="os">os (nos Pinheiros)</option>
+                        <option value="as">as (nas Tias)</option>
+                    </Input>
+                </div>
             </Col>
             <Col lg={6}>
                 <XInput

@@ -204,7 +204,7 @@ class RestaurantCompassService
         $f = reset($facts);
 
         return [
-            'title' => 'Esta semana em ' . ($company->trade_name ?: $company->fiscal_name),
+            'title' => 'Esta semana ' . \App\Support\CompanyName::with('em', $company),
             'period' => ['from' => $f['from'], 'to' => $f['to'], 'prev_from' => $f['prev_from'], 'prev_to' => $f['prev_to']],
             'numbers' => $numbers,
             'notes' => $notes,

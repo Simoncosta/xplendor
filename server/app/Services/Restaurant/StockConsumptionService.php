@@ -29,13 +29,13 @@ use Illuminate\Support\Facades\DB;
  *  · Artigo vendido sem ficha em vigor que mexe stock (bebidas vendidas à garrafa, por exemplo):
  *    consome-se a si próprio, na quantidade vendida.
  *  · Loja → armazém por omissão: o PingWin não o tem no formulário da loja nem no armazém (a "loja
- *    principal" do armazém vem vazia na Yuko). O que tem são as lojas que cada armazém serve
+ *    principal" do armazém vem vazia na instalação de referência). O que tem são as lojas que cada armazém serve
  *    (storerelation): se uma loja de vendas é servida por um só armazém ativo, é esse. Senão, ou para
  *    o mudar, define-se na XPLENDOR, por loja (restaurant_store_warehouses), e essa escolha manda.
  *  · Janela: os 28 dias até ao último dia com vendas lidas (não até hoje, para não contar como zero
  *    os dias que ainda não chegaram).
  *  · Unidades: o consumo sai na unidade base; o stock do PingWin vem na unidade de stock (unit_value
- *    em relação à base). Converte-se o consumo ÷ unit_value. Na Yuko, todos os artigos lidos tinham
+ *    em relação à base). Converte-se o consumo ÷ unit_value. Na instalação de referência, todos os artigos lidos tinham
  *    unit_value 1 (confirmado só nesse caso).
  */
 final class StockConsumptionService

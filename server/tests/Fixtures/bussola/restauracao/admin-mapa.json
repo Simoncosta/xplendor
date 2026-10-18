@@ -13,7 +13,7 @@
                 "name": "Costa"
             }
         ],
-        "location_id": 990011,
+        "location_id": null,
         "weeks": 8,
         "special_excluded": 0,
         "from": "2026-08-13",

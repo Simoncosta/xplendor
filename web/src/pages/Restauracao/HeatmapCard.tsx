@@ -50,8 +50,9 @@ type Props = {
 export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded, locationId: fixedLocation, forBussola }: Props) {
     const isMobile = useIsMobile();
     const [data, setData] = useState<Heatmap | null>(null);
-    const [ownLocation, setLocationId] = useState<number | null>(null);
-    const locationId = embedded ? (fixedLocation ?? null) : ownLocation;
+    // 0 = todos os restaurantes somados (a primeira opção).
+    const [ownLocation, setLocationId] = useState<number>(0);
+    const locationId = (embedded ? fixedLocation : ownLocation) || null;
     const [metric, setMetric] = useState<"sales" | "guests">("sales");
     const [loading, setLoading] = useState(false);
     // Outra loja ou métrica com o mapa no ecrã: fica visível, esbatido, com o indicador no título.
@@ -63,7 +64,6 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
         try {
             const res: any = await getPingwinHeatmap(companyId, locationId, weeks, excludeSpecial, forBussola);
             setData(res?.data ?? null);
-            if (locationId === null && res?.data?.location_id) setLocationId(res.data.location_id);
         } catch {
             setData(null);
         } finally {
@@ -173,8 +173,8 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
                     </div>
                     <div className="d-flex flex-wrap align-items-center gap-2">
                         {data.locations.length > 1 && (
-                            <XSelect small ariaLabel="Loja" width={200} value={locationId}
-                                options={data.locations.map((l) => ({ value: l.id, label: l.name }))} onChange={(v) => setLocationId(v)} />
+                            <XSelect small ariaLabel="Loja" width={200} value={ownLocation}
+                                options={[{ value: 0, label: "Todos os restaurantes" }, ...data.locations.map((l) => ({ value: l.id, label: l.name }))]} onChange={(v) => setLocationId(v)} />
                         )}
                         {metricToggle}
                     </div>

@@ -57,12 +57,14 @@ final class RecipeReportService
         return $this->cost;
     }
 
-    /** As lojas XPLENDOR (para o filtro) com o id da loja no PingWin. */
+    /** As lojas com vendas (para o filtro), com o id da loja no PingWin e o nome da base de dados. */
     public function locations(): array
     {
+        $withSales = PingwinLocation::where('company_id', $this->companyId)->withSales()->pluck('id')->all();
+
         return array_values(array_map(fn ($l) => [
             'id' => $l->id, 'name' => $l->display_name ?: $l->winrest_name, 'store_id' => (string) $l->winrest_store_id,
-        ], $this->locations));
+        ], array_filter($this->locations, fn ($l) => in_array($l->id, $withSales, true))));
     }
 
     /**

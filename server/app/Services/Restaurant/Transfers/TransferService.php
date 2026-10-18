@@ -6,6 +6,7 @@ namespace App\Services\Restaurant\Transfers;
 
 use App\Audit\Fmt;
 use App\Jobs\WritePingwinTransferJob;
+use App\Models\PingwinLocation;
 use App\Models\PingwinStock;
 use App\Models\PingwinStockItem;
 use App\Models\PingwinStockWrite;
@@ -15,6 +16,7 @@ use App\Models\StockTransferRequest;
 use App\Models\StockTransferRequestLine;
 use App\Models\StockTransferRoute;
 use App\Services\PingwinService;
+use App\Services\Restaurant\StockConsumptionService;
 use App\Services\Restaurant\StockUnits;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -38,17 +40,64 @@ final class TransferService
 {
     public function __construct(private int $companyId) {}
 
-    /** Os circuitos da empresa (cria os iniciais da config na primeira visita). */
+    /**
+     * Os circuitos da empresa. Na primeira visita propõe-os a partir dos dados (nada fica escrito no
+     * código): do Economato para o armazém de cada loja com vendas. Ficam editáveis no ecrã Circuito.
+     */
     public function routes(): Collection
     {
         $q = StockTransferRoute::where('company_id', $this->companyId);
         if (! (clone $q)->exists()) {
-            foreach ((array) (config('stock_transfers.default_routes')[$this->companyId] ?? []) as $i => $r) {
+            foreach ($this->proposedRoutes() as $i => $r) {
                 StockTransferRoute::create($r + ['company_id' => $this->companyId, 'position' => $i, 'exit_docconfig_id' => '1102', 'auto_receive' => true, 'active' => true]);
             }
         }
 
         return $q->orderBy('position')->orderBy('id')->get();
+    }
+
+    /**
+     * O Economato da empresa: o armazém ativo que não serve nenhuma loja com vendas (se houver vários, o
+     * que recebeu mais compras), e a loja que ele serve. Null se não houver.
+     *
+     * @return array{warehouse_id: string, store_id: string, name: string}|null
+     */
+    public static function economato(int $companyId): ?array
+    {
+        $salesStores = PingwinLocation::where('company_id', $companyId)->pluck('winrest_store_id')->map(fn ($v) => (string) $v)->all();
+        $candidates = PingwinWarehouse::where('company_id', $companyId)->where('deleted', false)->get()
+            ->filter(fn ($w) => $w->servedStoreIds() !== [] && ! array_intersect($w->servedStoreIds(), $salesStores))->values();
+        if ($candidates->isEmpty()) {
+            return null;
+        }
+        if ($candidates->count() > 1) {
+            $bought = DB::table('pingwin_supplier_document_lines')->where('company_id', $companyId)
+                ->whereIn('warehouse_pingwin_id', $candidates->pluck('pingwin_id')->map(fn ($v) => (string) $v)->all())
+                ->groupBy('warehouse_pingwin_id')->selectRaw('warehouse_pingwin_id, SUM(total_cents) as t')->pluck('t', 'warehouse_pingwin_id')->all();
+            $candidates = $candidates->sortByDesc(fn ($w) => (int) ($bought[(string) $w->pingwin_id] ?? 0))->values();
+        }
+        $w = $candidates->first();
+
+        return ['warehouse_id' => (string) $w->pingwin_id, 'store_id' => (string) ($w->servedStoreIds()[0] ?? ''), 'name' => (string) ($w->description ?: $w->pingwin_id)];
+    }
+
+    /** A proposta de circuitos: Economato → o armazém de cada loja com vendas (o da Fatia 7a). */
+    public function proposedRoutes(): array
+    {
+        $eco = self::economato($this->companyId);
+        if (! $eco) {
+            return [];
+        }
+        $out = [];
+        foreach ((new StockConsumptionService($this->companyId))->storeWarehouses() as $store) {
+            if (! $store['warehouse_id'] || $store['warehouse_id'] === $eco['warehouse_id']) {
+                continue;
+            }
+            $out[] = ['name' => mb_substr("{$eco['name']} → {$store['store_name']}", 0, 80), 'origin_warehouse_id' => $eco['warehouse_id'], 'origin_store_id' => $eco['store_id'],
+                'dest_warehouse_id' => (string) $store['warehouse_id'], 'dest_store_id' => (string) $store['store_id']];
+        }
+
+        return $out;
     }
 
     /** @return array<string, string> pingwin_id → nome do armazém */

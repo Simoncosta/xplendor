@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * XPLENDOR — Conta corrente de fornecedor (S1): sync de LEITURA do PingWin + cálculos.
  *
- * Regras (spike de 2026-10-09, provadas em 184 fornecedores da Yuko):
+ * Regras (spike de 2026-10-09, provadas em 184 fornecedores de um cliente):
  *   · ccbalance do PingWin == Σ topay × ca_signal de todos os documentos.
  *   · Auto-pago = docconfig com settled=1 ("Pago") no espelho. O PingWin conta-os como
  *     dívida (é o erro do saldo do BO); o saldo real exclui-os.

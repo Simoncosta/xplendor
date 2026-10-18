@@ -20,7 +20,7 @@ use Illuminate\Console\Command;
 class PingwinSyncSupplierDocumentLinesCommand extends Command
 {
     protected $signature = 'pingwin:sync-supplier-document-lines
-        {company : ID da empresa (ex.: 5 = Yuko)}
+        {company : ID da empresa (ex.: 5)}
         {--from= : Só documentos com data ≥ AAAA-MM-DD}
         {--to= : Só documentos com data ≤ AAAA-MM-DD}
         {--doc= : Só este documento (docheader_id ou nº, ex.: "VFT BOVFT/1020") — relê sempre}

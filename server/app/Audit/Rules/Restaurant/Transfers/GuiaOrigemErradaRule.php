@@ -12,7 +12,7 @@ use App\Services\Restaurant\StockUnits;
 /**
  * Fatia 7c · T1 · Guia de envio que saiu do armazém errado: as linhas da Guia (1102/1007) tiram o stock
  * de um armazém que não é a origem de nenhum circuito (o Economato). Acontece quando a Guia fica com o
- * armazém por omissão da loja (por exemplo, o Armazém Yuko): o restaurante perde stock que nunca saiu do
+ * armazém por omissão da loja (por exemplo, o armazém central): o restaurante perde stock que nunca saiu do
  * Economato. Valor: as unidades × o PCM no Economato.
  */
 final class GuiaOrigemErradaRule extends TransferRule

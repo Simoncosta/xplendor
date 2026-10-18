@@ -78,7 +78,7 @@ export default function FichasTecnicasPage() {
     const summary = data?.summary;
 
     const familyOptions: Opt[] = useMemo(() => [{ value: "", label: "Todas as famílias" }, ...(data?.families ?? []).map((f) => ({ value: f, label: f }))], [data?.families]);
-    const locationOptions: Opt[] = useMemo(() => [{ value: "", label: "Todas as lojas" }, ...(data?.locations ?? []).map((l) => ({ value: String(l.id), label: l.name }))], [data?.locations]);
+    const locationOptions: Opt[] = useMemo(() => [{ value: "", label: "Todos os restaurantes" }, ...(data?.locations ?? []).map((l) => ({ value: String(l.id), label: l.name }))], [data?.locations]);
     const stateOptions: Opt[] = useMemo(() => [{ value: "", label: "Todos os estados" }, ...(data?.states ?? []).map((s) => ({ value: s.id, label: s.label }))], [data?.states]);
 
     const open = (r: RecipeRow) => navigate(`/restauracao/fichas-tecnicas/${r.product_id}`);
@@ -182,7 +182,7 @@ export default function FichasTecnicasPage() {
                                     onClear={clearFilters}
                                 >
                                     {filterField("Família", <XSelect ariaLabel="Família" small options={familyOptions} value={family} onChange={setFamily} searchable placeholder="Todas as famílias" />)}
-                                    {filterField("Loja", <XSelect ariaLabel="Loja" small options={locationOptions} value={location} onChange={setLocation} searchable={false} placeholder="Todas as lojas" />, "160px")}
+                                    {filterField("Loja", <XSelect ariaLabel="Loja" small options={locationOptions} value={location} onChange={setLocation} searchable={false} placeholder="Todos os restaurantes" />, "160px")}
                                     {filterField("Estado", <XSelect ariaLabel="Estado" small options={stateOptions} value={state} onChange={setState} searchable={false} placeholder="Todos os estados" />, "180px")}
                                 </RestFilterBar>
                             }

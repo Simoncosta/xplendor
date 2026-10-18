@@ -594,10 +594,10 @@ class OcrInvoiceLaunchService
             'created_at' => $w->created_at?->toIso8601String(), 'finished_at' => $w->finished_at?->toIso8601String()];
     }
 
-    /** Loja e série por omissão do PingWin (as do último lançamento; antes disso, as do spike FB-0). */
+    /** Loja e série por omissão do PingWin: as do último lançamento da empresa (antes do primeiro, nenhuma). */
     private function defaults(int $companyId): array
     {
-        return Cache::get("pingwin:launch-defaults:{$companyId}") ?? ['store' => 'Yuko BO', 'store_code' => 'BO', 'serie' => 'VFT BOVFT', 'at' => null];
+        return Cache::get("pingwin:launch-defaults:{$companyId}") ?? ['store' => null, 'store_code' => null, 'serie' => null, 'at' => null];
     }
 
     private function storeName(int $companyId, ?string $storeId): ?string

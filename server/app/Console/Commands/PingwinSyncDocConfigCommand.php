@@ -15,14 +15,14 @@ use Illuminate\Console\Command;
  */
 class PingwinSyncDocConfigCommand extends Command
 {
-    protected $signature = 'pingwin:sync-docconfig {company : ID da empresa (ex.: 5 = Yuko)}';
+    protected $signature = 'pingwin:sync-docconfig {company : ID da empresa (ex.: 5)}';
 
     protected $description = 'Leitura RICA (D0) da config de documentos do PingWin para o espelho da empresa.';
 
     public function handle(PingwinService $pingwin): int
     {
         $companyId = (int) $this->argument('company');
-        $this->info("A ler config rica de documentos do Yuko/empresa {$companyId}…");
+        $this->info("A ler a configuração dos documentos da empresa {$companyId}…");
 
         try {
             $count = $pingwin->syncDocumentConfigsRich($companyId);

@@ -11,7 +11,7 @@ use Carbon\CarbonImmutable;
 
 /**
  * XPLENDOR — Fatia 7b: peças comuns dos documentos de stock (Contagem, Desperdício): a loja em que se
- * fazem (a que todos os armazéns servem: o Economato, "Yuko BO"), a procura do documento na lista do
+ * fazem (a que todos os armazéns servem: o Economato), a procura do documento na lista do
  * PingWin para confirmar, e a releitura do stock dos artigos depois de gravar.
  */
 final class StockDocuments

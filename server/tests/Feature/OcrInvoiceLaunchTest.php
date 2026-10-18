@@ -365,7 +365,8 @@ class OcrInvoiceLaunchTest extends TestCase
         $this->actingAs($this->otherUser, 'sanctum')->getJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch")->assertStatus(403);
         $this->actingAs($this->otherUser, 'sanctum')->postJson("/api/v1/companies/{$this->other->id}/ocr/invoices/{$inv->id}/pingwin-launch")->assertStatus(404);
         $this->actingAs($this->user, 'sanctum')->getJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch")
-            ->assertOk()->assertJsonPath('data.can_launch', true)->assertJsonPath('data.defaults.serie', 'VFT BOVFT');
+            // Antes do primeiro lançamento não há loja nem série por omissão (nada de um cliente no código).
+            ->assertOk()->assertJsonPath('data.can_launch', true)->assertJsonPath('data.defaults.serie', null)->assertJsonPath('data.defaults.store', null);
         $this->assertSame(0, PingwinDocumentWrite::count());
     }
 }
