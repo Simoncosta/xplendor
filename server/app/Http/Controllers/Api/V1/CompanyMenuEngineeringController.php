@@ -44,7 +44,7 @@ class CompanyMenuEngineeringController extends Controller
         [$snap, $params] = $this->resolve($request, $companyId);
         $finance = CompassFinancials::visibleTo($request->user(), $companyId);
         $base = [
-            'locations' => PingwinLocation::where('company_id', $companyId)->orderBy('id')->get()->map(fn ($l) => ['id' => $l->id, 'name' => $l->display_name ?: $l->winrest_name])->values(),
+            'locations' => PingwinLocation::where('company_id', $companyId)->withSales()->orderBy('id')->get()->map(fn ($l) => ['id' => $l->id, 'name' => $l->display_name ?: $l->winrest_name])->values(),
             'running' => Cache::get(ComputeMenuEngineeringJob::statusKey($companyId)),
             'settings' => MenuEngineeringSetting::for($companyId)->only(MenuEngineeringSetting::TOGGLES),
             'exclusions' => MenuEngineeringExclusion::where('company_id', $companyId)->orderBy('product_id')->get(['product_id', 'reason', 'created_at']),

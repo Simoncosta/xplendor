@@ -144,7 +144,7 @@ export default function MenuEngineeringPage() {
                             </Col>
                             <Col xs={12} sm={6} lg={3}>
                                 <Label className="form-label mb-1" for="me-location">Loja</Label>
-                                <XSelect<number> id="me-location" value={locationId} ariaLabel="Loja" options={[{ value: 0, label: "Yuko toda" }, ...(data?.locations ?? []).map((l) => ({ value: l.id, label: l.name }))]} onChange={setLocationId} />
+                                <XSelect<number> id="me-location" value={locationId} ariaLabel="Loja" options={[{ value: 0, label: "Todos os restaurantes" }, ...(data?.locations ?? []).map((l) => ({ value: l.id, label: l.name }))]} onChange={setLocationId} />
                             </Col>
                             <Col xs={12} lg={6}>
                                 <div className="form-label mb-1 d-flex align-items-center gap-1">Custo dos ingredientes
