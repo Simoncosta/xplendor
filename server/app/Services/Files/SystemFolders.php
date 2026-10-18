@@ -26,6 +26,10 @@ final class SystemFolders
         'blog' => ['name' => 'Blog', 'module' => null, 'permissions' => ['blog.ver'], 'no_agency' => false],
         'equipa' => ['name' => 'Equipa', 'module' => null, 'permissions' => ['utilizadores.ver'], 'no_agency' => false],
         'modelos' => ['name' => 'Modelos de documento', 'module' => 'documents', 'permissions' => ['automovel.ver'], 'no_agency' => false],
+        // Site do consultor: as fotografias públicas dos imóveis e dos empreendimentos, e os ficheiros do perfil do site.
+        'imoveis' => ['name' => 'Imóveis', 'module' => 'imoveis', 'permissions' => ['imoveis.ver'], 'no_agency' => false],
+        'empreendimentos' => ['name' => 'Empreendimentos', 'module' => 'imoveis', 'permissions' => ['imoveis.ver'], 'no_agency' => false],
+        'site_consultor' => ['name' => 'Site do consultor', 'module' => 'site_consultor', 'permissions' => ['site_consultor.ver'], 'no_agency' => false],
     ];
 
     /** A pasta de topo de uma chave ("editorial:2026-10" → "editorial"). */

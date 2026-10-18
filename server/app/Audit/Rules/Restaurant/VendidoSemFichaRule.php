@@ -80,11 +80,13 @@ final class VendidoSemFichaRule extends RestaurantRule
                     ['label' => 'Vendas sem IVA (90 dias)', 'value' => $s['net'] / 100, 'format' => 'eur'],
                 ]],
                 signature: 'sem_ficha',
+                // Fatia 3: o valor em jogo é a receita do artigo no período (entra no Pareto da cobertura de custos).
+                impactCents: $s['net'] > 0 ? $s['net'] : null,
                 weightCents: $s['net'] > 0 ? $s['net'] : null,
                 fixUrl: self::recipeUrl($pid, ['editar' => 1]), fixLabel: 'Criar ficha',
                 refs: [['artigo', $pid]],
                 seen: sprintf('Nos últimos 90 dias vendeu %s (%s sem IVA). Não tem ficha técnica em vigor.', Fmt::units($s['qty'], 'unidade'), Fmt::cents($s['net'])),
-                stake: sprintf('Não há um valor direto em jogo. A relevância são as vendas dos últimos 90 dias: %s sem IVA.', Fmt::cents($s['net'])),
+                stake: sprintf('%s: a receita sem IVA dos últimos 90 dias, de que não se conhece o custo (fica fora do food cost teórico e da engenharia de menu).', Fmt::cents($s['net'])),
             );
         }
     }

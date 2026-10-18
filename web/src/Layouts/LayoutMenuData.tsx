@@ -29,6 +29,7 @@ const Navdata = () => {
     const [isComercial, setIsComercial] = useState(false);
     const [isAnalytics, setIsAnalytics] = useState(false);
     const [isRestauracao, setIsRestauracao] = useState(false);
+    const [isImobiliario, setIsImobiliario] = useState(false);
     const [isCadastros, setIsCadastros] = useState(false);
     const [isEquipa, setIsEquipa] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
@@ -74,6 +75,9 @@ const Navdata = () => {
         }
         if (iscurrentState !== 'Restauracao') {
             setIsRestauracao(false);
+        }
+        if (iscurrentState !== 'Imobiliario') {
+            setIsImobiliario(false);
         }
         if (iscurrentState !== 'Equipa') {
             setIsEquipa(false);
@@ -227,9 +231,32 @@ const Navdata = () => {
                 { id: "pingwin-stock", label: "Stock", link: "/restauracao/stock", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-contagens", label: "Contagens", link: "/restauracao/stock/contagens", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-desperdicio", label: "Desperdício", link: "/restauracao/stock/desperdicio", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
+                { id: "pingwin-engenharia-menu", label: "Engenharia de menu", link: "/restauracao/engenharia-menu", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-transferencias", label: "Transferências", link: "/restauracao/transferencias", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "restauracao_faturas", permission: "restauracao.ver" },
                 { id: "pingwin-conta-corrente", label: "Conta Corrente Fornecedores", link: "/restauracao/conta-corrente", parentId: "restauracao", module: "restauracao_conta_corrente", permission: "restauracao.ver" },
+            ],
+        },
+        // ── Imobiliário — OPERAÇÃO do consultor imobiliário. O grupo aparece se a empresa tem
+        //    'imoveis' (umbrella); o site e os contactos pelo módulo 'site_consultor'. A Bússola fica no Marketing, como nos outros ramos.
+        {
+            id: "imobiliario",
+            label: "Imobiliário",
+            icon: "ri-home-4-line",
+            link: "/#",
+            module: "imoveis",
+            stateVariables: isImobiliario,
+            click: function (e: any) {
+                e.preventDefault();
+                setIsImobiliario(!isImobiliario);
+                setIscurrentState('Imobiliario');
+                updateIconSidebar(e);
+            },
+            subItems: [
+                { id: "imoveis", label: "Imóveis", link: "/imoveis", parentId: "imobiliario", module: "imoveis", permission: "imoveis.ver" },
+                { id: "empreendimentos", label: "Empreendimentos", link: "/imoveis/empreendimentos", parentId: "imobiliario", module: "imoveis", permission: "imoveis.ver" },
+                { id: "contactos", label: "Contactos recebidos", link: "/contactos", parentId: "imobiliario", module: "site_consultor", permission: "contactos.ver" },
+                { id: "site-consultor", label: "Site do consultor", link: "/site-consultor", parentId: "imobiliario", module: "site_consultor", permission: "site_consultor.ver" },
             ],
         },
         // ── Cadastros — base/registos da restauração. (Nome distinto de "Configurações".)
@@ -281,8 +308,6 @@ const Navdata = () => {
             id: "auditoria", label: "Auditoria", icon: "ri-shield-check-line", link: "/auditoria",
             anyAccess: [{ module: "pingwin", permission: "restauracao.ver" }, { module: "stock", permission: "automovel.ver" }, { module: "marketing_analytics", permission: "resultados.ver" }],
         },
-        // ── Imóveis: a carteira do consultor imobiliário (módulo "imoveis") ──
-        { id: "imoveis", label: "Imóveis", icon: "ri-home-4-line", link: "/imoveis", module: "imoveis", permission: "imoveis.ver" },
         // ── Equipa — ferramentas transversais da equipa (qualquer ramo) ──────────
         {
             id: "equipa",

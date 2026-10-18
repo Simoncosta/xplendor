@@ -186,6 +186,51 @@ Route::prefix('v1')->group(function () {
                     Route::get('/properties/{propertyId}', [\App\Http\Controllers\Api\V1\PropertyController::class, 'show'])->whereNumber('propertyId');
                     Route::put('/properties/{propertyId}', [\App\Http\Controllers\Api\V1\PropertyController::class, 'update'])->whereNumber('propertyId');
                     Route::delete('/properties/{propertyId}', [\App\Http\Controllers\Api\V1\PropertyController::class, 'destroy'])->whereNumber('propertyId');
+                    // Os empreendimentos em construção (com a carteira, no módulo imoveis; o site é à parte).
+                    $dev = \App\Http\Controllers\Api\V1\ConsultantSite\DevelopmentController::class;
+                    Route::get('/developments', [$dev, 'index']);
+                    Route::post('/developments', [$dev, 'store']);
+                    Route::get('/developments/{developmentId}', [$dev, 'show'])->whereNumber('developmentId');
+                    Route::put('/developments/{developmentId}', [$dev, 'update'])->whereNumber('developmentId');
+                    Route::delete('/developments/{developmentId}', [$dev, 'destroy'])->whereNumber('developmentId');
+                    Route::post('/developments/{developmentId}/publish', [$dev, 'publish'])->whereNumber('developmentId');
+                    Route::post('/developments/{developmentId}/unpublish', [$dev, 'unpublish'])->whereNumber('developmentId');
+                    Route::post('/developments/{developmentId}/images', [$dev, 'storeImages'])->whereNumber('developmentId');
+                    Route::put('/developments/{developmentId}/images/order', [$dev, 'orderImages'])->whereNumber('developmentId');
+                    Route::patch('/developments/{developmentId}/images/{imageId}', [$dev, 'updateImage'])->whereNumber(['developmentId', 'imageId']);
+                    Route::delete('/developments/{developmentId}/images/{imageId}', [$dev, 'destroyImage'])->whereNumber(['developmentId', 'imageId']);
+                });
+                // Site do consultor: o site dos imóveis (fotografias, publicação), o perfil do site e a
+                // central de contactos recebidos. Só com o módulo site_consultor.
+                Route::middleware('ensure_module:site_consultor')->group(function () {
+                    $site = \App\Http\Controllers\Api\V1\ConsultantSite\ListingSiteController::class;
+                    Route::get('/consultant-site/listings-summary', [$site, 'summary']);
+                    Route::get('/properties/{propertyId}/site', [$site, 'showProperty'])->whereNumber('propertyId');
+                    Route::put('/properties/{propertyId}/site', [$site, 'updateProperty'])->whereNumber('propertyId');
+                    Route::post('/properties/{propertyId}/publish', [$site, 'publishProperty'])->whereNumber('propertyId');
+                    Route::post('/properties/{propertyId}/unpublish', [$site, 'unpublishProperty'])->whereNumber('propertyId');
+                    Route::post('/properties/{propertyId}/images', [$site, 'storePropertyImages'])->whereNumber('propertyId');
+                    Route::put('/properties/{propertyId}/images/order', [$site, 'orderPropertyImages'])->whereNumber('propertyId');
+                    Route::patch('/properties/{propertyId}/images/{imageId}', [$site, 'updatePropertyImage'])->whereNumber(['propertyId', 'imageId']);
+                    Route::delete('/properties/{propertyId}/images/{imageId}', [$site, 'destroyPropertyImage'])->whereNumber(['propertyId', 'imageId']);
+
+                    $profile = \App\Http\Controllers\Api\V1\ConsultantSite\ConsultantSiteController::class;
+                    Route::get('/consultant-site', [$profile, 'show']);
+                    Route::put('/consultant-site', [$profile, 'update']);
+                    Route::post('/consultant-site/assets/{slot}', [$profile, 'uploadAsset'])->whereIn('slot', \App\Http\Controllers\Api\V1\ConsultantSite\ConsultantSiteController::SLOTS);
+                    Route::delete('/consultant-site/assets/{slot}', [$profile, 'deleteAsset'])->whereIn('slot', \App\Http\Controllers\Api\V1\ConsultantSite\ConsultantSiteController::SLOTS);
+                    Route::post('/consultant-site/zone-photos', [$profile, 'uploadZonePhoto']);
+                    Route::delete('/consultant-site/zone-photos/{photo}', [$profile, 'deleteZonePhoto']);
+                    Route::post('/consultant-site/publish', [$profile, 'publish']);
+                    Route::post('/consultant-site/unpublish', [$profile, 'unpublish']);
+                    Route::post('/consultant-site/preview', [$profile, 'preview']);
+
+                    // A central de contactos recebidos (hoje só o canal "site").
+                    $contacts = \App\Http\Controllers\Api\V1\ConsultantSite\InboundContactController::class;
+                    Route::get('/inbound-contacts', [$contacts, 'index']);
+                    Route::get('/inbound-contacts/{contactId}', [$contacts, 'show'])->whereNumber('contactId');
+                    Route::patch('/inbound-contacts/{contactId}', [$contacts, 'update'])->whereNumber('contactId');
+                    Route::delete('/inbound-contacts/{contactId}', [$contacts, 'destroy'])->whereNumber('contactId');
                 });
                 // Radar de oportunidade: só com o módulo radar; permissões da área bussola.
                 Route::middleware('ensure_module:radar')->group(function () {
@@ -386,6 +431,14 @@ Route::prefix('v1')->group(function () {
                     Route::delete('/restaurant/waste/{entryId}', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'destroy'])->whereNumber('entryId');
                     Route::post('/restaurant/waste/send', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'send']);
                     Route::post('/restaurant/waste/batches/{batchId}/void', [\App\Http\Controllers\Api\V1\CompanyWasteController::class, 'void'])->whereNumber('batchId')->middleware('block_when_impersonating');
+                    // Fatia 3: engenharia de menu, cobertura de custos e food cost (só leitura).
+                    Route::get('/restaurant/menu-engineering', [\App\Http\Controllers\Api\V1\CompanyMenuEngineeringController::class, 'index']);
+                    Route::get('/restaurant/menu-engineering/items', [\App\Http\Controllers\Api\V1\CompanyMenuEngineeringController::class, 'items']);
+                    Route::get('/restaurant/menu-engineering/items/{productId}', [\App\Http\Controllers\Api\V1\CompanyMenuEngineeringController::class, 'show'])->where('productId', '[0-9A-Za-z]+');
+                    Route::post('/restaurant/menu-engineering/recalculate', [\App\Http\Controllers\Api\V1\CompanyMenuEngineeringController::class, 'recalculate']);
+                    Route::put('/restaurant/menu-engineering/settings', [\App\Http\Controllers\Api\V1\CompanyMenuEngineeringController::class, 'updateSettings']);
+                    Route::post('/restaurant/menu-engineering/exclusions', [\App\Http\Controllers\Api\V1\CompanyMenuEngineeringController::class, 'exclude']);
+                    Route::delete('/restaurant/menu-engineering/exclusions/{productId}', [\App\Http\Controllers\Api\V1\CompanyMenuEngineeringController::class, 'include'])->where('productId', '[0-9A-Za-z]+');
                     // Fatia 7c: transferências do Economato para os restaurantes.
                     Route::get('/restaurant/transfers', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'index']);
                     Route::post('/restaurant/transfers/orders/refresh', [\App\Http\Controllers\Api\V1\CompanyStockTransferController::class, 'refreshOrders']);
@@ -917,6 +970,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/companies/{company}/modules', [AdminCompanyController::class, 'modules']);
             Route::patch('/companies/{company}/modules', [AdminCompanyController::class, 'setModule']);
             Route::post('/companies/{company}/modules/preset', [AdminCompanyController::class, 'applyModulePreset']);
+            // Site do consultor: os hosts do site (o principal é o canónico). Só o root.
+            Route::get('/companies/{company}/consultant-site/hosts', [\App\Http\Controllers\Api\V1\Admin\ConsultantSiteHostsController::class, 'show'])->whereNumber('company');
+            Route::put('/companies/{company}/consultant-site/hosts', [\App\Http\Controllers\Api\V1\Admin\ConsultantSiteHostsController::class, 'update'])->whereNumber('company');
 
             // Pedidos de nova empresa gerida (feitos pelas agências).
             Route::get('/company-requests', [\App\Http\Controllers\Api\V1\Admin\ManagedCompanyRequestController::class, 'index']);
@@ -962,6 +1018,23 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
 
     Route::post('track', [TrackController::class, 'store']);
     Route::post('track/carmine', [TrackController::class, 'storeCarmine']);
+});
+
+// Site do consultor: a API do site (servidor a servidor). O contentor do site autentica-se com o
+// seu token (Bearer) e indica o host do visitante (X-Site-Host); o consultor vem do host. Nunca o
+// navegador: sem CORS, sem sessão, sem cookies. Só conteúdo publicado (leitura com cache curta).
+Route::middleware(['site_server'])->prefix('public/site/v1')->group(function () {
+    Route::middleware(['throttle:site-read', 'cache.headers:public;max_age=60;etag'])->group(function () {
+        Route::get('profile', [\App\Http\Controllers\Api\Site\SiteContentController::class, 'profile']);
+        Route::get('properties', [\App\Http\Controllers\Api\Site\SiteContentController::class, 'properties']);
+        Route::get('properties/{slug}', [\App\Http\Controllers\Api\Site\SiteContentController::class, 'property']);
+        Route::get('developments', [\App\Http\Controllers\Api\Site\SiteContentController::class, 'developments']);
+        Route::get('developments/{slug}', [\App\Http\Controllers\Api\Site\SiteContentController::class, 'development']);
+        Route::get('blog', [\App\Http\Controllers\Api\Site\SiteContentController::class, 'blog']);
+        Route::get('blog/{slug}', [\App\Http\Controllers\Api\Site\SiteContentController::class, 'blogPost']);
+    });
+    Route::post('contacts', [\App\Http\Controllers\Api\Site\SiteInboundController::class, 'contact'])->middleware('throttle:site-contact');
+    Route::post('events', [\App\Http\Controllers\Api\Site\SiteInboundController::class, 'events'])->middleware('throttle:site-events');
 });
 
 // DMS Pós-venda — relatório público de satisfação. Grupo SEPARADO do

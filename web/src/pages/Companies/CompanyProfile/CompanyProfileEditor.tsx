@@ -127,6 +127,8 @@ export default function CompanyProfileEditor({
             "instagram",
             "facebook",
             "youtube",
+            "linkedin",
+            "tiktok",
             "google",
 
             // Endereço

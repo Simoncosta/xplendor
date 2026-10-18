@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+/*
+ * Site do consultor: o sistema de design. Um só tema (claro, com secções em azul escuro).
+ * As cores da marca vêm do perfil (--brand-*, no <html>); estas são as do Simon por omissão.
+ * Contraste (WCAG AA): azul escuro sobre creme 14,8:1; texto secundário sobre creme 6,3:1;
+ * névoa sobre azul escuro 9,4:1; âmbar sobre azul escuro 8,2:1. O âmbar NUNCA é texto sobre
+ * fundo claro (1,8:1): só botões com texto azul escuro ou texto sobre fundo escuro.
+ */
+:root {
+    /* A altura do que fica fixo no topo (o cabeçalho, mais a faixa da pré-visualização). */
+    --top-offset: 4.5rem;
+    --brand-navy: #0E1E37;
+    --brand-blue: #1D3856;
+    --brand-amber: #FFA000;
+    --brand-cream: #F7F1E7;
+    --brand-slate: #4A5A6E;
+}
+
+@theme inline {
+    --color-navy: var(--brand-navy);
+    --color-blue: var(--brand-blue);
+    --color-amber: var(--brand-amber);
+    --color-cream: var(--brand-cream);
+    --color-cream-2: color-mix(in oklab, var(--brand-cream) 88%, var(--brand-navy) 6%);
+    --color-slate: var(--brand-slate);
+    --color-mist: #B9C3D0;
+    --color-line: color-mix(in oklab, var(--brand-navy) 16%, transparent);
+    --color-line-dark: color-mix(in oklab, #ffffff 16%, transparent);
+
+    --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+    --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+
+    --radius-xs: 2px;
+    --radius-sm: 4px;
+    --shadow-paper: 0 1px 0 color-mix(in oklab, var(--brand-navy) 6%, transparent), 0 18px 40px -28px color-mix(in oklab, var(--brand-navy) 45%, transparent);
+
+    --text-display: clamp(2.6rem, 1.4rem + 5.6vw, 6rem);
+    --text-display--line-height: 1.02;
+    --text-display--letter-spacing: -0.02em;
+    --text-h2: clamp(2.05rem, 1.35rem + 3.1vw, 3.75rem);
+    --text-h2--line-height: 1.06;
+    --text-h2--letter-spacing: -0.015em;
+    --text-h3: clamp(1.4rem, 1.15rem + 1vw, 1.85rem);
+    --text-h3--line-height: 1.2;
+    --text-lead: clamp(1.1rem, 1.02rem + 0.4vw, 1.3rem);
+    --text-lead--line-height: 1.6;
+    --text-numeral: clamp(4.5rem, 3rem + 7vw, 9rem);
+    --text-numeral--line-height: 0.85;
+}
+
+.has-preview { --top-offset: 7.25rem; }
+
+@layer base {
+    html {
+        background: var(--color-cream);
+        color: var(--color-navy);
+        -webkit-text-size-adjust: 100%;
+        scroll-padding-top: 6rem;
+    }
+    body {
+        font-family: var(--font-sans);
+        font-size: 1.0625rem;
+        line-height: 1.65;
+        font-feature-settings: "kern", "liga";
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 {
+        font-family: var(--font-display);
+        font-weight: 420;
+        font-optical-sizing: auto;
+        text-wrap: balance;
+    }
+    p { text-wrap: pretty; }
+    ::selection { background: var(--color-amber); color: var(--color-navy); }
+    :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 1px; }
+    a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
+}
+
+@layer components {
+    .container-site { width: 100%; max-width: 84rem; margin-inline: auto; padding-inline: 1.25rem; }
+    @media (min-width: 768px) { .container-site { padding-inline: 2.5rem; } }
+    .section { padding-block: clamp(4.5rem, 3rem + 7vw, 9rem); }
+    .on-dark { background: var(--color-navy); color: var(--color-cream); }
+    .on-dark .muted { color: var(--color-mist); }
+    .muted { color: var(--color-slate); }
+    /* O sublinhado âmbar dos títulos: uma régua curta, à esquerda (nunca uma etiqueta por cima). */
+    .accent-rule { display: block; width: 3rem; height: 3px; background: var(--color-amber); margin-top: 1.25rem; }
+    .link-underline { text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 35%, transparent); transition: text-decoration-color .2s; }
+    .link-underline:hover { text-decoration-color: currentColor; }
+    .on-dark .link-amber, .link-amber-dark { color: var(--color-amber); }
+    /* Uma fila horizontal que começa alinhada com o conteúdo e corre até à margem do ecrã. */
+    .row-gutter { padding-inline: 1.25rem; scroll-padding-inline: 1.25rem; }
+    @media (min-width: 768px) { .row-gutter { padding-inline: max(2.5rem, calc((100vw - 84rem) / 2 + 2.5rem)); scroll-padding-inline: max(2.5rem, calc((100vw - 84rem) / 2 + 2.5rem)); } }
+    .no-scrollbar { scrollbar-width: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    /* Marcadores visíveis dos dados em falta (política de privacidade, informação legal). */
+    .marker { background: color-mix(in oklab, var(--color-amber) 28%, transparent); color: var(--color-navy); padding: 0 .3em; border-radius: 2px; font-weight: 600; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+@keyframes faq-down { from { height: 0; opacity: 0; } to { height: var(--radix-accordion-content-height); opacity: 1; } }
+@keyframes faq-up { from { height: var(--radix-accordion-content-height); opacity: 1; } to { height: 0; opacity: 0; } }
+
+/* As entradas: só com movimento permitido (classe posta antes do primeiro desenho). */
+.motion-ok [data-reveal]:not([data-shown]) { opacity: 0; transform: translateY(14px); }
+.motion-ok [data-reveal] { transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1); }
+/* As fotografias com um zoom lento, quase impercetível (só com movimento permitido). */
+@keyframes slow-zoom { from { transform: scale(1); } to { transform: scale(1.06); } }
+/* Só anima enquanto está no ecrã (data-inview, posto pelo RevealObserver): parada fora dele. */
+.motion-ok .slow-zoom { animation: slow-zoom 28s ease-in-out infinite alternate; animation-play-state: paused; }
+.motion-ok .slow-zoom[data-inview] { animation-play-state: running; }
+/* A troca de freguesia no mercado num número. */
+@keyframes market-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.motion-ok .market-in { animation: market-in .6s cubic-bezier(.22,1,.36,1) both; }
+/* A barra de progresso do vídeo vertical na composição. */
+@keyframes short-progress { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.motion-ok .short-progress { animation: short-progress 8s linear infinite; animation-play-state: paused; }
+.motion-ok [data-inview] .short-progress { animation-play-state: running; }
+/* A assinatura a desenhar-se. */
+@keyframes sig-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.motion-ok .sig-draw { animation: sig-draw 1.8s cubic-bezier(.45,0,.2,1) .35s both; }

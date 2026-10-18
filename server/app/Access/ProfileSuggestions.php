@@ -58,6 +58,7 @@ final class ProfileSuggestions
             self::GUEST_AGENCY => [PermissionProfile::SIDE_CLIENT, 'Agência convidada', 'Para uma agência que trabalha com a empresa: produz na Linha Editorial e na Bússola e vê os resultados, sem aprovar.', false, [
                 'editorial.ver', 'editorial.criar', 'editorial.editar', 'editorial.apagar', 'bussola.ver', 'bussola.criar', 'bussola.editar', 'resultados.ver',
                 'ficheiros.ver', 'ficheiros.criar', 'ficheiros.editar', 'imoveis.ver', 'imoveis.criar', 'imoveis.editar',
+                'site_consultor.ver', 'site_consultor.editar',
             ]],
             self::AGENCY_ADMIN => [PermissionProfile::SIDE_AGENCY, 'Administrador da agência', 'Trabalha em todos os clientes, dentro do que cada cliente permite.', false, $everything],
             self::AGENCY_MANAGER => [PermissionProfile::SIDE_AGENCY, 'Gestor de clientes', 'Produz conteúdos, trata da marca e da Bússola e vê os resultados dos clientes que gere.', false, [

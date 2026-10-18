@@ -47,6 +47,12 @@ abstract class FichaAvisoRule extends RestaurantRule
     }
 
     /** Onde "Corrigir" leva. */
+    /** Fatia 3: o € do achado é a receita do prato (as regras que deixam o custo incompleto). */
+    protected function revenueIsImpact(): bool
+    {
+        return false;
+    }
+
     protected function fixUrlFor(string $pid, ?string $componentId, array $warning): string
     {
         return self::recipeUrl($pid);
@@ -113,11 +119,14 @@ abstract class FichaAvisoRule extends RestaurantRule
             ]))],
             evidenceKey: $key,
             signature: implode('|', array_column($warnings, 'type')),
+            impactCents: $this->revenueIsImpact() && $sales > 0 ? $sales : null,
             weightCents: $sales > 0 ? $sales : null,
             fixUrl: $this->fixUrlFor($pid, $component, $warnings[0]), fixLabel: 'Abrir a ficha',
             refs: array_values(array_filter([['artigo', $pid], $component ? ['artigo', $component] : null])),
             seen: $seen,
-            stake: self::stakeText($dish, $sales),
+            stake: $this->revenueIsImpact() && $sales > 0
+                ? sprintf('%s: a receita sem IVA de %s nos últimos 90 dias, de que só se conhece parte do custo (fica como Parcial na engenharia de menu).', Fmt::cents($sales), $dish)
+                : self::stakeText($dish, $sales),
         );
     }
 }

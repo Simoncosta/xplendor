@@ -11,7 +11,7 @@ import type { CompassData } from "common/models/bussola.model";
 import CreatePostModal from "../CreatePostModal";
 import BussolaTop from "./BussolaTop";
 import BussolaPlays, { StoreSelector } from "./BussolaPlays";
-import { ChangesCard, ChannelsCard, DaysCard, DecideCard, ForgottenCard, StarsCard } from "./BussolaBlocks";
+import { ChangesCard, ChannelsCard, DaysCard, DecideCard, ForgottenCard, StarsCard, MenuCard } from "./BussolaBlocks";
 import BussolaSkeleton from "./BussolaSkeleton";
 import useDelayedFlag from "hooks/useDelayedFlag";
 
@@ -98,6 +98,7 @@ export default function RestaurantBussola({ providerSwitch, radar }: { providerS
                                 <>
                                     <DaysCard companyId={companyId} block={data.blocks.days} key={`days-${data.location_id}`} />
                                     <StarsCard block={data.blocks.stars} />
+                                    <MenuCard block={data.blocks.menu} />
                                     <ChangesCard block={data.blocks.changes} canAct={!!data.can_act} onIgnore={ignore} />
                                     <Row className="g-3 mb-3">
                                         <Col xl={6}><DecideCard block={data.blocks.decide} /></Col>

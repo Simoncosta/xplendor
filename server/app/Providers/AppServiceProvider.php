@@ -183,6 +183,8 @@ class AppServiceProvider extends ServiceProvider
         // Bússola do stand: recalcular quando o stock, os preços ou o mercado mudam.
         \App\Services\Compass\Stand\StandCompassTriggers::register();
         \App\Services\Compass\Imoveis\ImoveisCompassTriggers::register();
+        // Site do consultor: as páginas do site atualizam-se quando o conteúdo muda (revalidação).
+        \App\Services\ConsultantSite\SiteRevalidation::register();
 
         // ────────────────────────────────────────────────────────────────────
         // Blindagem contra wipe acidental da BD (incidente 2026-06-09,
@@ -220,6 +222,8 @@ class AppServiceProvider extends ServiceProvider
         Route::aliasMiddleware('tenant', \App\Http\Middleware\EnsureTenantAccess::class);
         Route::aliasMiddleware('permission', \App\Http\Middleware\CheckPermission::class); // ACL (documents/ACL-DESENHO.md)
         Route::aliasMiddleware('agency', \App\Http\Middleware\EnsureAgencyAccess::class);
+        // Site do consultor: o contentor do site (token servidor a servidor) e o consultor pelo host.
+        Route::aliasMiddleware('site_server', \App\Http\Middleware\SiteServerAuth::class);
 
         // Página pública dos orçamentos: limites por IP (o IP só é usado aqui, de passagem,
         // e nunca é guardado). Respostas do cliente: também por token.
@@ -243,6 +247,15 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\RateLimiter::for('setup-public-action', fn (\Illuminate\Http\Request $r) => [
             \Illuminate\Cache\RateLimiting\Limit::perMinute(20)->by('sa|' . $r->ip()),
             \Illuminate\Cache\RateLimiting\Limit::perHour(120)->by('st|' . hash('sha256', (string) $r->header('X-Setup-Token'))),
+        ]);
+        // API do site do consultor: leitura por token do contentor; os contactos também pelo
+        // visitante (o IP vem do site no X-Visitor-IP, só aqui, em hash, e nunca é guardado).
+        \Illuminate\Support\Facades\RateLimiter::for('site-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(600)->by('sr|' . hash('sha256', (string) $r->bearerToken())));
+        \Illuminate\Support\Facades\RateLimiter::for('site-events', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(240)->by('se|' . hash('sha256', (string) $r->bearerToken())));
+        \Illuminate\Support\Facades\RateLimiter::for('site-contact', fn (\Illuminate\Http\Request $r) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by('scm|' . hash('sha256', (string) $r->header('X-Visitor-IP', $r->ip()))),
+            \Illuminate\Cache\RateLimiting\Limit::perHour(20)->by('sch|' . hash('sha256', (string) $r->header('X-Visitor-IP', $r->ip()))),
+            \Illuminate\Cache\RateLimiting\Limit::perHour(300)->by('sct|' . hash('sha256', (string) $r->bearerToken())),
         ]);
         \Illuminate\Support\Facades\RateLimiter::for('review-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('rr|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('review-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('ro|' . $r->ip()));

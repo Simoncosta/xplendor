@@ -62,6 +62,23 @@ final class CompatibilityProfiles
             self::AGENCY_MEMBER => ['ver', 'criar', 'editar'],
             self::CEILING => ['ver', 'criar', 'editar'],
         ],
+        // Site do consultor: o perfil do site. O utilizador vê; a agência vê e edita os textos;
+        // publicar ou retirar o site (aprovar) é só do Administrador (decisão do cliente).
+        'site_consultor' => [
+            self::CLIENT_ADMIN => ['ver', 'editar', 'aprovar'],
+            self::CLIENT_USER => ['ver'],
+            self::AGENCY_ADMIN => ['ver', 'editar'],
+            self::AGENCY_MEMBER => ['ver', 'editar'],
+            self::CEILING => ['ver', 'editar'],
+        ],
+        // Os contactos recebidos são dados pessoais: nunca a agência (resposta ao spike, pergunta 4).
+        'contactos' => [
+            self::CLIENT_ADMIN => ['ver', 'editar', 'apagar'],
+            self::CLIENT_USER => ['ver', 'editar'],
+            self::AGENCY_ADMIN => [],
+            self::AGENCY_MEMBER => [],
+            self::CEILING => [],
+        ],
     ];
 
     private static ?array $loaded = null;

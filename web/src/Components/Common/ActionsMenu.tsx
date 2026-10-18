@@ -19,6 +19,9 @@ export type MenuAction = {
     hidden?: boolean;
 };
 
+/** Acima do modal (1055) e do seu fundo (1050), abaixo dos avisos de confirmação (SweetAlert, 1060+ não colide: o menu fecha-se ao clicar). */
+export const MENU_Z_INDEX = 1070;
+
 type Props = {
     items: MenuAction[];
     /** Nome para leitores de ecrã, ex.: "Mais ações: Fatura 12". */
@@ -49,7 +52,8 @@ export default function ActionsMenu({ items, label = "Mais ações", size = "md"
             <DropdownToggle tag="button" type="button" className={`btn btn-outline-primary ${size === "sm" ? "btn-sm" : ""} btn-icon-text`} aria-label={label} title={label} disabled={disabled}>
                 <i className="ri-more-2-fill align-bottom" />
             </DropdownToggle>
-            <DropdownMenu end container="body">
+            {/* No document.body e acima dos modais (o modal do Bootstrap está em 1055): o menu nunca fica por baixo. */}
+            <DropdownMenu end container="body" className="actions-menu" style={{ zIndex: MENU_Z_INDEX }}>
                 {normal.map(item)}
                 {normal.length > 0 && danger.length > 0 && <DropdownItem divider />}
                 {danger.map((a, i) => item(a, normal.length + i))}

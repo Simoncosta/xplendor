@@ -219,7 +219,9 @@ final class ImoveisCompassService
                 : ['value' => "{$n['days']} dias", 'caption' => 'em carteira'],
             'ask_testimonial' => ['value' => (string) $members->count(), 'caption' => $members->count() === 1 ? 'fechado há menos de 30 dias' : 'fechados há menos de 30 dias'],
             'show_zone' => ['value' => (string) ($n['properties'] ?? 0), 'caption' => 'imóveis em carteira na freguesia'],
-            'use_interest' => ['value' => (string) ($n['contacts_30'] ?? 0), 'caption' => 'contactos em 30 dias (contagem manual)'],
+            'use_interest' => ['value' => (string) ($n['contacts_30'] ?? 0), 'caption' => ((int) ($n['contacts_30_site'] ?? 0) + (int) ($n['visits_30_site'] ?? 0)) > 0
+                ? 'contactos em 30 dias (' . (int) $n['contacts_30_site'] . ' do site, ' . (int) ($n['contacts_30_manual'] ?? 0) . ' de outros canais)'
+                : 'contactos em 30 dias (contagem manual)'],
         };
     }
 
@@ -246,7 +248,10 @@ final class ImoveisCompassService
             'closed' => "{$n['label']}: fechado há {$n['closed_days']} " . ((int) $n['closed_days'] === 1 ? 'dia' : 'dias') . ', sem publicação de testemunho.',
             'zone' => "{$n['label']}: {$n['properties']} " . ((int) $n['properties'] === 1 ? 'imóvel' : 'imóveis') . ' em carteira, sem publicação sobre a zona nos últimos 30 dias.'
                 . (! empty($n['ine_median_m2']) ? " O valor mediano das vendas na freguesia foi {$n['ine_median_m2']} euros por m² ({$n['ine_period']}), segundo o INE." : ''),
-            'interest' => "{$n['label']}: {$n['contacts_30']} contactos e {$n['visits_30']} visitas marcadas nos últimos 30 dias (contagem manual, atualizada há {$n['updated_days']} dias).",
+            'interest' => ((int) ($n['contacts_30_site'] ?? 0) + (int) ($n['visits_30_site'] ?? 0)) > 0
+                ? "{$n['label']}: {$n['contacts_30']} contactos e {$n['visits_30']} visitas nos últimos 30 dias ({$n['contacts_30_site']} contactos e {$n['visits_30_site']} pedidos de visita pelo site; "
+                    . ($n['contacts_30_manual'] ?? 0) . ' contactos e ' . ($n['visits_30_manual'] ?? 0) . ' visitas de outros canais, contados à mão).'
+                : "{$n['label']}: {$n['contacts_30']} contactos e {$n['visits_30']} visitas marcadas nos últimos 30 dias (contagem manual, atualizada há {$n['updated_days']} dias).",
             'bce' => 'Hoje é dia de decisão de política monetária do BCE (anúncio às 13:15, hora de Lisboa).' . (! empty($n['url']) ? ' O comunicado oficial já está publicado.' : ''),
             default => (string) ($n['label'] ?? ''),
         };
@@ -332,7 +337,10 @@ final class ImoveisCompassService
                 'outside' => $outside, 'attribution' => $period ? IneHousingPrice::ATTRIBUTION . ", {$period}." : null],
             'zones' => ['headline' => 'As zonas da carteira', 'rows' => array_map(fn ($z) => ['parish_id' => $z['parish_id'], 'label' => $z['label'], 'municipality' => $z['municipality'],
                 'properties' => $z['properties'], 'median' => $z['ine_median_m2'], 'period' => $z['ine_period'], 'posted_30' => $z['posted_30']], $zones)],
-            'interest' => ['headline' => 'Contactos e visitas (contagens manuais)', 'note' => 'Os números são atualizados à mão na ficha de cada imóvel.',
+            'interest' => collect($facts)->contains(fn ($f) => ((int) ($f['contacts_30_site'] ?? 0) + (int) ($f['visits_30_site'] ?? 0)) > 0)
+                ? ['headline' => 'Contactos e visitas (do site e de outros canais)', 'note' => 'O site conta sozinho os contactos e os cliques no WhatsApp de cada imóvel; os outros canais (o portal da rede, o telefone, as indicações) contam-se à mão na ficha do imóvel. Os números são o total dos últimos 30 dias.',
+                'rows' => array_map(fn ($f) => ['property_id' => $f['property_id'], 'label' => $f['label'], 'contacts' => $f['contacts_30'], 'visits' => $f['visits_30'], 'updated_days' => $f['interest_days']], array_slice($interest, 0, 8))]
+                : ['headline' => 'Contactos e visitas (contagens manuais)', 'note' => 'Os números são atualizados à mão na ficha de cada imóvel.',
                 'rows' => array_map(fn ($f) => ['property_id' => $f['property_id'], 'label' => $f['label'], 'contacts' => $f['contacts_30'], 'visits' => $f['visits_30'], 'updated_days' => $f['interest_days']], array_slice($interest, 0, 8))],
             'closed' => ['headline' => 'Fechados nos últimos 30 dias', 'rows' => array_values(array_map(fn ($c) => $c, ImoveisFacts::closed($companyId, $today)))],
             'forgotten' => ['headline' => 'Há mais de 30 dias sem publicação', 'items' => array_map(fn ($f) => ['property_id' => $f['property_id'], 'label' => $f['label'], 'days' => $f['days']], array_slice($forgotten, 0, 8)),

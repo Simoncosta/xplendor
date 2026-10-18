@@ -137,9 +137,16 @@ class RecipeCostTest extends TestCase
         // A ficha: 1 garrafa; compras em grades de 24 (qnt_base = 24 × qnt), com desconto já no total.
         $line = $this->bomLine('GARRAFA', 1, ['unit_cost' => 0.5275, 'cost' => 0.5275]);
         $this->persistBom($this->company->id, $this->bom('COCA', [['00000000', 'BCOCA', '2026-05-06', ['S1' => true], [$line]]]));
-        $this->purchase($this->company->id, 'GARRAFA', '2026-08-27', 20, 480, 25332, ['unit_desc' => 'Grade 24']);
-        $this->purchase($this->company->id, 'GARRAFA', '2026-09-09', 20, 480, 25332, ['unit_desc' => 'Grade 24']);
+        $this->purchase($this->company->id, 'GARRAFA', '2026-08-27', 20, 480, 25332, ['unit_desc' => 'Grade 24', 'unit_id' => 'GRD24']);
+        $this->purchase($this->company->id, 'GARRAFA', '2026-09-09', 20, 480, 25332, ['unit_desc' => 'Grade 24', 'unit_id' => 'GRD24']);
         $this->purchase($this->company->id, 'GARRAFA', '2026-09-30', 576, 576, 31275);
+
+        // Fatia 3: sem o fator da grade confirmado na XPLENDOR, as compras em grades não dão preço (só a de 576 unidades).
+        $c = $this->costOf($this->cost(), 'COCA');
+        $this->assertEqualsWithDelta(312.75 / 576, $c['cost'], 1e-6);
+        $this->assertContains('unconverted', array_column($c['lines'][0]['warnings'], 'type'));
+        \App\Models\ProductUnitConversion::create(['company_id' => $this->company->id, 'product_pingwin_id' => 'GARRAFA', 'unit_key' => 'GRD24',
+            'unit_label' => 'Grade 24', 'supplier_nif' => '', 'factor_to_base' => 24, 'source' => 'confirmado']);
 
         $c = $this->costOf($this->cost(), 'COCA');
         $this->assertEqualsWithDelta(0.53, $c['cost'], 0.01);
