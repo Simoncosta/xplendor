@@ -55,6 +55,12 @@ final class Permissions
         'ficheiros' => ['label' => 'Ficheiros', 'module' => 'ficheiros', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         // Bússola Master (R3): a carteira de imóveis do consultor imobiliário.
         'imoveis' => ['label' => 'Imóveis', 'module' => 'imoveis', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
+        // Site do consultor: o perfil do site (textos, ficheiros, ligações, medição). A central de
+        // contactos recebidos (dados pessoais, à parte dos imóveis, que são públicos): hoje só o
+        // canal do site; os outros canais acrescentam aqui o seu módulo.
+        // Publicar ou retirar o site (aprovar) é uma decisão do cliente (D1).
+        'site_consultor' => ['label' => 'Site do consultor', 'module' => 'site_consultor', 'actions' => ['ver', 'editar', 'aprovar']],
+        'contactos' => ['label' => 'Contactos recebidos', 'module' => ['site_consultor'], 'actions' => ['ver', 'editar', 'apagar']],
         'agencia' => ['label' => 'Agência gestora', 'module' => null, 'actions' => ['configurar']],
         'plataforma' => ['label' => 'Plataforma', 'module' => null, 'actions' => ['configurar']],
     ];
@@ -76,7 +82,7 @@ final class Permissions
     public const ADMIN_ONLY_AREAS = ['faturacao_xplendor'];
 
     /** D1: decisões do cliente. Nem o root nem a agência as tomam. */
-    public const CLIENT_DECISIONS = ['editorial.aprovar', 'blog.aprovar', 'faturacao_xplendor.aprovar', 'empresa.aprovar'];
+    public const CLIENT_DECISIONS = ['editorial.aprovar', 'blog.aprovar', 'faturacao_xplendor.aprovar', 'empresa.aprovar', 'site_consultor.aprovar'];
 
     /**
      * Regra transversal de hoje: em sessão como cliente (impersonation), a equipa da

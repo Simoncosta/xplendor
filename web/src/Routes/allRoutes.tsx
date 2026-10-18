@@ -29,6 +29,7 @@ import StockCountPage from "pages/Restauracao/StockCountPage";
 import StockZonesPage from "pages/Restauracao/StockZonesPage";
 import WastePage from "pages/Restauracao/WastePage";
 import TransferenciasPage from "pages/Restauracao/TransferenciasPage";
+import MenuEngineeringPage from "pages/Restauracao/MenuEngineeringPage";
 import CondicoesPagamentoPage from "pages/Restauracao/CondicoesPagamentoPage";
 import ContaCorrenteFornecedoresPage from "pages/Restauracao/ContaCorrenteFornecedoresPage";
 import ContaCorrenteFornecedorPage from "pages/Restauracao/ContaCorrenteFornecedorPage";
@@ -74,6 +75,9 @@ import StorageUsagePage from "pages/Admin/StorageUsagePage";
 import AdminRadarPage from "pages/Admin/AdminRadarPage";
 import FilesPage from "pages/Files/FilesPage";
 import ImoveisPage from "pages/Imoveis/ImoveisPage";
+import EmpreendimentosPage from "pages/Imoveis/EmpreendimentosPage";
+import SiteConsultorPage from "pages/SiteConsultor/SiteConsultorPage";
+import ContactosPage from "pages/Contactos/ContactosPage";
 import ContentReviewPage from "pages/ContentReview";
 import ContentReviewPreview from "pages/ContentReview/Preview";
 import QuotePublicPreview from "pages/Admin/QuotePublicPreview";
@@ -167,6 +171,10 @@ const authProtectedRoutes = [
     { path: "/auditoria", component: <AuditoriaPage /> },
     // Bússola Master (R3): a carteira do consultor imobiliário (módulo imoveis).
     { path: "/imoveis", component: <RequireModule module="imoveis" permission="imoveis.ver"><ImoveisPage /></RequireModule> },
+    // Empreendimentos (módulo imoveis); o perfil do site e os contactos recebidos (módulo site_consultor).
+    { path: "/imoveis/empreendimentos", component: <RequireModule module="imoveis" permission="imoveis.ver"><EmpreendimentosPage /></RequireModule> },
+    { path: "/site-consultor", component: <RequireModule module="site_consultor" permission="site_consultor.ver"><SiteConsultorPage /></RequireModule> },
+    { path: "/contactos", component: <RequireModule module="site_consultor" permission="contactos.ver"><ContactosPage /></RequireModule> },
     { path: "/editorial", component: <RequireModule module="linha_editorial" permission="editorial.ver"><EditorialPage /></RequireModule> },
     // Link de aprovação visto pela equipa ("Ver como o cliente"): sem ações e sem contar como abertura.
     { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial" permission="editorial.ver"><ContentReviewPreview /></RequireModule> },
@@ -182,6 +190,7 @@ const authProtectedRoutes = [
     { path: "/restauracao/stock/contagens/:countId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><StockCountPage /></RequireModule> },
     { path: "/restauracao/stock/zonas", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><StockZonesPage /></RequireModule> },
     { path: "/restauracao/stock/desperdicio", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><WastePage /></RequireModule> },
+    { path: "/restauracao/engenharia-menu", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><MenuEngineeringPage /></RequireModule> },
     { path: "/restauracao/transferencias", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><TransferenciasPage /></RequireModule> },
     { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias" permission="restauracao.ver"><FamiliasPage /></RequireModule> },
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).

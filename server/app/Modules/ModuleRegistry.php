@@ -82,6 +82,14 @@ class ModuleRegistry
             'car_specific' => false,
             'depends_on' => [],
         ],
+        // Site do consultor imobiliário: o site público do consultor (perfil, imóveis publicados,
+        // empreendimentos, contactos). Nasce desligado em todas as empresas (fora dos presets);
+        // só o root o liga.
+        'site_consultor' => [
+            'label' => 'Imobiliário: Site do consultor',
+            'car_specific' => false,
+            'depends_on' => ['imoveis'],
+        ],
         // Radar de oportunidade (Bússola Master): o interruptor por empresa. Nasce desligado em
         // todas (fora dos presets); só o root o liga. Sem RADAR_ENABLED nada chega à empresa.
         'radar' => [

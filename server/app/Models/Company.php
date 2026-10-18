@@ -45,6 +45,8 @@ class Company extends Model
         'facebook_pixel_id',
         'website',
         'instagram',
+        'linkedin', // Site do consultor: as redes que faltavam
+        'tiktok',
         'youtube',
         'facebook',
         'google',

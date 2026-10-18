@@ -40,13 +40,23 @@ use Illuminate\Support\Facades\DB;
  *  · Componente sem compras e com custo PingWin 0 (aparas, ossos): custo 0, aviso informativo.
  *  · Versão em vigor na data D e na loja L: a de valid_from mais recente ≤ D, não anulada, com L
  *    ativa (sem loja: com alguma loja ativa). Empate na data: a criada depois (key maior).
+ *  · Fatia 3 (regra de ouro, unificada com a Engenharia de menu): o custo NUNCA usa o fator da
+ *    unidade do PingWin (unit_value / qnt_base do raw). Quantidade de uma linha de compra para o
+ *    custo: na unidade base, a quantidade da linha; noutra unidade, quantidade × fator confirmado
+ *    na XPLENDOR; sem fator confirmado, a linha não dá preço ("sem conversão"). A qnt_base do raw
+ *    continua nas linhas (a Auditoria usa-a para as suas regras), mas não entra no custo.
+ *    Semi-produtos até 3 níveis. Dois modos de preço: média pesada de 90 dias (por omissão) e
+ *    último custo. Desconto no cabeçalho da fatura: aviso (não se reparte pelas linhas).
  */
 final class RecipeCostService
 {
     public const WINDOW_DAYS = 90;
     public const OUTLIER_FACTOR = 4.0;
     public const PINGWIN_DIFF = 0.20;
-    public const MAX_DEPTH = 5;
+    public const MAX_DEPTH = 3;
+
+    /** Preço dos componentes: média pesada de 90 dias ou último custo. */
+    public const PRICE_MODES = ['media', 'ultimo'];
 
     /** Os documentos de compra que dão preço: fatura e fatura-recibo de fornecedor (fechados). */
     public const PURCHASE_DOCCONFIGS = ['1209', '584955579139752236'];
@@ -92,9 +102,29 @@ final class RecipeCostService
     /** @var array<string, array{description:string, tokens:list<string>}>|null artigos comprados nos últimos 90 dias */
     private ?array $purchased = null;
 
+    /** media (por omissão) ou ultimo */
+    private string $priceMode = 'media';
+
     public function __construct(private int $companyId, ?CarbonInterface $today = null)
     {
         $this->today = CarbonImmutable::parse(($today ?? now('Europe/Lisbon'))->toDateString());
+    }
+
+    /** O preço dos componentes: média pesada de 90 dias ("media") ou último custo ("ultimo"). */
+    public function withPriceMode(string $mode): self
+    {
+        $mode = in_array($mode, self::PRICE_MODES, true) ? $mode : 'media';
+        if ($mode !== $this->priceMode) {
+            $this->priceMode = $mode;
+            $this->memo = [];
+        }
+
+        return $this;
+    }
+
+    public function priceMode(): string
+    {
+        return $this->priceMode;
     }
 
     public function today(): CarbonImmutable
@@ -228,8 +258,20 @@ final class RecipeCostService
             }
         }
         foreach ($componentIds as $id) {
-            $this->purchaseRows[$id] = $rows[$id] ?? [];
-            $this->purchase[$id] = self::purchaseStats($rows[$id] ?? [], $this->today) + ['qty_source' => self::qtySource($rows[$id] ?? [], $since)];
+            $list = $rows[$id] ?? [];
+            $this->purchaseRows[$id] = $list;
+            // Para o custo, só a quantidade estrita (sem o fator do PingWin): as linhas sem conversão ficam de fora.
+            $strict = array_map(fn ($r) => ['qnt_base' => (float) ($r['strict_qnt_base'] ?? 0.0)] + $r, $list);
+            $stats = self::purchaseStats($strict, $this->today);
+            $recent = array_filter($list, fn ($r) => $r['date'] >= $since && $r['total'] > 0);
+            $unconverted = array_filter($recent, fn ($r) => $r['strict_qnt_base'] === null);
+            if ($stats['status'] === 'sem_custo' && array_filter($list, fn ($r) => $r['strict_qnt_base'] === null && $r['total'] > 0)) {
+                $stats['status'] = 'sem_conversao';
+                $stats['unit_label'] = (string) (end($unconverted) ?: end($list))['unit_label'];
+            }
+            $stats['unconverted'] = count($unconverted);
+            $stats['header_discounts'] = count(array_unique(array_column(array_filter($recent, fn ($r) => $r['header_discount']), 'docheader_id')));
+            $this->purchase[$id] = $stats + ['qty_source' => self::qtySource(array_filter($list, fn ($r) => $r['strict_qnt_base'] !== null), $since)];
         }
     }
 
@@ -257,7 +299,7 @@ final class RecipeCostService
                 ->when($since !== null, fn ($q) => $q->where('d.doc_date', '>=', $since))
                 ->orderBy('d.doc_date')->orderBy('l.id')
                 ->get(['l.id', 'l.product_pingwin_id', 'l.qnt', 'l.price', 'l.total_cents', 'l.unit_desc', 'l.description', 'l.raw', 'l.docheader_id',
-                    'd.doc_date', 'd.document', 'd.tax_number', 'd.entity_name', 'd.entity_pingwin_id']);
+                    'd.doc_date', 'd.document', 'd.tax_number', 'd.entity_name', 'd.entity_pingwin_id', 'd.discount1', 'd.discount2']);
             $this->ensureConversions($q->pluck('product_pingwin_id')->map(fn ($v) => (string) $v)->unique()->values()->all());
             foreach ($q as $r) {
                 $raw = is_string($r->raw) ? (json_decode($r->raw, true) ?: []) : (array) $r->raw;
@@ -276,6 +318,7 @@ final class RecipeCostService
                     'unit_key' => $unitKey, 'unit_id' => $unitId, 'unit_label' => (string) ($r->unit_desc ?? $unitKey), 'nif' => $nif,
                     'supplier' => $r->entity_name, 'supplier_id' => (string) ($r->entity_pingwin_id ?? ''), 'description' => $r->description,
                     'price' => (float) $r->price, 'docheader_id' => (string) $r->docheader_id, 'document' => $r->document,
+                    'header_discount' => abs((float) ($r->discount1 ?? 0)) > 1e-9 || abs((float) ($r->discount2 ?? 0)) > 1e-9,
                 ];
                 // O fator confirmado (do fornecedor, senão o geral) manda sobre a qnt_base do raw.
                 $conv = $this->conversions[$pid]["{$unitKey}|{$nif}"] ?? $this->conversions[$pid]["{$unitKey}|"] ?? null;
@@ -283,11 +326,34 @@ final class RecipeCostService
                     $row['qnt_base'] = $qnt * $conv->factor_to_base;
                     $row['qty_source'] = 'confirmado';
                 }
+                // A quantidade para o custo (Fatia 3): nunca o fator do PingWin.
+                $row['strict_qnt_base'] = $row['qty_source'] === 'confirmado' ? $row['qnt_base']
+                    : ($this->isBaseUnit($pid, $unitId, $qnt, (float) $qb) ? $qnt : null);
                 $rows[$pid][] = $row;
             }
         }
 
         return $rows;
+    }
+
+    /**
+     * A linha de compra está na unidade base do artigo (a quantidade da linha já é a base): a unidade
+     * é de topo (sem pai) e da família da unidade base do artigo. Unidade desconhecida: só se o PingWin
+     * não lhe aplicou fator (qnt_base = qnt).
+     */
+    public function isBaseUnit(string $productId, string $unitId, float $qnt, float $rawQntBase): bool
+    {
+        $u = $unitId !== '' ? ($this->units[$unitId] ?? null) : null;
+        if (! $u) {
+            return abs($rawQntBase - $qnt) < 1e-9;
+        }
+        if ($u->parent_pingwin_id) {
+            return false;
+        }
+        $item = $this->items[$productId] ?? null;
+        $itemRoot = $item?->base_unit_id ? $this->unitRoot((string) $item->base_unit_id) : null;
+
+        return $itemRoot === null || $itemRoot === $unitId;
     }
 
     /** As unidades do PingWin (uma vez). */
@@ -440,6 +506,12 @@ final class RecipeCostService
         return $this->items[$productId] ?? null;
     }
 
+    /** As linhas de compra carregadas de um componente (com a quantidade estrita e de onde veio). */
+    public function purchaseRowsOf(string $componentId): array
+    {
+        return $this->purchaseRows[$componentId] ?? [];
+    }
+
     public function purchaseOf(string $componentId): array
     {
         return $this->purchase[$componentId] ?? ['status' => 'sem_custo', 'last' => null, 'avg' => null, 'last_date' => null, 'lines' => 0, 'outliers' => 0];
@@ -516,7 +588,7 @@ final class RecipeCostService
                 $warnings[] = ['type' => 'cycle', 'text' => 'Ciclo: o semi-produto usa-se a si próprio (direta ou indiretamente).'];
             } elseif ($depth + 1 > self::MAX_DEPTH) {
                 $unit = ['status' => 'fundo', 'last' => null, 'avg' => null, 'last_date' => null, 'lines' => 0, 'outliers' => 0];
-                $warnings[] = ['type' => 'depth', 'text' => 'Semi-produtos com mais de 5 níveis: o custo não foi calculado.'];
+                $warnings[] = ['type' => 'depth', 'text' => 'Semi-produtos com mais de ' . self::MAX_DEPTH . ' níveis: o custo não foi calculado.'];
             } else {
                 // Custo parcial do semi-produto (com linhas sem custo) conta, marcado como parcial.
                 // Por unidade base: custo do lote ÷ rendimento confirmado (sem rendimento: ÷ 1).
@@ -541,7 +613,8 @@ final class RecipeCostService
             }
         }
 
-        $lineCost = $unit['avg'] !== null ? round($l['qnt_base'] * $unit['avg'] * (1 + $l['waste'] / 100), 6) : null;
+        $unitPrice = $this->priceMode === 'ultimo' ? ($unit['last'] ?? $unit['avg']) : $unit['avg'];
+        $lineCost = $unitPrice !== null ? round($l['qnt_base'] * $unitPrice * (1 + $l['waste'] / 100), 6) : null;
         $pw = $l['pingwin'][''] ?? ['unit_cost' => null, 'cost' => null];
 
         $similar = null;
@@ -549,6 +622,14 @@ final class RecipeCostService
             $warnings[] = ['type' => 'zero_cost', 'level' => 'info', 'text' => 'Componente a custo 0 (sem compras pagas e custo PingWin 0): pode ser um subproduto.'];
         } elseif ($unit['status'] === 'sem_custo' && $source === 'compras' && ($similar = $this->similarPurchased($cid, (string) $l['description']))) {
             $warnings[] = ['type' => 'similar', 'text' => "Componente sem compras; compra-se um parecido: {$similar['code']} {$similar['description']}."];
+        }
+        if ($unit['status'] === 'sem_conversao') {
+            $warnings[] = ['type' => 'no_conversion', 'text' => sprintf('Compras em «%s» sem fator confirmado na XPLENDOR: sem preço.', $unit['unit_label'] ?? 'outra unidade')];
+        } elseif (($unit['unconverted'] ?? 0) > 0) {
+            $warnings[] = ['type' => 'unconverted', 'level' => 'info', 'text' => sprintf('%d compra(s) noutra unidade, sem fator confirmado, ficaram de fora do preço.', $unit['unconverted'])];
+        }
+        if (($unit['header_discounts'] ?? 0) > 0) {
+            $warnings[] = ['type' => 'header_discount', 'level' => 'info', 'text' => sprintf('%d fatura(s) com desconto no cabeçalho: o desconto não está repartido pelas linhas (o preço pode estar acima do real).', $unit['header_discounts'])];
         }
         if ($unit['status'] === 'sem_custo') {
             $warnings[] = ['type' => 'no_cost', 'text' => $source === 'ficha' ? 'O semi-produto não tem custo.' : 'Componente sem compras: sem custo.'];
@@ -581,7 +662,7 @@ final class RecipeCostService
         // com aviso de unidade ou com diferença para o PingWin que um fator sugerido explica.
         $conversion = $source === 'compras' ? $this->conversionBlock($l, $pw) : null;
         $needsFactor = $conversion !== null && $conversion['confirmed'] === null
-            && ($unitWarning || ($diff !== null && abs($diff) > self::PINGWIN_DIFF && $conversion['suggestions']));
+            && ($unitWarning || $unit['status'] === 'sem_conversao' || ($diff !== null && abs($diff) > self::PINGWIN_DIFF && $conversion['suggestions']));
         if ($needsFactor) {
             $warnings[] = ['type' => 'factor_unconfirmed', 'text' => "Fator por confirmar: quantas unidades base vale 1 «{$conversion['unit_label']}» na compra."];
         }
@@ -593,6 +674,7 @@ final class RecipeCostService
             'cost_source' => $source,
             'cost_status' => $unit['status'],
             'unit_cost_last' => $unit['last'], 'unit_cost_avg' => $unit['avg'], 'last_purchase' => $unit['last_date'],
+            'unit_cost' => $unitPrice, 'purchase_lines' => $unit['lines'] ?? 0,
             'pingwin_unit_cost' => $pw['unit_cost'] ?? null, 'pingwin_cost' => $pw['cost'] ?? null,
             'line_cost' => $lineCost,
             'diff_pct' => $diff !== null ? round($diff * 100, 1) + 0.0 : null,

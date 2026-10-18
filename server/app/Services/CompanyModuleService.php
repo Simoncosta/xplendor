@@ -102,8 +102,11 @@ class CompanyModuleService
     }
 
     /**
-     * Aplica um preset de ramo: passa a ter EXATAMENTE os módulos do preset (já
-     * fechado sobre dependências). É um atalho — depois ajusta-se individualmente.
+     * Aplica um preset de ramo: passa a ter os módulos do preset (já fechado sobre
+     * dependências). É um atalho — depois ajusta-se individualmente. Os módulos que NENHUM
+     * preset liga (por exemplo, o site do consultor e o Radar, que só o root liga) ficam como
+     * estão, desde que as suas dependências continuem ligadas (o site do consultor sai se o
+     * preset tirar os imóveis).
      */
     public function applyPreset(int $companyId, string $preset, ?int $userId = null): void
     {
@@ -115,8 +118,16 @@ class CompanyModuleService
         $label = self::PRESET_LABELS[$preset] ?? $preset;
         $current = $this->enabledKeys($companyId);
 
+        // Os que nenhum preset liga ficam, se as dependências ficarem (até estabilizar).
+        $inPresets = array_unique(array_merge(...array_map(fn ($p) => ModuleRegistry::presetKeys($p), array_keys(ModuleRegistry::PRESETS))));
+        $kept = array_values(array_diff($current, $inPresets));
+        do {
+            $before = count($kept);
+            $kept = array_values(array_filter($kept, fn ($k) => array_diff(ModuleRegistry::dependencies($k), [...$target, ...$kept]) === []));
+        } while (count($kept) !== $before);
+
         // Remove os que saem.
-        $toRemove = array_diff($current, $target);
+        $toRemove = array_diff($current, $target, $kept);
         if (! empty($toRemove)) {
             CompanyModule::where('company_id', $companyId)->whereIn('module_key', $toRemove)->delete();
             foreach ($toRemove as $k) {

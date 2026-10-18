@@ -89,6 +89,8 @@ export interface CompassData {
         decide: { headline: string | null; same_day_pct: number | null; stores: { name: string; total: number; buckets: { key: string; label: string; pct: number }[] }[] };
         channels: { headline: string | null; stores: { name: string; total: number; channels: { key: string; label: string; reservations: number; pct: number }[] }[] };
         forgotten: { headline: string; items: { key: string; name: string; location: string; days: number; qty_before: number; theme: string | null; date: string }[] };
+        /** Fatia 3: a jogada da engenharia de menu dos artigos com mais receita (pode não vir em respostas antigas). */
+        menu?: { headline: string | null; calculated_at: string | null; items: { product_id: string; name: string; family: string; class: string; class_label: string; confidence: string; fragile: boolean; play: string | null }[] };
     };
 }
 

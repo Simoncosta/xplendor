@@ -184,9 +184,13 @@ class RecipeYieldConversionTest extends TestCase
     {
         $before = $this->costOf(self::MOLHO);
         $av = $before['lines'][0];
-        $this->assertEqualsWithDelta(6 * 14.89, $av['line_cost'], 1e-6);               // qnt_base 1 por «Unidade»
-        $this->assertSame('raw', $av['qty_source']);
+        // Fatia 3 (regra de ouro): compras em «Unidade» com base em litros e sem fator confirmado não dão
+        // preço (antes usava-se a qnt_base do PingWin: 1 L por «Unidade», 14,89 €/L).
+        $this->assertNull($av['line_cost']);
+        $this->assertSame('sem_conversao', $av['cost_status']);
+        $this->assertNull($av['qty_source']);
         $this->assertTrue($av['needs_factor']);
+        $this->assertFalse($before['complete']);
         $conv = $av['conversion'];
         $this->assertSame(['11001', 'Unidade', 1.0], [$conv['unit_key'], $conv['unit_label'], $conv['current_factor']]);
         $s = $conv['suggestions'][0];
@@ -219,9 +223,11 @@ class RecipeYieldConversionTest extends TestCase
             'supplier_nif' => self::NIF, 'factor_to_base' => 20, 'source' => 'confirmado', 'confirmed_at' => now()]);
 
         $av = $this->costOf(self::MOLHO)['lines'][0];
-        $this->assertSame('misto', $av['qty_source']);
-        // 17 un. × 20 L do fornecedor confirmado + 1 un. × 1 L do outro (qnt_base do raw): (253,13 + 0,80) ÷ 341 L.
-        $this->assertEqualsWithDelta((253.13 + 0.80) / 341, $av['unit_cost_avg'], 1e-4);
+        // Só o fornecedor com o fator confirmado dá preço: a compra do outro (em «Unidade», sem fator para
+        // ele) fica de fora (Fatia 3: nunca a qnt_base do PingWin). 17 un. × 20 L: 253,13 ÷ 340 L.
+        $this->assertSame('confirmado', $av['qty_source']);
+        $this->assertEqualsWithDelta(253.13 / 340, $av['unit_cost_avg'], 1e-4);
+        $this->assertContains('unconverted', array_column($av['warnings'], 'type'));
     }
 
     // ── Avisos ────────────────────────────────────────────────────────────────

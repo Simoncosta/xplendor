@@ -191,7 +191,7 @@ export default function WastePage() {
                                                 <td className="text-end">{data?.can_manage && b.status === "enviada" && <Button size="sm" color="outline-danger" onClick={() => setConfirm({ kind: "void", id: b.id, document: b.document })}>Anular no PingWin</Button>}</td>
                                             </tr>
                                         ))}
-                                        {!(data?.batches ?? []).length && <tr><td className="text-muted">Ainda não há documentos.</td></tr>}
+                                        {!(data?.batches ?? []).length && <tr><td colSpan={6} className="text-muted px-3 py-3">Ainda não há documentos.</td></tr>}
                                     </tbody>
                                 </Table>
                             </PageCard>

@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  *    referência do INE da freguesia quando existe (nunca um preço sugerido);
  *  · closed:{id}: fechado nos últimos 30 dias, sem publicação de testemunho;
  *  · zone:{parish_id}: freguesia com imóveis e sem publicação da zona em 30 dias;
- *  · interest:{id}: 3 ou mais contactos (contagem manual, atualizada há 30 dias ou menos);
+ *  · interest:{id}: 3 ou mais contactos no total (a parte do site do consultor mais a manual; atualizada há 30 dias ou menos);
  *  · bce:{AAAAMMDD}: hoje há decisão de política monetária do BCE (calendário oficial).
  */
 final class ImoveisSignalService
@@ -73,7 +73,9 @@ final class ImoveisSignalService
                 ]);
             }
             if ($f['interest_days'] !== null && $f['interest_days'] <= ImoveisFacts::POST_DAYS && $f['contacts_30'] >= ImoveisFacts::INTEREST_MIN_CONTACTS && ! $f['posted_30']) {
-                $add("interest:{$id}", 'interest', 'property', $id, 'media', $base + ['contacts_30' => $f['contacts_30'], 'visits_30' => $f['visits_30'], 'updated_days' => $f['interest_days']]);
+                $add("interest:{$id}", 'interest', 'property', $id, 'media', $base + ['contacts_30' => $f['contacts_30'], 'visits_30' => $f['visits_30'], 'updated_days' => $f['interest_days'],
+                    'contacts_30_site' => $f['contacts_30_site'] ?? 0, 'visits_30_site' => $f['visits_30_site'] ?? 0,
+                    'contacts_30_manual' => $f['contacts_30_manual'] ?? $f['contacts_30'], 'visits_30_manual' => $f['visits_30_manual'] ?? $f['visits_30']]);
             }
         }
         foreach (ImoveisFacts::closed($companyId, $today) as $id => $c) {

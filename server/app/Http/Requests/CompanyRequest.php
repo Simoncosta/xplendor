@@ -89,6 +89,8 @@ class CompanyRequest extends FormRequest
             'instagram' => ['nullable', 'string', 'max:255'],
             'facebook' => ['nullable', 'string', 'max:255'],
             'youtube' => ['nullable', 'string', 'max:255'],
+            'linkedin' => ['nullable', 'string', 'max:255'],
+            'tiktok' => ['nullable', 'string', 'max:255'],
             'google' => ['nullable', 'string', 'max:255'],
             // DMS Pós-venda — link de avaliação do Google Business (ramo ≥4 estrelas).
             'google_review_url' => ['nullable', 'url', 'max:255'],

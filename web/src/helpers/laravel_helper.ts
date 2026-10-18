@@ -684,6 +684,57 @@ export const getProperties = (companyId: number, params: { status?: string; list
 export const createProperty = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/properties`, data, JSON_BODY);
 export const updateProperty = (companyId: number, id: number, data: any) => api.put(url.GET_COMPANIES + `/${companyId}/properties/${id}`, data);
 export const deleteProperty = (companyId: number, id: number) => api.delete(url.GET_COMPANIES + `/${companyId}/properties/${id}`);
+// Site do consultor: o site dos imóveis, os empreendimentos, o perfil do site e os contactos recebidos.
+const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+const CO = (companyId: number) => url.GET_COMPANIES + `/${companyId}`;
+export const getListingsSummary = (companyId: number) => api.get(CO(companyId) + "/consultant-site/listings-summary");
+export const getPropertySite = (companyId: number, id: number) => api.get(CO(companyId) + `/properties/${id}/site`);
+export const updatePropertySite = (companyId: number, id: number, data: any) => api.put(CO(companyId) + `/properties/${id}/site`, data);
+export const publishProperty = (companyId: number, id: number) => api.create(CO(companyId) + `/properties/${id}/publish`, {}, JSON_BODY);
+export const unpublishProperty = (companyId: number, id: number) => api.create(CO(companyId) + `/properties/${id}/unpublish`, {}, JSON_BODY);
+export type ListingOwner = "properties" | "developments";
+export const uploadListingImages = (companyId: number, owner: ListingOwner, id: number, files: File[]) => {
+    const data = new FormData();
+    files.forEach((f) => data.append("images[]", f));
+    return api.create(CO(companyId) + `/${owner}/${id}/images`, data, MULTIPART);
+};
+export const orderListingImages = (companyId: number, owner: ListingOwner, id: number, ids: number[], coverId: number | null) =>
+    api.put(CO(companyId) + `/${owner}/${id}/images/order`, { ids, cover_id: coverId });
+export const updateListingImage = (companyId: number, owner: ListingOwner, id: number, imageId: number, alt: string) =>
+    api.update(CO(companyId) + `/${owner}/${id}/images/${imageId}`, { alt });
+export const deleteListingImage = (companyId: number, owner: ListingOwner, id: number, imageId: number) => api.delete(CO(companyId) + `/${owner}/${id}/images/${imageId}`);
+export const getDevelopments = (companyId: number) => api.get(CO(companyId) + "/developments");
+export const getDevelopment = (companyId: number, id: number) => api.get(CO(companyId) + `/developments/${id}`);
+export const createDevelopment = (companyId: number, data: any) => api.create(CO(companyId) + "/developments", data, JSON_BODY);
+export const updateDevelopment = (companyId: number, id: number, data: any) => api.put(CO(companyId) + `/developments/${id}`, data);
+export const deleteDevelopment = (companyId: number, id: number) => api.delete(CO(companyId) + `/developments/${id}`);
+export const publishDevelopment = (companyId: number, id: number) => api.create(CO(companyId) + `/developments/${id}/publish`, {}, JSON_BODY);
+export const unpublishDevelopment = (companyId: number, id: number) => api.create(CO(companyId) + `/developments/${id}/unpublish`, {}, JSON_BODY);
+export const getConsultantSite = (companyId: number) => api.get(CO(companyId) + "/consultant-site");
+export const updateConsultantSite = (companyId: number, data: any) => api.put(CO(companyId) + "/consultant-site", data);
+export const uploadConsultantSiteAsset = (companyId: number, slot: string, file: File) => {
+    const data = new FormData();
+    data.append("file", file);
+    return api.create(CO(companyId) + `/consultant-site/assets/${slot}`, data, MULTIPART);
+};
+export const deleteConsultantSiteAsset = (companyId: number, slot: string) => api.delete(CO(companyId) + `/consultant-site/assets/${slot}`);
+export const uploadConsultantSiteZonePhoto = (companyId: number, file: File, alt: string | null, parishId: number | null) => {
+    const data = new FormData();
+    data.append("file", file);
+    if (alt) data.append("alt", alt);
+    if (parishId) data.append("parish_id", String(parishId));
+    return api.create(CO(companyId) + "/consultant-site/zone-photos", data, MULTIPART);
+};
+export const deleteConsultantSiteZonePhoto = (companyId: number, photoId: string) => api.delete(CO(companyId) + `/consultant-site/zone-photos/${photoId}`);
+export const publishConsultantSite = (companyId: number) => api.create(CO(companyId) + "/consultant-site/publish", {}, JSON_BODY);
+export const unpublishConsultantSite = (companyId: number) => api.create(CO(companyId) + "/consultant-site/unpublish", {}, JSON_BODY);
+export const previewConsultantSite = (companyId: number) => api.create(CO(companyId) + "/consultant-site/preview", {}, JSON_BODY);
+export const getConsultantSiteHosts = (companyId: number) => api.get(`/admin/companies/${companyId}/consultant-site/hosts`);
+export const updateConsultantSiteHosts = (companyId: number, hosts: { host: string; is_primary: boolean }[]) => api.put(`/admin/companies/${companyId}/consultant-site/hosts`, { hosts });
+export const getInboundContacts = (companyId: number, params: { status?: string; type?: string } = {}) => api.get(CO(companyId) + "/inbound-contacts", params);
+export const getInboundContact = (companyId: number, id: number) => api.get(CO(companyId) + `/inbound-contacts/${id}`);
+export const updateInboundContact = (companyId: number, id: number, status: string) => api.update(CO(companyId) + `/inbound-contacts/${id}`, { status });
+export const deleteInboundContact = (companyId: number, id: number) => api.delete(CO(companyId) + `/inbound-contacts/${id}`);
 // Radar de oportunidade (Bússola Master, R2): os cartões, "Reagir" (ideia sem texto), "Ignorar", "Não mostrar temas como este" e as definições.
 export const getRadar = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/radar`);
 export const reactRadar = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/radar/react`, data, JSON_BODY);
@@ -1295,6 +1346,20 @@ export const deleteWaste = (companyId: number, id: number) => api.delete(WS(comp
 export const sendWaste = (companyId: number, warehouseId: string) => api.create(WS(companyId) + `/send`, { warehouse_id: warehouseId }, JSON_BODY);
 export const voidWasteBatch = (companyId: number, batchId: number) => api.create(WS(companyId) + `/batches/${batchId}/void`, {}, JSON_BODY);
 export const getWasteReport = (companyId: number, params: { from?: string; to?: string; warehouse_id?: string }) => api.get(WS(companyId) + `/report`, params);
+
+// ── Engenharia de menu (Fatia 3) ──
+const ME = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/menu-engineering`;
+export type MenuParams = { location_id?: number; mode?: "media" | "ultimo"; from?: string; to?: string; family?: string };
+export const getMenuEngineering = (companyId: number, params: MenuParams) => api.get(ME(companyId), params);
+export const getMenuEngineeringItems = (companyId: number, params: MenuParams & { class?: string; confidence?: string; excluded?: string; search?: string; page?: number; perPage?: number; sort?: string; dir?: "asc" | "desc" }) =>
+    api.get(ME(companyId) + `/items`, params);
+export const getMenuEngineeringItem = (companyId: number, productId: string, params: MenuParams) => api.get(ME(companyId) + `/items/${productId}`, params);
+export const recalculateMenuEngineering = (companyId: number, params: MenuParams) => api.create(ME(companyId) + `/recalculate`, params, JSON_BODY);
+export const updateMenuEngineeringSettings = (companyId: number, body: Record<string, boolean>) => api.put(ME(companyId) + `/settings`, body);
+export const excludeMenuItem = (companyId: number, productId: string, reason: string) => api.create(ME(companyId) + `/exclusions`, { product_id: productId, reason }, JSON_BODY);
+export const includeMenuItem = (companyId: number, productId: string) => api.delete(ME(companyId) + `/exclusions/${productId}`);
+/** O caminho do CSV da tabela (para o downloadGet). */
+export const menuEngineeringCsvPath = (companyId: number, query: string) => `${url.GET_COMPANIES}/${companyId}/restaurant/menu-engineering/items?format=csv&${query}`;
 
 // ── Transferências (Fatia 7c) ──
 const TR = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/transfers`;

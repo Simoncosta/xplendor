@@ -398,6 +398,14 @@ Schedule::call(function () {
     ->name('bussola-stand-nightly')
     ->withoutOverlapping();
 
+// 05:10 (Lisboa): Site do consultor, as contagens de interesse dos imóveis (contactos e visitas
+// dos últimos 30 dias) a partir do site, antes da Bússola do imobiliário. Interna (só a base).
+Schedule::command('consultor:interest-sync')
+    ->dailyAt('05:10')
+    ->timezone('Europe/Lisbon')
+    ->name('consultor-interest-nightly')
+    ->withoutOverlapping();
+
 // 05:25 (Lisboa): Bússola do imobiliário, os sinais das empresas com o módulo imoveis (as frases
 // da IA vão a seguir). Externa (P2 do fecho): chega à IA, por isso fica desligada no dev.
 Schedule::call(function () {

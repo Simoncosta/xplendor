@@ -451,7 +451,8 @@ class AuditRestaurantRulesTest extends TestCase
     public function test_the_registry_has_every_restaurant_rule_and_the_screens(): void
     {
         $codes = array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'central'));
-        $this->assertCount(30, $codes);   // 18 + as 4 do stock (Fatia 7a) + as 8 das transferências (Fatia 7c)
+        $this->assertCount(32, $codes);   // 18 + as 4 do stock (Fatia 7a) + as 8 das transferências (Fatia 7c) + as 2 da engenharia de menu (Fatia 3)
+        $this->assertSame(['restauracao.menu_food_cost_alvo', 'restauracao.menu_ficha_sem_compras'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'menu')));
         $this->assertContains('restauracao.iva_venda', $codes);
         $this->assertSame(['restauracao.unidade_fator', 'restauracao.stock_negativo', 'restauracao.comprado_nunca_consumido', 'restauracao.cobertura_impossivel', 'restauracao.armazem_sem_entradas',
             'restauracao.transfer_pcm_armazens'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'stock')));
