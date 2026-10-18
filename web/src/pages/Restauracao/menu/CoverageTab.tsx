@@ -7,7 +7,7 @@ import InfoTip from "Components/Common/InfoTip";
 import { getRecipeConversionInfo } from "helpers/laravel_helper";
 import { MenuSnapshot, WorkAction } from "common/models/menuEngineering.model";
 import ConfirmFactorModal, { FactorLine } from "../fichas/ConfirmFactorModal";
-import { CLASS_META, CONFIDENCE_META, fmtEur, fmtPct } from "./menuFormat";
+import { CLASS_META, CONFIDENCE_META, fmtEur, fmtPct, tokenColor } from "./menuFormat";
 
 /**
  * XPLENDOR — Fatia 3: cobertura de custos. A curva de Pareto da receita (cada barra é um artigo, com a
@@ -30,6 +30,8 @@ export default function CoverageTab({ companyId, snapshot, hidden, onChanged }: 
 
     const chart = useMemo(() => {
         const fg = cssVar("--vz-body-color", "#495057");
+        const conf = { confirmado: tokenColor(CONFIDENCE_META.confirmado.cssVar), parcial: tokenColor(CONFIDENCE_META.parcial.cssVar), sem_custo: tokenColor(CONFIDENCE_META.sem_custo.cssVar) };
+        const line = tokenColor("var(--vz-primary)");
         return {
             series: [
                 { name: "Receita sem IVA", type: "column", data: points.map((p) => p.revenue_eur ?? 0) },
@@ -38,7 +40,7 @@ export default function CoverageTab({ companyId, snapshot, hidden, onChanged }: 
             options: {
                 chart: { toolbar: { show: false }, foreColor: fg, animations: { enabled: false } },
                 plotOptions: { bar: { distributed: false, columnWidth: "80%" } },
-                colors: [({ dataPointIndex, seriesIndex }: any) => (seriesIndex === 0 ? CONFIDENCE_META[points[dataPointIndex]?.confidence ?? "sem_custo"].hex : "#405189")],
+                colors: [({ dataPointIndex, seriesIndex }: any) => (seriesIndex === 0 ? conf[points[dataPointIndex]?.confidence ?? "sem_custo"] : line)],
                 stroke: { width: [0, 2] },
                 dataLabels: { enabled: false },
                 legend: { show: false },
@@ -77,7 +79,7 @@ export default function CoverageTab({ companyId, snapshot, hidden, onChanged }: 
                         <InfoTip label="Pareto" text="Os artigos ordenados pela receita sem IVA do período; cada barra tem a cor da confiança do custo (verde Confirmado, amarelo Parcial, cinzento Sem custo)." />
                     </p>
                     <div className="d-flex gap-3 fs-12 mb-1">
-                        {(["confirmado", "parcial", "sem_custo"] as const).map((c) => <span key={c}><i className="ri-checkbox-blank-fill me-1" style={{ color: CONFIDENCE_META[c].hex }} />{CONFIDENCE_META[c].label}</span>)}
+                        {(["confirmado", "parcial", "sem_custo"] as const).map((c) => <span key={c}><i className="ri-checkbox-blank-fill me-1" style={{ color: CONFIDENCE_META[c].cssVar }} />{CONFIDENCE_META[c].label}</span>)}
                     </div>
                     <ReactApexChart type="line" height={300} series={chart.series as any} options={chart.options as any} />
                 </Col>
@@ -89,8 +91,8 @@ export default function CoverageTab({ companyId, snapshot, hidden, onChanged }: 
                                 <tr key={t.product_id}>
                                     <td>{t.description}<div className="text-muted fs-11">{t.family}</div></td>
                                     <td className="text-end text-nowrap">{hidden ? "" : fmtEur(t.revenue_eur, 0)}
-                                        <div>{t.class ? <Badge color={CLASS_META[t.class].color} className="fs-10">{CLASS_META[t.class].label}</Badge> : null}{" "}
-                                            <Badge color={CONFIDENCE_META[t.confidence].color} className="fs-10">{CONFIDENCE_META[t.confidence].label}</Badge></div></td>
+                                        <div>{t.class ? <Badge color={`${CLASS_META[t.class].color}-subtle`} className={`text-${CLASS_META[t.class].color} fs-10`}>{CLASS_META[t.class].label}</Badge> : null}{" "}
+                                            <Badge color={`${CONFIDENCE_META[t.confidence].color}-subtle`} className={`text-${CONFIDENCE_META[t.confidence].color} fs-10`}>{CONFIDENCE_META[t.confidence].label}</Badge></div></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -105,12 +107,12 @@ export default function CoverageTab({ companyId, snapshot, hidden, onChanged }: 
                     : `Faltam ${s.fichas_to_target} ${s.fichas_to_target === 1 ? "ficha técnica" : "fichas técnicas"} (pelos artigos com mais receita) para a receita com custo chegar a ${fmtPct(s.coverage_target_pct, 0)}; hoje é ${fmtPct(s.coverage.with_cost_pct)}.`}
             </p>
             <Table size="sm" responsive className="align-middle fs-13" data-testid="menu-worklist">
-                <thead><tr><th>Artigo</th><th>Confiança</th><th className="text-end">Receita</th><th>O que falta</th></tr></thead>
+                <thead className="table-light"><tr><th>Prato</th><th>Confiança</th><th className="text-end">Receita</th><th>O que falta</th></tr></thead>
                 <tbody>
                     {snapshot.worklist.slice(0, 40).map((w) => (
                         <tr key={w.product_id}>
                             <td>{w.description}<div className="text-muted fs-11">{w.family}</div></td>
-                            <td><Badge color={CONFIDENCE_META[w.confidence].color} className="fs-11">{CONFIDENCE_META[w.confidence].label}</Badge></td>
+                            <td><Badge color={`${CONFIDENCE_META[w.confidence].color}-subtle`} className={`text-${CONFIDENCE_META[w.confidence].color} fs-11`}>{CONFIDENCE_META[w.confidence].label}</Badge></td>
                             <td className="text-end text-nowrap">{hidden ? fmtPct(w.revenue_share_pct) : fmtEur(w.revenue_eur, 0)}</td>
                             <td>
                                 {w.actions.map((a, i) => (

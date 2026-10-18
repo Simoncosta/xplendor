@@ -17,6 +17,7 @@ jest.mock("Components/Common/InfoTip", () => ({ __esModule: true, default: () =>
 jest.mock("Components/Common/Select", () => ({ __esModule: true, default: () => <div /> }));
 jest.mock("pages/Auditoria/AuditButton", () => ({ __esModule: true, default: () => null }));
 jest.mock("./menu/MatrixTab", () => ({ __esModule: true, default: () => <div data-testid="matrix" /> }));
+jest.mock("react-apexcharts", () => ({ __esModule: true, default: () => <div /> }));
 jest.mock("./menu/TableTab", () => ({ __esModule: true, default: () => <div data-testid="table" /> }));
 jest.mock("./menu/CoverageTab", () => ({ __esModule: true, default: () => <div /> }));
 jest.mock("./menu/FoodCostTab", () => ({ __esModule: true, default: () => <div /> }));
@@ -33,7 +34,8 @@ const snapshot = {
     families: [], food_cost: { months: [], latest: null, families: {}, excluded_families: [] }, pareto: [], worklist: [],
 };
 const response = (mode: string) => ({ data: { locations: [], running: null, settings: { include_zero_price: false, include_low_volume: false, include_retired: false, include_uber_eats: false },
-    exclusions: [], can_manage: true, labels: {}, snapshot: { ...snapshot, price_mode: mode }, items: [], financial: { visible: true, note: null } } });
+    exclusions: [], can_manage: true, labels: {}, targets: { food_cost_pct: 35, confirmed_pct: 80 }, snapshot: { ...snapshot, price_mode: mode },
+    items: [{ product_id: "SSAL", description: "S/Sal", family: "Comidas › Acompanhamentos", qty: 40, excluded: "preco_zero", excluded_reason: "Preço 0 (modificador)" }], financial: { visible: true, note: null } } });
 
 describe("MenuEngineeringPage", () => {
     beforeEach(() => { mockGet.mockReset(); window.matchMedia = jest.fn().mockImplementation(() => ({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() })); });
@@ -41,10 +43,12 @@ describe("MenuEngineeringPage", () => {
     it("mostra o topo e o interruptor muda o custo em todo o ecrã (média de 90 dias ↔ último custo)", async () => {
         mockGet.mockImplementation((_c: number, p: any) => Promise.resolve(response(p.mode)));
         render(<MenuEngineeringPage />);
-        expect(await screen.findByTestId("menu-kpi-coverage")).toHaveTextContent("70,6%");
+        expect(await screen.findByTestId("menu-kpi-coverage")).toHaveTextContent("Custo confirmado20,5%");
         expect(screen.getByTestId("menu-kpi-purchases")).toHaveTextContent("27,4%");
-        expect(screen.getByTestId("menu-kpi-theory")).toHaveTextContent("só 70,6% da receita tem custo");
-        expect(screen.getByTestId("menu-kpi-classes")).toHaveTextContent("27");
+        expect(screen.getByTestId("menu-kpi-purchases")).toHaveTextContent("Abaixo do alvo de 35%");
+        expect(screen.getByTestId("menu-kpi-provisional")).toHaveTextContent("Provisório: inclui custos parciais");
+        expect(screen.getByTestId("menu-kpi-mini-matrix")).toHaveTextContent("10Estrela");
+        expect(screen.getByTestId("menu-excluded-alert")).toHaveTextContent("1 pratos ficam fora da matriz: preço 0 (37).");
         expect(screen.getByTestId("matrix")).toBeInTheDocument();
         expect(mockGet).toHaveBeenLastCalledWith(5, expect.objectContaining({ mode: "media" }));
         fireEvent.click(screen.getByText("Último custo"));
@@ -56,7 +60,7 @@ describe("MenuEngineeringPage", () => {
     it("sem cálculo, diz que está a calcular", async () => {
         mockGet.mockResolvedValue({ data: { ...response("media").data, snapshot: null, running: { status: "queued", at: "" } } });
         render(<MenuEngineeringPage />);
-        expect(await screen.findByTestId("menu-pending")).toHaveTextContent("A calcular a engenharia de menu");
+        expect(await screen.findByText(/A calcular a engenharia de menu/)).toBeInTheDocument();
     });
 
     it("o período: os últimos N dias até ontem", () => {

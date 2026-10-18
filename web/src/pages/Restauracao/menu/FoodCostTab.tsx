@@ -3,7 +3,7 @@ import ReactApexChart from "react-apexcharts";
 import { Alert, Table } from "reactstrap";
 import InfoTip from "Components/Common/InfoTip";
 import { MenuSnapshot } from "common/models/menuEngineering.model";
-import { fmtEur, fmtPct } from "./menuFormat";
+import { fmtEur, fmtPct, tokenColor } from "./menuFormat";
 
 /**
  * XPLENDOR — Fatia 3: food cost por compras (não precisa de fichas). Por mês: comida, bebida, total e a
@@ -20,7 +20,7 @@ const cssVar = (name: string, fallback: string) => {
     }
 };
 
-export default function FoodCostTab({ snapshot, hidden }: { snapshot: MenuSnapshot; hidden: boolean }) {
+export default function FoodCostTab({ snapshot, hidden, target = 35 }: { snapshot: MenuSnapshot; hidden: boolean; target?: number }) {
     const months = snapshot.food_cost.months.filter((m) => (m.revenue_eur ?? 0) > 0 || m.total_pct !== null);
     const s = snapshot.summary;
     const chart = useMemo(() => ({
@@ -32,7 +32,8 @@ export default function FoodCostTab({ snapshot, hidden }: { snapshot: MenuSnapsh
         ],
         options: {
             chart: { stacked: false, toolbar: { show: false }, foreColor: cssVar("--vz-body-color", "#495057"), animations: { enabled: false } },
-            colors: ["#0ab39c", "#299cdb", "#405189", "#f7b84b"],
+            colors: [tokenColor("var(--vz-success)"), tokenColor("var(--vz-info)"), tokenColor("var(--vz-primary)"), tokenColor("var(--vz-warning)")],
+            annotations: { yaxis: [{ y: target, borderColor: tokenColor("var(--vz-danger)"), strokeDashArray: 4, label: { text: `Alvo ${target.toLocaleString("pt-PT")} %`, position: "left", textAnchor: "start", style: { color: tokenColor("var(--vz-danger)"), background: "transparent" } } }] },
             stroke: { width: [0, 0, 2, 3], dashArray: [0, 0, 0, 5] },
             dataLabels: { enabled: false },
             xaxis: { categories: months.map((m) => monthLabel(m.month) + (m.complete ? "" : " (parcial)")) },
@@ -40,7 +41,7 @@ export default function FoodCostTab({ snapshot, hidden }: { snapshot: MenuSnapsh
             tooltip: { shared: true, y: { formatter: (v: number | null) => fmtPct(v) } },
             legend: { position: "bottom" },
         },
-    }), [months]);
+    }), [months, target]);
 
     return (
         <div data-testid="menu-foodcost">
@@ -54,7 +55,7 @@ export default function FoodCostTab({ snapshot, hidden }: { snapshot: MenuSnapsh
             </p>
             <ReactApexChart type="line" height={320} series={chart.series as any} options={chart.options as any} />
             <Table size="sm" responsive className="fs-13 mt-2">
-                <thead><tr><th>Mês</th><th className="text-end">Vendas</th><th className="text-end">Comida</th><th className="text-end">Bebida</th><th className="text-end">Total</th><th className="text-end">Média de 3 meses</th></tr></thead>
+                <thead className="table-light"><tr><th>Mês</th><th className="text-end">Vendas</th><th className="text-end">Comida</th><th className="text-end">Bebida</th><th className="text-end">Total</th><th className="text-end">Média de 3 meses</th></tr></thead>
                 <tbody>
                     {months.map((m) => (
                         <tr key={m.month}>
@@ -73,6 +74,7 @@ export default function FoodCostTab({ snapshot, hidden }: { snapshot: MenuSnapsh
                 <p className="fs-13" data-testid="menu-compare">
                     Por compras (média de 3 meses): <strong>{fmtPct(s.food_cost_purchases?.avg3_pct)}</strong>. Teórico (pelas fichas): <strong>{fmtPct(s.food_cost_theoretical.pct)}</strong>.
                     A diferença é o desperdício, as ofertas, os erros de stock e as fichas desatualizadas.
+                    {(s.coverage.confirmado_pct ?? 0) < s.coverage_target_pct && <> Provisório: o teórico inclui custos parciais (só {fmtPct(s.coverage.confirmado_pct)} da receita tem o custo confirmado).</>}
                 </p>
             ) : (
                 <p className="fs-13 text-muted" data-testid="menu-compare-blocked">

@@ -57,6 +57,7 @@ export type MenuResponse = {
     exclusions: { product_id: string; reason: string; created_at: string }[];
     can_manage: boolean;
     labels: { classes: Record<MenuClass, string>; exclusions: Record<string, string>; plays: Record<MenuClass, string> };
+    targets?: { food_cost_pct: number; confirmed_pct: number };
     snapshot: MenuSnapshot | null;
     items?: MenuItem[];
     financial?: { visible: boolean; note: string | null };

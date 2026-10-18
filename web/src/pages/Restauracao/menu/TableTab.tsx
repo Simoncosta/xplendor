@@ -56,30 +56,31 @@ export default function TableTab({ companyId, params, families, hidden, onOpen, 
 
     const euro = (k: string) => (hidden ? undefined : k);
     const columns: DTColumn<MenuItem>[] = [
-        { id: "description", header: "Artigo", sortKey: "description", value: (r) => r.description, mobile: "title", hideable: false,
+        { id: "description", header: "Prato", sortKey: "description", value: (r) => r.description, mobile: "title", hideable: false,
             cell: (r) => (
                 <div style={{ minWidth: 170 }}>
                     <span className="fw-medium">{r.description}</span>
                     {r.code && <span className="text-muted fs-12 ms-1">{r.code}</span>}
+                    <div className="text-muted fs-12">{r.family}</div>
                     {r.changed && <div className="fs-11 text-info">Ficha alterada no período</div>}
                     {r.excluded_reason && <div className="fs-11 text-muted">Fora da matriz: {r.excluded_reason}</div>}
                 </div>
             ) },
-        { id: "family", header: "Família", sortKey: "family", value: (r) => r.family, cell: (r) => <span className="fs-13">{r.family}</span> },
+        { id: "family", header: "Família", sortKey: "family", value: (r) => r.family, defaultVisible: false, cell: (r) => <span className="fs-13">{r.family}</span> },
         { id: "qty", header: "Quantidade", sortKey: "qty", value: (r) => r.qty, align: "end", nowrap: true, cell: (r) => fmtQty(r.qty) },
         { id: "share", header: "Quota", sortKey: "share", value: (r) => r.share_pct, align: "end", nowrap: true, cell: (r) => fmtPct(r.share_pct) },
         { id: "price", header: "Preço sem IVA", sortKey: euro("price"), value: (r) => r.price_eur, align: "end", nowrap: true, cell: (r) => fmtEur(r.price_eur) },
         { id: "cost", header: "Custo", sortKey: euro("cost"), value: (r) => r.cost_eur, align: "end", nowrap: true, cell: (r) => costLabel(r) },
         { id: "margin", header: "Margem unitária", sortKey: euro("margin"), value: (r) => r.margin_eur, align: "end", nowrap: true, cell: (r) => fmtEur(r.margin_eur) },
         { id: "margin_total", header: "Margem total", sortKey: euro("margin_total"), value: (r) => r.margin_total_eur, align: "end", nowrap: true, cell: (r) => fmtEur(r.margin_total_eur, 0) },
-        { id: "food_cost", header: "Food cost", sortKey: "food_cost", value: (r) => r.food_cost_pct, align: "end", nowrap: true, cell: (r) => fmtPct(r.food_cost_pct) },
+        { id: "food_cost", header: "Food cost", sortKey: "food_cost", value: (r) => r.food_cost_pct, align: "end", nowrap: true, cell: (r) => (r.food_cost_pct === null ? "—" : r.confidence === "parcial" ? `≥ ${fmtPct(r.food_cost_pct)}` : fmtPct(r.food_cost_pct)) },
         { id: "class", header: "Classe", sortKey: "class", value: (r) => r.class, nowrap: true,
             cell: (r) => r.class ? (
-                <span><Badge color={CLASS_META[r.class].color} className="fs-11"><i className={`${CLASS_META[r.class].icon} me-1`} />{CLASS_META[r.class].label}</Badge>
+                <span><Badge color={`${CLASS_META[r.class].color}-subtle`} className={`text-${CLASS_META[r.class].color} fs-11`}><i className={`${CLASS_META[r.class].icon} me-1`} />{CLASS_META[r.class].label}</Badge>
                     {r.fragile && <i className="ri-error-warning-line text-warning ms-1" title={r.fragile_reasons.map((f) => f.text).join(" ")} />}</span>
             ) : <span className="text-muted">—</span> },
         { id: "confidence", header: "Confiança", sortKey: "confidence", value: (r) => r.confidence, nowrap: true,
-            cell: (r) => <Badge color={CONFIDENCE_META[r.confidence].color} className="fs-11" title={CONFIDENCE_META[r.confidence].text}>{CONFIDENCE_META[r.confidence].label}</Badge> },
+            cell: (r) => <Badge color={`${CONFIDENCE_META[r.confidence].color}-subtle`} className={`text-${CONFIDENCE_META[r.confidence].color} fs-11`} title={CONFIDENCE_META[r.confidence].text}>{CONFIDENCE_META[r.confidence].label}</Badge> },
         { id: "play", header: "Jogada", sortable: false, value: (r) => r.play, defaultVisible: false, cell: (r) => <span className="fs-12">{r.play ?? "—"}</span> },
     ];
     const cols = useDataColumns("restauracao.menu", columns);
