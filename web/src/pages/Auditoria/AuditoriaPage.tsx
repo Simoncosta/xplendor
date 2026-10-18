@@ -17,6 +17,7 @@ import { AuditStateBadge, Cents, ENTITY_LABEL, SEVERITY, SeverityBadge, fmtWhen 
 import AuditFindingPanel from "./AuditFindingPanel";
 import AuditRunPanel from "./AuditRunPanel";
 import AuditGroupsView from "./AuditGroupsView";
+import AuditEuros from "./AuditEuros";
 
 /**
  * XPLENDOR — Auditoria (plataforma): os achados de todas as áreas que a pessoa pode ver
@@ -31,6 +32,8 @@ const STATE_OPTIONS = [
     { value: "corrigido", label: "Marcados como corrigidos" }, { value: "ignorado", label: "Ignorados" },
     { value: "resolvido", label: "Resolvidos" }, { value: "todos", label: "Todos" },
 ];
+// Auditoria v2-C: os grupos de regras (a família). "Dinheiro" (C1 a C6) e "Unidades" (U0 a U9).
+const FAMILY_LABEL: Record<string, string> = { dinheiro: "Dinheiro", unidades: "Unidades" };
 const SEVERITY_OPTIONS = [{ value: "", label: "Todas as urgências" }, ...(["alta", "media", "baixa", "info"] as const).map((s) => ({ value: s, label: SEVERITY[s].label }))];
 
 export default function AuditoriaPage() {
@@ -50,6 +53,7 @@ export default function AuditoriaPage() {
 
     const area = params.get("area") ?? "";
     const rule = params.get("rule") ?? "";
+    const family = params.get("familia") ?? "";
     const severity = params.get("severity") ?? "";
     const state = params.get("state") ?? "abertos";
     const entityType = params.get("entity_type") ?? "";
@@ -59,7 +63,7 @@ export default function AuditoriaPage() {
     const setParam = (key: string, value: string) => {
         const next = new URLSearchParams(params);
         if (value) next.set(key, value); else next.delete(key);
-        if (key === "area") next.delete("rule");
+        if (key === "area" || key === "familia") next.delete("rule");
         setParams(next, { replace: true });
     };
 
@@ -74,7 +78,7 @@ export default function AuditoriaPage() {
         setError(null);
         try {
             const res: any = await getAuditFindings(companyId, {
-                page, perPage: PER_PAGE, area: area || undefined, rule: rule || undefined, severity: severity || undefined,
+                page, perPage: PER_PAGE, area: area || undefined, rule: rule || undefined, family: family || undefined, severity: severity || undefined,
                 state, entity_type: entityType || undefined, entity_id: entityId || undefined, search: search.trim() || undefined,
                 sort: sort?.key, dir: sort ? (sort.desc ? "desc" : "asc") : undefined,
             });
@@ -84,16 +88,18 @@ export default function AuditoriaPage() {
         } finally {
             setLoading(false);
         }
-    }, [companyId, page, area, rule, severity, state, entityType, entityId, search, sort]);
+    }, [companyId, page, area, rule, family, severity, state, entityType, entityId, search, sort]);
     useEffect(() => { const t = setTimeout(fetchRows, 250); return () => clearTimeout(t); }, [fetchRows, reload]);
-    useEffect(() => { setPage(1); }, [area, rule, severity, state, entityType, entityId, search, sort]);
+    useEffect(() => { setPage(1); }, [area, rule, family, severity, state, entityType, entityId, search, sort]);
 
     const hidden = data?.financial?.visible === false || meta?.financial?.visible === false;
     const rows = data?.findings?.data ?? [];
     const pg = data?.findings;
     const summary = data?.summary;
     const areas = useMemo(() => meta?.areas ?? [], [meta]);
-    const rules = useMemo(() => areas.filter((a) => !area || a.key === area).flatMap((a) => a.rules), [areas, area]);
+    const allRules = useMemo(() => areas.filter((a) => !area || a.key === area).flatMap((a) => a.rules), [areas, area]);
+    const rules = useMemo(() => allRules.filter((r) => !family || r.family === family), [allRules, family]);
+    const families = useMemo(() => Array.from(new Set(allRules.map((r) => r.family).filter((f): f is string => !!f && !!FAMILY_LABEL[f]))), [allRules]);
     const ruleValue = rule.includes(",") ? "" : rule;
 
     const startRun = async (a: AuditArea) => {
@@ -149,7 +155,7 @@ export default function AuditoriaPage() {
             {node}
         </div>
     );
-    const activeFilterCount = [!!area, !!rule, !!severity, state !== "abertos"].filter(Boolean).length;
+    const activeFilterCount = [!!area, !!family, !!rule, !!severity, state !== "abertos"].filter(Boolean).length;
     const clearFilters = () => { setSearch(""); setParams(new URLSearchParams(), { replace: true }); };
     const lastRun = meta?.last_runs?.slice().sort((a, b) => (b.finished_at ?? "").localeCompare(a.finished_at ?? ""))[0];
 
@@ -169,6 +175,7 @@ export default function AuditoriaPage() {
                 <PageHeader title="Auditoria"
                     info="A auditoria procura o que está mal nos dados (IVA, preços de compra, unidades, fichas técnicas, faturas, viaturas, eventos do site). Para cada achado diz o que viu, porque importa, o que fazer e quanto está em jogo. Nunca corrige nada sozinha: o botão Corrigir abre o sítio certo." />
                 {hidden && <FinancialNote className="mb-3" />}
+                <AuditEuros companyId={companyId} area={area || undefined} refreshKey={data ? (data as any).total ?? 0 : 0} />
                 <PageCard
                     title="Achados"
                     info="Primeiro o dinheiro em jogo, do maior para o menor; depois o que está a confirmar; no fim, o que só tem relevância (vendas ou compras ligadas). Em caso de empate, o mais urgente primeiro."
@@ -209,6 +216,8 @@ export default function AuditoriaPage() {
                             <RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar (achado ou entidade)…" activeCount={activeFilterCount} onClear={clearFilters}>
                                 {areas.length > 1 && filterField("Área", <XSelect ariaLabel="Área" small searchable={false} value={area}
                                     options={[{ value: "", label: "Todas as áreas" }, ...areas.map((a) => ({ value: a.key, label: a.label }))]} onChange={(v) => setParam("area", v)} />, "160px")}
+                                {families.length > 0 && filterField("Grupo", <XSelect ariaLabel="Grupo" small searchable={false} value={family}
+                                    options={[{ value: "", label: "Todos os grupos" }, ...families.map((f) => ({ value: f, label: FAMILY_LABEL[f] }))]} onChange={(v) => setParam("familia", v)} />, "160px")}
                                 {filterField("Regra", <XSelect ariaLabel="Regra" small value={ruleValue}
                                     options={[{ value: "", label: rule.includes(",") ? "As regras desta auditoria" : "Todas as regras" }, ...rules.map((r) => ({ value: r.code, label: r.title }))]}
                                     onChange={(v) => setParam("rule", v)} />, "240px")}
@@ -231,7 +240,7 @@ export default function AuditoriaPage() {
                 >
                     {view === "regra" && companyId ? (
                         <AuditGroupsView companyId={companyId} hidden={hidden} reloadKey={reload}
-                            filters={{ area: area || undefined, rule: rule || undefined, severity: severity || undefined, state, entity_type: entityType || undefined, entity_id: entityId || undefined, search: search.trim() || undefined }}
+                            filters={{ area: area || undefined, rule: rule || undefined, family: family || undefined, severity: severity || undefined, state, entity_type: entityType || undefined, entity_id: entityId || undefined, search: search.trim() || undefined }}
                             onOpenFinding={(id) => setOpenId(id)}
                             onShowRule={(code) => { const n = new URLSearchParams(params); n.set("rule", code); n.delete("vista"); setParams(n, { replace: true }); }} />
                     ) : error && !data ? (

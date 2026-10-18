@@ -10,7 +10,7 @@ import { AuditStateBadge, Cents, SeverityBadge } from "./auditFormat";
  * jogo, o a confirmar, a relevância e a urgência mais alta); cada uma expande-se nos primeiros achados,
  * para que regras com muitos achados (ex.: 221 "vendido sem ficha") não encham a lista.
  */
-type Filters = { area?: string; rule?: string; severity?: string; state?: string; entity_type?: string; entity_id?: string; search?: string };
+type Filters = { area?: string; rule?: string; family?: string; severity?: string; state?: string; entity_type?: string; entity_id?: string; search?: string };
 const FIRST = 10;
 
 export default function AuditGroupsView({ companyId, filters, hidden, reloadKey, onOpenFinding, onShowRule }: {

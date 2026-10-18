@@ -11,8 +11,10 @@ import { parseNum } from "./ConfirmFactorModal";
  * Fatia 1b — confirmar quanto rende o lote de uma versão da ficha de um semi-produto (ex.: o Molho
  * rende 30 L). Custo por unidade base = custo do lote ÷ rendimento. Escreve só na XPLENDOR.
  */
-export default function ConfirmYieldModal({ open, onClose, onDone, companyId, productId, version, hidden }: {
+export default function ConfirmYieldModal({ open, onClose, onDone, companyId, productId, version, hidden, suggested }: {
     open: boolean; onClose: () => void; onDone: () => void; companyId: number | null; productId: string; version: RecipeVersion; hidden: boolean;
+    /** Auditoria v2: já preenchido com a evidência (ex.: «30LT» na descrição). */
+    suggested?: { quantity: number | null; reason: string | null } | null;
 }) {
     const y = version.yield!;
     const [qty, setQty] = useState("");
@@ -21,9 +23,11 @@ export default function ConfirmYieldModal({ open, onClose, onDone, companyId, pr
 
     useEffect(() => {
         if (!open) return;
-        setQty(y.quantity !== null ? String(y.quantity).replace(".", ",") : "");
-        setReason(y.confirmed ? y.reason : y.suggestions[0]?.reason ?? null);
-    }, [open, y]);
+        const fromAudit = !y.confirmed && suggested?.quantity ? suggested : null;
+        const q = fromAudit ? fromAudit.quantity : y.quantity;
+        setQty(q !== null && q !== undefined ? String(q).replace(".", ",") : "");
+        setReason(fromAudit ? fromAudit.reason : y.confirmed ? y.reason : y.suggestions[0]?.reason ?? null);
+    }, [open, y, suggested]);
 
     const n = parseNum(qty);
     const perUnit = n && version.cost_eur !== null ? version.cost_eur / n : null;

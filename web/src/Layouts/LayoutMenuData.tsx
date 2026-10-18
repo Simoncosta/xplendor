@@ -232,6 +232,8 @@ const Navdata = () => {
                 { id: "pingwin-contagens", label: "Contagens", link: "/restauracao/stock/contagens", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-desperdicio", label: "Desperdício", link: "/restauracao/stock/desperdicio", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-engenharia-menu", label: "Engenharia de menu", link: "/restauracao/engenharia-menu", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
+                // Auditoria v2: o Guião de unidades (Restauração › Auditoria › Guião de unidades).
+                { id: "pingwin-guiao-unidades", label: "Guião de unidades", link: "/restauracao/auditoria/guiao", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-transferencias", label: "Transferências", link: "/restauracao/transferencias", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "restauracao_faturas", permission: "restauracao.ver" },
                 { id: "pingwin-conta-corrente", label: "Conta Corrente Fornecedores", link: "/restauracao/conta-corrente", parentId: "restauracao", module: "restauracao_conta_corrente", permission: "restauracao.ver" },

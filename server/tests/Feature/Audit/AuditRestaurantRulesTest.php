@@ -21,7 +21,8 @@ use App\Audit\Rules\Restaurant\Fichas\VersaoVaziaRule;
 use App\Audit\Rules\Restaurant\Fichas\VersoesMesmaDataRule;
 use App\Audit\Rules\Restaurant\IvaVendaRule;
 use App\Audit\Rules\Restaurant\PrecoCompraRule;
-use App\Audit\Rules\Restaurant\UnidadeFatorRule;
+use App\Audit\Rules\Restaurant\Units\UnidadeGlobalIncoerenteRule;
+use App\Services\Restaurant\Units\UnitCatalog;
 use App\Audit\Rules\Restaurant\UnidadeSemConversaoRule;
 use App\Audit\Rules\Restaurant\UnidadeTrocadaRule;
 use App\Audit\Rules\Restaurant\VendidoSemFichaRule;
@@ -181,7 +182,7 @@ class AuditRestaurantRulesTest extends TestCase
         $this->assertSame('A confirmar: só se sabe depois de ver a fatura em papel. Se o preço certo for o habitual, a linha está 1 227,28 € acima do que devia.', $f[0]->stake);
         $this->assertNull($f[0]->impactCents);                        // não entra na soma do Pareto
         $this->assertSame(122728, $f[0]->impactPendingCents);         // |1280,64 € − 96 × 0,5558 €|
-        $this->assertSame(['type' => 'confirmar_fator', 'product_id' => 'PT', 'unit_key' => '11001', 'description' => 'PEDRAS TR 0.25X0.24 GR'], $f[0]->fixAction);
+        $this->assertSame(['type' => 'guiao', 'product_id' => 'PT', 'unit_key' => '11001', 'description' => 'PEDRAS TR 0.25X0.24 GR'], $f[0]->fixAction);
         $this->assertStringContainsString('indique em «Corrigir» quantas unidades tem a embalagem', $f[0]->suggestion);
         $this->assertContains(['fornecedor', 'SB'], $f[0]->refs);
     }
@@ -237,22 +238,25 @@ class AuditRestaurantRulesTest extends TestCase
 
     // ── 3 e 4. Unidades ──────────────────────────────────────────────────────
 
-    public function test_unit_with_factor_one_and_a_pack_name(): void
+    public function test_unit_with_factor_one_and_a_pack_name_is_u9(): void
     {
         $this->catalog($this->c, 'CC', ['description' => 'COCA COLA 0.33', 'base_unit_id' => '11001']);
         $this->bought('CC', '2026-09-01', 2, 'CX24', 'Caixa 24 Unidades', 1, 12, 2400);
         $this->bought('CC', '2026-09-08', 3, 'GRD24', 'Grade 24', 24, 12, 3600);   // a Grade 24 vale 24: nada
 
-        $f = collect($this->findings(UnidadeFatorRule::class))->keyBy('entityId');
+        $f = collect($this->findings(UnidadeGlobalIncoerenteRule::class))->keyBy('entityId');
         $this->assertTrue($f->has('CX24'));
         $this->assertFalse($f->has('GRD24'));
-        $this->assertSame('alta', $f['CX24']->severity);
-        $this->assertSame('Caixa 24 Unidades: conta como 1 em vez de 24', $f['CX24']->title);
-        $this->assertSame('No PingWin, a unidade «Caixa 24 Unidades» conta como 1 unidade, mas o nome indica 24 unidades. Nos últimos 12 meses foi usada em 1 compra de 1 artigo.', $f['CX24']->seen);
-        $this->assertStringStartsWith('Peça ao suporte do PingWin para corrigir a unidade: 1 «Caixa 24 Unidades» = 24 unidades.', $f['CX24']->suggestion);
-        $this->assertSame('baixa', $f['CX6']->severity);   // sem compras: latente
-        $this->assertSame(['factor' => 20.0, 'parent' => '11003', 'text' => '20LT'], UnidadeFatorRule::fromName('BARRIL 20LT'));
-        $this->assertNull(UnidadeFatorRule::fromName('CX PLASTICA 60X40X32'));
+        $this->assertSame('restauracao.unidade_fator', app(UnidadeGlobalIncoerenteRule::class)->code()); // o código da regra 3 (o histórico fica)
+        $this->assertSame('Caixa 24 Unidades: conta 1 unidade em vez de 24 unidades', $f['CX24']->title);
+        $this->assertSame(2300, $f['CX24']->impactCents);   // 24 € × (1 − 1/24)
+        $this->assertSame('media', $f['CX24']->severity);
+        $this->assertSame(['type' => 'unidade_global', 'unit_id' => 'CX24'], $f['CX24']->fixAction);
+        // Regra 1: a «Grade 24» já existe com 24 na mesma base: reutiliza-se (não se cria outra).
+        $this->assertStringStartsWith('Já existe a unidade certa, «Grade 24» (1 = 24 unidades).', $f['CX24']->suggestion);
+        $this->assertSame('baixa', $f['CX6']->severity);   // sem artigos: latente
+        $this->assertSame(20.0, UnitCatalog::nameQuantity('BARRIL 20LT', 'L'));
+        $this->assertNull(UnitCatalog::nameQuantity('CX PLASTICA 60X40X32', 'un'));
     }
 
     public function test_purchase_unit_without_conversion(): void
@@ -267,7 +271,7 @@ class AuditRestaurantRulesTest extends TestCase
         $f = $this->findings(UnidadeSemConversaoRule::class);
         $this->assertCount(1, $f);
         $this->assertSame('QJ|11001', $f[0]->entityId);
-        $this->assertSame(['type' => 'confirmar_fator', 'product_id' => 'QJ', 'unit_key' => '11001', 'description' => 'QUEIJO FLAMENGO'], $f[0]->fixAction);
+        $this->assertSame(['type' => 'guiao', 'product_id' => 'QJ', 'unit_key' => '11001', 'description' => 'QUEIJO FLAMENGO'], $f[0]->fixAction);
         $this->assertSame('QUEIJO FLAMENGO: comprado em «Unidade», contado em quilograma', $f[0]->title);
         $this->assertStringContainsString('Veja numa fatura quantos quilogramas tem cada «Unidade».', $f[0]->suggestion);
     }
@@ -451,8 +455,11 @@ class AuditRestaurantRulesTest extends TestCase
     public function test_the_registry_has_every_restaurant_rule_and_the_screens(): void
     {
         $codes = array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'central'));
-        $this->assertCount(32, $codes);   // 18 + as 4 do stock (Fatia 7a) + as 8 das transferências (Fatia 7c) + as 2 da engenharia de menu (Fatia 3)
-        $this->assertSame(['restauracao.menu_food_cost_alvo', 'restauracao.menu_ficha_sem_compras'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'menu')));
+        $this->assertCount(47, $codes);   // 18 + as 4 do stock (Fatia 7a) + as 8 das transferências (Fatia 7c) + as 2 da engenharia de menu (Fatia 3) + as 9 das unidades (Auditoria v2) + as 6 do dinheiro (v2-C)
+        $u = ['restauracao.unidade_fator', 'restauracao.unidade_combinacao_nova', 'restauracao.unidade_embalagem_fator_1', 'restauracao.unidade_base_grande', 'restauracao.unidade_peso_variavel',
+            'restauracao.unidade_fornecedores', 'restauracao.unidade_preco_familia', 'restauracao.unidade_sem_uso', 'restauracao.unidade_bebida_ficha', 'restauracao.unidade_por_identificar'];
+        $this->assertSame($u, array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'unidades')));
+        $this->assertSame(['restauracao.menu_food_cost_alvo', 'restauracao.menu_ficha_sem_compras', 'restauracao.dinheiro_margem_prato'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'menu')));
         $this->assertContains('restauracao.iva_venda', $codes);
         $this->assertSame(['restauracao.unidade_fator', 'restauracao.stock_negativo', 'restauracao.comprado_nunca_consumido', 'restauracao.cobertura_impossivel', 'restauracao.armazem_sem_entradas',
             'restauracao.transfer_pcm_armazens'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'stock')));
@@ -460,8 +467,9 @@ class AuditRestaurantRulesTest extends TestCase
             'restauracao.transfer_diferenca', 'restauracao.transfer_fator', 'restauracao.transfer_pcm_armazens', 'restauracao.transfer_encomenda_parada'],
             array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'transferencias')));
         $this->assertSame(['restauracao.armazem_sem_entradas'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'armazens')));
-        $this->assertSame(['restauracao.preco_compra', 'restauracao.unidade_trocada', 'restauracao.unidade_fator', 'restauracao.unidade_sem_conversao', 'restauracao.documento_data_serie', 'restauracao.fatura_sem_linhas',
-            'restauracao.transfer_fator'],
+        $this->assertSame(array_merge(['restauracao.preco_compra', 'restauracao.unidade_trocada', 'restauracao.unidade_fator', 'restauracao.unidade_sem_conversao', 'restauracao.documento_data_serie', 'restauracao.fatura_sem_linhas',
+            'restauracao.transfer_fator'], array_values(array_diff($u, ['restauracao.unidade_sem_uso', 'restauracao.unidade_fator'])),
+            ['restauracao.dinheiro_preco_subiu', 'restauracao.dinheiro_mais_barato', 'restauracao.dinheiro_fatura_duplicada', 'restauracao.dinheiro_guia_sem_fatura']),
             array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'faturas')));
         $this->assertSame(['restauracao.familia_suspeita'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'familias')));
         $this->assertFalse(app(IvaVendaRule::class)->appliesTo(Company::create(['nipc' => '503504564', 'fiscal_name' => 'Stand', 'plan_id' => DB::table('plans')->value('id'), 'subscription_status' => 'active'])->id));

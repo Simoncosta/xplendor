@@ -39,6 +39,7 @@ class CompanyAuditController extends Controller
         }
         $user = $request->user();
         $areas = AuditAreas::visible($user, $companyId);
+        $hidden = AuditAreas::hiddenRules($user, $companyId);
         $last = AuditRun::where('company_id', $companyId)->whereIn('area', $areas ?: ['__nenhuma__'])
             ->whereIn('id', AuditRun::where('company_id', $companyId)->selectRaw('MAX(id)')->groupBy('scope_key'))
             ->get()->map(fn ($r) => $r->toApi())->values();
@@ -46,10 +47,11 @@ class CompanyAuditController extends Controller
         return ApiResponse::success([
             'areas' => array_map(fn ($a) => [
                 'key' => $a, 'label' => AuditAreas::label($a), 'can_edit' => AuditAreas::canEdit($user, $companyId, $a),
-                'rules' => array_map(fn ($r) => [
+                'rules' => array_values(array_map(fn ($r) => [
                     'code' => $r->code(), 'title' => $r->title(), 'description' => $r->description(), 'severity' => $r->severity(),
                     'screens' => $r->screens(), 'applies' => $r->appliesTo($companyId),
-                ], AuditRegistry::forScope($a, 'central')),
+                    'family' => method_exists($r, 'family') ? $r->family() : null,
+                ], array_filter(AuditRegistry::forScope($a, 'central'), fn ($r) => ! in_array($r->code(), $hidden, true)))),
             ], $areas),
             'last_runs' => $last,
             'financial' => $this->financial($request, $companyId),
@@ -68,6 +70,7 @@ class CompanyAuditController extends Controller
             'perPage' => ['nullable', 'integer', 'min:1', 'max:200'],
             'area' => ['nullable', 'string', 'max:32'],
             'rule' => ['nullable', 'string', 'max:2000'],
+            'family' => ['nullable', 'string', 'max:32'],
             'severity' => ['nullable', 'string', 'max:40'],
             'state' => ['nullable', 'string', 'max:80'],
             'entity_type' => ['nullable', 'string', 'max:40'],
@@ -77,10 +80,36 @@ class CompanyAuditController extends Controller
             'dir' => ['nullable', Rule::in(['asc', 'desc'])],
         ]);
         $areas = AuditAreas::visible($request->user(), $companyId);
+        $v['hide_rules'] = AuditAreas::hiddenRules($request->user(), $companyId);
         $payload = $this->findings->list($companyId, $areas, $v, $v['sort'] ?? 'pareto', $v['dir'] ?? 'desc',
             (int) ($v['page'] ?? 1), (int) ($v['perPage'] ?? 50), $finance);
 
         return ApiResponse::success($payload + ['financial' => $this->financial($request, $companyId)], 'Achados da auditoria.');
+    }
+
+    /** Os euros: "Em jogo agora", "Resolvido este mês" e "Resolvido desde o início", por pessoa e por regra. */
+    public function summary(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompany($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $areas = AuditAreas::visible($request->user(), $companyId);
+        $area = $request->validate(['area' => ['nullable', 'string', 'max:32']])['area'] ?? null;
+        if ($area) {
+            $areas = array_values(array_intersect($areas, [$area]));
+        }
+        $data = \App\Audit\AuditResolvedEuros::summary($companyId, $areas);
+        if (! CompassFinancials::visibleTo($request->user(), $companyId)) {
+            $data['open_cents'] = null;
+            foreach (['month', 'total'] as $k) {
+                $data[$k]['cents'] = null;
+                foreach (['by_person', 'by_rule'] as $g) {
+                    $data[$k][$g] = array_map(fn ($r) => ['cents' => null] + $r, $data[$k][$g]);
+                }
+            }
+        }
+
+        return ApiResponse::success($data + ['financial' => $this->financial($request, $companyId)], 'Euros da auditoria.');
     }
 
     /** "Agrupar por regra": a contagem por regra (com os mesmos filtros da lista). */
@@ -92,6 +121,7 @@ class CompanyAuditController extends Controller
         $v = $request->validate([
             'area' => ['nullable', 'string', 'max:32'],
             'rule' => ['nullable', 'string', 'max:2000'],
+            'family' => ['nullable', 'string', 'max:32'],
             'severity' => ['nullable', 'string', 'max:40'],
             'state' => ['nullable', 'string', 'max:80'],
             'entity_type' => ['nullable', 'string', 'max:40'],
@@ -99,6 +129,7 @@ class CompanyAuditController extends Controller
             'search' => ['nullable', 'string', 'max:120'],
         ]);
         $finance = CompassFinancials::visibleTo($request->user(), $companyId);
+        $v['hide_rules'] = AuditAreas::hiddenRules($request->user(), $companyId);
 
         return ApiResponse::success([
             'groups' => $this->findings->groups($companyId, AuditAreas::visible($request->user(), $companyId), $v, $finance),
@@ -139,6 +170,7 @@ class CompanyAuditController extends Controller
             ->where('r.company_id', $companyId)->where('r.entity_type', $v['entity_type'])
             ->when($ids, fn ($q) => $q->whereIn('r.entity_id', $ids))
             ->whereIn('f.area', $areas ?: ['__nenhuma__'])->whereIn('f.state', AuditFinding::OPEN)
+            ->when(AuditAreas::hiddenRules($request->user(), $companyId), fn ($q, $hidden) => $q->whereNotIn('f.rule', $hidden))
             ->groupBy('r.entity_id')
             ->get(['r.entity_id', DB::raw('COUNT(DISTINCT f.id) as n'),
                 DB::raw("MAX(CASE f.severity WHEN 'alta' THEN 3 WHEN 'media' THEN 2 WHEN 'baixa' THEN 1 ELSE 0 END) as rank")]);
@@ -196,7 +228,7 @@ class CompanyAuditController extends Controller
             'reason' => ['nullable', 'string', 'max:1000'],
         ]);
         $f = AuditFinding::where('company_id', $companyId)->where('area', $area)->whereKey($findingId)->first();
-        if (! $f) {
+        if (! $f || in_array($f->rule, AuditAreas::hiddenRules($request->user(), $companyId), true)) {
             return ApiResponse::error('Achado não encontrado.', 404);
         }
         AuditFindingStates::apply($f, $v['action'], $v['reason'] ?? null, $request->user());
@@ -211,7 +243,8 @@ class CompanyAuditController extends Controller
     {
         $f = AuditFinding::where('company_id', $companyId)->whereKey($findingId)->first();
 
-        return $f && AuditAreas::canSee($request->user(), $companyId, $f->area) ? $f : null;
+        return $f && AuditAreas::canSee($request->user(), $companyId, $f->area)
+            && ! in_array($f->rule, AuditAreas::hiddenRules($request->user(), $companyId), true) ? $f : null;
     }
 
     private function financial(Request $request, int $companyId): array

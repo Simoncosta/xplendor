@@ -144,6 +144,9 @@ final class AuditFindings
             ->whereIn('state', $states ?: ['__nenhum__'])
             ->when(! empty($filters['area']), fn ($q) => $q->where('area', $filters['area']))
             ->when(! empty($filters['rule']), fn ($q) => $q->whereIn('rule', $csv($filters['rule'])))
+            // Auditoria v2-C: a família (ex.: "dinheiro") e as regras escondidas desta pessoa (as sensíveis).
+            ->when(! empty($filters['family']), fn ($q) => $q->whereIn('rule', AuditRegistry::familyCodes((string) $filters['family']) ?: ['__nenhuma__']))
+            ->when(! empty($filters['hide_rules']), fn ($q) => $q->whereNotIn('rule', (array) $filters['hide_rules']))
             ->when(! empty($filters['severity']), fn ($q) => $q->whereIn('severity', $csv($filters['severity'])))
             ->when(! empty($filters['entity_type']) && ! empty($filters['entity_id']), fn ($q) => $q->whereExists(fn ($e) => $e->selectRaw('1')
                 ->from('audit_finding_refs as r')->whereColumn('r.finding_id', 'audit_findings.id')
@@ -181,6 +184,11 @@ final class AuditFindings
             'first_seen_at' => $f->first_seen_at?->toIso8601String(),
             'last_seen_at' => $f->last_seen_at?->toIso8601String(),
             'resolved_at' => $f->resolved_at?->toIso8601String(),
+            // Auditoria v2: a família da regra (ex.: "unidades"), a atribuição e os euros resolvidos.
+            'family' => $rule && method_exists($rule, 'family') ? $rule->family() : null,
+            'assigned_to' => $f->assigned_to,
+            'assigned_at' => $f->assigned_at?->toIso8601String(),
+            'resolved_cents' => $f->resolved_cents,
             'fix' => ['url' => $f->fix_url, 'label' => $f->fix_label, 'action' => $f->fix_action],
         ];
         if ($full) {
@@ -208,6 +216,7 @@ final class AuditFindings
         $f['impact_cents'] = null;
         $f['impact_pending_cents'] = null;
         $f['weight_cents'] = null;
+        $f['resolved_cents'] = null;
         $f['pareto_pct'] = null;
         foreach (['title', 'entity_label', 'seen', 'why', 'suggestion', 'stake', 'state_reason'] as $k) {
             if (isset($f[$k]) && is_string($f[$k])) {

@@ -52,6 +52,12 @@ final class PrivateFiles
         return "fatura-pedido-{$ticket->id}.pdf";
     }
 
+    /** Auditoria v2: a foto de "Dar mais informação" do Guião de unidades (privada, endereço assinado). */
+    public static function unitPhotoUrl(int $profileId): string
+    {
+        return URL::temporarySignedRoute('files.unit-photo', now()->addMinutes(self::MINUTES), ['profile' => $profileId], absolute: false);
+    }
+
     public static function reportPhotoUrl(SatisfactionReportPhoto $photo): ?string
     {
         if (! $photo->path) {

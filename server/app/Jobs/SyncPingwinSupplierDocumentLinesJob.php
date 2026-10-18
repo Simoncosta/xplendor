@@ -66,6 +66,19 @@ class SyncPingwinSupplierDocumentLinesJob implements ShouldQueue
         $budget = $this->budget - $stats['docs'];
         if ($budget > 0 && $lines->candidates($this->companyId, [], $since)->exists()) {
             self::dispatch($this->companyId, $budget, $this->cycleStartedAt);
+
+            return;
+        }
+        // Auditoria v2 (U0): no fim do ciclo, as regras das faturas correm logo (uma unidade nova numa
+        // fatura pergunta-se já, não na corrida da noite).
+        if ($stats['docs'] > 0) {
+            try {
+                app(\App\Audit\AuditRunService::class)->start($this->companyId, 'restauracao', 'faturas');
+            } catch (\App\Audit\AuditRunInProgress) {
+                // Já há uma corrida: apanha estas linhas.
+            } catch (\Throwable $e) {
+                Log::warning('[PingWin Linhas] auditoria das faturas não arrancou', ['company_id' => $this->companyId, 'error' => $e->getMessage()]);
+            }
         }
     }
 

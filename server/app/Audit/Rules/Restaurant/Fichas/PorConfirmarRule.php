@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Audit\Rules\Restaurant\Fichas;
 
+use App\Audit\Rules\Restaurant\RestaurantAuditData;
+
 use App\Audit\Fmt;
 
 /** Regra 8 · Fichas técnicas com embalagem ou rendimento por confirmar. */
@@ -43,6 +45,36 @@ final class PorConfirmarRule extends FichaAvisoRule
     protected function fixUrlFor(string $pid, ?string $componentId, array $warning): string
     {
         return $componentId ? self::recipeUrl($pid, ['fator' => $componentId]) : self::recipeUrl($pid, ['rendimento' => 1]);
+    }
+
+    /**
+     * Auditoria v2: a embalagem por confirmar abre o Guião nesse artigo; o rendimento por confirmar abre
+     * o ConfirmYieldModal já preenchido com a evidência (a quantidade escrita na descrição, como «30LT»).
+     */
+    protected function fixActionFor(RestaurantAuditData $data, string $pid, ?string $component, array $v, array $warnings): ?array
+    {
+        if ($component) {
+            return ['action' => ['type' => 'guiao', 'product_id' => $component], 'label' => 'Abrir no Guião de unidades'];
+        }
+        $y = $v['yield'] ?? [];
+        $hint = null;
+        $reason = null;
+        $family = \App\Services\Restaurant\Units\UnitEvidence::fam(\App\Services\Restaurant\RecipeHints::family((string) ($y['unit_label'] ?? '')));
+        foreach (array_filter([(string) ($data->item($pid)?->description ?? '')]) as $text) {
+            $pack = \App\Services\Restaurant\Units\PackagingParser::parse($text);
+            if ($pack && $pack['quantity'] > 0 && ($family === null || $pack['family'] === $family)) {
+                $hint = $pack['quantity'];
+                $reason = sprintf('A descrição diz «%s» (%s).', $pack['text'], mb_strtolower($pack['label']));
+                break;
+            }
+        }
+        if ($hint === null && ! empty($y['quantity'])) {
+            $hint = (float) $y['quantity'];
+            $reason = 'Os ingredientes do lote somam cerca disto.';
+        }
+
+        return ['action' => ['type' => 'confirmar_rendimento', 'product_id' => $pid, 'bom_id' => (string) ($v['bom_id'] ?? ''), 'quantity' => $hint, 'reason' => $reason],
+            'label' => 'Confirmar o rendimento'];
     }
 
     protected function texts(array $c): array

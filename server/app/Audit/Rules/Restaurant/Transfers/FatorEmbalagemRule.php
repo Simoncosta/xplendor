@@ -78,9 +78,11 @@ final class FatorEmbalagemRule extends TransferRule
                 'uv' => $l->unit_value, 'qnt' => (float) $l->qnt, 'doc' => (string) $l->document];
         }
 
+        // Auditoria v2.1: as linhas numa unidade global incoerente com o nome ficam na U9 (sem duplicar).
+        $incoherent = array_flip(array_map(fn ($u) => mb_strtolower($u['name']), \App\Audit\Rules\Restaurant\Units\UnidadeGlobalIncoerenteRule::incoherent($scope)));
         $groups = [];
         foreach ($lines as $l) {
-            if ($l['pid'] === '' || $l['unit'] === '' || $l['uv'] === null) {
+            if ($l['pid'] === '' || $l['unit'] === '' || $l['uv'] === null || isset($incoherent[mb_strtolower($l['unit'])])) {
                 continue;
             }
             $u = $units->for($l['pid']);
@@ -118,7 +120,8 @@ final class FatorEmbalagemRule extends TransferRule
                 signature: sprintf('%s:%s', Fmt::qty((float) $l['uv']), Fmt::qty($g['factor'])),
                 impactCents: $eur > 0 ? (int) round($eur * 100) : null,
                 severity: self::severityFor($eur),
-                fixUrl: self::articleUrl($l['pid']), fixLabel: 'Abrir o artigo',
+                fixUrl: \App\Audit\Rules\Restaurant\Units\UnitRule::guiaoUrl($l['pid']), fixLabel: 'Abrir no Guião de unidades',
+                fixAction: ['type' => 'guiao', 'product_id' => $l['pid']],
                 refs: [['artigo', $l['pid']]],
                 seen: sprintf('Nos últimos %d dias, %d %s em «%s» (por exemplo, %s) contaram %s por embalagem em vez de %s.', self::DAYS, $g['lines'], $g['lines'] === 1 ? 'linha' : 'linhas',
                     $l['unit'], self::join(array_slice($docs, 0, 2)), Fmt::qty((float) $l['uv']), Fmt::qty($g['factor'])),

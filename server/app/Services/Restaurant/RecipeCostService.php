@@ -495,6 +495,18 @@ final class RecipeCostService
         return $best;
     }
 
+    /** Auditoria v2 (Unidades): todas as versões carregadas, por artigo. */
+    public function allVersions(): array
+    {
+        return $this->versions;
+    }
+
+    /** Auditoria v2 (Unidades): quantas unidades de topo vale uma unidade (o unit_value ao longo dos pais). */
+    public function unitFactor(string $unitId): ?float
+    {
+        return $this->factorToRoot($unitId);
+    }
+
     /** @return list<array> as versões do artigo no espelho (vazio = sem ficha) */
     public function versionsOf(string $productId): array
     {

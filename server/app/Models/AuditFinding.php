@@ -26,7 +26,8 @@ class AuditFinding extends Model
         'company_id', 'rule', 'area', 'severity', 'entity_type', 'entity_id', 'entity_label', 'title', 'seen', 'stake',
         'evidence', 'evidence_signature', 'why', 'suggestion', 'impact_cents', 'impact_pending_cents', 'weight_cents', 'fix_url',
         'fix_label', 'fix_action', 'fingerprint', 'state', 'state_by', 'state_at', 'state_reason', 'note',
-        'last_run_id', 'first_seen_at', 'last_seen_at', 'resolved_at',
+        'last_run_id', 'first_seen_at', 'last_seen_at', 'resolved_at', 'assigned_to', 'assigned_by', 'assigned_at',
+        'resolved_cents', 'resolved_by',
     ];
 
     protected $casts = [
@@ -39,6 +40,8 @@ class AuditFinding extends Model
         'first_seen_at' => 'datetime',
         'last_seen_at' => 'datetime',
         'resolved_at' => 'datetime',
+        'assigned_at' => 'datetime',
+        'resolved_cents' => 'integer',
     ];
 
     public function refs(): HasMany

@@ -345,3 +345,46 @@ export function MenuCard({ block }: { block: Blocks["menu"] }) {
         </PageCard>
     );
 }
+
+/** Auditoria v2: o que se resolveu este mês na auditoria (o € em jogo no momento de corrigir). */
+export function AuditResolvedCard({ block }: { block: Blocks["audit"] }) {
+    if (!block || block.count === 0) return null;
+    const eur = (c: number | null, seed: number) => (c === null ? <HiddenMoney seed={seed} /> : (c / 100).toLocaleString("pt-PT", { maximumFractionDigits: 0 }) + " €");
+    return (
+        <PageCard data-testid="bussola-audit" title="Resolvido este mês" flush={false}
+            info="Os achados da auditoria corrigidos este mês e confirmados pela corrida seguinte, com o € em jogo no momento de corrigir."
+            actions={<Link to="/auditoria" className="btn btn-sm btn-outline-primary">Abrir a auditoria</Link>}>
+            <Headline text={block.headline} />
+            <div className="d-flex flex-wrap gap-4 mb-2">
+                <div><div className="text-muted fs-12">Resolvido</div><div className="fs-4 fw-semibold text-success">{eur(block.resolved_cents, 1)}</div></div>
+                <div><div className="text-muted fs-12">Ainda em jogo</div><div className="fs-4 fw-semibold text-warning">{eur(block.open_cents, 2)}</div></div>
+            </div>
+            <ul className="list-group list-group-flush border-dashed mb-0">
+                {block.by_rule.map((r, k) => (
+                    <li key={k} className="list-group-item px-0 d-flex justify-content-between gap-2"><span>{r.label} ({r.count})</span><span className="text-nowrap">{eur(r.resolved_cents, k + 3)}</span></li>
+                ))}
+            </ul>
+        </PageCard>
+    );
+}
+
+/** Auditoria v2-C: "Onde está a fugir dinheiro": os 3 achados de dinheiro abertos com mais € em jogo. */
+export function MoneyLeakCard({ block }: { block: Blocks["money"] }) {
+    if (!block || block.items.length === 0) return null;
+    const eur = (c: number | null, seed: number) => (c === null ? <HiddenMoney seed={seed} /> : (c / 100).toLocaleString("pt-PT", { maximumFractionDigits: 0 }) + " €");
+    return (
+        <PageCard data-testid="bussola-money" title="Onde está a fugir dinheiro" flush={false}
+            info="Os achados de dinheiro da auditoria por resolver (preços que subiram, fornecedores mais baratos, margens que caíram, faturas em duplicado, guias sem fatura), pelo € em jogo."
+            actions={<Link to="/auditoria?familia=dinheiro" className="btn btn-sm btn-outline-primary">Ver todos</Link>}>
+            <Headline text={block.headline} />
+            <ul className="list-group list-group-flush border-dashed mb-0">
+                {block.items.map((it, k) => (
+                    <li key={it.finding_id} className="list-group-item px-0 d-flex justify-content-between gap-2">
+                        <span><span className="fw-medium">{it.title}</span><span className="d-block text-muted fs-12">{it.rule_title}</span></span>
+                        <span className="text-nowrap fw-semibold">{eur(it.impact_cents, k + 7)}</span>
+                    </li>
+                ))}
+            </ul>
+        </PageCard>
+    );
+}

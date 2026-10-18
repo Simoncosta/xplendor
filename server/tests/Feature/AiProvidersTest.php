@@ -313,7 +313,7 @@ class AiProvidersTest extends TestCase
         // Valores iniciais: claude-opus-5-5, esforço baixo nas funções curtas e médio nas ideias, no blog e na análise.
         $plain = collect($data['functions'])->whereNull('group');
         $this->assertSame([
-            'caption' => 'low', 'creative' => 'low', 'ideas' => 'medium', 'blog' => 'medium', 'brand_profile' => 'low', 'car_description' => 'low', 'car_analysis' => 'medium', 'family_categories' => 'low', 'bussola_jogadas' => 'low',
+            'caption' => 'low', 'creative' => 'low', 'ideas' => 'medium', 'blog' => 'medium', 'brand_profile' => 'low', 'car_description' => 'low', 'car_analysis' => 'medium', 'family_categories' => 'low', 'bussola_jogadas' => 'low', 'unit_advisor' => 'low',
         ], $plain->pluck('effort', 'key')->all());
         $this->assertSame(['claude-opus-5-5'], $plain->pluck('model')->unique()->values()->all());
         // O OCR também aparece, com a reserva do .env enquanto nada estiver escolhido.
@@ -335,8 +335,8 @@ class AiProvidersTest extends TestCase
         $all = $this->as($this->root)->postJson('/api/v1/admin/ai-models/apply-all', ['model' => 'claude-sonnet-5-5', 'effort' => 'medium'])->assertOk()->json('data');
         $this->assertSame(['claude-sonnet-5-5'], collect($all['functions'])->whereNull('group')->pluck('model')->unique()->values()->all());
         $this->assertTrue(collect($all['functions'])->firstWhere('key', 'ocr_image')['reserve'], 'o "Aplicar a todas" não mexe no OCR');
-        $this->assertSame(1 + 9, DB::table('ai_function_setting_changes')->count());
-        $this->assertSame(9, DB::table('ai_function_setting_changes')->where('applied_to_all', true)->where('user_id', $this->root->id)->count());
+        $this->assertSame(1 + 10, DB::table('ai_function_setting_changes')->count());
+        $this->assertSame(10, DB::table('ai_function_setting_changes')->where('applied_to_all', true)->where('user_id', $this->root->id)->count());
         $this->assertSame(['function' => 'blog', 'from' => 'claude-opus-5-5 (medium)', 'to' => 'gpt-6.1-sol (high)'],
             array_intersect_key(collect($all['history'])->last(), array_flip(['function', 'from', 'to'])));
 

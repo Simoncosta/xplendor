@@ -113,8 +113,9 @@ final class UnidadeSemConversaoRule extends RestaurantRule
                     ],
                     signature: "{$unitId}|{$base}",
                     weightCents: $total ?: null,
-                    fixLabel: 'Confirmar a embalagem',
-                    fixAction: ['type' => 'confirmar_fator', 'product_id' => $pid, 'unit_key' => (string) $unitId, 'description' => $desc],
+                    // Auditoria v2: o fator em falta corrige-se no Guião de unidades, nesse artigo.
+                    fixUrl: \App\Audit\Rules\Restaurant\Units\UnitRule::guiaoUrl($pid), fixLabel: 'Abrir no Guião de unidades',
+                    fixAction: ['type' => 'guiao', 'product_id' => $pid, 'unit_key' => (string) $unitId, 'description' => $desc],
                     refs: array_values(array_unique($refs, SORT_REGULAR)),
                     seen: sprintf('Nos últimos 12 meses houve %d %s de %s em «%s». O stock deste artigo conta-se em %s. Ninguém confirmou ainda %s tem cada «%s».',
                         count($rows), count($rows) === 1 ? 'compra' : 'compras', $desc, $unitLabel, mb_strtolower($baseLabel), Fmt::howMany($baseLabel), $unitLabel),

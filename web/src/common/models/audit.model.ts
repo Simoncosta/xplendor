@@ -3,11 +3,21 @@
 export type AuditSeverity = "alta" | "media" | "baixa" | "info";
 export type AuditState = "aberto" | "aceite" | "ignorado" | "corrigido" | "resolvido";
 export type AuditArea = "restauracao" | "automovel" | "tracking";
-export type AuditOrigin = "central" | "artigos" | "familias" | "faturas" | "fornecedores" | "fichas" | "stock" | "armazens" | "transferencias" | "menu";
+export type AuditOrigin = "central" | "artigos" | "familias" | "faturas" | "fornecedores" | "fichas" | "stock" | "armazens" | "transferencias" | "menu" | "unidades";
 
 export type AuditFixAction =
     | { type: "confirmar_fator"; product_id: string; unit_key: string; description: string }
-    | { type: "escolher_principal"; group_key: string; label: string; members: string[] };
+    | { type: "escolher_principal"; group_key: string; label: string; members: string[] }
+    // Auditoria v2: o Guião de unidades nesse artigo, o substituto do M2 e o rendimento já preenchido.
+    | { type: "guiao"; product_id: string; unit_key?: string; description?: string }
+    | { type: "substituir_componente"; product_id: string; component_id: string }
+    | { type: "confirmar_rendimento"; product_id: string; bom_id: string; quantity: number | null; reason: string | null }
+    | { type: "unidade_global"; unit_id: string }
+    // Auditoria v2-C (Dinheiro): histórico de preços, comparar fornecedores, simular o preço e os dois documentos lado a lado.
+    | { type: "historico_precos"; product_id: string }
+    | { type: "comparar_fornecedores"; product_id: string; products: string[] }
+    | { type: "simular_preco"; product_id: string; price: number; cost: number; cost_avg: number; monthly_qty: number; vat_pct: number; steps: number[] }
+    | { type: "documentos_lado_a_lado"; documents: string[] };
 
 export type AuditFinding = {
     id: number;
@@ -33,6 +43,10 @@ export type AuditFinding = {
     first_seen_at: string | null;
     last_seen_at: string | null;
     resolved_at: string | null;
+    family?: string | null;
+    assigned_to?: string | null;
+    assigned_at?: string | null;
+    resolved_cents?: number | null;
     fix: { url: string | null; label: string | null; action: AuditFixAction | null };
 };
 
@@ -75,7 +89,7 @@ export type AuditRun = {
     requested_by: string | null; created_at: string | null; started_at: string | null; finished_at: string | null;
 };
 
-export type AuditRuleInfo = { code: string; title: string; description: string; severity: AuditSeverity; screens: string[]; applies: boolean };
+export type AuditRuleInfo = { code: string; title: string; description: string; severity: AuditSeverity; screens: string[]; applies: boolean; family?: string | null };
 export type AuditMeta = {
     areas: { key: AuditArea; label: string; can_edit: boolean; rules: AuditRuleInfo[] }[];
     last_runs: AuditRun[];

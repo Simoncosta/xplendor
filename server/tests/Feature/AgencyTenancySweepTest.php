@@ -48,6 +48,7 @@ class AgencyTenancySweepTest extends TestCase
         'GET api/media/{path}' => 'imagens das viaturas para o editor (só essas)',
         'GET api/files/ticket-invoice/{ticket}/{name?}' => 'ficheiros privados por URL assinado',
         'GET api/files/report-photo/{photo}' => 'ficheiros privados por URL assinado',
+        'GET api/files/unit-photo/{profile}' => 'Guião de unidades: a foto de "Dar mais informação", por URL assinado (gerado depois do ACL)',
         'GET api/files/stored/{file}/{name?}' => 'Ficheiros: abrir ou descarregar por endereço assinado (gerado depois do ACL e da regra da pasta)',
         'GET api/oauth/meta/callback' => 'OAuth (empresa no nonce)',
         'GET api/oauth/meta/social/callback' => 'OAuth (empresa no nonce)',

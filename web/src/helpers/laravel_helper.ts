@@ -1273,11 +1273,11 @@ export const deleteRecipeAll = (companyId: number, productId: string, body: { ba
 const AUD = (companyId: number) => url.GET_COMPANIES + `/${companyId}/audit`;
 export const getAuditMeta = (companyId: number) => api.get(AUD(companyId) + "/meta");
 export const getAuditFindings = (companyId: number, params?: {
-    page?: number; perPage?: number; area?: string; rule?: string; severity?: string; state?: string;
+    page?: number; perPage?: number; area?: string; rule?: string; family?: string; severity?: string; state?: string;
     entity_type?: string; entity_id?: string; search?: string; sort?: string; dir?: "asc" | "desc";
 }) => api.get(AUD(companyId) + "/findings", params);
 export const getAuditGroups = (companyId: number, params?: {
-    area?: string; rule?: string; severity?: string; state?: string; entity_type?: string; entity_id?: string; search?: string;
+    area?: string; rule?: string; family?: string; severity?: string; state?: string; entity_type?: string; entity_id?: string; search?: string;
 }) => api.get(AUD(companyId) + "/findings/groups", params);
 export const getAuditFinding = (companyId: number, findingId: number) => api.get(AUD(companyId) + `/findings/${findingId}`);
 export const getAuditCounts = (companyId: number, entityType: string, ids?: string[]) =>
@@ -1292,6 +1292,38 @@ export const getSupplierDocumentLines = (companyId: number, docheaderId: string)
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/${docheaderId}/lines`);
 export const getRecipeConversionInfo = (companyId: number, productId: string, unitKey?: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/conversion`, { unit_key: unitKey });
+// Auditoria v2-C (Dinheiro): o histórico de preços por fornecedor (só leitura).
+export const getPriceHistory = (companyId: number, productId: string, products?: string[]) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/restaurant/money/price-history/${productId}`, { products });
+// Auditoria v2: os euros (em jogo agora, resolvidos) e o Guião de unidades.
+export const getAuditSummary = (companyId: number, area?: string) => api.get(AUD(companyId) + "/summary", { area });
+const UG = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/units/guide`;
+export const getUnitGuideQueue = (companyId: number, fila?: string) => api.get(UG(companyId), { fila });
+export const getUnitGuide = (companyId: number, productId: string) => api.get(UG(companyId) + `/${productId}`);
+export const previewUnitGuide = (companyId: number, productId: string, answers: Record<string, string | null>) =>
+    api.create(UG(companyId) + `/${productId}/preview`, { answers }, JSON_BODY);
+export const confirmUnitGuide = (companyId: number, productId: string, answers: Record<string, string | null>, reason?: string) =>
+    api.create(UG(companyId) + `/${productId}/confirm`, { answers, reason }, JSON_BODY);
+export const adjustUnitGuide = (companyId: number, productId: string, answers: Record<string, string | null>) =>
+    api.create(UG(companyId) + `/${productId}/adjust`, { answers }, JSON_BODY);
+export const skipUnitGuide = (companyId: number, productId: string) => api.create(UG(companyId) + `/${productId}/skip`, {}, JSON_BODY);
+export const notApplicableUnitGuide = (companyId: number, productId: string, reason: string) =>
+    api.create(UG(companyId) + `/${productId}/not-applicable`, { reason }, JSON_BODY);
+export const infoUnitGuide = (companyId: number, productId: string, data: FormData) =>
+    api.create(UG(companyId) + `/${productId}/info`, data, { headers: { "Content-Type": "multipart/form-data" } });
+export const askAiUnitGuide = (companyId: number, productId: string) => api.create(UG(companyId) + `/${productId}/ai`, {}, JSON_BODY);
+export const sendAdminUnitGuide = (companyId: number, productId: string, note?: string) =>
+    api.create(UG(companyId) + `/${productId}/send-admin`, { note }, JSON_BODY);
+export const applyUnitGuideStep = (companyId: number, productId: string, step: number) =>
+    api.create(UG(companyId) + `/${productId}/apply`, { step, confirm: true }, JSON_BODY);
+export const getUnitGuideWrite = (companyId: number, writeId: number) => api.get(UG(companyId) + `/writes/${writeId}`);
+export const getGlobalUnitGuide = (companyId: number, unitId: string) => api.get(UG(companyId) + `/global/${unitId}`);
+export const confirmAllUnitGuide = (companyId: number, productIds: string[]) =>
+    api.create(UG(companyId) + "/confirm-all", { product_ids: productIds, confirm: true }, JSON_BODY);
+export const undoUnitGuideBatch = (companyId: number, batch: string) => api.create(UG(companyId) + "/undo-batch", { batch }, JSON_BODY);
+export const applyGlobalUnitGuide = (companyId: number, unitId: string) => api.create(UG(companyId) + `/global/${unitId}/apply`, { confirm: true }, JSON_BODY);
+export const getRecipeSubstitute = (companyId: number, productId: string, component: string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/substitute`, { component });
 // Fatia 7a: stock (leitura do espelho; mínimo/máximo no PingWin, em fila) e armazéns.
 const STK = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/stock`;
 const WH = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/warehouses`;

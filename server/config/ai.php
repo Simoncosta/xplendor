@@ -86,6 +86,10 @@ return [
             'default_effort' => 'medium', 'max_tokens' => 16000, 'group' => 'ocr', 'reserve_model' => 'services.openai.ocr.model_text', 'providers' => ['anthropic']],
         'ocr_image' => ['label' => 'OCR das faturas: digitalizadas e fotografias', 'hint' => 'Ler as faturas em PDF sem texto e as fotografias; também a 2.ª tentativa quando as linhas não conferem com o QR',
             'default_effort' => 'medium', 'max_tokens' => 16000, 'group' => 'ocr', 'reserve_model' => 'services.openai.ocr.model_image', 'providers' => ['anthropic']],
+        // Auditoria v2: a sugestão das unidades de um artigo "Por identificar" (só dados do artigo, nunca
+        // dados pessoais). A resposta é JSON validado, guardada, e aparece sempre como "a confirmar".
+        'unit_advisor' => ['label' => 'Guião de unidades', 'hint' => 'Sugerir o tipo, a embalagem e a unidade base de um artigo por identificar',
+            'default_effort' => 'low', 'max_tokens' => 1200],
         // Radar de oportunidade (group "radar"): cada uma com o seu modelo inicial (default_model);
         // ficam fora do "Aplicar a todas as funções" e do teste às cegas, e mudam-se aqui uma a uma.
         'radar_relevancia' => ['label' => 'Radar: relevância por ramo', 'hint' => 'Uma vez por tendência e por ramo, em lote: se a tendência interessa ao ramo, com uma pontuação e um tema',

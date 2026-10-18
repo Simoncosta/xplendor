@@ -70,7 +70,10 @@ final class FichaSemComprasRule extends MenuRule
                     evidenceKey: (string) $c['component_id'],
                     signature: $never ? 'nunca' : 'antigo',
                     impactCents: (int) $i->revenue_cents,
-                    fixUrl: self::recipeUrl((string) $i->product_id), fixLabel: 'Abrir a ficha',
+                    // Auditoria v2: o "Corrigir" propõe o substituto (mesmo grupo de duplicados, ou da família, com
+                    // compras) com o custo antes e depois, e grava ficha a ficha pelo caminho da Fatia 4.
+                    fixUrl: self::recipeUrl((string) $i->product_id), fixLabel: 'Escolher o substituto',
+                    fixAction: ['type' => 'substituir_componente', 'product_id' => (string) $i->product_id, 'component_id' => (string) $c['component_id']],
                     refs: [['artigo', (string) $i->product_id], ['artigo', (string) $c['component_id']]],
                     seen: sprintf('%s, %s vendeu %s sem IVA. A ficha usa %s, %s.', self::periodText($snap), $i->description, Fmt::cents((int) $i->revenue_cents), $comp,
                         $never ? 'que não tem nenhuma compra registada' : 'cuja última compra foi em ' . Fmt::date($c['last_purchase'] ?? null)),

@@ -30,6 +30,7 @@ import StockZonesPage from "pages/Restauracao/StockZonesPage";
 import WastePage from "pages/Restauracao/WastePage";
 import TransferenciasPage from "pages/Restauracao/TransferenciasPage";
 import MenuEngineeringPage from "pages/Restauracao/MenuEngineeringPage";
+import UnitGuidePage from "pages/Restauracao/UnitGuidePage";
 import CondicoesPagamentoPage from "pages/Restauracao/CondicoesPagamentoPage";
 import ContaCorrenteFornecedoresPage from "pages/Restauracao/ContaCorrenteFornecedoresPage";
 import ContaCorrenteFornecedorPage from "pages/Restauracao/ContaCorrenteFornecedorPage";
@@ -191,6 +192,7 @@ const authProtectedRoutes = [
     { path: "/restauracao/stock/zonas", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><StockZonesPage /></RequireModule> },
     { path: "/restauracao/stock/desperdicio", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><WastePage /></RequireModule> },
     { path: "/restauracao/engenharia-menu", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><MenuEngineeringPage /></RequireModule> },
+    { path: "/restauracao/auditoria/guiao", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><UnitGuidePage /></RequireModule> },
     { path: "/restauracao/transferencias", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><TransferenciasPage /></RequireModule> },
     { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias" permission="restauracao.ver"><FamiliasPage /></RequireModule> },
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).

@@ -606,7 +606,54 @@ class RestaurantCompassService
             'forgotten' => $this->forgottenBlock($names, $signals),
             // Só com um cálculo da engenharia de menu (sem ele, a resposta fica como antes).
             'menu' => $menu['items'] ? $menu : null,
+            // Auditoria v2: o resolvido do mês (só quando houve achados resolvidos).
+            'audit' => $this->auditBlock($companyId),
+            // Auditoria v2-C: "Onde está a fugir dinheiro" (só com achados de dinheiro abertos).
+            'money' => $this->moneyBlock($companyId),
         ], fn ($b) => $b !== null);
+    }
+
+    /** Auditoria v2: os euros resolvidos este mês na restauração (os achados confirmados pela corrida seguinte). */
+    private function auditBlock(int $companyId): ?array
+    {
+        $sum = \App\Audit\AuditResolvedEuros::summary($companyId, ['restauracao']);
+        if ($sum['month']['count'] === 0) {
+            return null;
+        }
+        $m = $sum['month'];
+
+        return [
+            'headline' => sprintf('Este mês resolveram-se %d %s da auditoria, %s em jogo no momento.', $m['count'], $m['count'] === 1 ? 'achado' : 'achados', $this->eur($m['cents'])),
+            'resolved_cents' => $m['cents'], 'count' => $m['count'], 'open_cents' => $sum['open_cents'],
+            'by_rule' => array_map(fn ($r) => ['label' => $r['label'], 'resolved_cents' => $r['cents'], 'count' => $r['count']], array_slice($m['by_rule'], 0, 3)),
+            'by_person' => array_map(fn ($r) => ['label' => $r['label'], 'resolved_cents' => $r['cents'], 'count' => $r['count']], array_slice($m['by_person'], 0, 3)),
+        ];
+    }
+
+    /**
+     * Auditoria v2-C: "Onde está a fugir dinheiro": os 3 achados abertos da família Dinheiro com mais
+     * € em jogo (sem as regras sensíveis, com nomes de funcionários: essas só na Auditoria).
+     */
+    private function moneyBlock(int $companyId): ?array
+    {
+        $codes = array_values(array_diff(\App\Audit\AuditRegistry::familyCodes('dinheiro'), \App\Audit\AuditRegistry::sensitiveCodes()));
+        if (! $codes) {
+            return null;
+        }
+        $q = \App\Models\AuditFinding::where('company_id', $companyId)->where('area', 'restauracao')->whereIn('rule', $codes)
+            ->whereIn('state', \App\Models\AuditFinding::OPEN)->where('impact_cents', '>', 0);
+        $total = (int) (clone $q)->sum('impact_cents');
+        $top = (clone $q)->orderByDesc('impact_cents')->orderBy('id')->limit(3)->get(['id', 'rule', 'title', 'impact_cents']);
+        if ($top->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'headline' => sprintf('Onde está a fugir dinheiro: %s em jogo nos achados de dinheiro por resolver.', $this->eur($total)),
+            'open_cents' => $total,
+            'items' => $top->map(fn ($f) => ['finding_id' => $f->id, 'title' => $f->title, 'rule_title' => \App\Audit\AuditRegistry::get($f->rule)?->title() ?? $f->rule,
+                'impact_cents' => (int) $f->impact_cents])->values()->all(),
+        ];
     }
 
     /**

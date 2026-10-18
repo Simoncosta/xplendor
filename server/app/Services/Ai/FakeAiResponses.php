@@ -42,6 +42,13 @@ class FakeAiResponses
         if ($function === 'radar_porque') {
             return ['Tema em destaque em Portugal neste momento, próximo do que a sua marca costuma comunicar (frase simulada).', null];
         }
+        if ($function === 'unit_advisor') {
+            $json = ['tipo' => 'embalado_peso', 'embalagem' => 'Pacote de 1 kg', 'base' => 'kg', 'nome_base' => 'Quilograma',
+                'unidades_compra' => [['unidade' => 'Pacote 1 kg', 'fator' => 1]], 'confianca' => 0.7,
+                'justificacao' => 'Sugestão simulada para a verificação no ecrã: a descrição indica um pacote de 1 kg usado em doses.'];
+
+            return [json_encode($json, JSON_UNESCAPED_UNICODE), $json];
+        }
         if ($function === 'bussola_jogadas') {
             preg_match_all('/Chave:\s*(\S+)/u', $prompt->text, $m);
             $json = ['jogadas' => array_map(fn ($k) => ['chave' => $k, 'o_que' => 'Frase simulada para a verificação no ecrã, sem números nem causas.'], array_values(array_unique($m[1])))];

@@ -137,6 +137,8 @@ return [
         // F1 — lista "Documentos" do BO (browserdataset), filtrada por DOCTYPE 2002 = documentos de
         // fornecedores. Default = o id lido no HAR da primeira instalação (noutra, definir no .env).
         'supplier_documents_dataset_id' => env('PINGWIN_SUPPLIER_DOCUMENTS_DATASET_ID', '1099511639269'),
+        // Auditoria v2-C · C3: a leitura noturna dos documentos de caixa (anulações, consultas de mesa, vendas).
+        'pos_documents_sync' => (bool) env('PINGWIN_POS_DOCUMENTS_SYNC', true),
         // Fatia 4: os únicos artigos (ids do PingWin, separados por vírgulas) em que se pode gravar a
         // ficha técnica. Vazio = todos. Guarda dos testes reais (o artigo "TESTE XPLENDOR FICHA").
         'bom_write_allowlist' => env('PINGWIN_BOM_WRITE_ALLOWLIST', ''),
@@ -146,6 +148,9 @@ return [
         'warehouse_write_allowlist' => env('PINGWIN_WAREHOUSE_WRITE_ALLOWLIST', ''),
         // Fatia 7b: a mesma guarda para os documentos de stock (Contagem e Desperdício): códigos de artigo.
         'stockdoc_write_allowlist' => env('PINGWIN_STOCKDOC_WRITE_ALLOWLIST', ''),
+        // Auditoria v2: a mesma guarda para as unidades de um artigo (criar, fator, anular, compra por
+        // defeito): códigos de artigo. Vazio (produção) = todos; "0" = nenhum; no dev, só o TESTE A.
+        'unit_write_allowlist' => env('PINGWIN_UNIT_WRITE_ALLOWLIST', ''),
         // ⚠️ As UNIDADES vivem numa PORTA DIFERENTE (8138, não a 8136). Override
         // explícito opcional; vazio → o cliente deriva do api_url trocando a porta.
         'units_url' => env('PINGWIN_UNITS_URL', ''),

@@ -311,6 +311,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/audit/findings/groups', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'groups']);
                 Route::get('/audit/findings/{findingId}', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'show'])->whereNumber('findingId');
                 Route::get('/audit/counts', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'counts']);
+                Route::get('/audit/summary', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'summary']);
                 Route::get('/audit/runs/{runId}', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'run'])->whereNumber('runId');
                 foreach (['restauracao', 'automovel', 'tracking'] as $auditArea) {
                     Route::post("/audit/{$auditArea}/runs", [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'startRun'])->defaults('area', $auditArea);
@@ -380,6 +381,26 @@ Route::prefix('v1')->group(function () {
                     // Auditoria: o "Confirmar fator" de um artigo (esteja ou não numa ficha) e o artigo principal dos duplicados.
                     Route::get('/restaurant/recipes/{productId}/conversion', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'conversionInfo'])->whereNumber('productId');
                     Route::put('/restaurant/article-groups/main', [\App\Http\Controllers\Api\V1\CompanyArticleGroupController::class, 'setMain']);
+                    // Auditoria v2-C (Dinheiro): o histórico de preços por fornecedor (só leitura).
+                    Route::get('/restaurant/money/price-history/{productId}', [\App\Http\Controllers\Api\V1\CompanyMoneyController::class, 'priceHistory'])->whereNumber('productId');
+                    // Auditoria v2: o Guião de unidades (fila, artigo, decisões, "Aplicar no PingWin") e o substituto do M2.
+                    Route::get('/restaurant/units/guide', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'queue']);
+                    Route::get('/restaurant/units/guide/writes/{writeId}', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'write'])->whereNumber('writeId');
+                    Route::post('/restaurant/units/guide/confirm-all', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'confirmAll']);
+                    Route::post('/restaurant/units/guide/undo-batch', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'undoBatch']);
+                    Route::get('/restaurant/units/guide/global/{unitId}', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'globalUnit'])->where('unitId', '[A-Za-z0-9]+');
+                    Route::post('/restaurant/units/guide/global/{unitId}/apply', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'applyGlobalUnit'])->where('unitId', '[A-Za-z0-9]+')->middleware('block_when_impersonating');
+                    Route::get('/restaurant/units/guide/{productId}', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'show'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/preview', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'preview'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/confirm', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'confirm'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/adjust', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'adjust'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/skip', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'skip'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/not-applicable', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'notApplicable'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/info', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'info'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/ai', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'ai'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/send-admin', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'sendAdmin'])->whereNumber('productId');
+                    Route::post('/restaurant/units/guide/{productId}/apply', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'apply'])->whereNumber('productId')->middleware('block_when_impersonating');
+                    Route::get('/restaurant/recipes/{productId}/substitute', [\App\Http\Controllers\Api\V1\CompanyUnitGuideController::class, 'substitute'])->whereNumber('productId');
                     // Fatia 4: editor das fichas técnicas (rascunho na XPLENDOR; "Gravar na PingWin" em fila, uma ficha de cada vez).
                     Route::get('/restaurant/recipes/components', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'components']);
                     Route::get('/restaurant/recipes/writes/{writeId}', [\App\Http\Controllers\Api\V1\CompanyRecipeEditController::class, 'writeStatus'])->whereNumber('writeId');
@@ -1118,6 +1139,8 @@ Route::get('/files/stored/{file}/{name?}', [\App\Http\Controllers\Api\StoredFile
     ->whereNumber('file')->where('name', '[^/]+')->middleware(['signed:relative', 'throttle:600,1'])->name('files.stored');
 Route::get('/files/ticket-invoice/{ticket}/{name?}', [\App\Http\Controllers\Api\PrivateFileController::class, 'ticketInvoice'])
     ->whereNumber('ticket')->where('name', '[^/]+')->middleware(['signed:relative', 'throttle:600,1'])->name('files.ticket-invoice');
+Route::get('/files/unit-photo/{profile}', [\App\Http\Controllers\Api\PrivateFileController::class, 'unitPhoto'])
+    ->whereNumber('profile')->middleware(['signed:relative', 'throttle:600,1'])->name('files.unit-photo');
 Route::get('/files/report-photo/{photo}', [\App\Http\Controllers\Api\PrivateFileController::class, 'reportPhoto'])
     ->whereNumber('photo')->middleware(['signed:relative', 'throttle:600,1'])->name('files.report-photo');
 

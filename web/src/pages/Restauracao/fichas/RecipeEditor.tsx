@@ -65,8 +65,30 @@ const MODE_LABEL: Record<RecipeWriteMode, string> = { criar: "Criar a ficha", no
 
 type Phase = "loading" | "resume" | "edit" | "confirm" | "progress";
 
-export default function RecipeEditorModal({ companyId, productId, bomId, hidden: hiddenProp, onSaved, onClose }: {
+/** Auditoria v2: uma alteração proposta (o substituto do M2, a conversão para a unidade nova), já na linha. */
+export type RecipePrefill = {
+    note: string;
+    lines: { key?: string | null; replace_component_id: string; component_id: string; description: string; unit_id: string; qnt: number; units?: RecipeUnitOption[] }[];
+};
+
+/** Aplica a alteração proposta às linhas da versão (pela chave da linha, senão pelo componente). */
+export function applyPrefill(d: RecipeDraftPayload, prefill: RecipePrefill): RecipeDraftPayload {
+    return {
+        ...d,
+        lines: d.lines.map((l) => {
+            const p = prefill.lines.find((x) => (x.key && x.key === l.key) || x.replace_component_id === l.component_id);
+            if (!p) return l;
+            // Outro componente: a linha vai como nova (sem a chave); o PingWin não troca o componente de uma linha.
+            const key = p.component_id !== l.component_id ? null : l.key;
+            return { ...l, key, component_id: p.component_id, description: p.description, unit_id: p.unit_id, units: p.units?.length ? p.units : l.units, qnt: decimal(p.qnt) };
+        }),
+    };
+}
+
+export default function RecipeEditorModal({ companyId, productId, bomId, hidden: hiddenProp, onSaved, onClose, prefill }: {
     companyId: number | null; productId: string;
+    /** Auditoria v2: abre já com a alteração proposta (revê-se e grava-se como qualquer outra). */
+    prefill?: RecipePrefill | null;
     /** A versão que o ecrã está a mostrar: é a que se corrige por omissão. */
     bomId?: string | null;
     /** Sem Finanças: os euros desfocados. Sem a prop, segue a resposta da pré-visualização. */
@@ -94,11 +116,12 @@ export default function RecipeEditorModal({ companyId, productId, bomId, hidden:
     const hidden = hiddenProp ?? preview?.financial?.visible === false;
 
     const startFresh = useCallback((c: RecipeEditorContext) => {
-        setDraft(fromVersion(c, c.versions.length ? "corrigir" : "criar", c.versions.length ? defaultVersion(c, bomId) : null));
+        const base = fromVersion(c, c.versions.length ? "corrigir" : "criar", c.versions.length ? defaultVersion(c, bomId) : null);
+        setDraft(prefill ? applyPrefill(base, prefill) : base);
         setStale(false);
-        dirty.current = false;
+        dirty.current = !!prefill;
         setPhase("edit");
-    }, [bomId]);
+    }, [bomId, prefill]);
 
     const load = useCallback(async () => {
         if (!companyId) return;
@@ -281,6 +304,9 @@ export default function RecipeEditorModal({ companyId, productId, bomId, hidden:
                 <ProgressSection companyId={companyId} write={write} onFinished={onFinished} onClose={onClose} onRestart={load} />
             )}
 
+            {prefill && phase === "edit" && (
+                <div className="alert alert-info fs-13 mx-3 mt-3 mb-0" data-testid="editor-prefill"><i className="ri-magic-line me-1" aria-hidden />{prefill.note}</div>
+            )}
             {(phase === "edit" || phase === "confirm") && ctx && draft && (
                 <EditorBody
                     ctx={ctx} draft={draft} phase={phase} preview={preview} previewing={previewing} hidden={hidden} stale={stale} savedAt={savedAt}

@@ -339,6 +339,23 @@ def run(cfg: dict) -> dict:
             res = client.fetch_supplier_documents(dataset_id, start, end)
             return {"ok": True, "mode": "supplier_documents", "start": start.isoformat(), "end": end.isoformat(), **res}
 
+        if mode == "pos_documents":
+            # READ-ONLY (Auditoria v2-C · C3): DOCUMENTOS DE CAIXA da lista "Documentos", um dia e
+            # um tipo de cada vez (DOCCONFIG_ID), de start a end (até 31 dias).
+            dataset_id = str(cfg.get("supplier_documents_dataset_id") or "")
+            if not dataset_id:
+                return {"ok": False, "error": "supplier_documents_dataset_id em falta (PINGWIN_SUPPLIER_DOCUMENTS_DATASET_ID)."}
+            try:
+                start = datetime.strptime(str(cfg.get("start") or ""), "%Y-%m-%d").date()
+                end = datetime.strptime(str(cfg.get("end") or ""), "%Y-%m-%d").date()
+            except ValueError:
+                return {"ok": False, "error": "start/end em falta ou inválidos (AAAA-MM-DD)."}
+            try:
+                res = client.fetch_pos_documents(dataset_id, start, end, cfg.get("docconfigs") or None)
+            except ValueError as exc:
+                return {"ok": False, "error": str(exc)}
+            return {"ok": True, "mode": "pos_documents", "start": start.isoformat(), "end": end.isoformat(), **res}
+
         if mode == "units":
             # READ-ONLY: UNIDADES (base de conversão) na PORTA 8138. Usa só o
             # maindataset (ignora o baseunit "radio conv." = lixo). Login PRÓPRIO
@@ -541,6 +558,25 @@ def run(cfg: dict) -> dict:
             unit = cfg.get("unit") or {}
             created = client.create_unit(unit)
             return {"ok": True, "mode": "create_unit", "unit": created}
+
+        if mode == "article_unit_write":
+            # ⚠️ ESCRITA (Auditoria v2): UMA alteração às unidades de UM artigo (criar, fator, anular,
+            # unidade de compra), iniciada por uma pessoa. Lê antes, guarda pelo código, relê depois.
+            try:
+                from .article_units import UnitWriteRefused, write_article_unit
+            except ImportError:  # execução direta (o caminho do docker exec)
+                from article_units import UnitWriteRefused, write_article_unit  # type: ignore
+
+            def progress(**kw):
+                print("XPPROGRESS " + json.dumps(kw, ensure_ascii=False), file=sys.stderr, flush=True)
+
+            try:
+                result = write_article_unit(client, str(cfg.get("product_id") or ""), str(cfg.get("op") or ""),
+                                            cfg.get("data") or {}, cfg.get("allowed_codes") or [],
+                                            cfg.get("owned_unit_ids") or [], progress)
+            except UnitWriteRefused as exc:
+                return {"ok": False, "mode": mode, "refused": True, "error": str(exc)}
+            return {"mode": mode, **result, "ok": bool(result.get("ok"))}
 
         if mode == "save_unit":
             # ⚠️ ESCRITA: GRAVAR uma unidade existente (Action EDIT,SAVE) na PORTA 8136.

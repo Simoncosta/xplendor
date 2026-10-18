@@ -134,7 +134,9 @@ final class AuditEngine
                     };
                     $f->fill($attrs + ['evidence_signature' => $signature]);
                     if ($to) {
-                        $f->forceFill(['state' => $to, 'state_at' => $now, 'state_by' => null, 'resolved_at' => null, 'note' => $note]);
+                        // Reaberto: os euros resolvidos deixam de contar.
+                        $f->forceFill(['state' => $to, 'state_at' => $now, 'state_by' => null, 'resolved_at' => null, 'note' => $note,
+                            'resolved_cents' => null, 'resolved_by' => null]);
                         $this->event($f, $prev, $to, $run, $reason);
                         if ($prev === 'resolvido') {
                             $new++;
@@ -150,7 +152,13 @@ final class AuditEngine
                     continue;
                 }
                 $prev = $f->state;
-                $f->forceFill(['state' => 'resolvido', 'resolved_at' => $now, 'state_at' => $now, 'state_by' => null, 'note' => null])->save();
+                // Euros resolvidos: o € em jogo no momento (o guardado ao corrigir, senão o da última
+                // corrida) e quem o corrigiu (quem o marcou como corrigido ou aceite; senão ninguém).
+                $f->forceFill([
+                    'state' => 'resolvido', 'resolved_at' => $now, 'state_at' => $now, 'state_by' => null, 'note' => null,
+                    'resolved_cents' => $f->resolved_cents ?? ($f->impact_cents ?? $f->impact_pending_cents ?? 0),
+                    'resolved_by' => $f->resolved_by ?? (in_array($prev, ['corrigido', 'aceite'], true) ? $f->state_by : null),
+                ])->save();
                 $this->event($f, $prev, 'resolvido', $run, 'Resolvido: a auditoria deixou de o encontrar.');
                 $resolved++;
             }

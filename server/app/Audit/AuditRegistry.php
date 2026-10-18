@@ -13,7 +13,7 @@ use App\Audit\Contracts\AuditRule;
 final class AuditRegistry
 {
     /** Os ecrãs com botão "Auditoria": correm só as regras dessa área que declaram o ecrã. */
-    public const SCREENS = ['artigos', 'familias', 'faturas', 'fornecedores', 'fichas', 'stock', 'armazens', 'transferencias', 'menu'];
+    public const SCREENS = ['artigos', 'familias', 'faturas', 'fornecedores', 'fichas', 'stock', 'armazens', 'transferencias', 'menu', 'unidades'];
     /** Origens que correm todas as regras da área. */
     public const WHOLE_AREA = ['central', 'noturna', 'diaria'];
 
@@ -32,6 +32,18 @@ final class AuditRegistry
         }
 
         return null;
+    }
+
+    /** @return list<string> os códigos das regras sensíveis (com nomes de pessoas): só o administrador e o dono */
+    public static function sensitiveCodes(): array
+    {
+        return array_values(array_map(fn (AuditRule $r) => $r->code(), array_filter(self::all(), fn (AuditRule $r) => method_exists($r, 'sensitive') && $r->sensitive())));
+    }
+
+    /** @return list<string> os códigos das regras de uma família (ex.: "dinheiro", "unidades") */
+    public static function familyCodes(string $family): array
+    {
+        return array_values(array_map(fn (AuditRule $r) => $r->code(), array_filter(self::all(), fn (AuditRule $r) => method_exists($r, 'family') && $r->family() === $family)));
     }
 
     /** @return list<string> as áreas que têm regras */

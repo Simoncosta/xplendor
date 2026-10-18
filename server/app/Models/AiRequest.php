@@ -30,6 +30,7 @@ class AiRequest extends Model
     public const MODE_BUSSOLA = 'bussola_jogadas';
     // Registado pelo AiSyncRequest (não é um modo dos pedidos assíncronos, por isso fora de MODES).
     public const MODE_RADAR_PORQUE = 'radar_porque';
+    public const MODE_UNIT_ADVISOR = 'unit_advisor';
     public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE, self::MODE_IDEAS, self::MODE_CAPTION, self::MODE_CAR_DESCRIPTION, self::MODE_CAR_ANALYSIS, self::MODE_FAMILY_CATEGORIES, self::MODE_BUSSOLA];
 
     /** Subtipos do modo blog. */

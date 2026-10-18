@@ -85,13 +85,9 @@ final class PriceOutliers
         $cost = $data->cost();
         $units = $cost->units();
         $recentSince = $data->daysAgo(self::RECENT_DAYS);
-        // As unidades de embalagem com fator 1 (Caixa 24 a valer 1) ficam de fora: são da regra 3.
-        $packWithFactorOne = [];
-        foreach ($units as $id => $u) {
-            if (abs((float) $u->unit_value - 1.0) < 1e-9 && UnidadeFatorRule::fromName((string) $u->description) !== null) {
-                $packWithFactorOne[(string) $id] = true;
-            }
-        }
+        // As unidades globais com a quantidade incoerente com o nome (Caixa 24 a valer 1) ficam de fora:
+        // são da U9 (antes, a regra 3).
+        $packWithFactorOne = array_fill_keys(array_keys(\App\Audit\Rules\Restaurant\Units\UnidadeGlobalIncoerenteRule::detect($units)), true);
 
         $out = [];
         foreach ($data->purchases() as $pid => $lines) {

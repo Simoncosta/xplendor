@@ -108,6 +108,16 @@ export default function MenuEngineeringPage() {
     const items = useMemo(() => data?.items ?? [], [data?.items]);
     const families = useMemo(() => Array.from(new Set(items.map((i) => i.family))).sort(), [items]);
     const excluded = useMemo(() => items.filter((i) => i.excluded), [items]);
+    // Auditoria v2-C (C2): "Abrir na engenharia de menu" chega com ?prato=<artigo> e abre o detalhe.
+    const prato = params.get("prato");
+    useEffect(() => {
+        if (!prato || items.length === 0) return;
+        const it = items.find((i) => String(i.product_id) === prato);
+        if (it) setOpen(it);
+        const next = new URLSearchParams(params);
+        next.delete("prato");
+        setParams(next, { replace: true });
+    }, [prato, items, params, setParams]);
     const calculatedAt = snap?.calculated_at ? new Date(snap.calculated_at) : null;
     const excludedCounts = snap ? Object.entries(snap.summary.excluded).filter(([, n]) => n > 0) : [];
 

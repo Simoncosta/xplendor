@@ -95,6 +95,12 @@ abstract class FichaAvisoRule extends RestaurantRule
             : sprintf('Não há um valor direto em jogo: %s não teve vendas nos últimos 90 dias.', $dish);
     }
 
+    /** A ação de "Corrigir" (null = só abrir a ficha). @return array{action: array, label: string}|null */
+    protected function fixActionFor(RestaurantAuditData $data, string $pid, ?string $component, array $v, array $warnings): ?array
+    {
+        return null;
+    }
+
     protected function finding(RestaurantAuditData $data, string $pid, array $recipe, string $key, ?string $component, array $v, array $warnings): AuditFindingData
     {
         $dish = (string) ($recipe['description'] ?? $data->item($pid)?->description ?? $pid);
@@ -121,7 +127,8 @@ abstract class FichaAvisoRule extends RestaurantRule
             signature: implode('|', array_column($warnings, 'type')),
             impactCents: $this->revenueIsImpact() && $sales > 0 ? $sales : null,
             weightCents: $sales > 0 ? $sales : null,
-            fixUrl: $this->fixUrlFor($pid, $component, $warnings[0]), fixLabel: 'Abrir a ficha',
+            fixUrl: $this->fixUrlFor($pid, $component, $warnings[0]), fixLabel: $this->fixActionFor($data, $pid, $component, $v, $warnings)['label'] ?? 'Abrir a ficha',
+            fixAction: $this->fixActionFor($data, $pid, $component, $v, $warnings)['action'] ?? null,
             refs: array_values(array_filter([['artigo', $pid], $component ? ['artigo', $component] : null])),
             seen: $seen,
             stake: $this->revenueIsImpact() && $sales > 0

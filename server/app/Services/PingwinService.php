@@ -1275,6 +1275,57 @@ class PingwinService
         return $result;
     }
 
+    /**
+     * ⚠️ UNIDADES DE UM ARTIGO — ESCRITA (Auditoria v2): UMA alteração (create | edit_factor | void |
+     * set_purchase), com leitura antes e releitura depois, no Python (article_units.py). A guarda dos
+     * códigos (services.pingwin.unit_write_allowlist) vai para o Python, que recusa os outros artigos;
+     * nunca mexe numa unidade global nem na unidade base. $ownedUnitIds: as unidades que a XPLENDOR
+     * criou para este artigo (se o PingWin as guardou como globais, só estas se podem alterar).
+     * Devolve {ok, refused?, error?, before, after, unit, note}.
+     */
+    public function writeArticleUnit(int $companyId, string $productId, string $op, array $data, array $ownedUnitIds = [], ?callable $onProgress = null): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $this->invokeTimeout = 600;
+
+        return $this->invokeWithProgress($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode' => 'article_unit_write',
+            'product_id' => $productId,
+            'op' => $op,
+            'data' => $data,
+            'owned_unit_ids' => array_values(array_map('strval', $ownedUnitIds)),
+            'allowed_codes' => self::unitWriteAllowlist(),
+        ]), $onProgress ?? static fn () => null);
+    }
+
+    /** Os códigos de artigo em que se pode escrever as unidades (vazio = todos; "0" = nenhum). */
+    public static function unitWriteAllowlist(): array
+    {
+        return self::csvList((string) config('services.pingwin.unit_write_allowlist', ''));
+    }
+
+    /**
+     * A guarda das unidades para um artigo (pelo código): null = pode gravar; senão o porquê. Antes da
+     * lista, a prova: sem UNIT_WRITE_PROVEN o botão fica "Disponível em breve".
+     *
+     * @return array{mode: string, reason: string}|null
+     */
+    public static function unitWriteGuard(?string $code): ?array
+    {
+        if (! config('auditoria.unit_write_proven')) {
+            return ['mode' => 'por_provar', 'reason' => 'Disponível em breve: a escrita das unidades no PingWin ainda não foi provada neste ambiente.'];
+        }
+
+        return self::guardFor(self::unitWriteAllowlist(), (string) $code, 'PINGWIN_UNIT_WRITE_ALLOWLIST', 'nos artigos de teste autorizados');
+    }
+
     /** Os artigos em que se pode escrever a ficha (vazio = todos). Guarda do teste real. */
     public static function bomWriteAllowlist(): array
     {
@@ -1556,6 +1607,31 @@ class PingwinService
      *
      * @return array{documents: list<array<string,mixed>>, blocks: int, splits: int}
      */
+    /**
+     * Auditoria v2-C · C3: documentos de caixa (SÓ LEITURA) de [from, to] (até 31 dias), um dia e um
+     * tipo de cada vez. @return array{documents: list<array>, calls: int}
+     */
+    public function fetchPosDocuments(int $companyId, string $from, string $to, ?array $types = null): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', self::PLATFORM)->first();
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+        $this->invokeTimeout = 600;
+        try {
+            $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, array_filter([
+                'mode' => 'pos_documents', 'start' => $from, 'end' => $to, 'docconfigs' => $types,
+            ])));
+        } finally {
+            $this->invokeTimeout = 180;
+        }
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Documentos de caixa PingWin falharam: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return ['documents' => array_values($result['documents'] ?? []), 'calls' => (int) ($result['calls'] ?? 0)];
+    }
+
     public function fetchSupplierDocuments(int $companyId, string $from, string $to): array
     {
         $integration = CompanyIntegration::where('company_id', $companyId)

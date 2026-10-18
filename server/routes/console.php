@@ -163,6 +163,17 @@ Schedule::job(new \App\Jobs\DispatchSupplierCcSyncJob())
         \Illuminate\Support\Facades\Log::error('[PingWin CC] Despacho noturno falhou no scheduler');
     });
 
+// 04:30 (Lisboa) — Auditoria v2-C · C3: documentos de caixa do PingWin (SÓ LEITURA): os dois
+// últimos dias fechados, um dia e um tipo de cada vez, fora do horário de serviço.
+Schedule::job(new \App\Jobs\SyncPingwinPosDocumentsJob())
+    ->dailyAt('04:30')
+    ->timezone('Europe/Lisbon')
+    ->name('pingwin-pos-documents-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[PingWin Caixa] Leitura noturna falhou no scheduler');
+    });
+
 // 07:00 (Lisboa) — documentos de fornecedor do PingWin (F1, SÓ LEITURA): os últimos 7 dias
 // (lançamentos atrasados e anulações recentes). Depois da conta corrente das 06:30 (~1 min
 // em lotes); com um único worker, nada corre em cima de outra sync PingWin.

@@ -1,0 +1,30 @@
+/* XPLENDOR — Guião de unidades: as ações sempre à vista (barra fixa no fundo do artigo). */
+.xp-guide-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--vz-secondary-bg);
+    border: 1px solid var(--vz-border-color);
+    border-radius: 0.375rem;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+}
+@media (min-width: 768px) {
+    .xp-guide-actions { padding-right: 4.5rem; } /* o botão de apoio flutuante não tapa o texto */
+}
+/* O veredicto: verde (está certo), âmbar (precisa de mudança), cinzento (precisamos da sua ajuda). */
+.xp-verdict { border: 1px solid; }
+.xp-verdict-certo { border-color: var(--vz-success); background: var(--vz-success-bg-subtle); }
+.xp-verdict-certo .xp-verdict-icon, .xp-verdict-certo .xp-verdict-title { color: var(--vz-success); }
+.xp-verdict-mudar { border-color: var(--vz-warning); background: var(--vz-warning-bg-subtle); }
+.xp-verdict-mudar .xp-verdict-icon, .xp-verdict-mudar .xp-verdict-title { color: var(--vz-warning-text-emphasis, var(--vz-warning)); }
+.xp-verdict-ajuda { border-color: var(--vz-border-color); background: var(--vz-tertiary-bg); }
+.xp-verdict-ajuda .xp-verdict-icon { color: var(--vz-secondary-color); }
+.xp-guide-dot-grey { background: var(--vz-secondary-color); }
+.xp-guide-queue-group {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--vz-secondary-bg);
+}

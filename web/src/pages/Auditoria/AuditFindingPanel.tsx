@@ -5,9 +5,15 @@ import { toast } from "react-toastify";
 import Skeleton from "Components/Common/Skeleton";
 import ReasonButton from "Components/Common/ReasonButton";
 import { FinancialNote } from "Components/Common/HiddenMoney";
-import { getAuditFinding, getRecipeConversionInfo, setArticleGroupMain, setAuditFindingState } from "helpers/laravel_helper";
+import { getAuditFinding, getRecipe, getRecipeConversionInfo, setArticleGroupMain, setAuditFindingState } from "helpers/laravel_helper";
 import { AuditFindingDetail } from "common/models/audit.model";
 import ConfirmFactorModal, { FactorLine } from "pages/Restauracao/fichas/ConfirmFactorModal";
+import ConfirmYieldModal from "pages/Restauracao/fichas/ConfirmYieldModal";
+import { RecipeVersion } from "common/models/recipe.model";
+import SubstituteModal from "./SubstituteModal";
+import PriceHistoryModal from "./PriceHistoryModal";
+import DocumentsSideBySideModal from "./DocumentsSideBySideModal";
+import PriceSimulator from "./PriceSimulator";
 import { AuditStateBadge, Cents, ENTITY_LABEL, EvidenceView, SeverityBadge, STATE, fmtWhen } from "./auditFormat";
 import "./auditoria.css";
 
@@ -17,6 +23,8 @@ import "./auditoria.css";
  * sítio certo), Aceitar, Ignorar (com motivo), Marcar como corrigido (a auditoria seguinte confirma)
  * e Reabrir. A auditoria nunca corrige nada sozinha.
  */
+const LOOK_ONLY = ["historico_precos", "comparar_fornecedores", "documentos_lado_a_lado", "simular_preco"];
+
 export default function AuditFindingPanel({ companyId, findingId, onClose, onChanged }: {
     companyId: number; findingId: number; onClose: () => void; onChanged: () => void;
 }) {
@@ -28,6 +36,12 @@ export default function AuditFindingPanel({ companyId, findingId, onClose, onCha
     const [reason, setReason] = useState("");
     const [factorLine, setFactorLine] = useState<FactorLine | null>(null);
     const [main, setMain] = useState<string>("");
+    // Auditoria v2: o substituto do M2 e o rendimento já preenchido.
+    const [substitute, setSubstitute] = useState<{ productId: string; componentId: string } | null>(null);
+    const [yieldFix, setYieldFix] = useState<{ productId: string; version: RecipeVersion; quantity: number | null; reason: string | null } | null>(null);
+    // Auditoria v2-C (Dinheiro): o histórico de preços (ou a comparação) e os dois documentos lado a lado.
+    const [prices, setPrices] = useState<{ productId: string; products?: string[]; tab: "historico" | "comparar" } | null>(null);
+    const [sideBySide, setSideBySide] = useState<string[] | null>(null);
 
     const load = useCallback(async () => {
         try {
@@ -59,9 +73,65 @@ export default function AuditFindingPanel({ companyId, findingId, onClose, onCha
         }
     };
 
+    /** Depois de corrigir no sítio certo: o achado fica "Marcado como corrigido" (a corrida seguinte confirma). */
+    const fixed = async (message: string) => {
+        if (!f) return;
+        try {
+            if (["aberto", "aceite"].includes(f.state) && f.can_edit) {
+                const res: any = await setAuditFindingState(companyId, f.area, f.id, "corrigido");
+                setF(res?.data?.finding ?? f);
+            }
+            toast.success(message);
+            onChanged();
+        } catch {
+            toast.success(message);
+        }
+    };
+
     const fix = async () => {
         if (!f) return;
         const a = f.fix.action;
+        if (a?.type === "guiao") {
+            onClose();
+            navigate(`/restauracao/auditoria/guiao?artigo=${encodeURIComponent(a.product_id)}`);
+            return;
+        }
+        if (a?.type === "unidade_global") {
+            onClose();
+            navigate(`/restauracao/auditoria/guiao?unidade=${encodeURIComponent(a.unit_id)}`);
+            return;
+        }
+        if (a?.type === "historico_precos") {
+            setPrices({ productId: a.product_id, tab: "historico" });
+            return;
+        }
+        if (a?.type === "comparar_fornecedores") {
+            setPrices({ productId: a.product_id, products: a.products, tab: "comparar" });
+            return;
+        }
+        if (a?.type === "documentos_lado_a_lado") {
+            setSideBySide(a.documents);
+            return;
+        }
+        if (a?.type === "substituir_componente") {
+            setSubstitute({ productId: a.product_id, componentId: a.component_id });
+            return;
+        }
+        if (a?.type === "confirmar_rendimento") {
+            setBusy("fix");
+            try {
+                const res: any = await getRecipe(companyId, a.product_id);
+                const versions: RecipeVersion[] = res?.data?.versions ?? [];
+                const version = versions.find((v) => v.bom_id === a.bom_id) ?? versions.find((v: any) => v.in_force) ?? versions[0];
+                if (version?.yield) setYieldFix({ productId: a.product_id, version, quantity: a.quantity, reason: a.reason });
+                else if (f.fix.url) { onClose(); navigate(f.fix.url); }
+            } catch (e: any) {
+                toast.error(e?.message ?? "Não foi possível abrir a ficha.");
+            } finally {
+                setBusy(null);
+            }
+            return;
+        }
         if (a?.type === "confirmar_fator") {
             setBusy("fix");
             try {
@@ -122,7 +192,9 @@ export default function AuditFindingPanel({ companyId, findingId, onClose, onCha
                         <div className="d-flex flex-wrap gap-2 mb-3" data-testid="audit-actions">
                             {(f.fix.url || f.fix.action) && (
                                 <Button type="button" color="primary" onClick={fix} disabled={busy !== null} data-testid="audit-fix">
-                                    {busy === "fix" ? <Spinner size="sm" className="me-1" /> : <i className="ri-tools-line me-1" aria-hidden />}Corrigir{f.fix.label ? `: ${f.fix.label.toLowerCase()}` : ""}
+                                    {busy === "fix" ? <Spinner size="sm" className="me-1" /> : <i className={`${LOOK_ONLY.includes(f.fix.action?.type ?? "") ? "ri-line-chart-line" : "ri-tools-line"} me-1`} aria-hidden />}
+                                    {/* As ações de dinheiro só mostram (histórico, comparar, lado a lado, engenharia de menu): sem "Corrigir". */}
+                                    {LOOK_ONLY.includes(f.fix.action?.type ?? "") && f.fix.label ? f.fix.label : <>Corrigir{f.fix.label ? `: ${f.fix.label.toLowerCase()}` : ""}</>}
                                 </Button>
                             )}
                             {f.state === "aberto" && (
@@ -153,7 +225,8 @@ export default function AuditFindingPanel({ companyId, findingId, onClose, onCha
                         {f.state === "corrigido" && <div className="alert alert-info py-2 fs-13">Marcado como corrigido{f.state_by ? ` por ${f.state_by}` : ""}: a próxima auditoria confirma. Se já não o encontrar, passa a Resolvido.</div>}
                         {f.state === "ignorado" && f.state_reason && <div className="alert alert-secondary py-2 fs-13">Ignorado{f.state_by ? ` por ${f.state_by}` : ""}: {f.state_reason}</div>}
 
-                        {/* Os quatro blocos, sempre nesta ordem. */}
+                        {/* Os quatro blocos, sempre nesta ordem (a simulação do preço da C2 vem antes, com o "Corrigir"). */}
+                        {f.fix.action?.type === "simular_preco" && !hidden && <PriceSimulator action={f.fix.action} />}
                         <section className="mb-3" data-testid="audit-block-seen">
                             <h6 className="fs-13 text-uppercase text-muted mb-1">O que vimos</h6>
                             <p className="mb-2">{f.seen}</p>
@@ -222,11 +295,24 @@ export default function AuditFindingPanel({ companyId, findingId, onClose, onCha
                     </>
                 )}
             </OffcanvasBody>
+            {substitute && (
+                <SubstituteModal companyId={companyId} productId={substitute.productId} componentId={substitute.componentId}
+                    onClose={() => setSubstitute(null)}
+                    onSaved={() => { setSubstitute(null); fixed("Ficha gravada no PingWin. O achado ficou marcado como corrigido: a próxima auditoria confirma."); }} />
+            )}
+            {yieldFix && (
+                <ConfirmYieldModal open companyId={companyId} productId={yieldFix.productId} version={yieldFix.version} hidden={hidden}
+                    suggested={{ quantity: yieldFix.quantity, reason: yieldFix.reason }}
+                    onClose={() => setYieldFix(null)}
+                    onDone={() => { setYieldFix(null); fixed("Rendimento confirmado. O achado ficou marcado como corrigido: a próxima auditoria confirma."); }} />
+            )}
             {factorLine?.conversion && (
                 <ConfirmFactorModal open line={factorLine} companyId={companyId} hidden={hidden}
                     onClose={() => setFactorLine(null)}
                     onDone={() => { setFactorLine(null); toast.success("Embalagem confirmada. Marque o achado como corrigido: a próxima auditoria confirma."); load(); }} />
             )}
+            {prices && <PriceHistoryModal companyId={companyId} productId={prices.productId} products={prices.products} tab={prices.tab} onClose={() => setPrices(null)} />}
+            {sideBySide && <DocumentsSideBySideModal companyId={companyId} documents={sideBySide} onClose={() => setSideBySide(null)} />}
         </Offcanvas>
     );
 }

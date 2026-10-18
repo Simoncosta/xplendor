@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductUnitConversion extends Model
 {
     protected $fillable = [
-        'company_id', 'product_pingwin_id', 'unit_key', 'unit_label', 'supplier_nif', 'factor_to_base',
+        'company_id', 'profile_id', 'product_pingwin_id', 'unit_key', 'unit_label', 'supplier_nif', 'purpose', 'factor_to_base',
         'source', 'reason', 'confirmed_by', 'confirmed_at',
     ];
 

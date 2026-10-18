@@ -25,6 +25,15 @@ class PrivateFileController extends Controller
         return PrivateFiles::serve($t->invoice_path, 'application/pdf', PrivateFiles::ticketInvoiceName($t));
     }
 
+    /** A foto de "Dar mais informação" do Guião de unidades (o endereço assinado sai da API, já com a ACL feita). */
+    public function unitPhoto(int $profile): Response
+    {
+        $p = \App\Models\ProductUnitProfile::find($profile);
+        abort_if(! $p || ! $p->info_photo_path, 404);
+
+        return PrivateFiles::serve($p->info_photo_path, 'image/webp');
+    }
+
     public function reportPhoto(int $photo): Response
     {
         $p = SatisfactionReportPhoto::find($photo);

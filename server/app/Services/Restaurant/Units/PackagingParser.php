@@ -26,8 +26,26 @@ final class PackagingParser
 
     private const UNIT_RX = 'KGS|KG|KILOS|KILO|GRS|GR|G|LTS|LT|LITROS|LITRO|L|CL|ML';
 
+    /** Doses individuais: a palavra escrita → o nome da dose (a unidade base destes artigos). */
+    private const DOSES = [
+        'CAPSULAS' => 'Cápsula', 'CAPSULA' => 'Cápsula', 'CAPS' => 'Cápsula', 'PASTILHAS' => 'Pastilha', 'PASTILHA' => 'Pastilha',
+        'MONODOSES' => 'Dose', 'MONODOSE' => 'Dose', 'DOSES' => 'Dose', 'DOSE' => 'Dose', 'SAQUETAS' => 'Saqueta', 'SAQUETA' => 'Saqueta',
+        'SAQ' => 'Saqueta', 'PACOTINHOS' => 'Pacotinho', 'PACOTINHO' => 'Pacotinho', 'INDIVIDUAIS' => 'Dose', 'INDIVIDUAL' => 'Dose',
+        'FATIAS' => 'Fatia', 'FATIA' => 'Fatia',
+    ];
+
+    private const DOSE_RX = 'CAPSULAS|CAPSULA|CAPS|PASTILHAS|PASTILHA|MONODOSES|MONODOSE|DOSES|DOSE|SAQUETAS|SAQUETA|SAQ|PACOTINHOS|PACOTINHO|INDIVIDUAIS|INDIVIDUAL|FATIAS|FATIA';
+
+    /** A dose individual escrita na descrição ("100 CAPS" → Cápsula), ou null. */
+    public static function dose(?string $description): ?string
+    {
+        $t = Str::upper(Str::ascii((string) $description));
+
+        return preg_match('/\b(' . self::DOSE_RX . ')\b/', $t, $m) ? self::DOSES[$m[1]] : null;
+    }
+
     private const CONTAINERS = [
-        'bidon' => '/\bBID(?:ON|AO)\b/', 'barril' => '/\bBARRIL\b/', 'saco' => '/\bSACO\b/', 'grade' => '/\bGR(?:ADE|D)?\s?\d+\b|\bGRADE\b/',
+        'bidon' => '/\bBID(?:ON|AO)\b/', 'barril' => '/\bBARRIL\b/', 'saco' => '/\bSACO\b/', 'grade' => '/\bGR(?:ADE|D)?\s?\d+\b|\bGRADE\b|X\s*\d{1,3}\s+GR\b/',
         'caixa' => '/\bCX\b|\bCAIXA\b|\bC\/\s?\d+\b|\bCX\s?\d+\b/', 'pack' => '/\bPACK\b|\bPK\s?\d+\b/', 'garrafa' => '/\bGARRAF(?:A|AO)\b|\bGRF\b/',
         'lata' => '/\bLATA\b/', 'pacote' => '/\bPACOTE\b/', 'frasco' => '/\bFRASCO\b/', 'balde' => '/\bBALDE\b/',
     ];
@@ -44,6 +62,22 @@ final class PackagingParser
         }
         $container = self::container($t);
         $u = self::UNIT_RX;
+        $dose = self::dose($t);
+
+        // Doses individuais: quantas por caixa ("100 CAPS", "CAPS 100", "1000 SAQ.", "CX 50", "C/100").
+        // Sem o número, sabe-se que é dose, não quantas leva (pergunta-se; nunca se assume).
+        if ($dose !== null) {
+            $d = self::DOSE_RX;
+            if (preg_match('/(?<![\d.,])(\d{1,4})\s*(?:' . $d . ')\b|\b(?:' . $d . ')\.?\s*(?:C\/|X)?\s*(\d{1,4})(?![\d.,]|\s*(?:' . $u . ')\b)|\bC\/\s?(\d{1,4})\b|\bCX\s?(\d{1,4})\b|\((\d{1,4})\)/', $t, $m)) {
+                $n = (int) (array_values(array_filter(array_slice($m, 1), fn ($v) => $v !== ''))[0] ?? 0);
+                if ($n > 1) {
+                    return array_merge(self::result('un', 1.0, $n, 'caixa', $m[0]), ['dose' => $dose, 'label' => "Caixa de {$n} " . self::plural($dose)]);
+                }
+            }
+
+            return ['family' => 'un', 'each' => 0.0, 'count' => 0, 'quantity' => 0.0, 'container' => 'caixa', 'text' => $dose,
+                'label' => 'Caixa de ' . self::plural($dose), 'dose' => $dose];
+        }
 
         // Grade escrita como "0.25X0.24 GR": 24 garrafas de 0,25 L.
         if (preg_match('/(?<![\d.,])(\d+[.,]\d+)\s*(' . $u . ')?\s*X\s*0[.,](\d{1,3})\s*(?:GR|GRD|GRADE)\b/', $t, $m)) {
@@ -56,12 +90,27 @@ final class PackagingParser
                 return self::result($family, $each, (int) $m[1], $container, $m[0]);
             }
         }
-        // "0,33X24", "1,5L X 6"
-        if (preg_match('/(?<![\d.,])(\d+[.,]\d+|\d+)\s*(' . $u . ')?\s*X\s*(\d{1,3})\b(?![.,]\d)/', $t, $m) && (int) $m[3] > 1) {
+        // "0,33X24", "1,5L X 6", "0.25X24TB"
+        if (preg_match('/(?<![\d.,])(\d+[.,]\d+|\d+)\s*(' . $u . ')?\s*X\s*(\d{1,3})(?![\d.,])/', $t, $m) && (int) $m[3] > 1) {
             [$family, $each] = self::sized(self::num($m[1]), $m[2] ?? '');
             if ($each > 0) {
                 return self::result($family, $each, (int) $m[3], $container, $m[0]);
             }
+        }
+
+        // "28/033CL", "24/0,33L": peças / tamanho de cada uma ("033" com CL = 33 cl).
+        if (preg_match('/(?<![\d.,])(\d{1,3})\s*\/\s*(\d+(?:[.,]\d+)?)\s*(' . $u . ')\b/', $t, $m) && (int) $m[1] > 1) {
+            [$family, $each] = self::sized(self::num($m[2]), $m[3]);
+            if ($each > 0) {
+                return self::result($family, $each, (int) $m[1], $container, $m[0]);
+            }
+        }
+        if (preg_match('/(?<![\d.,\s])\s*\bDUZIA\b/', ' ' . $t) && ! preg_match('/\d\s?DUZIA/', $t)) {
+            return self::result('un', 1.0, 12, $container ?? 'caixa', 'DUZIA');
+        }
+        // Dúzias ("15DUZIAS", "1 DUZIA"): peças.
+        if (preg_match('/(?<![\d.,])(\d{1,3})\s?DUZIAS?\b/', $t, $m)) {
+            return self::result('un', 1.0, (int) $m[1] * 12, $container ?? 'caixa', $m[0]);
         }
 
         // Tamanho de cada peça ("1KG", "500G", "0,75L", "30LT", "33CL"); o último é o da embalagem.
@@ -77,7 +126,7 @@ final class PackagingParser
         }
         // Peças por embalagem ("C/12", "CX12", "CX 12", "GR24", "GR 24", "PACK 6", "PK6", "12UN", "X24").
         $count = null;
-        if (preg_match('/\bC\/\s?(\d{1,3})\b|\bCX\s?(\d{1,3})\b|\bGR(?:ADE|D)?\s?(\d{1,3})\b(?!\s*(?:' . $u . ')\b)|\bPACK\s?(\d{1,3})\b|\bPK\s?(\d{1,3})\b|(?<![\d.,])(\d{1,3})\s?(?:UN|UND|UNID|UNIDADES)\b|\bX\s?(\d{1,3})\b/', $t, $m)) {
+        if (preg_match('/\bC\/\s?(\d{1,4})\b|\bCX\s?(\d{1,4})\b|\bGR(?:ADE|D)?\s?(\d{1,3})\b(?!\s*(?:' . $u . ')\b)|\bPACK\s?(\d{1,3})\b|\bPK\s?(\d{1,3})\b|(?<![\d.,])(\d{1,4})\s?(?:UN|UND|UNID|UNIDADES|U)\b|\bX\s?(\d{1,3})\b|\((\d{1,4})\)/', $t, $m)) {
             $n = (int) (array_values(array_filter(array_slice($m, 1), fn ($v) => $v !== ''))[0] ?? 0);
             if ($n > 1) {
                 $count = [$n, $m[0]];
@@ -94,7 +143,8 @@ final class PackagingParser
         }
         if ($container !== null) {
             // Só o recipiente ("BIDON", "SACO", "CX"): sabe-se que é embalado, não quanto leva.
-            return ['family' => 'un', 'each' => 0.0, 'count' => 0, 'quantity' => 0.0, 'container' => $container, 'text' => $container, 'label' => self::containerLabel($container)];
+            return ['family' => 'un', 'each' => 0.0, 'count' => 0, 'quantity' => 0.0, 'container' => $container, 'text' => $container,
+                'label' => self::containerLabel($container), 'dose' => null];
         }
 
         return null;
@@ -143,7 +193,7 @@ final class PackagingParser
         }
 
         return ['family' => $family, 'each' => $each, 'count' => max(1, $count), 'quantity' => $quantity, 'container' => $container,
-            'text' => trim($text), 'label' => self::label($family, $each, max(1, $count), $container)];
+            'text' => trim($text), 'label' => self::label($family, $each, max(1, $count), $container), 'dose' => null];
     }
 
     /** "Embalagem de 1 kg", "Grade de 24 × 0,25 L", "Caixa de 12 unidades", "Bidão de 30 L". */
@@ -171,7 +221,13 @@ final class PackagingParser
         return $fmt($q) . ' un';
     }
 
-    private static function containerLabel(string $c): string
+    /** "Cápsula" → "cápsulas", "Pacotinho" → "pacotinhos". */
+    public static function plural(string $dose): string
+    {
+        return mb_strtolower($dose) . 's';
+    }
+
+    public static function containerLabel(string $c): string
     {
         return ['bidon' => 'Bidão', 'barril' => 'Barril', 'saco' => 'Saco', 'grade' => 'Grade', 'caixa' => 'Caixa', 'pack' => 'Pack',
             'garrafa' => 'Garrafa', 'lata' => 'Lata', 'pacote' => 'Pacote', 'frasco' => 'Frasco', 'balde' => 'Balde'][$c] ?? 'Embalagem';

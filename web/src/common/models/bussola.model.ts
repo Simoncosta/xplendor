@@ -91,6 +91,11 @@ export interface CompassData {
         forgotten: { headline: string; items: { key: string; name: string; location: string; days: number; qty_before: number; theme: string | null; date: string }[] };
         /** Fatia 3: a jogada da engenharia de menu dos artigos com mais receita (pode não vir em respostas antigas). */
         menu?: { headline: string | null; calculated_at: string | null; items: { product_id: string; name: string; family: string; class: string; class_label: string; confidence: string; fragile: boolean; play: string | null }[] };
+        /** Auditoria v2: o resolvido do mês (só quando houve achados resolvidos). */
+        audit?: { headline: string; resolved_cents: number | null; count: number; open_cents: number | null;
+            by_rule: { label: string; resolved_cents: number | null; count: number }[]; by_person: { label: string; resolved_cents: number | null; count: number }[] };
+        /** Auditoria v2-C: "Onde está a fugir dinheiro" (os 3 achados de dinheiro com mais € em jogo). */
+        money?: { headline: string; open_cents: number | null; items: { finding_id: number; title: string; rule_title: string; impact_cents: number | null }[] };
     };
 }
 

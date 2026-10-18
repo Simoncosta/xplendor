@@ -41,10 +41,17 @@ final class AuditFindingStates
         }
 
         $prev = $finding->state;
+        // Euros resolvidos: ao corrigir, guarda-se o € em jogo nesse momento e quem corrigiu (conta
+        // quando a corrida seguinte o confirmar); reabrir limpa-os.
+        $money = match ($action) {
+            'corrigido' => ['resolved_cents' => $finding->impact_cents ?? $finding->impact_pending_cents ?? 0, 'resolved_by' => $user->id],
+            'reabrir', 'ignorar' => ['resolved_cents' => null, 'resolved_by' => null],
+            default => [],
+        };
         $finding->forceFill([
             'state' => $to, 'state_by' => $user->id, 'state_at' => now(),
             'state_reason' => $reason !== '' ? $reason : null, 'note' => null,
-        ])->save();
+        ] + $money)->save();
         AuditFindingEvent::create([
             'finding_id' => $finding->id, 'company_id' => $finding->company_id, 'from_state' => $prev, 'to_state' => $to,
             'user_id' => $user->id, 'reason' => $reason !== '' ? $reason : null, 'created_at' => now(),

@@ -30,7 +30,7 @@ import unicodedata
 from contextlib import contextmanager
 from decimal import ROUND_HALF_UP, Decimal
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote, urlparse
 
 import pandas as pd
@@ -2476,13 +2476,14 @@ class MyCloudPieClient(StockDocsMixin):
             raise RuntimeError(f"units GET,INFO falhou: HTTP {r.status_code} — {r.text[:800]}")
         return r.json().get("units", {}).get("maindataset", [])
 
-    def create_unit(self, unit: Dict[str, Any]) -> Dict[str, Any]:
+    def create_unit(self, unit: Dict[str, Any], extra_keys: tuple = ()) -> Dict[str, Any]:
         """Cria uma unidade: OPEN → (baseline) GET,INFO → NEW → GET,INFO(lista c/ nova)
         → ⚠️ EDIT,SAVE dessa lista EXATA (commit) → GET,INFO(confirma). Tudo na mesma
         sessão/ObjectID. Salvaguardas contra apagar a tabela. Erro REAL exposto."""
         url = f"{self.api_url}{self._UNITS_URL_PATH}"
+        # extra_keys: só a escrita das unidades de um artigo (article_units.py) junta o product_id.
         allowed = ["description", "shortname", "parent_qnt", "parent_id", "net_weight",
-                   "external_measure", "frac_unit", "warn_maxsale_qnt"]
+                   "external_measure", "frac_unit", "warn_maxsale_qnt", *extra_keys]
         row = {k: unit[k] for k in allowed if k in unit and unit[k] not in (None, "")}
         if "parent_qnt" in row:
             row["parent_qnt"] = str(row["parent_qnt"])  # HAR envia como string
@@ -3787,6 +3788,51 @@ class MyCloudPieClient(StockDocsMixin):
                 if rid:
                     docs[rid] = r
         return {"documents": list(docs.values()), "blocks": blocks, "splits": splits}
+
+    # ============ DOCUMENTOS DE CAIXA (Auditoria v2-C · C3, SÓ LEITURA, lista "Documentos") ============
+    # O mesmo browserdataset da lista de documentos, filtrado por DOCCONFIG_ID (provado no PASSO 0
+    # da v2-C: filtra bem; DOCTYPE vazio). Um dia de cada vez e um tipo de cada vez (lotes pequenos):
+    # 1002 anulação, 1031 consulta de mesa, 1018 fatura-recibo, 1020 fatura e as notas de crédito.
+    # A linha da lista já traz o funcionário (employee_id, employee), a hora e o total; sem
+    # descontos nem motivo (esses pedem abrir o documento: fora deste modo).
+    POSDOCS_DOCCONFIGS = ("1002", "1031", "1018", "1020", "1412", "1009", "1404", "1300", "1419")
+    POSDOCS_MAX_DAYS = 31
+
+    @staticmethod
+    def _posdocs_body(day: date, docconfig_id: str) -> Dict[str, Any]:
+        return {"params": {
+            "DOCTYPE": "", "DOCCONFIG_ID": str(docconfig_id), "STORE_ID": "", "DOCSTATUS_ID": "",
+            "DOCNUMBER": "", "REFDOC_NUMBER": "", "ATM_REFERENCE": "", "SEARCHTEXT": "", "HIDE_CONV_DOCS": "0",
+            "DOCUMENT_ID": "", "START_DATE": day.strftime("%Y%m%dT00:00:00"),
+            "END_DATE": day.strftime("%Y%m%dT00:00:00"), "FILTER_DATE_BY": "0", "TAX_NUMBER": "",
+        }}
+
+    def fetch_pos_documents(self, dataset_id: str, start: date, end: date, docconfigs: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Documentos de caixa de [start, end] (no máximo POSDOCS_MAX_DAYS dias), um dia e um tipo de
+        cada vez. Só tipos de POSDOCS_DOCCONFIGS. Um dia que bata na trava de páginas levanta (nunca se
+        aceita uma lista cortada). Devolve documentos + estatística."""
+        if end < start:
+            raise ValueError("fim antes do início")
+        if (end - start).days + 1 > self.POSDOCS_MAX_DAYS:
+            raise ValueError(f"no máximo {self.POSDOCS_MAX_DAYS} dias por chamada")
+        types = [str(t) for t in (docconfigs or self.POSDOCS_DOCCONFIGS)]
+        bad = [t for t in types if t not in self.POSDOCS_DOCCONFIGS]
+        if bad:
+            raise ValueError(f"tipos de documento fora da lista de leitura: {', '.join(bad)}")
+        docs: Dict[str, Dict[str, Any]] = {}
+        calls = 0
+        day = start
+        while day <= end:
+            for dc in types:
+                calls += 1
+                rows = self.fetch_browserdataset(dataset_id, self._posdocs_body(day, dc),
+                                                 page_size=self.SUPDOCS_PAGE_SIZE, max_pages=self.SUPDOCS_MAX_PAGES)
+                for r in rows:
+                    rid = str(r.get("id") or "")
+                    if rid and str(r.get("docconfig_id") or dc) == dc:
+                        docs[rid] = r
+            day += timedelta(days=1)
+        return {"documents": list(docs.values()), "calls": calls}
 
     # ============ LINHAS DOS DOCUMENTOS DE FORNECEDOR (F4, SÓ LEITURA, um documento de cada vez) ============
     # Protocolo (HAR do BO + Passo 0 da F4, provado na Yuko):

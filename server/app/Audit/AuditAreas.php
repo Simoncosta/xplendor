@@ -46,6 +46,25 @@ final class AuditAreas
         return array_values(array_filter(AuditRegistry::areas(), fn (string $a) => self::canSee($user, $companyId, $a)));
     }
 
+    /**
+     * Auditoria v2-C · as regras sensíveis (com nomes de funcionários, C3): só o administrador da
+     * própria empresa e o dono da plataforma as veem.
+     */
+    public static function seesSensitive(?User $user, int $companyId): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->isRoot() || ((int) $user->company_id === $companyId && app(Access::class)->isCompanyAdmin($user));
+    }
+
+    /** @return list<string> os códigos das regras que esta pessoa não pode ver */
+    public static function hiddenRules(?User $user, int $companyId): array
+    {
+        return self::seesSensitive($user, $companyId) ? [] : AuditRegistry::sensitiveCodes();
+    }
+
     private static function allowed(?User $user, int $companyId, string $area, string $action): bool
     {
         $def = self::AREAS[$area] ?? null;
