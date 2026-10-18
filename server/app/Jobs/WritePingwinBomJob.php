@@ -87,6 +87,8 @@ class WritePingwinBomJob implements ShouldQueue
                 RecipeDraft::where('company_id', $write->company_id)->where('product_pingwin_id', $write->product_pingwin_id)
                     ->where('user_id', $write->user_id)->delete();
             }
+            // Fatia 3: a ficha mudou; a engenharia de menu recalcula-se.
+            ComputeMenuEngineeringJob::forDefaults((int) $write->company_id);
         } catch (\Throwable $e) {
             Log::warning('[PingWin Fichas] gravação falhou', ['write_id' => $write->id, 'error' => $e->getMessage()]);
             $write->update(['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 1000), 'finished_at' => now()]);

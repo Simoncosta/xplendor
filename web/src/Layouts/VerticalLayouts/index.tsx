@@ -9,6 +9,7 @@ import { withTranslation } from "react-i18next";
 import withRouter from "../../Components/Common/withRouter";
 import { useSelector } from "react-redux";
 import { createSelector } from 'reselect';
+import useSidebarFlyout from "../useSidebarFlyout";
 
 const selectLayoutState = (state: any) => state.Layout;
 
@@ -24,6 +25,8 @@ const selectVerticalLayoutProperties = createSelector(
 const VerticalLayout = (props: any) => {
     const navData = navdata().props.children;
     const path = props.router.location.pathname;
+    // Submenus que não passam o fundo do ecrã (sidebar recolhida) e grupos visíveis (sidebar expandida).
+    useSidebarFlyout();
 
     /*
  layout settings

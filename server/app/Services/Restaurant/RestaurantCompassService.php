@@ -595,13 +595,44 @@ class RestaurantCompassService
 
     private function blocks(int $companyId, Collection $scope, array $names, array $facts, Collection $signals): array
     {
-        return [
+        $menu = $this->menuBlock($companyId);
+
+        return array_filter([
             'days' => $this->daysBlock($companyId, $scope, $names),
             'stars' => $this->starsBlock($scope, $names, $facts),
             'changes' => $this->changesBlock($scope, $names, $facts, $signals),
             'decide' => $this->decideBlock($names, $signals),
             'channels' => $this->channelsBlock($names, $signals),
             'forgotten' => $this->forgottenBlock($names, $signals),
+            // Só com um cálculo da engenharia de menu (sem ele, a resposta fica como antes).
+            'menu' => $menu['items'] ? $menu : null,
+        ], fn ($b) => $b !== null);
+    }
+
+    /**
+     * Fatia 3: a jogada da engenharia de menu dos artigos com mais receita (do último cálculo da empresa
+     * toda, média de 90 dias). As jogadas da Bússola vêm dos sinais de vendas; esta fica como bloco.
+     */
+    private function menuBlock(int $companyId): array
+    {
+        $snap = \App\Models\MenuEngineeringSnapshot::latestFor($companyId, null, 'media');
+        if (! $snap) {
+            return ['headline' => null, 'items' => [], 'calculated_at' => null];
+        }
+        $items = \App\Models\MenuEngineeringItem::where('snapshot_id', $snap->id)->whereNull('excluded')->whereNotNull('class')
+            ->orderByDesc('revenue_cents')->limit(5)->get();
+        $labels = \App\Services\Restaurant\Menu\MenuMatrix::CLASS_LABELS;
+        $counts = (array) (($snap->data['summary'] ?? [])['classes'] ?? []);
+
+        return [
+            'headline' => $items->isEmpty() ? null : sprintf('Engenharia de menu (%s a %s): %d %s, %d cavalos de trabalho, %d quebra-cabeças e %d %s.',
+                $this->dm((string) $snap->period_from), $this->dm((string) $snap->period_to), $counts['estrela'] ?? 0, ($counts['estrela'] ?? 0) === 1 ? 'estrela' : 'estrelas',
+                $counts['cavalo'] ?? 0, $counts['quebra_cabecas'] ?? 0, $counts['cao'] ?? 0, ($counts['cao'] ?? 0) === 1 ? 'cão' : 'cães'),
+            'calculated_at' => $snap->calculated_at?->toIso8601String(),
+            'items' => $items->map(fn ($i) => [
+                'product_id' => $i->product_id, 'name' => $i->description, 'family' => $i->family, 'class' => $i->class, 'class_label' => $labels[$i->class] ?? $i->class,
+                'confidence' => $i->confidence, 'fragile' => $i->fragile, 'play' => ($i->detail ?? [])['play'] ?? null,
+            ])->values()->all(),
         ];
     }
 

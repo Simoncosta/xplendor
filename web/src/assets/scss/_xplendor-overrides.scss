@@ -125,3 +125,118 @@
   box-shadow: var(--vz-box-shadow-lg);
   border: 1px solid var(--vz-border-color);
 }
+
+// Site do consultor: o campo para onde leva "Ir para o campo" (o que falta para publicar), assinalado por um momento.
+.field-attention {
+  outline: 2px solid var(--vz-warning);
+  outline-offset: 2px;
+  border-radius: var(--vz-border-radius);
+  transition: outline-color 0.4s ease;
+}
+
+// ───────────────────────────────────────────────────────
+// Polish — Submenu da sidebar recolhida (sm) que não cabe.
+//
+// No modo sm a sidebar é absolute e cada submenu é um painel
+// flutuante (absolute) por baixo do item: perto do fundo, o
+// painel passava a janela e esticava o documento (scroll na
+// página). O hook useSidebarFlyout mede o painel ao abrir e
+// põe-no para cima (xp-flyout-up) ou entre a barra de topo e
+// o fundo, com scroll por dentro (xp-flyout-scroll).
+// Aqui: o mesmo aspeto do :hover do Velzon quando o painel
+// abre pelo teclado (xp-flyout-open), e o Esc que o fecha
+// mesmo com o rato por cima (xp-flyout-suppressed).
+// ───────────────────────────────────────────────────────
+
+:is([data-layout="vertical"], [data-layout="semibox"])[data-sidebar-size="sm"] .navbar-menu .navbar-nav {
+  .nav-item.xp-flyout-open {
+    > a.menu-link {
+      position: relative;
+      width: calc(200px + var(--#{$prefix}vertical-menu-width-sm));
+      transition: none;
+      background-color: var(--#{$prefix}vertical-menu-bg);
+
+      span {
+        display: inline-block;
+        padding-left: 25px;
+      }
+    }
+
+    .nav-link span {
+      display: inline-block;
+    }
+
+    > .menu-dropdown {
+      display: block;
+      left: var(--#{$prefix}vertical-menu-width-sm);
+      position: absolute;
+      width: 200px;
+      background: var(--#{$prefix}vertical-menu-bg);
+      height: auto !important;
+      padding: 0.5rem 0;
+      border-radius: 0 0 3px 3px;
+      box-shadow: $vertical-menu-dropdown-box-shadow;
+    }
+  }
+
+  .nav-sm .nav-item.xp-flyout-open > .menu-dropdown {
+    left: 100% !important;
+    border-radius: 3px !important;
+  }
+
+  .nav-item.xp-flyout-suppressed > .menu-dropdown {
+    display: none !important;
+  }
+
+  .menu-dropdown.xp-flyout-up {
+    border-radius: 3px 3px 0 0;
+  }
+
+  .menu-dropdown.xp-flyout-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  // O foco do teclado vê-se no item (o Velzon só tem o realce do rato).
+  .nav-link:focus-visible {
+    outline: 2px solid var(--#{$prefix}primary);
+    outline-offset: -2px;
+  }
+}
+
+// ───────────────────────────────────────────────────────
+// Polish — Sidebar larga: a área com scroll acaba na janela.
+//
+// O Velzon dá ao #scrollbar (SimpleBar, h-100) a altura do
+// menu e compensa o logótipo com um padding-bottom fixo
+// (header + 25 px). O seletor da empresa de trabalho, por
+// cima, empurrava a área ~33 px para baixo da janela: os
+// últimos itens do root ficavam fora de alcance e um grupo
+// aberto no fundo não se conseguia mostrar. Em coluna flex,
+// a área ocupa só o que sobra.
+// ───────────────────────────────────────────────────────
+
+[data-layout="vertical"]:not([data-sidebar-size="sm"]) .app-menu.navbar-menu {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 25px;
+
+  > #scrollbar {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+  }
+}
+
+// ───────────────────────────────────────────────────────
+// Fatia 3 — Engenharia de menu: o tema pinta o contorno de todos os
+// marcadores do ApexCharts com a cor do fundo (plugins/_apexcharts.scss).
+// Na matriz, o contorno é a cor da classe (o marcador vazio é o Parcial).
+// ───────────────────────────────────────────────────────
+
+.xp-menu-matrix {
+  .apexcharts-marker[stroke="#0ab39c"] { stroke: #0ab39c; }
+  .apexcharts-marker[stroke="#405189"] { stroke: #405189; }
+  .apexcharts-marker[stroke="#f7b84b"] { stroke: #f7b84b; }
+  .apexcharts-marker[stroke="#f06548"] { stroke: #f06548; }
+}

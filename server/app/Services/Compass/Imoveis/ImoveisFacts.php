@@ -55,6 +55,9 @@ final class ImoveisFacts
                 'ine_median_m2' => $ref?->median_m2, 'ine_period' => $ref?->period_label,
                 'muni_median_m2' => $muni?->median_m2, 'muni_period' => $muni?->period_label,
                 'contacts_30' => $p->contacts_30, 'visits_30' => $p->visits_30,
+                // Site do consultor: o total soma a parte do site e a parte manual (os outros canais).
+                'contacts_30_site' => (int) $p->contacts_30_site, 'visits_30_site' => (int) $p->visits_30_site,
+                'contacts_30_manual' => (int) $p->contacts_30_manual, 'visits_30_manual' => (int) $p->visits_30_manual,
                 'interest_days' => $p->interest_updated_at ? (int) CarbonImmutable::parse($p->interest_updated_at)->diffInDays($today) : null,
                 'energy_class' => $p->energy_class, 'posted_30' => isset($posted[$p->id]),
             ];

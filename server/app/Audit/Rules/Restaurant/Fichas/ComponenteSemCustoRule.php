@@ -26,12 +26,18 @@ final class ComponenteSemCustoRule extends FichaAvisoRule
 
     public function description(): string
     {
-        return 'Fichas que usam ingredientes sem compras nem custo no PingWin.';
+        return 'Fichas que usam ingredientes sem compras, sem conversão confirmada ou sem custo.';
     }
 
     protected function types(): array
     {
-        return ['no_cost', 'cycle', 'depth'];
+        // Fatia 3: também as compras sem fator confirmado ("sem conversão": a XPLENDOR não usa o fator do PingWin).
+        return ['no_cost', 'no_conversion', 'cycle', 'depth'];
+    }
+
+    protected function revenueIsImpact(): bool
+    {
+        return true;
     }
 
     /** Os que têm um parecido comprado ficam na regra "Fichas que usam um artigo que já não se compra". */
@@ -49,6 +55,14 @@ final class ComponenteSemCustoRule extends FichaAvisoRule
     protected function texts(array $c): array
     {
         $semi = str_contains((string) ($c['warnings'][0]['text'] ?? ''), 'semi-produto');
+        if (in_array('no_conversion', array_column($c['warnings'], 'type'), true)) {
+            return [
+                sprintf('%s sem conversão confirmada', $c['comp']),
+                sprintf('A ficha de %s (%s) usa %s. %s', $c['dish'], $c['version'], $c['compLabel'], (string) ($c['warnings'][0]['text'] ?? '')),
+                'A XPLENDOR não usa o fator das unidades do PingWin (está distorcido): sem saber quantas unidades base tem a embalagem da compra, este ingrediente fica sem preço e o custo do prato fica incompleto.',
+                'Confirme o fator da embalagem (quantas unidades base tem cada uma) no ecrã das fichas ou na engenharia de menu.',
+            ];
+        }
 
         return [
             sprintf('%s sem preço de compra', $c['comp']),

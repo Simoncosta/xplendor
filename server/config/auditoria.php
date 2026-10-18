@@ -31,6 +31,9 @@ return [
         App\Audit\Rules\Restaurant\Stock\CompradoNuncaConsumidoRule::class,
         App\Audit\Rules\Restaurant\Stock\CoberturaImpossivelRule::class,
         App\Audit\Rules\Restaurant\Stock\ArmazemSemEntradasRule::class,
+        // Engenharia de menu (Fatia 3): lê o snapshot da engenharia de menu.
+        App\Audit\Rules\Restaurant\Menu\FoodCostAcimaAlvoRule::class,
+        App\Audit\Rules\Restaurant\Menu\FichaSemComprasRule::class,
         // Transferências (Fatia 7c): lê os documentos de transferência lidos do PingWin, os circuitos e o stock.
         App\Audit\Rules\Restaurant\Transfers\GuiaOrigemErradaRule::class,
         App\Audit\Rules\Restaurant\Transfers\EntradaCustoRule::class,

@@ -1,15 +1,17 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ImoveisPage from "./ImoveisPage";
-import { createProperty, getDistricts, getMunicipalities, getParishes, getProperties } from "helpers/laravel_helper";
+import { createProperty, getDistricts, getListingsSummary, getMunicipalities, getParishes, getProperties, updateProperty } from "helpers/laravel_helper";
 
 jest.mock("react-router-dom", () => ({ useSearchParams: () => [new URLSearchParams("")] }), { virtual: true });
 jest.mock("react-toastify", () => ({ toast: { success: jest.fn(), error: jest.fn() }, ToastContainer: () => null }));
 jest.mock("helpers/workingCompany", () => ({ getWorkingCompanyId: () => 7 }));
 jest.mock("helpers/swal", () => ({ confirmAction: jest.fn(() => Promise.resolve(true)) }));
 let mockPerms = ["imoveis.ver", "imoveis.criar", "imoveis.editar"];
-jest.mock("contexts/ModulesContext", () => ({ useCan: (p: string) => [mockPerms.includes(p), mockPerms.includes(p) ? null : "Não tem permissão para esta ação."] }));
+jest.mock("contexts/ModulesContext", () => ({ useCan: (p: string) => [mockPerms.includes(p), mockPerms.includes(p) ? null : "Não tem permissão para esta ação."],
+    useModules: () => ({ has: (m: string) => mockModules.includes(m) }) }));
+let mockModules: string[] = [];
 jest.mock("helpers/laravel_helper", () => ({
-    getProperties: jest.fn(), createProperty: jest.fn(() => Promise.resolve({ message: "Imóvel criado." })), updateProperty: jest.fn(), deleteProperty: jest.fn(),
+    getProperties: jest.fn(), getListingsSummary: jest.fn(() => Promise.resolve({ data: null })), createProperty: jest.fn(() => Promise.resolve({ message: "Imóvel criado." })), updateProperty: jest.fn(), deleteProperty: jest.fn(),
     getDistricts: jest.fn(() => Promise.resolve({ data: [] })), getMunicipalities: jest.fn(() => Promise.resolve({ data: [] })), getParishes: jest.fn(() => Promise.resolve({ data: [] })),
 }));
 
@@ -19,6 +21,7 @@ const options = { kinds: { apartamento: "Apartamento", moradia: "Moradia" }, typ
 describe("Imóveis: a carteira", () => {
     beforeEach(() => {
         (createProperty as jest.Mock).mockResolvedValue({ message: "Imóvel criado." });
+        (getListingsSummary as jest.Mock).mockResolvedValue({ data: { properties: {}, developments: {} } });
         for (const f of [getDistricts, getMunicipalities, getParishes]) (f as jest.Mock).mockResolvedValue({ data: [] });
         (getProperties as jest.Mock).mockResolvedValue({ data: { options, properties: [{
             id: 1, reference: "DEMO-001", title: "T2 renovado em Benfica", kind: "apartamento", kind_label: "Apartamento", typology: "T2", area_m2: 85, listing: "venda",
@@ -48,5 +51,22 @@ describe("Imóveis: a carteira", () => {
         await screen.findByText("T2 renovado em Benfica");
         expect(screen.getByTestId("property-new")).toBeDisabled();
         mockPerms = ["imoveis.ver", "imoveis.criar", "imoveis.editar"];
+    });
+
+    it("com o site, mostra as duas partes das contagens e o formulário grava a parte manual", async () => {
+        mockModules = ["imoveis", "site_consultor"];
+        const row = (await (getProperties as jest.Mock)()).data.properties[0];
+        (getProperties as jest.Mock).mockResolvedValue({ data: { options, properties: [{ ...row, contacts_30: 6, visits_30: 2, contacts_30_site: 4, visits_30_site: 1, contacts_30_manual: 2, visits_30_manual: 1 }] } });
+        (updateProperty as jest.Mock).mockResolvedValue({ message: "Imóvel guardado." });
+        render(<ImoveisPage />);
+        expect(await screen.findByText(/site: 4 contactos, 1 pedidos de visita · outros canais: 2 contactos, 1 visitas/)).toBeInTheDocument();
+        fireEvent.click(screen.getByLabelText("Editar DEMO-001"));
+        const manual = await screen.findByLabelText("Contactos de outros canais nos últimos 30 dias");
+        expect(manual).toHaveValue(2);
+        fireEvent.change(manual, { target: { value: "3" } });
+        fireEvent.click(screen.getByTestId("property-save"));
+        await waitFor(() => expect(updateProperty).toHaveBeenCalled());
+        expect((updateProperty as jest.Mock).mock.calls[0][2]).toMatchObject({ contacts_30_manual: 3, visits_30_manual: 1 });
+        mockModules = [];
     });
 });

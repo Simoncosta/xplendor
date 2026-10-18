@@ -43,6 +43,8 @@ export interface Property {
     listing: "venda" | "arrendamento"; price: number; energy_class: string | null; energy_class_missing: boolean; status: "disponivel" | "reservado" | "fechado";
     parish_id: number | null; parish: string | null; municipality_id: number | null; municipality: string | null; district_id: number | null;
     listed_at: string | null; closed_at: string | null; days: number | null; contacts_30: number; visits_30: number; interest_updated_at: string | null;
+    /** Site do consultor: contacts_30 e visits_30 são o total; a parte do site soma-se sozinha e a manual vem dos outros canais. */
+    contacts_30_manual?: number; visits_30_manual?: number; contacts_30_site?: number; visits_30_site?: number;
     ine: { median_m2: number; period: string; attribution: string } | null;
 }
 

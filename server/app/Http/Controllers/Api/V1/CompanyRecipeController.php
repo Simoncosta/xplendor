@@ -157,6 +157,8 @@ class CompanyRecipeController extends Controller
             ],
         );
 
+        \App\Jobs\ComputeMenuEngineeringJob::forDefaults($companyId); // Fatia 3: o custo dos pratos mudou
+
         return ApiResponse::success(['yield' => $yield->only(['bom_pingwin_id', 'quantity', 'unit_label', 'source', 'reason', 'confirmed_at'])], 'Rendimento confirmado.');
     }
 
@@ -189,6 +191,8 @@ class CompanyRecipeController extends Controller
                 'confirmed_by' => $request->user()?->id, 'confirmed_at' => now(),
             ],
         );
+
+        \App\Jobs\ComputeMenuEngineeringJob::forDefaults($companyId); // Fatia 3: o custo dos pratos mudou
 
         return ApiResponse::success(['conversion' => $conv->only(['product_pingwin_id', 'unit_key', 'unit_label', 'supplier_nif', 'factor_to_base', 'source', 'confirmed_at'])], 'Fator confirmado.');
     }

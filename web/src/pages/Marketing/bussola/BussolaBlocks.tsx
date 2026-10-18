@@ -7,6 +7,7 @@ import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable
 import HeatmapCard from "pages/Restauracao/HeatmapCard";
 import { ChangeRow, CompassData, fmtDm, fmtEur, fmtPct } from "common/models/bussola.model";
 import HiddenMoney from "Components/Common/HiddenMoney";
+import { Link } from "react-router-dom";
 
 /**
  * Bússola, os blocos (cada um com uma manchete descritiva e o seu visual, com os componentes
@@ -314,6 +315,33 @@ export function ForgottenCard({ block, canAct, canActReason, onCreate, onIgnore 
                     </>
                 )}
             />
+        </PageCard>
+    );
+}
+
+const MENU_COLOR: Record<string, string> = { estrela: "success", cavalo: "primary", quebra_cabecas: "warning", cao: "danger" };
+
+/** Fatia 3: a jogada da engenharia de menu dos artigos com mais receita. */
+export function MenuCard({ block }: { block: Blocks["menu"] }) {
+    if (!block || block.items.length === 0) return null;
+    return (
+        <PageCard data-testid="bussola-menu" title="Engenharia de menu" flush={false}
+            info="Do último cálculo da engenharia de menu (empresa toda, custo médio de 90 dias): a classe de cada artigo dentro da sua família e a jogada recomendada."
+            actions={<Link to="/restauracao/engenharia-menu" className="btn btn-sm btn-outline-primary">Abrir a engenharia de menu</Link>}>
+            <Headline text={block.headline} />
+            <ul className="list-group list-group-flush border-dashed mb-0">
+                {block.items.map((it) => (
+                    <li key={it.product_id} className="list-group-item px-0">
+                        <div className="d-flex align-items-center gap-2">
+                            <span className="fw-medium">{it.name}</span>
+                            <Badge color={MENU_COLOR[it.class] ?? "secondary"} className="fs-11">{it.class_label}</Badge>
+                            {it.confidence === "parcial" && <Badge color="light" className="text-body fs-11">Custo parcial</Badge>}
+                            {it.fragile && <i className="ri-error-warning-line text-warning" title="Classe frágil" />}
+                        </div>
+                        {it.play && <div className="fs-13 text-muted">{it.play}</div>}
+                    </li>
+                ))}
+            </ul>
         </PageCard>
     );
 }

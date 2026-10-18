@@ -195,6 +195,24 @@ export default function CompanyGeneralDataFields({ isEdit, managed = false }: { 
                     placeholder="Google"
                 />
             </Col>
+            <Col lg={3}>
+                <XInput
+                    type="url"
+                    className='mb-2'
+                    name="linkedin"
+                    label="LinkedIn"
+                    placeholder="https://www.linkedin.com/in/…"
+                />
+            </Col>
+            <Col lg={3}>
+                <XInput
+                    type="url"
+                    className='mb-2'
+                    name="tiktok"
+                    label="TikTok"
+                    placeholder="https://www.tiktok.com/@…"
+                />
+            </Col>
 
             {/* Morada partilhada (mesmo componente usado nos Fornecedores). */}
             <Col lg={12}>

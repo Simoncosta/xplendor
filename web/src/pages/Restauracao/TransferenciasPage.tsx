@@ -106,6 +106,7 @@ export default function TransferenciasPage() {
                 <Row>
                     <Col xs={12}>
                         <PageCard
+                            flush={false}
                             title="Transferências"
                             loading={!data && !!companyId}
                             status={<>Encomendas lidas do PingWin: {data?.last_orders_sync ? fmtWhen(data.last_orders_sync) : "ainda não lidas"}{syncing && <> · <Spinner size="sm" /> a ler</>}</>}

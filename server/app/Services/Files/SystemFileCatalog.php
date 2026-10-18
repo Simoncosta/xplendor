@@ -28,13 +28,15 @@ class SystemFileCatalog
         'foto_relatorio' => 'Fotografias dos relatórios de satisfação', 'viatura' => 'Imagens das viaturas', 'viatura_original' => 'Originais das viaturas',
         'viatura_360' => '360 das viaturas', 'logotipo' => 'Logótipo', 'banner' => 'Banners do blog', 'equipa' => 'Fotografias da equipa',
         'avatar' => 'Avatares', 'modelo' => 'Modelos de documento',
+        'imovel' => 'Fotografias dos imóveis', 'imovel_original' => 'Originais dos imóveis', 'empreendimento' => 'Fotografias dos empreendimentos',
+        'empreendimento_original' => 'Originais dos empreendimentos', 'site_consultor' => 'Ficheiros do site do consultor',
     ];
 
     private const MONTHS = [1 => 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
     private const MIME = [
         'webp' => 'image/webp', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'pdf' => 'application/pdf',
-        'mp4' => 'video/mp4', 'mov' => 'video/quicktime', 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'mp4' => 'video/mp4', 'mov' => 'video/quicktime', 'webm' => 'video/webm', 'svg' => 'image/svg+xml', 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ];
 
     /** @var array<string, int> pasta (empresa:chave) => id, por execução */
@@ -180,6 +182,8 @@ class SystemFileCatalog
         yield from $this->brand($companyId);
         yield from $this->team($companyId);
         yield from $this->templates($companyId);
+        yield from $this->listings($companyId);
+        yield from $this->consultantSite($companyId);
     }
 
     private function month(?string $date): array
@@ -337,6 +341,58 @@ class SystemFileCatalog
             [$disk, $path] = $this->publicPath((string) $u->avatar);
             yield ['ref' => "user:{$u->id}:avatar", 'source' => 'avatar', 'source_id' => $u->id, 'folder' => ['equipa', null],
                 'name' => $this->clean('Avatar, ' . ($u->name ?: "utilizador {$u->id}") . '.' . (pathinfo($path, PATHINFO_EXTENSION) ?: 'webp')), 'disk' => $disk, 'path' => $path];
+        }
+    }
+
+    /** Site do consultor: as fotografias dos imóveis e dos empreendimentos (no disco público, sem cópia). */
+    private function listings(int $companyId): \Generator
+    {
+        $properties = DB::table('properties')->where('company_id', $companyId)->get(['id', 'reference', 'title'])->keyBy('id');
+        $developments = DB::table('developments')->where('company_id', $companyId)->get(['id', 'name'])->keyBy('id');
+        foreach (DB::table('listing_images')->where('company_id', $companyId)->orderBy('owner_type')->orderBy('owner_id')->orderBy('order')->get() as $i) {
+            if ($i->owner_type === 'property') {
+                $p = $properties->get($i->owner_id);
+                $folder = ["imoveis:{$i->owner_id}", $p ? $this->clean(trim("{$p->reference} {$p->title}")) : "Imóvel {$i->owner_id}"];
+                $source = 'imovel';
+            } else {
+                $d = $developments->get($i->owner_id);
+                $folder = ["empreendimentos:{$i->owner_id}", $d ? $this->clean((string) $d->name) : "Empreendimento {$i->owner_id}"];
+                $source = 'empreendimento';
+            }
+            [$disk, $path] = $this->publicPath((string) $i->path);
+            yield ['ref' => "listing_image:{$i->id}:image", 'source' => $source, 'source_id' => $i->id, 'folder' => $folder,
+                'name' => 'Fotografia ' . (int) $i->order . '.webp', 'disk' => $disk, 'path' => $path];
+            [$disk, $path] = $this->publicPath((string) $i->original_path);
+            yield ['ref' => "listing_image:{$i->id}:original", 'source' => "{$source}_original", 'source_id' => $i->id, 'folder' => $folder,
+                'name' => 'Original ' . (int) $i->order . '.' . (pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg'), 'disk' => $disk, 'path' => $path];
+        }
+    }
+
+    /** Site do consultor: a assinatura, a fotografia recortada, o vídeo e a capa do topo e os logótipos. */
+    private function consultantSite(int $companyId): \Generator
+    {
+        $site = DB::table('consultant_sites')->where('company_id', $companyId)->first();
+        if (! $site) {
+            return;
+        }
+        $names = ['signature_svg_path' => 'Assinatura', 'photo_cutout_path' => 'Fotografia recortada', 'about_photo_path' => 'Fotografia com fundo',
+            'share_image_path' => 'Imagem de partilha', 'hero_video_mp4_path' => 'Vídeo do topo (MP4)',
+            'hero_video_webm_path' => 'Vídeo do topo (WebM)', 'hero_poster_path' => 'Capa do vídeo do topo', 'hero_poster_960_path' => 'Capa do vídeo do topo (960 px)', 'network_logo_path' => 'Logótipo da rede',
+            'credit_partner_logo_path' => 'Logótipo do parceiro de crédito'];
+        foreach ($names as $column => $name) {
+            if (! empty($site->{$column})) {
+                [$disk, $path] = $this->publicPath((string) $site->{$column});
+                yield ['ref' => "consultant_site:{$site->id}:{$column}", 'source' => 'site_consultor', 'source_id' => $site->id, 'folder' => ['site_consultor', null],
+                    'name' => $name . '.' . (pathinfo($path, PATHINFO_EXTENSION) ?: 'bin'), 'disk' => $disk, 'path' => $path];
+            }
+        }
+        foreach ((array) json_decode((string) ($site->zone_photos ?? '[]'), true) as $i => $photo) {
+            if (is_array($photo) && ! empty($photo['id']) && ! empty($photo['path'])) {
+                [$disk, $path] = $this->publicPath((string) $photo['path']);
+                $label = $this->clean('Zona ' . ($i + 1) . (! empty($photo['alt']) ? ' - ' . $photo['alt'] : ''));
+                yield ['ref' => "consultant_site:{$site->id}:zone:{$photo['id']}", 'source' => 'site_consultor', 'source_id' => $site->id, 'folder' => ['site_consultor', null],
+                    'name' => "{$label}.webp", 'disk' => $disk, 'path' => $path];
+            }
         }
     }
 

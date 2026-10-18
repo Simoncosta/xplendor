@@ -140,7 +140,7 @@ class ImoveisCompassController extends Controller
         }
 
         return sprintf(' Imóvel: %s %s, %s, %s, %s, classe energética %s.', Property::KINDS[$p->kind] ?? 'Imóvel', $p->typology ?? '', $p->parish?->name ?? 'freguesia por indicar',
-            $p->area_m2 ? "{$p->area_m2} m²" : 'área por indicar', number_format($p->price, 0, ',', ' ') . ($p->listing === 'arrendamento' ? ' € por mês' : ' €'),
+            Property::areaLabel($p->area_m2) ?? 'área por indicar', number_format($p->price, 0, ',', ' ') . ($p->listing === 'arrendamento' ? ' € por mês' : ' €'),
             $p->energyClassMissing() ? 'por indicar' : $p->energy_class);
     }
 

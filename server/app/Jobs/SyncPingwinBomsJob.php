@@ -64,6 +64,9 @@ class SyncPingwinBomsJob implements ShouldQueue
         $rest = array_values(array_diff($remaining, $done));
         if ($rest) {
             self::dispatch($this->companyId, $rest, $done);
+        } else {
+            // Fatia 3: fichas lidas; a engenharia de menu recalcula-se com elas.
+            ComputeMenuEngineeringJob::forDefaults($this->companyId);
         }
     }
 

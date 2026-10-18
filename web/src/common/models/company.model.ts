@@ -49,6 +49,8 @@ export interface ICompany {
 
     website: string | null;
     instagram: string | null;
+    linkedin?: string | null;
+    tiktok?: string | null;
     youtube: string | null;
     facebook: string | null;
     google: string | null;

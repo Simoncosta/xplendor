@@ -1,0 +1,8 @@
+/node_modules
+/.next
+/out
+/coverage
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+/capturas-tmp
