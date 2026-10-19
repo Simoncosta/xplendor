@@ -79,8 +79,8 @@ class CompanyRecipeEditController extends Controller
             'today' => $today,
             'draft' => $draft ? ['payload' => $draft->payload, 'base_signature' => $draft->base_signature, 'updated_at' => $draft->updated_at?->toIso8601String()] : null,
             'active_write' => $active ? $this->writeShape($active) : null,
-            'write_allowed' => PingwinService::bomWriteGuard($productId) === null,
-            'write_guard' => PingwinService::bomWriteGuard($productId),
+            'write_allowed' => PingwinService::bomWriteGuard($productId, $companyId) === null,
+            'write_guard' => PingwinService::bomWriteGuard($productId, $companyId),
         ], 'Editor da ficha técnica.');
     }
 
@@ -231,7 +231,7 @@ class CompanyRecipeEditController extends Controller
             return ApiResponse::error('Artigo não encontrado.', 404);
         }
         // O ecrã já desativa o botão; isto é a rede para quem chama a API diretamente.
-        if ($guard = PingwinService::bomWriteGuard($productId)) {
+        if ($guard = PingwinService::bomWriteGuard($productId, $companyId)) {
             return ApiResponse::error($guard['reason'], 403);
         }
         if (RecipeWrite::where('company_id', $companyId)->where('product_pingwin_id', $productId)->whereIn('status', RecipeWrite::ACTIVE)->exists()) {

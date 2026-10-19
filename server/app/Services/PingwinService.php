@@ -52,8 +52,53 @@ class PingwinService
     /** IDs dos artigos anulados devolvidos pela última leitura do catálogo. */
     public array $lastCatalogDeletedIds = [];
 
+    /** Os modos do Python que escrevem no PingWin: todos passam pelo travão (Configurações). */
+    public const WRITE_MODES = [
+        'create_documentconfig', 'update_documentconfig', 'void_documentconfig', 'create_paycond', 'update_paycond', 'void_paycond',
+        'create_supplier', 'update_supplier', 'void_supplier', 'launch_supplier_invoice', 'document_status', 'create_product', 'update_product',
+        'delete_product', 'bom_write', 'article_unit_write', 'stock_limits_write', 'warehouse_create', 'warehouse_update', 'warehouse_delete',
+        'count_write', 'waste_write', 'stockdoc_status', 'doc_write', 'create_unit', 'save_unit',
+    ];
+
+    /** A escrita que acabou de passar pelo travão da empresa (o invoke só a deixa seguir uma vez). */
+    private ?string $clearedWrite = null;
+
+    /** O travão de uma escrita: bloqueada → erro com o porquê; senão fica autorizada para o próximo invoke. */
+    private function clearWrite(string $mode, ?array $block): void
+    {
+        if ($block) {
+            throw ValidationException::withMessages(['pingwin' => [$block['reason']]]);
+        }
+        $this->clearedWrite = $mode;
+    }
+
+    /** Antes de falar com o Python: uma escrita sem o travão global ligado, ou sem ter passado pelo da empresa, não segue. */
+    private function assertWriteCleared(array $payload): void
+    {
+        $mode = (string) ($payload['mode'] ?? '');
+        if (! in_array($mode, self::WRITE_MODES, true)) {
+            return;
+        }
+        $cleared = $this->clearedWrite;
+        $this->clearedWrite = null;
+        if (! \App\Settings\PingwinWriteGate::globalEnabled()) {
+            throw ValidationException::withMessages(['pingwin' => ['A escrita no PingWin está desligada em toda a plataforma (PINGWIN_WRITES_ENABLED=false).']]);
+        }
+        if ($cleared !== $mode) {
+            throw new \RuntimeException("Escrita no PingWin ({$mode}) sem passar pelo travão da empresa.");
+        }
+    }
+
+    /** A descrição de um artigo no espelho (para o modo de testes). */
+    private static function catalogDescription(int $companyId, string $productId): string
+    {
+        return (string) \App\Models\PingwinCatalogItem::where('company_id', $companyId)->where('pingwin_id', $productId)->value('description');
+    }
+
     protected function invoke(array $payload): array
     {
+        \App\Audit\AuditGuard::assertOutside('o PingWin');
+        $this->assertWriteCleared($payload);
         $command = [
             'docker', 'exec', '-i',
             env('SCRAPER_CONTAINER', 'xplendor-scraper'),
@@ -387,6 +432,7 @@ class PingwinService
 
     public function updateDocumentConfig(int $companyId, string $docId, array $fields, array $childrenChanges = [], array $docaccountChanges = []): array
     {
+        $this->clearWrite('update_documentconfig', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -474,6 +520,7 @@ class PingwinService
      */
     public function createDocumentConfig(int $companyId, array $fields): array
     {
+        $this->clearWrite('create_documentconfig', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -526,6 +573,7 @@ class PingwinService
      */
     public function voidDocumentConfig(int $companyId, string $docId): array
     {
+        $this->clearWrite('void_documentconfig', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -714,6 +762,7 @@ class PingwinService
      */
     public function createProduct(int $companyId, array $product, ?string $saleprice = null, ?string $purchaseprice = null): array
     {
+        $this->clearWrite('create_product', \App\Settings\PingwinWriteGate::blockArticle($companyId, (string) ($product['description'] ?? '')));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -753,6 +802,7 @@ class PingwinService
      */
     public function updateProduct(int $companyId, string $productId, array $changes, ?string $saleprice = null, ?string $purchaseprice = null, ?array $supplierPricesChanges = null): array
     {
+        $this->clearWrite('update_product', \App\Settings\PingwinWriteGate::blockArticle($companyId, self::catalogDescription($companyId, $productId)));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -1103,6 +1153,7 @@ class PingwinService
      */
     public function deleteProduct(int $companyId, string $productId, string $code = ''): array
     {
+        $this->clearWrite('delete_product', \App\Settings\PingwinWriteGate::blockArticle($companyId, self::catalogDescription($companyId, $productId)));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -1252,6 +1303,7 @@ class PingwinService
      */
     public function writeBom(int $companyId, string $productId, array $plan, ?callable $onProgress = null): array
     {
+        $this->clearWrite('bom_write', \App\Settings\PingwinWriteGate::block($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -1265,7 +1317,7 @@ class PingwinService
             'mode' => 'bom_write',
             'product_id' => $productId,
             'plan' => $plan,
-            'allowed_product_ids' => self::bomWriteAllowlist(),
+            'allowed_product_ids' => self::bomWriteAllowlist($companyId),
         ]), $onProgress ?? static fn () => null);
 
         if (! ($result['ok'] ?? false) && ! ($result['conflict'] ?? false)) {
@@ -1285,6 +1337,7 @@ class PingwinService
      */
     public function writeArticleUnit(int $companyId, string $productId, string $op, array $data, array $ownedUnitIds = [], ?callable $onProgress = null): array
     {
+        $this->clearWrite('article_unit_write', \App\Settings\PingwinWriteGate::block($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -1301,14 +1354,14 @@ class PingwinService
             'op' => $op,
             'data' => $data,
             'owned_unit_ids' => array_values(array_map('strval', $ownedUnitIds)),
-            'allowed_codes' => self::unitWriteAllowlist(),
+            'allowed_codes' => self::unitWriteAllowlist($companyId),
         ]), $onProgress ?? static fn () => null);
     }
 
     /** Os códigos de artigo em que se pode escrever as unidades (vazio = todos; "0" = nenhum). */
-    public static function unitWriteAllowlist(): array
+    public static function unitWriteAllowlist(?int $companyId = null): array
     {
-        return self::csvList((string) config('services.pingwin.unit_write_allowlist', ''));
+        return \App\Settings\PingwinWriteGate::allowlist($companyId, 'unit');
     }
 
     /**
@@ -1317,20 +1370,19 @@ class PingwinService
      *
      * @return array{mode: string, reason: string}|null
      */
-    public static function unitWriteGuard(?string $code): ?array
+    public static function unitWriteGuard(?string $code, ?int $companyId = null): ?array
     {
-        if (! config('auditoria.unit_write_proven')) {
+        if (! \App\Settings\Settings::platform('pingwin.proven.units')) {
             return ['mode' => 'por_provar', 'reason' => 'Disponível em breve: a escrita das unidades no PingWin ainda não foi provada neste ambiente.'];
         }
 
-        return self::guardFor(self::unitWriteAllowlist(), (string) $code, 'PINGWIN_UNIT_WRITE_ALLOWLIST', 'nos artigos de teste autorizados');
+        return self::guardFor($companyId, 'unit', (string) $code, 'nos artigos de teste autorizados');
     }
 
     /** Os artigos em que se pode escrever a ficha (vazio = todos). Guarda do teste real. */
-    public static function bomWriteAllowlist(): array
+    public static function bomWriteAllowlist(?int $companyId = null): array
     {
-        // Sem array_filter "nu": deitava fora o "0" (que quer dizer "nenhum artigo").
-        return array_values(array_filter(array_map('trim', explode(',', (string) config('services.pingwin.bom_write_allowlist', ''))), static fn ($v) => $v !== ''));
+        return \App\Settings\PingwinWriteGate::allowlist($companyId, 'bom');
     }
 
     /**
@@ -1340,16 +1392,9 @@ class PingwinService
      *
      * @return array{mode: string, reason: string}|null
      */
-    public static function bomWriteGuard(string $productId): ?array
+    public static function bomWriteGuard(string $productId, ?int $companyId = null): ?array
     {
-        $allow = self::bomWriteAllowlist();
-        if (! $allow || in_array($productId, $allow, true)) {
-            return null;
-        }
-
-        return $allow === ['0']
-            ? ['mode' => 'desligada', 'reason' => 'Neste ambiente a gravação no PingWin está desligada (PINGWIN_BOM_WRITE_ALLOWLIST=0). Em produção está ligada.']
-            : ['mode' => 'lista', 'reason' => 'Neste ambiente só se grava nos artigos de teste autorizados.'];
+        return self::guardFor($companyId, 'bom', $productId, 'nos artigos de teste autorizados', false);
     }
 
     // ── Stock e armazéns (Fatia 7a) ────────────────────────────────────────────────────────────
@@ -1404,12 +1449,13 @@ class PingwinService
      */
     public function writeStockLimits(int $companyId, string $productId, string $warehouseId, array $changes, ?array $expected = null): array
     {
+        $this->clearWrite('stock_limits_write', \App\Settings\PingwinWriteGate::block($companyId));
         $integration = $this->connectedIntegration($companyId);
         $this->invokeTimeout = 300;
 
         return $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
             'mode' => 'stock_limits_write', 'product_id' => $productId, 'warehouse_id' => $warehouseId,
-            'changes' => $changes, 'expected' => $expected, 'allowed_product_ids' => self::stockWriteAllowlist(),
+            'changes' => $changes, 'expected' => $expected, 'allowed_product_ids' => self::stockWriteAllowlist($companyId),
         ]));
     }
 
@@ -1419,12 +1465,13 @@ class PingwinService
      */
     public function writeWarehouse(int $companyId, string $op, ?string $warehouseId, array $fields = [], ?array $expected = null): array
     {
+        $this->clearWrite('warehouse_' . $op, \App\Settings\PingwinWriteGate::block($companyId));
         $integration = $this->connectedIntegration($companyId);
         $this->invokeTimeout = 300;
 
         return $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, array_filter([
             'mode' => 'warehouse_' . $op, 'warehouse_id' => $warehouseId, 'fields' => $fields ?: null, 'expected' => $expected,
-            'allowed_warehouse_names' => self::warehouseWriteAllowlist(),
+            'allowed_warehouse_names' => self::warehouseWriteAllowlist($companyId),
         ], static fn ($v) => $v !== null)));
     }
 
@@ -1437,20 +1484,23 @@ class PingwinService
      */
     public function stockDocument(int $companyId, string $mode, array $fields = [], int $timeout = 300): array
     {
+        if (in_array($mode, self::WRITE_MODES, true)) {
+            $this->clearWrite($mode, \App\Settings\PingwinWriteGate::block($companyId));
+        }
         $integration = $this->connectedIntegration($companyId);
         $this->invokeTimeout = $timeout;
         $payload = ['mode' => $mode] + $fields;
         if (in_array($mode, ['count_write', 'waste_write', 'stockdoc_status', 'doc_write'], true)) {
-            $payload['allowed_codes'] = self::stockDocWriteAllowlist();
+            $payload['allowed_codes'] = self::stockDocWriteAllowlist($companyId);
         }
 
         return $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, $payload));
     }
 
     /** Os códigos de artigo em que se podem gravar contagens e desperdício (vazio = todos; "0" = nenhum). */
-    public static function stockDocWriteAllowlist(): array
+    public static function stockDocWriteAllowlist(?int $companyId = null): array
     {
-        return self::csvList((string) config('services.pingwin.stockdoc_write_allowlist', ''));
+        return \App\Settings\PingwinWriteGate::allowlist($companyId, 'stockdoc');
     }
 
     /**
@@ -1460,37 +1510,42 @@ class PingwinService
      * @param  list<string>  $codes
      * @return array{mode: string, reason: string}|null
      */
-    public static function stockDocWriteGuard(array $codes): ?array
+    public static function stockDocWriteGuard(array $codes, ?int $companyId = null): ?array
     {
-        $allow = self::stockDocWriteAllowlist();
+        if ($b = \App\Settings\PingwinWriteGate::block($companyId)) {
+            return $b;
+        }
+        $allow = self::stockDocWriteAllowlist($companyId);
         if (! $allow) {
             return null;
         }
         if ($allow === ['0']) {
-            return ['mode' => 'desligada', 'reason' => 'Neste ambiente a gravação de documentos de stock no PingWin está desligada (PINGWIN_STOCKDOC_WRITE_ALLOWLIST=0). Em produção está ligada.'];
+            return \App\Settings\PingwinWriteGate::testMode($companyId)
+                ? ['mode' => 'teste', 'reason' => 'Modo de testes: só se grava com artigos cuja descrição começa por "TESTE XPLENDOR", e esta empresa não tem nenhum.']
+                : ['mode' => 'desligada', 'reason' => 'Neste ambiente a gravação de documentos de stock no PingWin está desligada (PINGWIN_STOCKDOC_WRITE_ALLOWLIST=0). Em produção está ligada.'];
         }
         $out = array_values(array_diff(array_map('strval', $codes), $allow));
+        if (! $out) {
+            return null;
+        }
 
-        return $out ? ['mode' => 'lista', 'reason' => 'Neste ambiente só se grava com os artigos de teste autorizados (' . implode(', ', $allow) . '). Fora da lista: ' . implode(', ', array_slice($out, 0, 5)) . '.'] : null;
+        return \App\Settings\PingwinWriteGate::testMode($companyId)
+            ? ['mode' => 'teste', 'reason' => 'Modo de testes: só se grava com artigos cuja descrição começa por "TESTE XPLENDOR". Fora: ' . implode(', ', array_slice($out, 0, 5)) . '.']
+            : ['mode' => 'lista', 'reason' => 'Neste ambiente só se grava com os artigos de teste autorizados (' . implode(', ', $allow) . '). Fora da lista: ' . implode(', ', array_slice($out, 0, 5)) . '.'];
     }
 
     /** Os artigos em que se pode gravar o mínimo/máximo (vazio = todos; "0" = nenhum). Guarda do dev. */
-    public static function stockWriteAllowlist(): array
+    public static function stockWriteAllowlist(?int $companyId = null): array
     {
-        return self::csvList((string) config('services.pingwin.stock_write_allowlist', ''));
+        return \App\Settings\PingwinWriteGate::allowlist($companyId, 'stock');
     }
 
     /** Os armazéns (pelo nome) em que se pode escrever (vazio = todos; "0" = nenhum). Guarda do dev. */
-    public static function warehouseWriteAllowlist(): array
+    public static function warehouseWriteAllowlist(?int $companyId = null): array
     {
-        return self::csvList((string) config('services.pingwin.warehouse_write_allowlist', ''));
+        return \App\Settings\PingwinWriteGate::allowlist($companyId, 'warehouse');
     }
 
-    private static function csvList(string $csv): array
-    {
-        // Sem array_filter "nu": deitava fora o "0" (que quer dizer "nenhum").
-        return array_values(array_filter(array_map('trim', explode(',', $csv)), static fn ($v) => $v !== ''));
-    }
 
     /**
      * A guarda das escritas de stock neste ambiente, para o ecrã: null = pode gravar; senão o porquê,
@@ -1498,26 +1553,35 @@ class PingwinService
      *
      * @return array{mode: string, reason: string}|null
      */
-    public static function stockWriteGuard(string $productId): ?array
+    public static function stockWriteGuard(string $productId, ?int $companyId = null): ?array
     {
-        return self::guardFor(self::stockWriteAllowlist(), $productId, 'PINGWIN_STOCK_WRITE_ALLOWLIST', 'no artigo de teste autorizado');
+        return self::guardFor($companyId, 'stock', $productId, 'no artigo de teste autorizado');
     }
 
     /** Como stockWriteGuard, para os armazéns (pelo nome; null no nome = criar um novo). */
-    public static function warehouseWriteGuard(?string $name): ?array
+    public static function warehouseWriteGuard(?string $name, ?int $companyId = null): ?array
     {
-        return self::guardFor(self::warehouseWriteAllowlist(), (string) $name, 'PINGWIN_WAREHOUSE_WRITE_ALLOWLIST', 'no armazém de teste autorizado');
+        return self::guardFor($companyId, 'warehouse', (string) $name, 'no armazém de teste autorizado');
     }
 
-    private static function guardFor(array $allow, string $value, string $var, string $where): ?array
+    /** A guarda de uma capacidade: o travão global e o da empresa, depois a lista (antiga ou do modo de testes). */
+    private static function guardFor(?int $companyId, string $capability, string $value, string $where, bool $showList = true): ?array
     {
+        if ($b = \App\Settings\PingwinWriteGate::block($companyId)) {
+            return $b;
+        }
+        $allow = \App\Settings\PingwinWriteGate::allowlist($companyId, $capability);
         if (! $allow || in_array($value, $allow, true)) {
             return null;
         }
+        if (\App\Settings\PingwinWriteGate::testMode($companyId)) {
+            return ['mode' => 'teste', 'reason' => 'Modo de testes: só se grava em artigos e armazéns cuja descrição começa por "TESTE XPLENDOR".'];
+        }
+        $var = \App\Settings\PingwinWriteGate::legacyEnv($capability);
 
         return $allow === ['0']
             ? ['mode' => 'desligada', 'reason' => "Neste ambiente a gravação no PingWin está desligada ({$var}=0). Em produção está ligada."]
-            : ['mode' => 'lista', 'reason' => "Neste ambiente só se grava {$where} (" . implode(', ', $allow) . ').'];
+            : ['mode' => 'lista', 'reason' => "Neste ambiente só se grava {$where}" . ($showList ? ' (' . implode(', ', $allow) . ')' : '') . '.'];
     }
 
     /**
@@ -1526,6 +1590,8 @@ class PingwinService
      */
     protected function invokeWithProgress(array $payload, callable $onProgress): array
     {
+        \App\Audit\AuditGuard::assertOutside('o PingWin');
+        $this->assertWriteCleared($payload);
         $process = new Process(['docker', 'exec', '-i', env('SCRAPER_CONTAINER', 'xplendor-scraper'), 'python', self::ENTRYPOINT]);
         $process->setTimeout($this->invokeTimeout);
         $process->setInput(json_encode($payload));
@@ -1671,16 +1737,19 @@ class PingwinService
     /** @return array{ok:bool, persisted?:bool, pingwin_id?:string, code?:string, confirm?:array, checks?:array, capture?:array, error?:string, duplicate_nif?:bool} */
     public function createSupplier(int $companyId, array $fields, bool $allowDuplicateNif = false): array
     {
+        $this->clearWrite('create_supplier', \App\Settings\PingwinWriteGate::blockOther($companyId));
         return $this->supplierCall($companyId, ['mode' => 'create_supplier', 'supplier' => $fields, 'allow_duplicate_nif' => $allowDuplicateNif]);
     }
 
     public function updateSupplier(int $companyId, string $pingwinId, array $fields, bool $allowDuplicateNif = false): array
     {
+        $this->clearWrite('update_supplier', \App\Settings\PingwinWriteGate::blockOther($companyId));
         return $this->supplierCall($companyId, ['mode' => 'update_supplier', 'supplier_id' => $pingwinId, 'supplier' => $fields, 'allow_duplicate_nif' => $allowDuplicateNif]);
     }
 
     public function voidSupplier(int $companyId, string $pingwinId): array
     {
+        $this->clearWrite('void_supplier', \App\Settings\PingwinWriteGate::blockOther($companyId));
         return $this->supplierCall($companyId, ['mode' => 'void_supplier', 'supplier_id' => $pingwinId]);
     }
 
@@ -1702,6 +1771,7 @@ class PingwinService
      */
     public function launchSupplierInvoice(int $companyId, array $doc): array
     {
+        $this->clearWrite('launch_supplier_invoice', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $this->invokeTimeout = 300;
         try {
             $res = $this->supplierCall($companyId, ['mode' => 'launch_supplier_invoice', 'doc' => $doc]);
@@ -1718,6 +1788,7 @@ class PingwinService
     /** FB-1 ⚠️ ESCRITA: fecha (8002) ou anula (8003) UM documento e relê-o. */
     public function documentStatus(int $companyId, string $docheaderId, string $status, string $docconfigId = '1209'): array
     {
+        $this->clearWrite('document_status', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $res = $this->supplierCall($companyId, ['mode' => 'document_status', 'docheader_id' => $docheaderId, 'docstatus_id' => $status, 'docconfig_id' => $docconfigId]);
         if (! ($res['ok'] ?? false)) {
             throw new \RuntimeException('Mudar o estado do documento falhou: ' . ($res['error'] ?? 'erro desconhecido'));
@@ -1907,6 +1978,7 @@ class PingwinService
      */
     public function createPaymentCondition(int $companyId, array $fields, array $tbdocsUnlinked = []): array
     {
+        $this->clearWrite('create_paycond', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -1955,6 +2027,7 @@ class PingwinService
      */
     public function updatePaymentCondition(int $companyId, string $paycondId, array $fields, array $tbdocsChanges = []): array
     {
+        $this->clearWrite('update_paycond', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -2011,6 +2084,7 @@ class PingwinService
      */
     public function voidPaymentCondition(int $companyId, string $paycondId): array
     {
+        $this->clearWrite('void_paycond', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -2112,6 +2186,7 @@ class PingwinService
      */
     public function createUnit(int $companyId, array $payload): array
     {
+        $this->clearWrite('create_unit', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();
@@ -2169,6 +2244,7 @@ class PingwinService
      */
     public function saveUnit(int $companyId, int $unitId, array $changes, bool $deleted): array
     {
+        $this->clearWrite('save_unit', \App\Settings\PingwinWriteGate::blockOther($companyId));
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
             ->first();

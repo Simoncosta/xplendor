@@ -61,12 +61,21 @@ return [
         App\Audit\Rules\Restaurant\Money\ForaDoPadraoRule::class,
         App\Audit\Rules\Restaurant\Money\FaturaDuplicadaRule::class,
         App\Audit\Rules\Restaurant\Money\GuiaSemFaturaRule::class,
+        // Fatia 5: o inverso da C6 (a fatura refere guias que não estão lançadas).
+        App\Audit\Rules\Restaurant\Money\FaturaGuiasEmFaltaRule::class,
         // Automóvel
         App\Audit\Rules\Automotive\AutocaravanaSemTipologiaRule::class,
         // Tracking dos sites (GA4 × XPLENDOR)
         App\Audit\Rules\Tracking\Ga4DivergenciaRule::class,
         App\Audit\Rules\Tracking\PedidosRecusadosRule::class,
     ],
+
+    // A corrida: cada regra corre num job próprio com este limite de tempo (segundos) e de memória.
+    // Uma regra que passe o limite fica "Demorou demasiado" e a corrida continua. Uma corrida sem
+    // progresso há mais de stale_minutes passa a "falhou" sozinha, com o passo onde parou.
+    'rule_timeout' => (int) env('AUDIT_RULE_TIMEOUT', 120),
+    'rule_memory' => env('AUDIT_RULE_MEMORY', '512M'),
+    'stale_minutes' => (int) env('AUDIT_STALE_MINUTES', 30),
 
     // Transferências (Fatia 7c): severidade pelo valor em jogo (euros) e os limites das regras T2, T3, T7 e T8.
     'transfers_severity_eur' => [

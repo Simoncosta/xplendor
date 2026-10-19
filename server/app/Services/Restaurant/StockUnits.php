@@ -30,14 +30,44 @@ final class StockUnits
         if (isset($this->memo[$productId])) {
             return $this->memo[$productId];
         }
-        $item = PingwinStockItem::where('company_id', $this->companyId)->where('product_pingwin_id', $productId)->first();
-        $row = PingwinStock::where('company_id', $this->companyId)->where('product_pingwin_id', $productId)->first();
+        $item = PingwinStockItem::where('company_id', $this->companyId)->where('product_pingwin_id', $productId)->orderBy('id')->first();
+        $row = PingwinStock::where('company_id', $this->companyId)->where('product_pingwin_id', $productId)->orderBy('id')->first();
+        $convs = ProductUnitConversion::where('company_id', $this->companyId)->where('product_pingwin_id', $productId)
+            ->where('source', 'confirmado')->orderByRaw("CASE WHEN supplier_nif = '' OR supplier_nif IS NULL THEN 0 ELSE 1 END")->orderBy('id')->get()->all();
+
+        return $this->memo[$productId] = $this->build($item, $row, $convs);
+    }
+
+    /**
+     * Pré-carrega muitos artigos de uma vez (3 consultas no total, em vez de 3 por artigo): o mesmo
+     * resultado que for() artigo a artigo. Para as regras da auditoria que percorrem centenas de artigos.
+     *
+     * @param  list<string>  $productIds
+     */
+    public function preload(array $productIds): void
+    {
+        $ids = array_values(array_diff(array_unique(array_map('strval', $productIds)), array_keys($this->memo)));
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $items = PingwinStockItem::where('company_id', $this->companyId)->whereIn('product_pingwin_id', $chunk)->orderBy('id')->get()
+                ->groupBy(fn ($r) => (string) $r->product_pingwin_id);
+            $rows = PingwinStock::where('company_id', $this->companyId)->whereIn('product_pingwin_id', $chunk)->orderBy('id')->get()
+                ->groupBy(fn ($r) => (string) $r->product_pingwin_id);
+            $convs = ProductUnitConversion::where('company_id', $this->companyId)->whereIn('product_pingwin_id', $chunk)->where('source', 'confirmado')
+                ->orderByRaw("CASE WHEN supplier_nif = '' OR supplier_nif IS NULL THEN 0 ELSE 1 END")->orderBy('id')->get()
+                ->groupBy(fn ($r) => (string) $r->product_pingwin_id);
+            foreach ($chunk as $pid) {
+                $this->memo[$pid] = $this->build($items[$pid][0] ?? null, $rows[$pid][0] ?? null, isset($convs[$pid]) ? $convs[$pid]->all() : []);
+            }
+        }
+    }
+
+    /** @param list<ProductUnitConversion> $convs */
+    private function build(?PingwinStockItem $item, ?PingwinStock $row, array $convs): array
+    {
         $stockUnit = (string) ($item?->stock_unit ?: $row?->unit_name ?: 'Unidade');
         $unitValue = (float) ($row?->unit_value ?: 1.0);
         $units = [['unit' => $stockUnit, 'factor' => 1.0, 'source' => 'stock']];
         $seen = [mb_strtolower($stockUnit) => true];
-        $convs = ProductUnitConversion::where('company_id', $this->companyId)->where('product_pingwin_id', $productId)
-            ->where('source', 'confirmado')->orderByRaw("CASE WHEN supplier_nif = '' OR supplier_nif IS NULL THEN 0 ELSE 1 END")->get();
         foreach ($convs as $c) {
             $label = trim((string) ($c->unit_label ?: $c->unit_key));
             if ($label === '' || isset($seen[mb_strtolower($label)]) || (float) $c->factor_to_base <= 0) {
@@ -48,7 +78,7 @@ final class StockUnits
             $units[] = ['unit' => $label, 'factor' => round((float) $c->factor_to_base / ($unitValue > 0 ? $unitValue : 1.0), 6), 'source' => 'confirmado'];
         }
 
-        return $this->memo[$productId] = ['stock_unit' => $stockUnit, 'stock_unit_id' => $item?->stock_unit_id, 'units' => $units];
+        return ['stock_unit' => $stockUnit, 'stock_unit_id' => $item?->stock_unit_id, 'units' => $units];
     }
 
     /** O fator de uma unidade (pelo nome), ou null se não for a de stock nem uma conversão confirmada. */

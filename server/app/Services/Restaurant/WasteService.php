@@ -172,7 +172,7 @@ final class WasteService
     /** Porque não se pode enviar o desperdício neste ambiente (null = pode), antes da guarda dos códigos. */
     public static function sendBlock(): ?array
     {
-        return config('stock_counts.waste_send_proven') ? null
+        return \App\Settings\Settings::platform('pingwin.proven.waste') ? null
             : ['mode' => 'por_provar', 'reason' => 'O envio do desperdício está bloqueado: ainda não ficou provado no PingWin que o documento fica no armazém escolhido.'];
     }
 
@@ -190,7 +190,7 @@ final class WasteService
         if (! $lines) {
             throw ValidationException::withMessages(['warehouse_id' => ['Os pratos registados não têm ficha em vigor: não há linhas para enviar.']]);
         }
-        if ($guard = PingwinService::stockDocWriteGuard(array_map(fn ($l) => (string) $l['code'], $lines))) {
+        if ($guard = PingwinService::stockDocWriteGuard(array_map(fn ($l) => (string) $l['code'], $lines), $this->companyId)) {
             throw ValidationException::withMessages(['pingwin' => [$guard['reason']]]);
         }
         $noUnit = array_values(array_unique(array_map(fn ($l) => $l['code'], array_filter($lines, fn ($l) => ! $l['unit_id']))));
@@ -223,7 +223,7 @@ final class WasteService
             throw ValidationException::withMessages(['id' => ['Só se anula um documento enviado para o PingWin.']]);
         }
         $codes = $target === 'contagem' ? $model->lines()->whereNotNull('qty_base')->pluck('code')->map(fn ($v) => (string) $v)->all() : array_map(fn ($l) => (string) $l['code'], (array) $model->lines);
-        if ($guard = PingwinService::stockDocWriteGuard($codes)) {
+        if ($guard = PingwinService::stockDocWriteGuard($codes, $this->companyId)) {
             throw ValidationException::withMessages(['pingwin' => [$guard['reason']]]);
         }
         $write = PingwinStockWrite::create(['company_id' => $this->companyId, 'user_id' => $userId, 'kind' => 'anular_documento', 'warehouse_pingwin_id' => $model->warehouse_id,

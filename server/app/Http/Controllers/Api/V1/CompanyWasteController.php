@@ -60,7 +60,7 @@ class CompanyWasteController extends Controller
             'date' => $date, 'warehouses' => $warehouses, 'entries' => $rows, 'batches' => $batches,
             'reasons' => collect(WasteEntry::REASONS)->map(fn ($l, $k) => ['id' => $k, 'label' => $l])->values(),
             'pending' => ['entries' => $pending->count(), 'value_eur' => round((float) $pending->sum('value_estimate'), 2)],
-            'send_guard' => WasteService::sendBlock() ?? ($guardCodes ? PingwinService::stockDocWriteGuard(array_map(fn ($l) => (string) $l['code'], $guardCodes)) : null),
+            'send_guard' => WasteService::sendBlock() ?? ($guardCodes ? PingwinService::stockDocWriteGuard(array_map(fn ($l) => (string) $l['code'], $guardCodes), $companyId) : null),
             'store_warehouses' => array_values((new StockConsumptionService($companyId))->storeWarehouses()),
             'can_manage' => $this->can($companyId, 'restauracao.editar'),
         ], CompassFinancials::visibleTo($request->user(), $companyId)), 'Desperdício carregado.');

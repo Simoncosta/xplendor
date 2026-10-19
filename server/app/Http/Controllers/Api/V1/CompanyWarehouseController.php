@@ -35,7 +35,7 @@ class CompanyWarehouseController extends Controller
         $consumption = new StockConsumptionService($companyId);
         $stores = array_values($consumption->storeWarehouses());
 
-        $rows = PingwinWarehouse::where('company_id', $companyId)->orderBy('deleted')->orderBy('code')->get()->map(function ($w) use ($withStock, $lastEntry, $stores) {
+        $rows = PingwinWarehouse::where('company_id', $companyId)->orderBy('deleted')->orderBy('code')->get()->map(function ($w) use ($withStock, $lastEntry, $stores, $companyId) {
             $id = (string) $w->pingwin_id;
 
             return [
@@ -48,7 +48,7 @@ class CompanyWarehouseController extends Controller
                 'articles_with_stock' => (int) ($withStock[$id] ?? 0),
                 'last_valorization' => isset($lastEntry[$id]) ? substr((string) $lastEntry[$id], 0, 10) : null,
                 'synced_at' => $w->synced_at?->toIso8601String(),
-                'write_guard' => PingwinService::warehouseWriteGuard($w->description),
+                'write_guard' => PingwinService::warehouseWriteGuard($w->description, $companyId),
             ];
         })->values()->all();
         $recent = PingwinStockWrite::where('company_id', $companyId)->where('kind', 'like', 'armazem_%')->with('user:id,name')
@@ -59,8 +59,8 @@ class CompanyWarehouseController extends Controller
             'stores' => $stores,
             'known_stores' => collect($writes->knownStores($companyId))->map(fn ($name, $id) => ['id' => (string) $id, 'name' => $name])->values(),
             'costmethods' => collect(PingwinWarehouse::COSTMETHODS)->map(fn ($label, $id) => ['id' => $id, 'label' => $label])->values(),
-            'create_guard' => PingwinService::warehouseWriteGuard(null),
-            'allowed_names' => PingwinService::warehouseWriteAllowlist(),
+            'create_guard' => PingwinService::warehouseWriteGuard(null, $companyId),
+            'allowed_names' => PingwinService::warehouseWriteAllowlist($companyId),
             'writes' => $recent,
             'can_edit' => $this->can($companyId, 'restauracao.editar'),
         ], 'Armazéns carregados.');
@@ -79,7 +79,7 @@ class CompanyWarehouseController extends Controller
             'inv_costmethod' => ['sometimes', 'nullable', 'integer'],
             'exit_costmethod' => ['sometimes', 'nullable', 'integer'],
         ], ['description.required' => 'O nome do armazém é obrigatório.', 'description.max' => 'O nome tem no máximo 50 caracteres.']);
-        if ($guard = PingwinService::warehouseWriteGuard(trim($data['description']))) {
+        if ($guard = PingwinService::warehouseWriteGuard(trim($data['description']), $companyId)) {
             return ApiResponse::error($guard['reason'], 403);
         }
         $write = $writes->requestCreate($companyId, $request->user()?->id, $data);
@@ -132,7 +132,7 @@ class CompanyWarehouseController extends Controller
             return null; // o serviço responde "não encontrado"
         }
 
-        return PingwinService::warehouseWriteGuard($current) ?? ($newName !== null ? PingwinService::warehouseWriteGuard(trim($newName)) : null);
+        return PingwinService::warehouseWriteGuard($current, $companyId) ?? ($newName !== null ? PingwinService::warehouseWriteGuard(trim($newName), $companyId) : null);
     }
 
     /** O armazém por omissão de uma loja (só na XPLENDOR; null = voltar ao que o PingWin diz). */

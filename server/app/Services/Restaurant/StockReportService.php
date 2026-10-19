@@ -201,7 +201,7 @@ final class StockReportService
             'consumption' => ['window' => $avg['window'], 'low_confidence' => (bool) ($c['low_confidence'] ?? false), 'sources' => $sources, 'used_by' => $usedBy],
             'history' => $history,
             'writes' => $writes,
-            'write_guard' => PingwinService::stockWriteGuard($productId),
+            'write_guard' => PingwinService::stockWriteGuard($productId, $this->companyId),
         ];
     }
 

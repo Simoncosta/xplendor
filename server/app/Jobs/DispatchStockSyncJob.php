@@ -22,6 +22,8 @@ class DispatchStockSyncJob implements ShouldQueue
 
     public int $tries = 1;
     public int $timeout = 60; // só despacha; não fala com o PingWin
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+    public bool $failOnTimeout = true;
 
     public function handle(StockSyncService $sync): void
     {

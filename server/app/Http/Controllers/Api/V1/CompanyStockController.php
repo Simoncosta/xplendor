@@ -130,7 +130,7 @@ class CompanyStockController extends Controller
             'min_stock.min' => 'O mínimo não pode ser negativo.',
             'max_stock.min' => 'O máximo não pode ser negativo.',
         ]);
-        if ($guard = \App\Services\PingwinService::stockWriteGuard($productId)) {
+        if ($guard = \App\Services\PingwinService::stockWriteGuard($productId, $companyId)) {
             return ApiResponse::error($guard['reason'], 403);
         }
         $changes = array_intersect_key($data, array_flip(['min_stock', 'max_stock', 'disable_generic']));

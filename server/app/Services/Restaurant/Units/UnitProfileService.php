@@ -228,7 +228,7 @@ final class UnitProfileService
         $impact = UnitImpact::build($e, $proposal, $oldPrice, (int) array_sum(array_map(fn ($f) => (int) ($f['impact_cents'] ?? $f['impact_pending_cents'] ?? 0), $findings)));
         $conf = self::confidenceOf($e, $proposal);
         $code = $e['code'];
-        $guard = PingwinService::unitWriteGuard($code);
+        $guard = PingwinService::unitWriteGuard($code, $this->companyId);
         $plan = $this->plan($e, $proposal, $profile);
         $unknown = ! $proposal['identified'] || $conf < ProductUnitProfile::MIN_CONFIDENCE;
         $currentPurchase = (string) PingwinCatalogItem::where('company_id', $this->companyId)->where('pingwin_id', $pid)->value('default_purchase_unit_id');
@@ -265,7 +265,7 @@ final class UnitProfileService
             'findings' => $findings,
             'ai' => UnitAdvisor::availability() + ['suggestion' => $profile?->ai_suggestion],
             'apply' => [
-                'proven' => (bool) config('auditoria.unit_write_proven'), 'guard' => $guard, 'steps' => $plan['steps'], 'manual' => $plan['manual'],
+                'proven' => (bool) \App\Settings\Settings::platform('pingwin.proven.units'), 'guard' => $guard, 'steps' => $plan['steps'], 'manual' => $plan['manual'],
                 'can_apply' => $guard === null && $plan['steps'] && in_array($profile?->state, ['confirmado', 'aplicado_no_pingwin'], true),
             ],
             'recipes_conversion' => $this->recipesConversion($e, $proposal, $impact, $profile, $answers),
@@ -790,7 +790,7 @@ final class UnitProfileService
             'articles' => array_map(fn ($a) => $a + ['done' => $rightId !== null && (string) ($items[$a['product_id']]->default_purchase_unit_id ?? '') === $rightId],
                 $articles),
             'impact_cents' => (int) array_sum(array_column($articles, 'impact_cents')),
-            'guard' => PingwinService::unitWriteGuard($code),
+            'guard' => PingwinService::unitWriteGuard($code, $this->companyId),
             'context_product_id' => $context,
         ];
     }

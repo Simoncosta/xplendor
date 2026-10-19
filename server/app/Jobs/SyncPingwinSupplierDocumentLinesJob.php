@@ -27,6 +27,10 @@ class SyncPingwinSupplierDocumentLinesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 330;      // docker exec até 300 s + margem
+
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+
+    public bool $failOnTimeout = true;
     public int $maxExceptions = 1;
 
     /** @param string $cycleStartedAt ISO — início do ciclo (um documento falhado não se repete no mesmo ciclo) */

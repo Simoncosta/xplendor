@@ -236,6 +236,7 @@ const Navdata = () => {
                 { id: "pingwin-guiao-unidades", label: "Guião de unidades", link: "/restauracao/auditoria/guiao", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-transferencias", label: "Transferências", link: "/restauracao/transferencias", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "restauracao_faturas", permission: "restauracao.ver" },
+                { id: "pingwin-compras-sugeridas", label: "Compras sugeridas", link: "/restauracao/compras-sugeridas", parentId: "restauracao", module: "restauracao_faturas", permission: "restauracao.ver" },
                 { id: "pingwin-conta-corrente", label: "Conta Corrente Fornecedores", link: "/restauracao/conta-corrente", parentId: "restauracao", module: "restauracao_conta_corrente", permission: "restauracao.ver" },
             ],
         },
@@ -349,6 +350,7 @@ const Navdata = () => {
             },
             subItems: [
                 { id: "user", label: "Colaboradores", link: "/users", parentId: "settings", permission: "utilizadores.ver" },
+                { id: "settings-restaurant", label: "Restauração e Auditoria", link: "/configuracoes/restauracao", parentId: "settings", module: "pingwin", permission: "restauracao.configurar" },
                 { id: "install-app", label: "Instalar app", link: "/install", parentId: "settings" },
             ],
         },
@@ -384,6 +386,7 @@ const Navdata = () => {
                     { id: "admin-stock", label: "Stock global", link: "/admin/stock", parentId: "admin" },
                     { id: "admin-creative-format-rules", label: "Regras de formato", link: "/admin/creative-format-rules", parentId: "admin" },
                     { id: "admin-ai-models", label: "Modelos de IA", link: "/admin/ai-models", parentId: "admin" },
+                    { id: "admin-pingwin", label: "Integrações › PingWin", link: "/admin/integracoes/pingwin", parentId: "admin" },
                     { id: "admin-radar", label: "Radar", link: "/admin/radar", parentId: "admin" },
                 ],
             },
@@ -438,7 +441,7 @@ const Navdata = () => {
                 // ("entrar como"). + Tickets + Orçamentos + Regras de formato + Modelos de IA + Radar; sem Stock global.
                 acc.push({
                     ...it,
-                    subItems: (it.subItems ?? []).filter((s: any) => ["company", "admin-tickets", "admin-quotes", "admin-charges", "admin-storage", "admin-creative-format-rules", "admin-ai-models", "admin-radar"].includes(s.id)),
+                    subItems: (it.subItems ?? []).filter((s: any) => ["company", "admin-tickets", "admin-quotes", "admin-charges", "admin-storage", "admin-creative-format-rules", "admin-ai-models", "admin-pingwin", "admin-radar"].includes(s.id)),
                 });
                 return acc;
             }

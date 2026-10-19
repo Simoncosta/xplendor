@@ -455,7 +455,7 @@ class AuditRestaurantRulesTest extends TestCase
     public function test_the_registry_has_every_restaurant_rule_and_the_screens(): void
     {
         $codes = array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'central'));
-        $this->assertCount(47, $codes);   // 18 + as 4 do stock (Fatia 7a) + as 8 das transferências (Fatia 7c) + as 2 da engenharia de menu (Fatia 3) + as 9 das unidades (Auditoria v2) + as 6 do dinheiro (v2-C)
+        $this->assertCount(48, $codes);   // 18 + as 4 do stock (Fatia 7a) + as 8 das transferências (Fatia 7c) + as 2 da engenharia de menu (Fatia 3) + as 9 das unidades (Auditoria v2) + as 6 do dinheiro (v2-C) + a da conferência com as guias (Fatia 5)
         $u = ['restauracao.unidade_fator', 'restauracao.unidade_combinacao_nova', 'restauracao.unidade_embalagem_fator_1', 'restauracao.unidade_base_grande', 'restauracao.unidade_peso_variavel',
             'restauracao.unidade_fornecedores', 'restauracao.unidade_preco_familia', 'restauracao.unidade_sem_uso', 'restauracao.unidade_bebida_ficha', 'restauracao.unidade_por_identificar'];
         $this->assertSame($u, array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'unidades')));
@@ -469,7 +469,7 @@ class AuditRestaurantRulesTest extends TestCase
         $this->assertSame(['restauracao.armazem_sem_entradas'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'armazens')));
         $this->assertSame(array_merge(['restauracao.preco_compra', 'restauracao.unidade_trocada', 'restauracao.unidade_fator', 'restauracao.unidade_sem_conversao', 'restauracao.documento_data_serie', 'restauracao.fatura_sem_linhas',
             'restauracao.transfer_fator'], array_values(array_diff($u, ['restauracao.unidade_sem_uso', 'restauracao.unidade_fator'])),
-            ['restauracao.dinheiro_preco_subiu', 'restauracao.dinheiro_mais_barato', 'restauracao.dinheiro_fatura_duplicada', 'restauracao.dinheiro_guia_sem_fatura']),
+            ['restauracao.dinheiro_preco_subiu', 'restauracao.dinheiro_mais_barato', 'restauracao.dinheiro_fatura_duplicada', 'restauracao.dinheiro_guia_sem_fatura', 'restauracao.dinheiro_fatura_guias_em_falta']),
             array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'faturas')));
         $this->assertSame(['restauracao.familia_suspeita'], array_map(fn ($r) => $r->code(), AuditRegistry::forScope('restauracao', 'familias')));
         $this->assertFalse(app(IvaVendaRule::class)->appliesTo(Company::create(['nipc' => '503504564', 'fiscal_name' => 'Stand', 'plan_id' => DB::table('plans')->value('id'), 'subscription_status' => 'active'])->id));

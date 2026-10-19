@@ -55,6 +55,10 @@ final class ForaDoPadraoRule extends MoneyRule
 
     public function run(int $companyId, AuditScope $scope): iterable
     {
+        // Desligada por defeito: só corre depois de o dono a ligar (Configurações › Restauração e Auditoria).
+        if (! \App\Settings\Settings::company($companyId, 'audit.voids_by_employee')) {
+            return;
+        }
         $today = CarbonImmutable::parse($this->data($scope)->today());
         // Só semanas fechadas e já lidas por inteiro (até ao domingo passado e até ao último dia do
         // espelho), as WEEKS mais recentes e as WEEKS antes (o histórico).

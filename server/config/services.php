@@ -112,6 +112,8 @@ return [
     // Por empresa (company_integrations) guardam-se só 3: username, database e a
     // senha (cifrada). O PingwinService compõe estes globais + os 3 da empresa.
     'pingwin' => [
+        // Travão global (Configurações): com false, nenhuma empresa grava nada no PingWin. Ganha a tudo.
+        'writes_enabled'    => (bool) env('PINGWIN_WRITES_ENABLED', true),
         'auth_url'          => env('PINGWIN_AUTH_URL'),        // SOA partilhado GrupoPIE
         'api_url'           => env('PINGWIN_API_URL'),         // mesmo host partilhado
         // frontend_url VARIA por restaurante (deriva de https://{database}.mycloudpie.com

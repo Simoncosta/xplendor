@@ -79,7 +79,7 @@ export type AuditFindingDetail = AuditFinding & {
 };
 
 export type AuditRunStep = {
-    rule: string; title: string; status: "pending" | "running" | "ok" | "failed" | "skipped";
+    rule: string; title: string; status: "pending" | "running" | "ok" | "failed" | "skipped" | "timeout";
     found?: number; new?: number; resolved?: number; open?: number; ms?: number; error?: string; note?: string;
 };
 

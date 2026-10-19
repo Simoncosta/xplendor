@@ -12,6 +12,7 @@ import ArticlePicker from "./faturas/ArticlePicker";
 import CreateArticleModal, { CreateArticleData } from "./faturas/CreateArticleModal";
 import LineArticleCell from "./faturas/LineArticleCell";
 import LaunchCard from "./faturas/LaunchCard";
+import GuidesCard from "./faturas/GuidesCard";
 import {
     getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice,
     searchOcrPingwinLink, confirmOcrPingwinLink, unlinkOcrPingwinLink,
@@ -681,7 +682,16 @@ export default function FaturaValidacaoPage() {
                         )}
                         {/* FB-1: lançar no PingWin em rascunho, fechar, anular */}
                         {inv && (inv.status === "por_validar" || inv.status === "validada") && (
-                            <LaunchCard companyId={companyId} invoiceId={invoiceId} onChanged={refreshPingwin} />
+                            <div id="xp-launch">
+                                <LaunchCard companyId={companyId} invoiceId={invoiceId} onChanged={refreshPingwin} />
+                            </div>
+                        )}
+                        {/* Fatia 5: a conferência com as guias; "Lançar guia" leva ao lançamento acima (nada se grava sozinho). */}
+                        {inv && (
+                            <GuidesCard companyId={companyId} invoiceId={invoiceId} onLaunch={(g) => {
+                                document.getElementById("xp-launch")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                toast.info(`Para lançar a ${g.ref}${g.date ? ` de ${g.date.split("-").reverse().join("/")}` : ""}, use o lançamento no PingWin: confirme as linhas desta guia antes de gravar.`);
+                            }} />
                         )}
                     </Col>
 

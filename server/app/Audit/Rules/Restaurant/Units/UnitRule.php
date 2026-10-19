@@ -69,9 +69,7 @@ abstract class UnitRule extends RestaurantRule
 
     protected static function severityFor(float $eur): string
     {
-        $t = (array) config('auditoria.units_severity_eur');
-
-        return $eur >= (float) ($t['alta'] ?? 100) ? 'alta' : ($eur >= (float) ($t['media'] ?? 20) ? 'media' : 'baixa');
+        return AuditScope::severityFor($eur, 'units');
     }
 
     /** O custo dos componentes gastos nas fichas em 90 dias (quantidade base × vendas × preço). */

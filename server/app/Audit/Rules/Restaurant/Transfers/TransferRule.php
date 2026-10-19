@@ -35,12 +35,10 @@ abstract class TransferRule extends StockRule
         return ['transferencias'];
     }
 
-    /** Severidade pelo valor em jogo (config/auditoria.php: transfers_severity_eur). */
+    /** Severidade pelo valor em jogo (a definição da empresa; antes AUDIT_TRANSFERS_*_EUR). */
     protected static function severityFor(float $eur): string
     {
-        $lim = (array) config('auditoria.transfers_severity_eur', ['alta' => 100, 'media' => 20]);
-
-        return $eur >= (float) ($lim['alta'] ?? 100) ? 'alta' : ($eur >= (float) ($lim['media'] ?? 20) ? 'media' : 'baixa');
+        return AuditScope::severityFor($eur, 'transfers');
     }
 
     /**

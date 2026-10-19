@@ -50,7 +50,7 @@ class CompanyMenuEngineeringController extends Controller
             'exclusions' => MenuEngineeringExclusion::where('company_id', $companyId)->orderBy('product_id')->get(['product_id', 'reason', 'created_at']),
             'can_manage' => $this->can($companyId, 'restauracao.editar'),
             'labels' => ['classes' => MenuMatrix::CLASS_LABELS, 'exclusions' => MenuEngineeringService::EXCLUSIONS, 'plays' => config('menu_engineering.plays')],
-            'targets' => ['food_cost_pct' => (float) config('menu_engineering.food_cost_target_pct', 35), 'confirmed_pct' => (float) config('menu_engineering.compare_min_coverage_pct', 80)],
+            'targets' => ['food_cost_pct' => (float) \App\Settings\Settings::company($companyId, 'menu.food_cost_target_pct'), 'confirmed_pct' => (float) config('menu_engineering.compare_min_coverage_pct', 80)],
             'request' => $params,
         ];
         if (! $snap) {

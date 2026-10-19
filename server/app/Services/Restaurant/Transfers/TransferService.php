@@ -115,7 +115,7 @@ final class TransferService
     public function prepare(StockTransferRoute $route, array $lines): array
     {
         $units = new StockUnits($this->companyId);
-        $gap = (float) config('stock_transfers.price_gap_pct', 30);
+        $gap = (float) \App\Settings\Settings::company($this->companyId, 'stock.transfer_price_gap_pct');
         $pids = array_values(array_unique(array_map(fn ($l) => (string) ($l['product_id'] ?? ''), $lines)));
         $origin = PingwinStock::where('company_id', $this->companyId)->where('warehouse_pingwin_id', $route->origin_warehouse_id)
             ->whereIn('product_pingwin_id', $pids)->get()->keyBy(fn ($s) => (string) $s->product_pingwin_id);
@@ -183,11 +183,11 @@ final class TransferService
     /** Porque não se pode enviar por este circuito (null = pode). */
     public function sendBlock(StockTransferRoute $route, array $codes, bool $fromOrder): ?string
     {
-        if (! config('stock_transfers.send_proven')) {
-            return 'O envio de transferências para o PingWin ainda não foi provado neste ambiente (STOCK_TRANSFER_SEND_PROVEN). A preparação funciona; o envio fica bloqueado.';
+        if (! \App\Settings\Settings::platform('pingwin.proven.transfers')) {
+            return 'O envio de transferências para o PingWin ainda não foi provado neste ambiente (Admin › Integrações › PingWin). A preparação funciona; o envio fica bloqueado.';
         }
-        if (! $fromOrder && ! config('stock_transfers.new_guide_proven')) {
-            return 'O envio sem encomenda (Guia nova) ainda não foi provado no PingWin (STOCK_TRANSFER_NEW_GUIDE_PROVEN). Envie a partir de uma encomenda.';
+        if (! $fromOrder && ! \App\Settings\Settings::platform('pingwin.proven.new_guide')) {
+            return 'O envio sem encomenda (Guia nova) ainda não foi provado no PingWin (Admin › Integrações › PingWin). Envie a partir de uma encomenda.';
         }
         if ((string) $route->exit_docconfig_id !== '1102') {
             return 'Só a Guia de ativos próprios (1102) foi provada. Mude o documento de saída do circuito.';
@@ -201,7 +201,7 @@ final class TransferService
         if (! StockTransferRoute::addressComplete($route->unload_address)) {
             return 'Falta a morada de descarga do circuito. Preencha-a no separador Circuito.';
         }
-        if ($g = PingwinService::stockDocWriteGuard($codes)) {
+        if ($g = PingwinService::stockDocWriteGuard($codes, $this->companyId)) {
             return $g['reason'];
         }
 
@@ -290,10 +290,10 @@ final class TransferService
 
     private function writeGuard(StockTransfer $t): ?string
     {
-        if (! config('stock_transfers.send_proven')) {
-            return 'O envio de transferências para o PingWin ainda não foi provado neste ambiente (STOCK_TRANSFER_SEND_PROVEN).';
+        if (! \App\Settings\Settings::platform('pingwin.proven.transfers')) {
+            return 'O envio de transferências para o PingWin ainda não foi provado neste ambiente (Admin › Integrações › PingWin).';
         }
-        $g = PingwinService::stockDocWriteGuard($t->lines->pluck('code')->map(fn ($c) => (string) $c)->all());
+        $g = PingwinService::stockDocWriteGuard($t->lines->pluck('code')->map(fn ($c) => (string) $c)->all(), $this->companyId);
 
         return $g['reason'] ?? null;
     }

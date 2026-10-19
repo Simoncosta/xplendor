@@ -24,6 +24,10 @@ return [
         'ine-housing-prices-monthly',
         // Auditoria (Fatia 2): a saúde do tracking lê o GA4.
         'tracking-health-daily',
+        // Auditoria v2-C: os documentos de caixa lidos no PingWin.
+        'pingwin-pos-documents-nightly',
+        // Fatia 6a: as reservas futuras lidas no CoverManager (de manhã e ao fim da tarde).
+        'restaurant-reservations-morning', 'restaurant-reservations-evening',
     ],
 
     // As tarefas agendadas que chegam à IA (pelos trabalhos que põem na fila). Todas têm de estar

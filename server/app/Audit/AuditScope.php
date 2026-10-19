@@ -13,13 +13,33 @@ final class AuditScope
     /** @var array<string, mixed> */
     private array $memo = [];
 
+    /** A empresa da corrida em curso: as regras leem as definições dela (severidades, alvos). */
+    private static ?int $current = null;
+
     /** @param list<string> $rules */
     public function __construct(
         public readonly int $companyId,
         public readonly string $area,
         public readonly string $origin,
         public readonly array $rules = [],
-    ) {}
+    ) {
+        self::$current = $companyId;
+    }
+
+    public static function currentCompany(): ?int
+    {
+        return self::$current;
+    }
+
+    /** Severidade pelo € em jogo com os limites da empresa da corrida (Configurações › Restauração e Auditoria). */
+    public static function severityFor(float $eur, string $area): string
+    {
+        $c = self::$current;
+        $high = (float) \App\Settings\Settings::company($c, "audit.{$area}_severity_high");
+        $medium = (float) \App\Settings\Settings::company($c, "audit.{$area}_severity_medium");
+
+        return $eur >= $high ? 'alta' : ($eur >= $medium ? 'media' : 'baixa');
+    }
 
     public function key(): string
     {

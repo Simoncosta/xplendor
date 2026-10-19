@@ -35,9 +35,7 @@ abstract class MoneyRule extends RestaurantRule
 
     protected static function severityFor(float $eur): string
     {
-        $t = (array) self::cfg('severity_eur', ['alta' => 100, 'media' => 20]);
-
-        return $eur >= (float) ($t['alta'] ?? 100) ? 'alta' : ($eur >= (float) ($t['media'] ?? 20) ? 'media' : 'baixa');
+        return AuditScope::severityFor($eur, 'money');
     }
 
     protected function data(AuditScope $scope): RestaurantAuditData
