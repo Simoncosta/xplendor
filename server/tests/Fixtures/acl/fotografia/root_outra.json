@@ -1,6 +1,6 @@
 {
     "ator": "root_outra",
-    "rotas": 557,
+    "rotas": 559,
     "proibidas": [
         "DELETE api/v1/companies/{id}/management",
         "GET api/v1/companies/{id}/management/requests",
@@ -264,6 +264,7 @@
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/guides": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/image": 404,
+        "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/manual-changes": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch": 404,
         "GET api/v1/companies/{id}/permission-profiles": 200,
         "GET api/v1/companies/{id}/properties": 200,
@@ -497,6 +498,7 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link/confirm": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/reprocess": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/restore": 404,
+        "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/revalidate": 404,
         "POST api/v1/companies/{id}/permission-profiles": 422,
         "POST api/v1/companies/{id}/permission-profiles/preview": 422,
         "POST api/v1/companies/{id}/properties": 422,

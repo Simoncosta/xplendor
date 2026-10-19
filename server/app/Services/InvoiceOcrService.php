@@ -6,9 +6,11 @@ namespace App\Services;
 
 use App\Models\Company;
 use App\Models\OcrInvoice;
+use App\Models\OcrInvoiceDiscount;
 use App\Models\OcrInvoiceLine;
 use App\Models\OcrInvoiceSummary;
 use App\Models\PingwinSupplier;
+use App\Services\Ocr\InvoiceDiscountAllocator;
 use App\Services\Ocr\AnthropicInvoiceReader;
 use App\Services\Ocr\OcrModelStopped;
 use App\Services\Ocr\OcrTemporaryFailure;
@@ -48,10 +50,12 @@ use Symfony\Component\Process\Process;
 class InvoiceOcrService
 {
     // b2b-v3: + código do artigo do fornecedor nas linhas (caminho sem QR).
-    public const PROMPT_VERSION = 'b2b-v3';
+    // b2b-v4: + código da promoção e código de IVA por linha, quadro do IVA e bloco de descontos.
+    public const PROMPT_VERSION = 'b2b-v4';
     // Caminho com QR: a IA só lê as linhas (o cabeçalho vem do QR).
     // linhas-v2 (F3): + guias referidas na fatura (para a ligação de faturas de guias ao PingWin).
-    public const LINES_PROMPT_VERSION = 'linhas-v2';
+    // linhas-v3: + código da promoção e código de IVA por linha, quadro do IVA e bloco de descontos.
+    public const LINES_PROMPT_VERSION = 'linhas-v3';
 
     public const STATUS_NOT_OURS = 'nao_desta_empresa';
     public const CHECK_OK = 'confere';
@@ -360,7 +364,7 @@ class InvoiceOcrService
     {
         $rows = array_map(fn ($r) => sprintf('  · IVA %s%%: base %s €', $r['rate'], number_format($r['base_cents'] / 100, 2, '.', '')), $qr['by_rate']);
 
-        return "AUTO-CONFERÊNCIA — o QR oficial desta fatura (AT) diz que a soma das linhas (totalLinha, sem IVA) por taxa de IVA é:\n"
+        return "AUTO-CONFERÊNCIA — o QR oficial desta fatura (AT) diz que a soma das linhas (totalLinha, sem IVA, menos os descontos do bloco de descontos, se houver) por taxa de IVA é:\n"
             . implode("\n", $rows)
             . "\nUsa isto para confirmares que não te faltou nem sobrou nenhuma linha. NÃO alteres valores lidos para forçar a soma: se não fechar, devolve o que está escrito na fatura.";
     }
@@ -633,7 +637,15 @@ class InvoiceOcrService
         $forn = is_array($raw['fornecedor'] ?? null) ? $raw['fornecedor'] : [];
         $sum = is_array($raw['sumario'] ?? null) ? $raw['sumario'] : [];
 
+        // O quadro do IVA da fatura (código → taxa, base, IVA): os códigos são os da fatura, nunca fixos.
+        $vatTable = $this->vatTable($raw['quadroIva'] ?? []);
+        $rateByCode = [];
+        foreach ($vatTable as $r) {
+            $rateByCode[$r['code']] = $r['rate'];
+        }
+
         $lines = [];
+        $ignored = [];
         foreach (($raw['linhas'] ?? []) as $l) {
             if (! is_array($l)) {
                 continue;
@@ -646,6 +658,13 @@ class InvoiceOcrService
             if ($item === null && $qty === null && $unitPrice === null && $lineTotal === null) {
                 continue;
             }
+            // "+ … TAXA IEC INCL. PREÇO U.V.": informativas (o valor já está no preço), nunca linhas.
+            if (self::isInformativeLine($item)) {
+                $ignored[] = mb_substr((string) $item, 0, 160);
+
+                continue;
+            }
+            $vatCode = $this->vatCode($l['codigoIva'] ?? null);
             $lines[] = [
                 'supplier_code'    => $this->code($l['codigo'] ?? null),
                 'item'             => $item,
@@ -654,9 +673,31 @@ class InvoiceOcrService
                 'unit_price'       => $unitPrice,
                 'discount_pct'     => $this->pct($l['descontoPct'] ?? null),
                 'line_total_cents' => $lineTotal,
-                'vat_rate'         => $this->vat($l['taxaIva'] ?? null),
+                'gross_total_cents' => $lineTotal,
+                'vat_rate'         => $vatCode !== null && isset($rateByCode[$vatCode]) ? $rateByCode[$vatCode] : $this->vat($l['taxaIva'] ?? null),
+                'promo_code'       => $this->code($l['codigoPromocao'] ?? null),
+                'vat_code'         => $vatCode,
             ];
         }
+
+        // O bloco de descontos (código da promoção, valor, código de IVA): cada um no seu artigo.
+        $discounts = [];
+        foreach (is_array($raw['descontos'] ?? null) ? $raw['descontos'] : [] as $d) {
+            $amount = is_array($d) ? $this->cents($d['valor'] ?? null) : null;
+            if ($amount === null || $amount === 0) {
+                continue;
+            }
+            $vatCode = $this->vatCode($d['codigoIva'] ?? null);
+            $discounts[] = [
+                'code'         => $this->code($d['codigo'] ?? null),
+                'label'        => $this->str($d['descricao'] ?? null) ? mb_substr((string) $this->str($d['descricao']), 0, 120) : null,
+                'amount_cents' => abs($amount),
+                'vat_code'     => $vatCode,
+                'vat_rate'     => $vatCode !== null ? ($rateByCode[$vatCode] ?? null) : null,
+            ];
+        }
+        $allocated = InvoiceDiscountAllocator::allocate($lines, $discounts);
+        $lines = $allocated['lines'];
 
         $vatBreakdown = [];
         foreach (($sum['ivaPorTaxa'] ?? []) as $b) {
@@ -674,12 +715,27 @@ class InvoiceOcrService
             ];
         }
 
+        // Sem quadro no sumário, o quadro do IVA da fatura (o lido) faz de sumário por taxa.
+        if ($vatBreakdown === [] && $vatTable !== []) {
+            $byRate = [];
+            foreach ($vatTable as $r) {
+                $byRate[$r['rate']] ??= ['rate' => $r['rate'], 'base_cents' => 0, 'vat_cents' => 0];
+                $byRate[$r['rate']]['base_cents'] += $r['base_cents'];
+                $byRate[$r['rate']]['vat_cents'] += $r['vat_cents'];
+            }
+            ksort($byRate);
+            $vatBreakdown = array_values($byRate);
+        }
+
         return [
             'supplier_name' => $this->str($forn['nome'] ?? ($raw['fornecedorNome'] ?? null)),
             'supplier_nif'  => $this->nif($forn['nif'] ?? null),
             'number'        => $this->str($raw['numeroFatura'] ?? null),
             'issue_date'    => $this->date($raw['dataEmissao'] ?? null),
             'lines'         => $lines,
+            'discounts'     => $allocated['discounts'],
+            'vat_table'     => $vatTable,
+            'ignored_lines' => $ignored,
             'guides'        => $this->guides($raw['guias'] ?? []),
             'summary'       => [
                 'goods_total_cents'         => (int) $this->cents($sum['totalMercadorias'] ?? 0),
@@ -779,20 +835,41 @@ class InvoiceOcrService
                 'guide_refs'     => ($clean['guides'] ?? []) ?: null,
             ]);
 
+            $invoice->discounts()->delete();
+            $ids = [];
             $pos = 0;
-            foreach ($clean['lines'] as $line) {
-                OcrInvoiceLine::create(array_merge($line, [
+            foreach ($clean['lines'] as $i => $line) {
+                $ids[$i] = OcrInvoiceLine::create(array_merge($line, [
                     'ocr_invoice_id' => $invoice->id,
                     'company_id'     => $invoice->company_id,
                     'position'       => $pos++,
+                ]))->id;
+            }
+            foreach (array_values($clean['discounts'] ?? []) as $k => $d) {
+                OcrInvoiceDiscount::create(array_merge($d, [
+                    'ocr_invoice_id' => $invoice->id,
+                    'company_id'     => $invoice->company_id,
+                    'position'       => $k,
+                    'allocations'    => array_map(fn ($a) => ['line_id' => $ids[$a['line']] ?? null, 'cents' => $a['cents']], $d['allocations']),
                 ]));
             }
+            // A leitura como veio (para "Reler do documento" mostrar o que foi mudado à mão).
+            $invoice->update([
+                'vat_table'     => ($clean['vat_table'] ?? []) ?: null,
+                'ignored_lines' => ($clean['ignored_lines'] ?? []) ?: null,
+                'read_snapshot' => array_map(fn ($i) => ['id' => $ids[$i]] + OcrInvoiceRereadService::snapshotOf($clean['lines'][$i]), array_keys($clean['lines'])),
+            ]);
 
             OcrInvoiceSummary::create(array_merge($clean['summary'], [
                 'ocr_invoice_id' => $invoice->id,
                 'company_id'     => $invoice->company_id,
             ]));
         });
+
+        // "Reler do documento" com "Manter as alterações manuais": voltam a ser aplicadas à nova leitura.
+        if (OcrInvoice::whereKey($invoice->id)->value('reread_keep') !== null) {
+            app(OcrInvoiceRereadService::class)->applyKept($invoice->fresh());
+        }
     }
 
     /**
@@ -803,6 +880,7 @@ class InvoiceOcrService
     private function persistStopped(OcrInvoice $invoice, array $plan, OcrModelStopped $stop, ?array $qr, array $an, int $ms): void
     {
         $empty = ['supplier_name' => null, 'supplier_nif' => null, 'number' => null, 'issue_date' => null, 'lines' => [], 'guides' => [],
+            'discounts' => [], 'vat_table' => [], 'ignored_lines' => [],
             'summary' => ['goods_total_cents' => 0, 'commercial_discount_cents' => 0, 'taxable_base_cents' => 0, 'vat_total_cents' => 0,
                 'withholding_cents' => 0, 'financial_discount_cents' => 0, 'total_cents' => 0, 'vat_breakdown' => []]];
         $attempt = [
@@ -821,6 +899,7 @@ class InvoiceOcrService
     {
         DB::transaction(function () use ($invoice, $qr, $pages, $message, $ms) {
             $invoice->lines()->delete();
+            $invoice->discounts()->delete();
             $invoice->summary()->delete();
             $invoice->update([
                 'supplier_id'   => null,
@@ -1079,6 +1158,36 @@ class InvoiceOcrService
         return $out;
     }
 
+    /** "+ 0,52 TAXA IEC INCL. PREÇO U.V.", "IEC BEB AÇÚCAR INCL. PUV": informativa (já no preço). */
+    public static function isInformativeLine(?string $item): bool
+    {
+        return $item !== null && preg_match('/\bINCL(?:U[IÍ]D[OA]S?)?\b/iu', $item) === 1;
+    }
+
+    /** O quadro do IVA lido: [{codigo, taxa, base, iva}] → [{code, rate, base_cents, vat_cents}] (taxas válidas). */
+    private function vatTable($raw): array
+    {
+        $out = [];
+        foreach (is_array($raw) ? $raw : [] as $r) {
+            $rate = is_array($r) ? $this->vat($r['taxa'] ?? null) : null;
+            $code = is_array($r) ? $this->vatCode($r['codigo'] ?? null) : null;
+            if ($rate === null || $code === null) {
+                continue;
+            }
+            $out[] = ['code' => $code, 'rate' => $rate, 'base_cents' => (int) $this->cents($r['base'] ?? 0), 'vat_cents' => (int) $this->cents($r['iva'] ?? 0)];
+        }
+
+        return $out;
+    }
+
+    /** O código de IVA da fatura (texto curto: "0", "2", "4", "A"…) ou null. */
+    private function vatCode($v): ?string
+    {
+        $s = $this->str(is_int($v) || is_float($v) ? (string) $v : $v);
+
+        return $s === null ? null : mb_substr(strtoupper($s), 0, 10);
+    }
+
     /** Código do artigo do fornecedor (texto curto) ou null. */
     private function code($v): ?string
     {
@@ -1113,8 +1222,10 @@ class InvoiceOcrService
   "numeroFatura": "string",
   "dataEmissao": "YYYY-MM-DD",
   "linhas": [
-    {"codigo": "string (código do artigo do fornecedor)", "item": "string", "quantidade": number, "unidade": "string (un/kg/cx/L...)", "precoUnitario": number, "descontoPct": number, "totalLinha": number, "taxaIva": 6|13|23}
+    {"codigo": "string (código do artigo do fornecedor)", "item": "string", "quantidade": number, "unidade": "string (un/kg/cx/L...)", "precoUnitario": number, "descontoPct": number, "totalLinha": number, "taxaIva": 6|13|23, "codigoPromocao": "string", "codigoIva": "string"}
   ],
+  "quadroIva": [{"codigo": "string", "taxa": number, "base": number, "iva": number}],
+  "descontos": [{"codigo": "string", "descricao": "string", "valor": number, "codigoIva": "string"}],
   "sumario": {
     "totalMercadorias": number, "descontoComercial": number, "baseTributavel": number,
     "ivaPorTaxa": [{"taxa": 6|13|23, "base": number, "iva": number}],
@@ -1141,6 +1252,17 @@ REGRAS:
   · a soma dos totalLinha ≈ totalMercadorias ≈ baseTributavel (antes de IVA) — se não fechar, revê o sumário (as linhas mandam)
   · totalMercadorias − descontoComercial ≈ baseTributavel
   · baseTributavel + valorIvaTotal − retencaoFonte − descontoFinanceiro ≈ total
+  · com bloco de descontos: a soma dos totalLinha − a soma dos descontos ≈ baseTributavel
+
+DESCONTOS DE PROMOÇÃO E CÓDIGOS (ex.: Makro):
+- Se a linha tiver a coluna do código da promoção (ex.: "DD"), copia-o para "codigoPromocao". A coluna "DP" (ex.: "P") NÃO é um desconto e não entra no cálculo: ignora-a.
+- Se a fatura usar códigos de IVA nas linhas (coluna "IVA" com 0, 2, 4, 5…), copia o código tal como está para "codigoIva" e preenche "quadroIva" com o quadro do IVA da fatura: um elemento por código, com o código, a taxa (%), a base e o IVA, tal como estão escritos. Sem quadro, devolve [].
+- "descontos": o bloco de descontos da fatura (ex.: "Leve Mais Pague Menos"), um elemento por desconto, com o código da promoção, a descrição do bloco, o valor (número positivo) e o código de IVA. Sem descontos, devolve [].
+- totalLinha é o valor da coluna do total da linha (ex.: "Val.total") ANTES dos descontos do bloco de descontos: NÃO subtraias tu esses descontos à linha.
+- As linhas começadas por "+" que dizem "INCL." (ex.: "+ 0,52 TAXA IEC INCL. PREÇO U.V.", "+ … IEC BEB AÇÚCAR INCL. PUV") são informativas: NÃO são linhas.
+- Mas "+ 164846 DEPOSITO 1 X 0.10 EUR" (caução de vasilhame) É uma linha: quantidade, preço unitário 0.10, total e código de IVA.
+- Artigos ao peso: quantidade em kg tal como está (ex.: 0.909) e unidade "KG".
+- descontoPct só se a linha tiver uma percentagem escrita; nunca a calcules a partir de um desconto em €.
 
 EXEMPLO (fatura de fornecedor PT, ilustrativo — repara: "Forno Tradicional" é o EMISSOR/fornecedor no topo; um eventual "Exmo. Sr. Restaurante Central" seria o CLIENTE, a ignorar):
 {
@@ -1174,9 +1296,11 @@ PROMPT;
 {
   "fornecedorNome": "string (nome do EMISSOR, no topo — nunca o cliente/adquirente)",
   "linhas": [
-    {"codigo": "string", "item": "string", "quantidade": number, "unidade": "string", "precoUnitario": number, "descontoPct": number, "taxaIva": number, "totalLinha": number}
+    {"codigo": "string", "item": "string", "quantidade": number, "unidade": "string", "precoUnitario": number, "descontoPct": number, "taxaIva": number, "totalLinha": number, "codigoPromocao": "string", "codigoIva": "string"}
   ],
-  "guias": [{"numero": "string (ex.: GT 3105/2026)", "data": "YYYY-MM-DD"}]
+  "guias": [{"numero": "string (ex.: GT 3105/2026)", "data": "YYYY-MM-DD"}],
+  "quadroIva": [{"codigo": "string", "taxa": number, "base": number, "iva": number}],
+  "descontos": [{"codigo": "string", "descricao": "string", "valor": number, "codigoIva": "string"}]
 }
 
 CAMPOS DE CADA LINHA:
@@ -1184,7 +1308,17 @@ CAMPOS DE CADA LINHA:
 - item: descrição do artigo.
 - quantidade, unidade (UN, KG, CX, L…), precoUnitario (sem IVA), descontoPct (0 se não houver).
 - taxaIva: a taxa de IVA da linha em % (ex.: 6, 13, 23; 0 se isento). Se a fatura usar códigos de taxa, converte-os para a percentagem.
-- totalLinha: valor da linha SEM IVA, já com o desconto da linha (a coluna "Valor"/"Total"/"Líquido").
+- totalLinha: valor da linha SEM IVA, já com o desconto da própria linha (a coluna "Valor"/"Total"/"Líquido"), mas ANTES dos descontos do bloco de descontos.
+
+DESCONTOS DE PROMOÇÃO E CÓDIGOS (ex.: Makro):
+- Se a linha tiver a coluna do código da promoção (ex.: "DD"), copia-o para "codigoPromocao". A coluna "DP" (ex.: "P") NÃO é um desconto e não entra no cálculo: ignora-a.
+- Se a fatura usar códigos de IVA nas linhas (coluna "IVA" com 0, 2, 4, 5…), copia o código tal como está para "codigoIva" e preenche "quadroIva" com o quadro do IVA da fatura: um elemento por código, com o código, a taxa (%), a base e o IVA, tal como estão escritos. Sem quadro, devolve [].
+- "descontos": o bloco de descontos da fatura (ex.: "Leve Mais Pague Menos"), um elemento por desconto, com o código da promoção, a descrição do bloco, o valor (número positivo) e o código de IVA. Sem descontos, devolve [].
+- totalLinha é o valor da coluna do total da linha (ex.: "Val.total") ANTES dos descontos do bloco de descontos: NÃO subtraias tu esses descontos à linha.
+- As linhas começadas por "+" que dizem "INCL." (ex.: "+ 0,52 TAXA IEC INCL. PREÇO U.V.", "+ … IEC BEB AÇÚCAR INCL. PUV") são informativas: NÃO são linhas.
+- Mas "+ 164846 DEPOSITO 1 X 0.10 EUR" (caução de vasilhame) É uma linha: quantidade, preço unitário 0.10, total e código de IVA.
+- Artigos ao peso: quantidade em kg tal como está (ex.: 0.909) e unidade "KG".
+- descontoPct só se a linha tiver uma percentagem escrita; nunca a calcules a partir de um desconto em €.
 
 REGRAS:
 - TODAS as linhas de artigos, de TODAS as páginas, uma entrada por linha, pela ordem da fatura. Inclui portes, taras, ecovalor e outras linhas com valor se aparecerem como linhas.

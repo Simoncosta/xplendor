@@ -525,6 +525,9 @@ Route::prefix('v1')->group(function () {
                     Route::get('/ocr/invoices/{invoiceId}/image', [CompanyInvoiceOcrController::class, 'image']);
                     Route::put('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'update']);
                     Route::post('/ocr/invoices/{invoiceId}/reprocess', [CompanyInvoiceOcrController::class, 'reprocess']);
+                    // Faturas: "Revalidar" (sem IA) e o que foi mudado à mão (antes de "Reler do documento").
+                    Route::post('/ocr/invoices/{invoiceId}/revalidate', [CompanyInvoiceOcrController::class, 'revalidate'])->whereNumber('invoiceId');
+                    Route::get('/ocr/invoices/{invoiceId}/manual-changes', [CompanyInvoiceOcrController::class, 'manualChanges'])->whereNumber('invoiceId');
                     // F2c: apagar (soft) / repor / apagar várias
                     Route::post('/ocr/invoices/bulk-delete', [CompanyInvoiceOcrController::class, 'bulkDestroy']);
                     Route::delete('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'destroy'])->whereNumber('invoiceId');

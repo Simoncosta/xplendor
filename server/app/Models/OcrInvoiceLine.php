@@ -26,6 +26,8 @@ class OcrInvoiceLine extends Model
         'article_id', 'link_state', 'link_method', 'link_confidence', 'link_suggestions', 'linked_by', 'linked_at',
         'article_write_id', 'supplier_code_status', 'supplier_code_error', 'supplier_code_write_id', 'vat_write_id',
         'launch_unit_id', // FB-1
+        // Descontos de promoção ligados ao artigo: line_total_cents é o líquido (bruto − desconto).
+        'promo_code', 'vat_code', 'gross_total_cents', 'discount_cents', 'discount_code', 'discount_label',
     ];
 
     protected $casts = [
@@ -34,6 +36,8 @@ class OcrInvoiceLine extends Model
         'unit_price'       => 'decimal:6',
         'discount_pct'     => 'float',
         'line_total_cents' => 'integer',
+        'gross_total_cents' => 'integer',
+        'discount_cents'   => 'integer',
         'vat_rate'         => 'integer',
         'article_id'       => 'integer',
         'link_confidence'  => 'float',
@@ -49,6 +53,12 @@ class OcrInvoiceLine extends Model
     public function article(): BelongsTo
     {
         return $this->belongsTo(PingwinCatalogItem::class, 'article_id');
+    }
+
+    /** O valor da linha antes do desconto de promoção (o lido na fatura). */
+    public function grossCents(): int
+    {
+        return (int) ($this->gross_total_cents ?? ((int) $this->line_total_cents + (int) $this->discount_cents));
     }
 
     public function isManual(): bool

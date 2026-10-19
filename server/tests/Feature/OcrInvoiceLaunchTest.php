@@ -16,6 +16,8 @@ use App\Models\PingwinDocumentWrite;
 use App\Models\PingwinSupplier;
 use App\Models\PingwinSupplierDocument;
 use App\Models\PingwinUnit;
+use App\Models\ProductUnitProfile;
+use App\Models\OcrInvoiceDiscount;
 use App\Models\User;
 use App\Services\CompanyModuleService;
 use App\Services\OcrInvoiceLaunchService;
@@ -124,6 +126,15 @@ class OcrInvoiceLaunchTest extends TestCase
             'launch_unit_id' => 'CX6'], $l2));
 
         return $inv;
+    }
+
+    /** As unidades dos artigos confirmadas no Guião de unidades (o fecho exige-as). */
+    private function confirmUnits(array $pingwinIds = ['PA', 'PB']): void
+    {
+        foreach ($pingwinIds as $id) {
+            ProductUnitProfile::create(['company_id' => $this->yuko->id, 'product_pingwin_id' => $id, 'state' => 'confirmado',
+                'confirmed_by' => $this->user->id, 'confirmed_at' => now()]);
+        }
     }
 
     private function svc(): OcrInvoiceLaunchService
@@ -325,6 +336,7 @@ class OcrInvoiceLaunchTest extends TestCase
 
     public function test_close_then_void_and_launch_again(): void
     {
+        $this->confirmUnits();
         $this->okLaunch();
         $inv = $this->invoice();
         $this->launchNow($inv);
@@ -351,12 +363,119 @@ class OcrInvoiceLaunchTest extends TestCase
 
     public function test_status_reread_mismatch_is_confirmation_error(): void
     {
+        $this->confirmUnits();
         $this->okLaunch();
         $inv = $this->invoice();
         $this->launchNow($inv);
         $this->statusReread = ['ok' => true, 'header' => ['docstatus_id' => '8001'], 'details' => []];
         $w = $this->svc()->requestStatus($inv, 'close', $this->user->id);
         $this->assertSame('erro_confirmacao', $this->svc()->execute($w->id)->status);
+    }
+
+    // ───────────────────────────────────────────────────────────── gravar como fechada
+
+    public function test_close_needs_every_line_unit_confirmed_and_names_the_missing_one(): void
+    {
+        $this->okLaunch();
+        $inv = $this->invoice();
+        $this->confirmUnits(['PA']);
+        $p = $this->svc()->preview($inv);
+        $this->assertTrue($p['can_launch']);
+        $this->assertSame('launch', $p['close']['mode']);
+        $this->assertFalse($p['close']['can_close']);
+        $this->assertSame(['unidades_confirmadas'], array_column($p['close']['blockers'], 'key'));
+        $this->assertStringContainsString('ARTIGO B', $p['close']['blockers'][0]['message']);
+        $this->assertStringNotContainsString('ARTIGO A', $p['close']['blockers'][0]['message']);
+
+        // "Gravar como fechada" sem as unidades: 422 com o que falta; nada é escrito.
+        $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch", ['close' => true])
+            ->assertStatus(422)->assertJsonPath('errors.failed.0.key', 'unidades_confirmadas');
+        $this->assertSame(0, PingwinDocumentWrite::count());
+
+        // Um rascunho já lançado também não fecha sem as unidades.
+        $this->launchNow($inv);
+        $this->assertSame('draft', $this->svc()->preview($inv->fresh())['close']['mode']);
+        $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch/close")
+            ->assertStatus(422)->assertJsonPath('errors.failed.0.key', 'unidades_confirmadas');
+    }
+
+    public function test_launch_as_closed_launches_the_draft_then_closes_it_and_records_who_and_when(): void
+    {
+        $this->confirmUnits();
+        $this->okLaunch();
+        $inv = $this->invoice();
+        $this->assertTrue($this->svc()->preview($inv)['close']['can_close']);
+        Bus::fake([LaunchPingwinDocumentJob::class]);
+        $res = $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch", ['close' => true])
+            ->assertStatus(202);
+        $this->assertStringContainsString('fechada', $res->json('message'));
+        $launch = PingwinDocumentWrite::where('action', 'launch')->firstOrFail();
+        $this->assertTrue($launch->payload['close_after']);
+
+        $this->assertSame('ok', $this->svc()->execute($launch->id)->status);
+        $close = PingwinDocumentWrite::where('action', 'close')->firstOrFail();
+        $this->assertSame(['ok', 'DOC1', $this->user->id], [$close->status, $close->docheader_id, $close->user_id]);
+        $this->assertSame(['status', 'DOC1', '8002'], array_slice(end($this->calls), 0, 3));
+        $inv->refresh();
+        $this->assertSame($this->user->id, $inv->closed_by);
+        $this->assertNotNull($inv->closed_at);
+        $this->assertSame('8002', PingwinSupplierDocument::where('docheader_id', 'DOC1')->value('docstatus_id'));
+        $p = $this->svc()->preview($inv);
+        $this->assertFalse($p['close']['can_close']);
+        $this->assertSame('fechada', $p['close']['blockers'][0]['key']);
+        $this->assertSame($this->user->name, $p['close']['closed_by_name']);
+    }
+
+    public function test_a_draft_closes_from_the_screen_and_the_close_is_recorded(): void
+    {
+        $this->confirmUnits();
+        $this->okLaunch();
+        $inv = $this->invoice();
+        $this->launchNow($inv);
+        $this->assertTrue($this->svc()->preview($inv->fresh())['close']['can_close']);
+        Bus::fake([LaunchPingwinDocumentJob::class]);
+        $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch/close")->assertStatus(202);
+        $w = PingwinDocumentWrite::where('action', 'close')->firstOrFail();
+        $this->assertSame('ok', $this->svc()->execute($w->id)->status);
+        $this->assertSame($this->user->id, $inv->fresh()->closed_by);
+        // Anular depois de fechar limpa o registo do fecho (o documento deixa de estar fechado).
+        $void = $this->svc()->requestStatus($inv->fresh(), 'void', $this->user->id);
+        $this->svc()->execute($void->id);
+        $this->assertNull($inv->fresh()->closed_by);
+    }
+
+    // ───────────────────────────────────────────────────────────── descontos de promoção
+
+    public function test_promo_discount_goes_as_the_line_adjustment_and_the_net_confirms(): void
+    {
+        // Linha B: bruto 6,00, desconto 0,48 (Leve Mais Pague Menos 45238) → líquido 5,52.
+        $inv = $this->invoice(['qr_data' => ['fields' => ['O' => '9.79'], 'by_rate' => [['rate' => 6, 'base_cents' => 283, 'vat_cents' => 17], ['rate' => 23, 'base_cents' => 552, 'vat_cents' => 127]]]],
+            ['line_total_cents' => 552, 'gross_total_cents' => 600, 'discount_cents' => 48, 'discount_code' => '45238', 'discount_label' => 'Leve Mais Pague Menos', 'promo_code' => '45238']);
+        $inv->summary()->update(['total_cents' => 979]);
+        OcrInvoiceDiscount::create(['ocr_invoice_id' => $inv->id, 'company_id' => $this->yuko->id, 'code' => '45238', 'label' => 'Leve Mais Pague Menos',
+            'amount_cents' => 48, 'status' => 'atribuido']);
+        $this->okLaunch('9.79', ['details' => [1 => ['total' => 5.52, 'adjustment' => -0.48]]]);
+        $p = $this->svc()->preview($inv);
+        $this->assertTrue($p['can_launch'], json_encode(collect($p['guards'])->where('ok', false)->values()));
+        $this->assertSame(0, $p['estimate']['adjustment_cents']);
+
+        $w = $this->launchNow($inv);
+        $this->assertSame('ok', $w->status, (string) $w->error);
+        $doc = collect($this->calls)->firstWhere(0, 'launch')[1];
+        $this->assertNull($doc['lines'][0]['adjustment']);
+        $this->assertSame(['2.000000', '3.000000', '-0.48'], [$doc['lines'][1]['price'], $doc['lines'][1]['qnt'], $doc['lines'][1]['adjustment']]);
+        $this->assertSame('0', $doc['lines'][1]['discount1'], 'nunca uma percentagem calculada');
+    }
+
+    public function test_unassigned_discount_blocks_the_launch(): void
+    {
+        $inv = $this->invoice();
+        OcrInvoiceDiscount::create(['ocr_invoice_id' => $inv->id, 'company_id' => $this->yuko->id, 'code' => '99999', 'label' => 'Leve Mais Pague Menos',
+            'amount_cents' => 52, 'status' => 'por_atribuir']);
+        $p = $this->svc()->preview($inv);
+        $this->assertSame(['descontos'], collect($p['guards'])->where('ok', false)->pluck('key')->values()->all());
+        $msg = collect($p['guards'])->firstWhere('key', 'descontos')['message'];
+        $this->assertStringContainsString('Desconto por atribuir: Leve Mais Pague Menos 99999 (0,52 €)', $msg);
     }
 
     public function test_tenancy(): void

@@ -22,11 +22,26 @@ final class OcrSchemas
     private const STR = ['type' => 'string'];
     private const NUM = ['type' => 'number'];
 
-    /** Uma linha de artigo (os dois caminhos): 6 opcionais. */
+    /** Uma linha de artigo (os dois caminhos): 8 opcionais (+ código da promoção e código de IVA). */
     private static function line(): array
     {
         return self::object(['codigo' => self::STR, 'item' => self::STR, 'quantidade' => self::NUM, 'unidade' => self::STR,
-            'precoUnitario' => self::NUM, 'descontoPct' => self::NUM, 'totalLinha' => self::NUM, 'taxaIva' => self::NUM], ['item', 'totalLinha']);
+            'precoUnitario' => self::NUM, 'descontoPct' => self::NUM, 'totalLinha' => self::NUM, 'taxaIva' => self::NUM,
+            'codigoPromocao' => self::STR, 'codigoIva' => self::STR], ['item', 'totalLinha']);
+    }
+
+    /** O quadro do IVA da fatura, com os códigos de IVA dela (0 opcionais). */
+    private static function vatTable(): array
+    {
+        return ['type' => 'array', 'items' => self::object(['codigo' => self::STR, 'taxa' => self::NUM, 'base' => self::NUM, 'iva' => self::NUM],
+            ['codigo', 'taxa', 'base', 'iva'])];
+    }
+
+    /** O bloco de descontos da fatura (ex.: "Leve Mais Pague Menos"): 2 opcionais. */
+    private static function discounts(): array
+    {
+        return ['type' => 'array', 'items' => self::object(['codigo' => self::STR, 'descricao' => self::STR, 'valor' => self::NUM, 'codigoIva' => self::STR],
+            ['codigo', 'valor'])];
     }
 
     /** Sem QR: a fatura completa (cabeçalho, linhas e sumário). */
@@ -42,7 +57,9 @@ final class OcrSchemas
                 'ivaPorTaxa' => ['type' => 'array', 'items' => self::object(['taxa' => self::NUM, 'base' => self::NUM, 'iva' => self::NUM], ['taxa', 'base', 'iva'])],
                 'valorIvaTotal' => self::NUM, 'retencaoFonte' => self::NUM, 'descontoFinanceiro' => self::NUM, 'total' => self::NUM,
             ], ['ivaPorTaxa']),
-        ], ['fornecedor', 'linhas', 'sumario']);
+            'quadroIva' => self::vatTable(),
+            'descontos' => self::discounts(),
+        ], ['fornecedor', 'linhas', 'sumario', 'quadroIva', 'descontos']);
     }
 
     /** Com QR: só as linhas, o nome do fornecedor e as guias (o cabeçalho e os totais vêm do QR). */
@@ -52,7 +69,9 @@ final class OcrSchemas
             'fornecedorNome' => self::STR,
             'linhas' => ['type' => 'array', 'items' => self::line()],
             'guias' => ['type' => 'array', 'items' => self::object(['numero' => self::STR, 'data' => self::STR], ['numero'])],
-        ], ['linhas', 'guias']);
+            'quadroIva' => self::vatTable(),
+            'descontos' => self::discounts(),
+        ], ['linhas', 'guias', 'quadroIva', 'descontos']);
     }
 
     /** Os campos opcionais de um esquema (contados como a API: cada propriedade fora de "required"). */

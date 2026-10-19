@@ -32,6 +32,8 @@ class OcrInvoice extends Model
         'link_search_pending', 'duplicate_of_id', 'guide_refs',
         // FB-1: diferença das linhas face ao QR aceite pela pessoa
         'check_accepted_by', 'check_accepted_at',
+        // Descontos, quadro do IVA lido, linhas informativas, leitura original, "Reler" e quem fechou.
+        'vat_table', 'ignored_lines', 'read_snapshot', 'reread_keep', 'closed_by', 'closed_at',
         // F2c
         'deleted_by', 'file_purged_at', 'file_sha256',
     ];
@@ -52,6 +54,11 @@ class OcrInvoice extends Model
         'link_search_pending' => 'boolean',
         'guide_refs'        => 'array',
         'check_accepted_at' => 'datetime',
+        'vat_table'         => 'array',
+        'ignored_lines'     => 'array',
+        'read_snapshot'     => 'array',
+        'reread_keep'       => 'array',
+        'closed_at'         => 'datetime',
         'file_purged_at'    => 'datetime',
     ];
 
@@ -74,6 +81,11 @@ class OcrInvoice extends Model
     public function pingwinLinks(): HasMany
     {
         return $this->hasMany(OcrInvoicePingwinLink::class, 'ocr_invoice_id');
+    }
+
+    public function discounts(): HasMany
+    {
+        return $this->hasMany(OcrInvoiceDiscount::class)->orderBy('position');
     }
 
     public function summary(): HasOne

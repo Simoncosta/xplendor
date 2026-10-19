@@ -38,13 +38,14 @@ class CompanyOcrLaunchController extends Controller
         }
         // O frontend envia multipart (axios por omissão): "true"/"false" em texto → $request->boolean().
         try {
-            $w = $this->launch->requestLaunch($inv, Auth::id(), $request->boolean('accept_check_diff'));
+            // close = "Gravar no PingWin como fechada" (lança em rascunho e fecha depois de confirmar).
+            $w = $this->launch->requestLaunch($inv, Auth::id(), $request->boolean('accept_check_diff'), $request->boolean('close'));
         } catch (LaunchBlocked $e) {
             return ApiResponse::error($e->getMessage(), 422, ['code' => 'guardas', 'failed' => $e->failed]);
         }
 
         return ApiResponse::success(['write' => $this->launch->presentWrite($w)] + $this->launch->preview($inv->fresh()),
-            'A lançar no PingWin (rascunho)… aguarda o resultado.', 202);
+            $request->boolean('close') ? 'A gravar no PingWin como fechada… aguarda o resultado.' : 'A lançar no PingWin (rascunho)… aguarda o resultado.', 202);
     }
 
     public function close(int $companyId, int $invoiceId)
@@ -87,6 +88,8 @@ class CompanyOcrLaunchController extends Controller
         }
         try {
             $w = $this->launch->requestStatus($inv, $action, Auth::id());
+        } catch (LaunchBlocked $e) {
+            return ApiResponse::error('Não é possível fechar: ' . collect($e->failed)->pluck('message')->implode(' '), 422, ['code' => 'guardas', 'failed' => $e->failed]);
         } catch (\InvalidArgumentException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         }

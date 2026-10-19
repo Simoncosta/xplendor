@@ -205,7 +205,7 @@ class InvoiceOcrTest extends TestCase
         $prompt = app(InvoiceOcrService::class)->prompt();
         $this->assertStringContainsStringIgnoringCase('EMISSOR', $prompt);
         $this->assertStringContainsStringIgnoringCase('adquirente', $prompt); // distingue do cliente
-        $this->assertSame('b2b-v3', InvoiceOcrService::PROMPT_VERSION);        // bump da versão (+ código do artigo)
+        $this->assertSame('b2b-v4', InvoiceOcrService::PROMPT_VERSION);        // bump da versão (+ descontos de promoção e códigos de IVA)
     }
 
     public function test_own_company_nif_is_dropped_it_is_the_client_not_the_supplier(): void

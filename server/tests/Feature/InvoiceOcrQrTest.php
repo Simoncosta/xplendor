@@ -420,8 +420,15 @@ class InvoiceOcrQrTest extends TestCase
 
         $this->actingAs($this->user, 'sanctum')->postJson($url)->assertStatus(409); // já está a ler
 
+        // Validada: relê-se (as alterações manuais ficam ou são substituídas, à escolha); lançada
+        // pela XPLENDOR e não anulada, não.
         $inv->update(['status' => 'validada']);
-        $this->actingAs($this->user, 'sanctum')->postJson($url)->assertStatus(422); // não perde a validação
+        $this->actingAs($this->user, 'sanctum')->postJson($url, ['keep_manual' => true])->assertStatus(202);
+        OcrInvoice::whereKey($inv->id)->update(['status' => 'validada']);
+        \App\Models\PingwinSupplierDocument::create(['company_id' => $this->yuko->id, 'docheader_id' => 'D9', 'docconfig_id' => '1209', 'document' => 'VFT X/9',
+            'doc_date' => '2026-10-07', 'total_cents' => 100, 'docstatus_id' => '8001']);
+        \App\Models\OcrInvoicePingwinLink::create(['company_id' => $this->yuko->id, 'ocr_invoice_id' => $inv->id, 'docheader_id' => 'D9', 'method' => 'xplendor']);
+        $this->actingAs($this->user, 'sanctum')->postJson($url)->assertStatus(422)->assertJsonPath('message', 'A fatura já foi lançada no PingWin (VFT X/9): para a reler, anule primeiro o documento.');
 
         // Tenancy: fatura de outra empresa → 404.
         $planId = DB::table('plans')->value('id');

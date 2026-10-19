@@ -14,6 +14,8 @@ use App\Models\PingwinSupplier;
 use App\Jobs\LinkOcrInvoiceJob;
 use App\Services\InvoiceOcrService;
 use App\Services\OcrInvoiceDeleteService;
+use App\Services\OcrInvoiceLaunchService;
+use App\Services\OcrInvoiceRereadService;
 use App\Services\OcrLineArticleService;
 use App\Services\OcrPingwinLinkService;
 use Illuminate\Support\Facades\Auth;
@@ -178,31 +180,74 @@ class CompanyInvoiceOcrController extends Controller
     }
 
     /**
-     * REPROCESSA uma fatura (async, mesmo polling): volta a 'processing' e mete o job na fila.
-     * Não reprocessa uma fatura já validada (perdia-se a validação do utilizador) nem uma
-     * que já está a ser lida.
+     * "Reler do documento" (async, mesmo polling): volta a 'processing' e mete o job na fila.
+     * keep_manual = true volta a aplicar as alterações feitas à mão à nova leitura; false
+     * substitui-as. Não relê uma fatura que está a ser lida nem uma já lançada pela XPLENDOR.
      */
-    public function reprocess(int $companyId, int $invoiceId)
+    public function reprocess(Request $request, int $companyId, int $invoiceId)
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $invoice = OcrInvoice::where('company_id', $companyId)->find($invoiceId);
+        $invoice = OcrInvoice::where('company_id', $companyId)->with('lines')->find($invoiceId);
         if (! $invoice) {
             return ApiResponse::error('Fatura não encontrada.', 404);
         }
         if ($invoice->status === 'processing') {
             return ApiResponse::error('A fatura já está a ser lida.', 409);
         }
-        if ($invoice->status === 'validada') {
-            return ApiResponse::error('A fatura já foi validada — não é reprocessada.', 422);
+        $d = app(OcrInvoiceLaunchService::class)->draftDoc($invoice);
+        if ($d && $d['docstatus_id'] !== OcrInvoiceLaunchService::VOIDED) {
+            return ApiResponse::error("A fatura já foi lançada no PingWin ({$d['document']}): para a reler, anule primeiro o documento.", 422);
         }
 
+        $changes = app(OcrInvoiceRereadService::class)->prepare($invoice, $request->boolean('keep_manual'));
         $invoice->update(['status' => 'processing', 'error_message' => null]);
         ProcessInvoiceOcrJob::dispatch($companyId, $invoice->id);
+        $kept = $request->boolean('keep_manual') && $changes['changes'] !== [];
 
-        return ApiResponse::success(['id' => $invoice->id, 'status' => 'processing'], 'A ler a fatura de novo… a página atualiza sozinha.', 202);
+        return ApiResponse::success(['id' => $invoice->id, 'status' => 'processing', 'kept_changes' => $kept ? count($changes['changes']) : 0],
+            $kept ? 'A ler a fatura de novo, mantendo as alterações manuais… a página atualiza sozinha.' : 'A ler a fatura de novo… a página atualiza sozinha.', 202);
+    }
+
+    /** O que foi mudado à mão desde a leitura (para "Reler do documento" perguntar). */
+    public function manualChanges(int $companyId, int $invoiceId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $invoice = OcrInvoice::where('company_id', $companyId)->with('lines')->find($invoiceId);
+        if (! $invoice) {
+            return ApiResponse::error('Fatura não encontrada.', 404);
+        }
+
+        return ApiResponse::success(app(OcrInvoiceRereadService::class)->manualChanges($invoice), 'Alterações manuais.');
+    }
+
+    /**
+     * "Revalidar": grava as linhas de agora (se vierem, sem mudar o estado da fatura) e volta a
+     * correr as validações: descontos → artigos, conferência com o QR e IVA por taxa. Sem IA.
+     */
+    public function revalidate(Request $request, int $companyId, int $invoiceId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $invoice = OcrInvoice::where('company_id', $companyId)->find($invoiceId);
+        if (! $invoice) {
+            return ApiResponse::error('Fatura não encontrada.', 404);
+        }
+        if (! in_array($invoice->status, ['por_validar', 'validada'], true)) {
+            return ApiResponse::error('Esta fatura não pode ser revalidada agora.', 422);
+        }
+        if ($request->has('lines')) {
+            $this->saveEdits($invoice, $this->validateEdits($request), $companyId, false);
+        } else {
+            app(OcrInvoiceRereadService::class)->revalidate($invoice);
+        }
+
+        return ApiResponse::success(['invoice' => $this->presentInvoice($invoice->fresh(['lines', 'summary', 'discounts']))], 'Validações feitas de novo.');
     }
 
     /**
@@ -221,7 +266,20 @@ class CompanyInvoiceOcrController extends Controller
             return ApiResponse::error('Fatura não encontrada.', 404);
         }
 
-        $data = $request->validate([
+        $this->saveEdits($invoice, $this->validateEdits($request), $companyId, true);
+
+        // F3: ao validar, volta a ligar ao PingWin (espelho; se o fornecedor não estiver lá, o
+        // worker pesquisa-o por NIF).
+        $this->relink($invoice->fresh());
+        // F2b: as linhas editadas voltam a ligar-se aos artigos (as manuais ficam).
+        app(OcrLineArticleService::class)->linkInvoice($invoice->fresh());
+
+        return ApiResponse::success(['invoice' => $this->presentInvoice($invoice->fresh(['lines', 'summary', 'discounts']))], 'Fatura validada e guardada.');
+    }
+
+    private function validateEdits(Request $request): array
+    {
+        return $request->validate([
             'supplier_id'   => ['nullable', 'integer'],
             'supplier_name' => ['nullable', 'string', 'max:255'],
             'supplier_nif'  => ['nullable', 'string', 'max:20'],
@@ -235,7 +293,8 @@ class CompanyInvoiceOcrController extends Controller
             'lines.*.unit'            => ['nullable', 'string', 'max:20'],
             'lines.*.unit_price'      => ['nullable', 'numeric'],
             'lines.*.discount_pct'    => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'lines.*.line_total'      => ['nullable', 'numeric'],
+            'lines.*.line_total'      => ['nullable', 'numeric'], // o valor antes do desconto de promoção
+            'lines.*.promo_code'      => ['nullable', 'string', 'max:40'],
             'lines.*.vat_rate'        => ['nullable', 'integer', Rule::in(InvoiceOcrService::validVatRates())],
             'summary'                          => ['required', 'array'],
             'summary.goods_total'              => ['nullable', 'numeric'],
@@ -250,29 +309,36 @@ class CompanyInvoiceOcrController extends Controller
             'summary.vat_breakdown.*.base'     => ['nullable', 'numeric'],
             'summary.vat_breakdown.*.vat'      => ['nullable', 'numeric'],
         ]);
+    }
 
+    /**
+     * Grava as correções (linhas + sumário + fornecedor; valores em EUROS → CÊNTIMOS) e revalida
+     * (descontos → artigos, conferência com o QR). $validate marca a fatura 'validada'.
+     */
+    private function saveEdits(OcrInvoice $invoice, array $data, int $companyId, bool $validate): void
+    {
         // Fornecedor escolhido tem de ser da própria empresa (tenancy).
         $supplierId = null;
         if (! empty($data['supplier_id'])) {
             $supplierId = PingwinSupplier::where('company_id', $companyId)->where('id', $data['supplier_id'])->value('id');
         }
 
-        DB::transaction(function () use ($invoice, $companyId, $data, $supplierId) {
+        DB::transaction(function () use ($invoice, $companyId, $data, $supplierId, $validate) {
             $invoice->update([
                 'supplier_id'   => $supplierId,
                 'supplier_name' => $data['supplier_name'] ?? null,
                 'supplier_nif'  => $data['supplier_nif'] ?? null,
                 'number'        => $data['number'] ?? null,
                 'issue_date'    => $data['issue_date'] ?? null,
-                'status'        => 'validada',
-                // synced_to_pingwin permanece false — Fase B.
-            ]);
+            ] + ($validate ? ['status' => 'validada'] : []));  // synced_to_pingwin permanece false — Fase B.
 
             // F2b: as linhas que vêm com id mantêm-se (e a ligação ao artigo); as que não vêm saem.
             $keep = collect($data['lines'])->pluck('id')->filter()->map(fn ($v) => (int) $v)->all();
             $invoice->lines()->whereNotIn('id', $keep)->delete();
             $pos = 0;
             foreach ($data['lines'] as $line) {
+                $existing = ! empty($line['id']) ? $invoice->lines()->whereKey((int) $line['id'])->first() : null;
+                $gross = $this->cents($line['line_total'] ?? null);
                 $values = [
                     'position'         => $pos++,
                     'supplier_code'    => $line['supplier_code'] ?? null,
@@ -281,10 +347,18 @@ class CompanyInvoiceOcrController extends Controller
                     'unit'             => $line['unit'] ?? null,
                     'unit_price'       => isset($line['unit_price']) && is_numeric($line['unit_price']) ? number_format((float) $line['unit_price'], 6, '.', '') : null,
                     'discount_pct'     => $line['discount_pct'] ?? null,
-                    'line_total_cents' => $this->cents($line['line_total'] ?? null),
+                    // O valor da linha é o bruto; o líquido sai da revalidação (bruto − desconto).
+                    'gross_total_cents' => $gross,
+                    'line_total_cents' => $gross - (int) ($existing?->discount_cents ?? 0),
                     'vat_rate'         => $line['vat_rate'] ?? null,
                 ];
-                $existing = ! empty($line['id']) ? $invoice->lines()->whereKey((int) $line['id'])->first() : null;
+                if (array_key_exists('promo_code', $line)) {
+                    $values['promo_code'] = ($line['promo_code'] ?? null) !== null && trim((string) $line['promo_code']) !== '' ? trim((string) $line['promo_code']) : null;
+                }
+                // Taxa mudada à mão: o código de IVA lido deixa de valer para esta linha.
+                if ($existing && (int) $existing->vat_rate !== (int) ($line['vat_rate'] ?? -1)) {
+                    $values['vat_code'] = null;
+                }
                 $existing
                     ? $existing->update($values)
                     : OcrInvoiceLine::create($values + ['ocr_invoice_id' => $invoice->id, 'company_id' => $companyId]);
@@ -315,13 +389,7 @@ class CompanyInvoiceOcrController extends Controller
             );
         });
 
-        // F3: ao validar, volta a ligar ao PingWin (espelho; se o fornecedor não estiver lá, o
-        // worker pesquisa-o por NIF).
-        $this->relink($invoice->fresh());
-        // F2b: as linhas editadas voltam a ligar-se aos artigos (as manuais ficam).
-        app(OcrLineArticleService::class)->linkInvoice($invoice->fresh());
-
-        return ApiResponse::success(['invoice' => $this->presentInvoice($invoice->fresh(['lines', 'summary']))], 'Fatura validada e guardada.');
+        app(OcrInvoiceRereadService::class)->revalidate($invoice->fresh());
     }
 
     // ------------------------------------------------------------ F2c: apagar / repor
@@ -520,9 +588,30 @@ class CompanyInvoiceOcrController extends Controller
                 'unit'         => $l->unit,
                 'unit_price'   => $l->unit_price !== null ? (float) $l->unit_price : null, // 6 casas
                 'discount_pct' => $l->discount_pct,
-                'line_total'   => $l->line_total_cents !== null ? $l->line_total_cents / 100 : null,
+                // O valor da linha (bruto, o da fatura), o desconto de promoção em € e o líquido.
+                'line_total'   => $l->line_total_cents !== null ? $l->grossCents() / 100 : null,
+                'discount'     => (int) $l->discount_cents / 100,
+                'discount_code' => $l->discount_code,
+                'discount_label' => $l->discount_label,
+                'net_total'    => $l->line_total_cents !== null ? $l->line_total_cents / 100 : null,
+                'promo_code'   => $l->promo_code,
+                'vat_code'     => $l->vat_code,
                 'vat_rate'     => $l->vat_rate,
             ] + $lineLinks->presentLine($l, $lineArticles, $lineCodes))->values(),
+            // Os descontos de promoção lidos e a quem ficaram (sem par: "Desconto por atribuir").
+            'discounts'         => $inv->discounts->map(fn ($d) => [
+                'id' => $d->id, 'code' => $d->code, 'label' => $d->label, 'amount' => $d->amount_cents / 100,
+                'vat_code' => $d->vat_code, 'vat_rate' => $d->vat_rate, 'status' => $d->status, 'warning' => $d->warning,
+                'allocations' => collect($d->allocations ?? [])->map(fn ($a) => ['line_id' => $a['line_id'] ?? null, 'amount' => ((int) ($a['cents'] ?? 0)) / 100])->values(),
+            ])->values(),
+            'vat_table'         => collect($inv->vat_table ?? [])->map(fn ($r) => ['code' => $r['code'], 'rate' => $r['rate'], 'base' => $r['base_cents'] / 100, 'vat' => $r['vat_cents'] / 100])->values(),
+            'vat_by_rate'       => app(OcrInvoiceRereadService::class)->vatByRate($inv),
+            'ignored_lines'     => array_values((array) ($inv->ignored_lines ?? [])),
+            'manual_changes_known' => is_array($inv->read_snapshot),
+            'reread_unmatched'  => array_values((array) ($inv->reread_keep['unmatched'] ?? [])),
+            'closed_at'         => $inv->closed_at?->toIso8601String(),
+            'closed_by_name'    => $inv->closed_by ? \App\Models\User::whereKey($inv->closed_by)->value('name') : null,
+            'next_to_launch_id' => $this->nextToLaunch($inv),
             // F2c: motivo para não se poder apagar (null = pode)
             'delete_block'      => app(OcrInvoiceDeleteService::class)->blockReason($inv),
             // F2b: linhas ligadas a artigos; "pronta para lançar" = todas ligadas.
@@ -542,6 +631,17 @@ class CompanyInvoiceOcrController extends Controller
                 ])->values(),
             ] : null,
         ];
+    }
+
+    /** A próxima fatura por lançar (a seguinte na lista, que vai da mais recente para a mais antiga). */
+    private function nextToLaunch(OcrInvoice $inv): ?int
+    {
+        $q = fn () => OcrInvoice::where('company_id', $inv->company_id)->whereKeyNot($inv->id)
+            ->whereIn('status', ['por_validar', 'validada'])
+            ->where(fn ($w) => $w->whereNull('link_status')->orWhereNotIn('link_status', [
+                OcrPingwinLinkService::LAUNCHED, OcrPingwinLinkService::LAUNCHED_GUIDES, OcrPingwinLinkService::DUPLICATE]));
+
+        return $q()->where('id', '<', $inv->id)->orderByDesc('id')->value('id') ?? $q()->orderByDesc('id')->value('id');
     }
 
     private function monthlyCap(): int

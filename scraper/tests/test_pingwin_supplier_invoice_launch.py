@@ -158,6 +158,38 @@ def test_full_sequence_draft_with_versioned_keys_merge_and_adjustment():
     assert out["adjustment"] == "0.03"
 
 
+def test_promo_discount_goes_to_the_line_adjustment_in_a_second_edit():
+    """Desconto de promoção em € (spike 19/10/2026): "adjustment" negativo da linha, numa 2.ª EDIT."""
+    f = FakePW()
+    doc = {**DOC, "lines": [{**DOC["lines"][0], "adjustment": "-3.78"}, DOC["lines"][1]]}
+    out = client(f).launch_supplier_invoice(doc)
+    assert out["saved"] is True
+    edits = [c["body"][0] for c in f.calls if c["path"] == "1209/details" and c["action"] == "EDIT"]
+    assert len(edits) == 3  # linha 1: preço/quantidade e depois o desconto; linha 2: sem desconto
+    assert set(edits[1]) == {"key", "adjustment"} and edits[1]["adjustment"] == "-3.78"
+    assert edits[1]["key"] != edits[0]["key"]  # a key da versão nova
+    assert "adjustment" not in edits[0] and "adjustment" not in edits[2]
+    assert out["lines"][0]["adjustment"] == "-3.78" and out["lines"][1]["adjustment"] is None
+
+
+def test_promo_discount_that_does_not_stay_on_the_line_stops_before_save():
+    f = FakePW()
+    real_post = f.post
+
+    def post(url, data=None, headers=None, **kw):
+        body = json.loads(data) if data else None
+        if headers.get("Action") == "EDIT" and url.endswith("1209/details") and body and set(body[0]) == {"key", "adjustment"}:
+            body[0] = {"key": body[0]["key"]}  # o PingWin ignora o desconto
+            data = json.dumps(body)
+        return real_post(url, data=data, headers=headers, **kw)
+
+    f.post = post
+    out = client(f).launch_supplier_invoice({**DOC, "lines": [{**DOC["lines"][0], "adjustment": "-3.78"}]})
+    assert out["saved"] is False and "o desconto não ficou na linha" in out["error"]
+    assert ("1209", "SAVE") not in [(c["path"], c["action"]) for c in f.calls]
+    assert f.calls[-1]["action"] == "CLOSE"
+
+
 def test_adjustment_above_max_closes_without_save():
     f = FakePW(base_total="10.00")  # alvo 10,43 → acerto 0,43 > 0,05
     out = client(f).launch_supplier_invoice(DOC)

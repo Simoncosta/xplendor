@@ -8,6 +8,7 @@ use App\Exceptions\LaunchBlocked;
 use App\Jobs\LaunchPingwinDocumentJob;
 use App\Models\Company;
 use App\Models\OcrInvoice;
+use App\Models\OcrInvoiceDiscount;
 use App\Models\OcrInvoiceLine;
 use App\Models\OcrInvoicePingwinLink;
 use App\Models\PingwinCatalogItem;
@@ -15,6 +16,8 @@ use App\Models\PingwinDocumentWrite;
 use App\Models\PingwinSupplier;
 use App\Models\PingwinSupplierDocument;
 use App\Models\PingwinUnit;
+use App\Models\ProductUnitProfile;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -67,7 +70,7 @@ class OcrInvoiceLaunchService
      */
     public function preview(OcrInvoice $inv): array
     {
-        $inv->loadMissing(['lines', 'summary']);
+        $inv->loadMissing(['lines', 'summary', 'discounts']);
         $lines = $inv->lines->sortBy('position')->values();
         $supplier = $this->lines->supplier($inv);
         $ownNif = OcrPingwinLinkService::digits(Company::where('id', $inv->company_id)->value('nipc'));
@@ -97,8 +100,13 @@ class OcrInvoiceLaunchService
         $add('unidades', $lineInfo->every(fn ($l) => $l['unit_ok']), 'Unidade de cada linha', 'Escolha a unidade das linhas assinaladas.');
         $add('iva', $lines->every(fn ($l) => $l->vat_rate !== null && isset(OcrLineArticleService::TAXGROUPS[$l->vat_rate])),
             'IVA de cada linha', 'Há linhas sem taxa de IVA.');
+        // Os descontos de promoção ficam no artigo (não são linhas): aqui conta só o artigo.
         $add('valores', $lines->every(fn ($l) => (float) $l->quantity > 0 && $l->unit_price !== null && (float) $l->unit_price >= 0),
             'Quantidades e preços', 'Há linhas sem quantidade (> 0) ou sem preço.');
+        $unassigned = $inv->discounts->where('status', OcrInvoiceDiscount::UNASSIGNED);
+        $add('descontos', $unassigned->isEmpty(), 'Descontos no seu artigo',
+            'Desconto por atribuir: ' . $unassigned->map(fn ($d) => trim(($d->label ?? 'Desconto') . ' ' . $d->code) . ' (' . self::eur($d->amount_cents) . ')')->implode('; ')
+            . '. Corrija o código da promoção na linha do artigo e carregue em "Revalidar".');
         $add('acerto', $estimate['adjustment_cents'] !== null && abs($estimate['adjustment_cents']) <= self::MAX_ADJUSTMENT_CENTS,
             'Total da fatura (acerto até 0,05 €)', $estimate['adjustment_cents'] === null
                 ? 'Falta o total da fatura (QR).'
@@ -107,10 +115,13 @@ class OcrInvoiceLaunchService
         $add('escrita', $busy === null, 'Sem outra escrita em curso', $busy);
 
         $draft = $this->draftDoc($inv);
+        $close = $this->closeInfo($inv, $g, $lines, $articles, $draft);
 
         return [
             'can_launch'  => collect($g)->every('ok'),
             'guards'      => $g,
+            'close'       => $close,
+            'discount_warnings' => $inv->discounts->pluck('warning')->filter()->values(),
             'lines'       => $lineInfo,
             'estimate'    => $estimate,
             'supplier'    => $supplier ? ['id' => $supplier->id, 'name' => $supplier->name, 'pingwin_id' => $supplier->pingwin_id] : null,
@@ -120,6 +131,53 @@ class OcrInvoiceLaunchService
             'draft'       => $draft,
             'writes'      => $writes->take(5)->map(fn ($w) => $this->presentWrite($w))->values(),
         ];
+    }
+
+    /**
+     * "Gravar no PingWin como fechada": só com todas as validações a verde e todas as unidades das
+     * linhas confirmadas no Guião de unidades. mode: launch (lança e fecha) | draft (fecha o rascunho).
+     */
+    private function closeInfo(OcrInvoice $inv, array $guards, Collection $lines, Collection $articles, ?array $draft): array
+    {
+        if ($draft && $draft['docstatus_id'] === self::CLOSED) {
+            return ['mode' => null, 'can_close' => false, 'blockers' => [['key' => 'fechada', 'label' => 'Fechada', 'message' => 'A fatura já está fechada no PingWin.']],
+                'closed_at' => $inv->closed_at?->toIso8601String(), 'closed_by_name' => $inv->closed_by ? User::whereKey($inv->closed_by)->value('name') : null];
+        }
+        $mode = $draft && $draft['docstatus_id'] === self::DRAFT ? 'draft' : 'launch';
+        // Um rascunho já lançado: "Ainda não lançada" e "Sem outra escrita" (o próprio lançamento) não contam.
+        $skip = $mode === 'draft' ? ['nao_lancada', 'escrita'] : [];
+        $blockers = collect($guards)->where('ok', false)->reject(fn ($x) => in_array($x['key'], $skip, true))
+            ->map(fn ($x) => ['key' => $x['key'], 'label' => $x['label'], 'message' => $x['message']])->values()->all();
+        if ($mode === 'draft' && PingwinDocumentWrite::where('ocr_invoice_id', $inv->id)->where('status', PingwinDocumentWrite::PENDING)->exists()) {
+            $blockers[] = ['key' => 'escrita', 'label' => 'Sem outra escrita em curso', 'message' => 'Há uma escrita no PingWin em curso para esta fatura.'];
+        }
+        if ($missing = $this->unconfirmedUnits($inv, $lines, $articles)) {
+            $names = array_slice($missing, 0, 5);
+            $blockers[] = ['key' => 'unidades_confirmadas', 'label' => 'Unidades confirmadas no Guião de unidades',
+                'message' => 'Falta confirmar as unidades no Guião de unidades: ' . implode(', ', $names)
+                    . (count($missing) > 5 ? sprintf(' e mais %d', count($missing) - 5) : '') . '.'];
+        }
+
+        return ['mode' => $mode, 'can_close' => $blockers === [], 'blockers' => $blockers, 'closed_at' => null, 'closed_by_name' => null];
+    }
+
+    /** Os artigos das linhas cujas unidades ainda não foram confirmadas (confirmado ou aplicado no PingWin). */
+    private function unconfirmedUnits(OcrInvoice $inv, Collection $lines, Collection $articles): array
+    {
+        $ids = $lines->pluck('article_id')->filter()->unique()->map(fn ($id) => $articles[$id] ?? null)->filter();
+        $confirmed = ProductUnitProfile::where('company_id', $inv->company_id)
+            ->whereIn('product_pingwin_id', $ids->pluck('pingwin_id')->map(fn ($v) => (string) $v)->all())
+            ->whereIn('state', ['confirmado', 'aplicado_no_pingwin'])->pluck('product_pingwin_id')->map(fn ($v) => (string) $v)->flip();
+        $missing = $ids->reject(fn ($a) => isset($confirmed[(string) $a->pingwin_id]))->map(fn ($a) => (string) $a->description);
+        // Linha sem artigo: também falta (o guarda "artigos" já o diz; aqui conta como unidade por confirmar).
+        $noArticle = $lines->whereNull('article_id')->map(fn ($l) => (string) ($l->item ?? 'linha sem artigo'));
+
+        return $missing->merge($noArticle)->unique()->values()->all();
+    }
+
+    private static function eur(int $cents): string
+    {
+        return number_format($cents / 100, 2, ',', ' ') . ' €';
     }
 
     private function launchedMessage(OcrInvoice $inv): string
@@ -255,10 +313,13 @@ class OcrInvoiceLaunchService
     // Pedidos
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Lançar: guardas → escrita "pendente" (com lock da fatura) → job. */
-    public function requestLaunch(OcrInvoice $inv, ?int $userId, bool $acceptCheckDiff): PingwinDocumentWrite
+    /**
+     * Lançar: guardas → escrita "pendente" (com lock da fatura) → job. $close = "Gravar no PingWin
+     * como fechada": lança em rascunho e, confirmado pela releitura, fecha (8002), com as guardas do fecho.
+     */
+    public function requestLaunch(OcrInvoice $inv, ?int $userId, bool $acceptCheckDiff, bool $close = false): PingwinDocumentWrite
     {
-        return DB::transaction(function () use ($inv, $userId, $acceptCheckDiff) {
+        return DB::transaction(function () use ($inv, $userId, $acceptCheckDiff, $close) {
             $inv = OcrInvoice::whereKey($inv->id)->lockForUpdate()->firstOrFail(); // lock por fatura
             if ($acceptCheckDiff && $inv->check_status !== InvoiceOcrService::CHECK_OK && $inv->check_accepted_at === null) {
                 $inv->update(['check_accepted_by' => $userId, 'check_accepted_at' => now()]);
@@ -267,11 +328,15 @@ class OcrInvoiceLaunchService
             if (! $p['can_launch']) {
                 throw new LaunchBlocked(collect($p['guards'])->where('ok', false)->values()->all());
             }
+            if ($close && ! $p['close']['can_close']) {
+                throw new LaunchBlocked($p['close']['blockers']);
+            }
             $doc = $this->buildDoc($inv->fresh(['lines', 'summary']), $p);
             $write = PingwinDocumentWrite::create([
                 'company_id' => $inv->company_id, 'ocr_invoice_id' => $inv->id, 'user_id' => $userId,
                 'action' => PingwinDocumentWrite::LAUNCH, 'status' => PingwinDocumentWrite::PENDING,
-                'payload' => ['doc' => $doc, 'estimate' => $p['estimate'], 'check_accepted' => $inv->fresh()->check_accepted_at !== null && $inv->check_status !== InvoiceOcrService::CHECK_OK],
+                'payload' => ['doc' => $doc, 'estimate' => $p['estimate'], 'check_accepted' => $inv->fresh()->check_accepted_at !== null && $inv->check_status !== InvoiceOcrService::CHECK_OK,
+                    'close_after' => $close],
             ]);
             LaunchPingwinDocumentJob::dispatch($write->id)->afterCommit();
 
@@ -294,6 +359,9 @@ class OcrInvoiceLaunchService
             $allowed = $action === PingwinDocumentWrite::CLOSE ? [self::DRAFT] : [self::DRAFT, self::CLOSED];
             if (! in_array($draft['docstatus_id'], $allowed, true)) {
                 throw new \InvalidArgumentException($action === PingwinDocumentWrite::CLOSE ? 'Só se fecha um documento em rascunho.' : 'O documento já está anulado.');
+            }
+            if ($action === PingwinDocumentWrite::CLOSE && ! ($c = $this->preview($inv)['close'])['can_close']) {
+                throw new LaunchBlocked($c['blockers']);
             }
             $write = PingwinDocumentWrite::create([
                 'company_id' => $inv->company_id, 'ocr_invoice_id' => $inv->id, 'user_id' => $userId, 'action' => $action,
@@ -321,6 +389,8 @@ class OcrInvoiceLaunchService
                 'qnt'        => number_format((float) $l->quantity, 6, '.', ''),
                 'price'      => number_format((float) $l->unit_price, 6, '.', ''),
                 'discount1'  => rtrim(rtrim(number_format((float) ($l->discount_pct ?? 0), 4, '.', ''), '0'), '.') ?: '0',
+                // Desconto de promoção em € na linha ("adjustment" negativo; spike de 19/10/2026).
+                'adjustment' => (int) $l->discount_cents > 0 ? '-' . number_format((int) $l->discount_cents / 100, 2, '.', '') : null,
                 'vat_rate'   => (int) $l->vat_rate,
             ];
         }
@@ -410,8 +480,19 @@ class OcrInvoiceLaunchService
             return $this->finish($w, PingwinDocumentWrite::CONFIRM_ERROR, 'Gravado (' . ($r['document'] ?? $r['docheader_id']) . '), mas a releitura não confirma: ' . implode('; ', $problems) . '. Reveja no PingWin.');
         }
         $this->afterLaunch($inv, $w, $r, $res['reread'], $supplier);
+        $this->finish($w, PingwinDocumentWrite::OK, null);
 
-        return $this->finish($w, PingwinDocumentWrite::OK, null);
+        // "Gravar como fechada": o rascunho confirmado fecha-se logo, numa escrita própria (com releitura).
+        if (! empty($w->payload['close_after'])) {
+            $close = PingwinDocumentWrite::create([
+                'company_id' => $inv->company_id, 'ocr_invoice_id' => $inv->id, 'user_id' => $w->user_id, 'action' => PingwinDocumentWrite::CLOSE,
+                'status' => PingwinDocumentWrite::PENDING, 'docheader_id' => (string) $r['docheader_id'], 'document' => $r['document'] ?? null,
+                'payload' => ['docstatus_id' => self::CLOSED, 'after_launch' => $w->id], 'started_at' => now(),
+            ]);
+            $this->executeStatus($close, $inv->fresh(['lines', 'summary']));
+        }
+
+        return $w->fresh();
     }
 
     /** A releitura (leitor da F4) tem de bater: nº, rascunho, fornecedor, total, referência, linhas. */
@@ -501,6 +582,8 @@ class OcrInvoiceLaunchService
         }
         PingwinSupplierDocument::where('company_id', $inv->company_id)->where('docheader_id', $w->docheader_id)
             ->update(['docstatus_id' => $target, 'docstatus_description' => $target === self::CLOSED ? 'Fechado' : 'Anulado', 'last_seen_at' => now()]);
+        // O fecho fica registado na fatura: quem e quando (a escrita também o guarda).
+        $inv->update($target === self::CLOSED ? ['closed_by' => $w->user_id, 'closed_at' => now()] : ['closed_by' => null, 'closed_at' => null]);
         $this->links->link($inv->fresh(), false); // anulado → a ligação cai e a fatura volta a "não lançada"
 
         return $this->finish($w, PingwinDocumentWrite::OK, null);

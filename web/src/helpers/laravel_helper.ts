@@ -876,8 +876,14 @@ export const getOcrInvoice = (companyId: number, invoiceId: number) =>
 export const updateOcrInvoice = (companyId: number, invoiceId: number, data: Record<string, any>) =>
     api.put(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`, data);
 // F2a: reprocessar (async — volta a 'processing'; a página faz polling como no upload).
-export const reprocessOcrInvoice = (companyId: number, invoiceId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/reprocess`, {});
+// "Reler do documento": keep_manual = manter as alterações manuais (voltam a ser aplicadas à nova leitura).
+export const reprocessOcrInvoice = (companyId: number, invoiceId: number, data: { keep_manual?: boolean } = {}) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/reprocess`, data);
+export const getOcrManualChanges = (companyId: number, invoiceId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/manual-changes`);
+// "Revalidar": grava as linhas de agora (sem mudar o estado) e volta a correr as validações. Sem IA.
+export const revalidateOcrInvoice = (companyId: number, invoiceId: number, data: Record<string, any>) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/revalidate`, data, { headers: { "Content-Type": "application/json" } });
 // A imagem está num disco privado (atrás de auth) → buscar como blob (o axios põe o token).
 export const getOcrInvoiceImageBlob = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/image`, { responseType: "blob" } as any);
@@ -1188,7 +1194,7 @@ export const acceptOcrLineSuggestions = (companyId: number, invoiceId: number, m
 // FB-1 — "Lançar no PingWin" (rascunho → fechar / anular; escritas assíncronas com releitura).
 export const getOcrLaunch = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch`);
-export const launchOcrInvoice = (companyId: number, invoiceId: number, data: { accept_check_diff?: boolean }) =>
+export const launchOcrInvoice = (companyId: number, invoiceId: number, data: { accept_check_diff?: boolean; close?: boolean }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch`, data);
 export const closeOcrLaunch = (companyId: number, invoiceId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/close`, {});

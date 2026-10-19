@@ -112,7 +112,7 @@ class InvoiceOcrAnthropicTest extends TestCase
                 && $content[0]['type'] === 'document' && $content[0]['source']['media_type'] === 'application/pdf'
                 && ! isset($content[0]['citations']) && $content[1]['type'] === 'text' && str_contains($content[1]['text'], 'AUTO-CONFERÊNCIA')
                 && $req['output_config']['effort'] === 'medium' && $req['output_config']['format']['type'] === 'json_schema'
-                && array_keys($req['output_config']['format']['schema']['properties']) === ['fornecedorNome', 'linhas', 'guias'];
+                && array_keys($req['output_config']['format']['schema']['properties']) === ['fornecedorNome', 'linhas', 'guias', 'quadroIva', 'descontos'];
         });
         $this->assertSame(['never'], $this->analyzeModes, 'a Anthropic lê o PDF: o scraper não rasteriza');
         $inv->refresh();

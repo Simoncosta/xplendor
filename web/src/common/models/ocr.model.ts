@@ -14,8 +14,55 @@ export interface OcrInvoiceLine {
     unit: string | null;
     unit_price: number | null;   // euros, 6 casas (F2b: sem arredondar)
     discount_pct: number | null; // 0..100
-    line_total: number | null;   // euros
+    line_total: number | null;   // euros: o valor da linha na fatura (antes do desconto de promoção)
     vat_rate: number | null;     // 6|13|23
+    // Desconto de promoção ligado ao artigo (ex.: "Leve Mais Pague Menos 45238"): em €, nunca em %.
+    promo_code?: string | null;  // código da promoção da linha (coluna DD)
+    vat_code?: string | null;    // código de IVA lido da fatura
+    discount?: number;           // euros
+    discount_code?: string | null;
+    discount_label?: string | null;
+    net_total?: number | null;   // euros: valor − desconto (o custo do artigo)
+}
+
+export interface OcrInvoiceDiscount {
+    id: number;
+    code: string | null;
+    label: string | null;
+    amount: number;              // euros
+    vat_code: string | null;
+    vat_rate: number | null;
+    status: "atribuido" | "por_atribuir";
+    warning: string | null;
+    allocations: { line_id: number | null; amount: number }[];
+}
+
+/** "IVA por taxa": o lido (QR, quadro do IVA da fatura ou sumário) e o calculado das linhas, lado a lado. */
+export interface OcrVatByRate {
+    source: "qr" | "fatura" | "sumario";
+    ok: boolean;
+    lines_without_rate: number[];
+    rows: {
+        rate: number;
+        codes: string[];
+        read_base: number | null; read_vat: number | null;
+        calc_base: number; calc_vat: number;
+        diff_base: number | null; diff_vat: number | null;
+        ok: boolean;
+        explained_by: number[];            // ids das linhas que explicam a diferença
+        explained_by_discounts: string[];  // códigos de descontos por atribuir com o valor da diferença
+    }[];
+}
+
+/** O que foi mudado à mão desde a leitura (para "Reler do documento"). */
+export interface OcrManualChanges {
+    available: boolean;
+    changes: {
+        type: "alterada" | "apagada" | "acrescentada";
+        line_id: number;
+        item: string | null;
+        fields: { field: string; label: string; read: any; current: any }[];
+    }[];
 }
 
 export interface OcrVatBreakdownRow {
@@ -68,6 +115,16 @@ export interface OcrInvoiceDetail {
     summary: OcrInvoiceSummary | null;
     articles_summary: OcrArticlesSummary;
     delete_block: string | null;          // F2c
+    // Descontos de promoção, quadro do IVA, "Reler do documento", fecho e a próxima por lançar.
+    discounts?: OcrInvoiceDiscount[];
+    vat_table?: { code: string; rate: number; base: number; vat: number }[];
+    vat_by_rate?: OcrVatByRate;
+    ignored_lines?: string[];
+    manual_changes_known?: boolean;
+    reread_unmatched?: string[];
+    closed_at?: string | null;
+    closed_by_name?: string | null;
+    next_to_launch_id?: number | null;
 }
 
 export interface OcrCheckDiffRow {
@@ -284,7 +341,7 @@ export const OCR_LINK_METHOD_LABEL: Record<OcrLineLinkMethod, string> = {
 
 // ── FB-1: "Lançar no PingWin" (rascunho 8001 → fechar 8002 / anular 8003) ────────────
 export interface OcrLaunchGuard {
-    key: "tipo" | "qr" | "conferencia" | "fornecedor" | "nao_lancada" | "artigos" | "unidades" | "iva" | "valores" | "acerto" | "escrita";
+    key: "tipo" | "qr" | "conferencia" | "fornecedor" | "nao_lancada" | "artigos" | "unidades" | "iva" | "valores" | "descontos" | "acerto" | "escrita";
     ok: boolean;
     label: string;
     message: string | null;
@@ -326,6 +383,10 @@ export interface OcrLaunchPreview {
     defaults: { store: string | null; store_code: string | null; serie: string | null; at: string | null };
     draft: { docheader_id: string; document: string | null; docstatus_id: string; docstatus_label: string; total: number; store_name: string | null; doc_date: string | null } | null;
     writes: OcrDocWrite[];
+    // "Gravar no PingWin como fechada": launch = lança e fecha; draft = fecha o rascunho; null = já fechada.
+    close?: { mode: "launch" | "draft" | null; can_close: boolean; blockers: { key: string; label: string; message: string | null }[];
+        closed_at: string | null; closed_by_name: string | null };
+    discount_warnings?: string[];
 }
 
 // ── F2c: apagar várias ───────────────────────────────────────────────────────

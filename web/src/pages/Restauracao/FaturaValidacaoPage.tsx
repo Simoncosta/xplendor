@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, CardBody, Container, Row, Col, Spinner, Label, Alert, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
@@ -8,13 +8,16 @@ import PageHeader, { Crumb } from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import XSelect from "Components/Common/Select";
 import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
 import ArticlePicker from "./faturas/ArticlePicker";
 import CreateArticleModal, { CreateArticleData } from "./faturas/CreateArticleModal";
 import LineArticleCell from "./faturas/LineArticleCell";
-import LaunchCard from "./faturas/LaunchCard";
+import LaunchCard, { LaunchTrigger } from "./faturas/LaunchCard";
+import VatByRateCard from "./faturas/VatByRateCard";
+import RereadModal from "./faturas/RereadModal";
 import GuidesCard from "./faturas/GuidesCard";
 import {
-    getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice,
+    getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice, revalidateOcrInvoice,
     searchOcrPingwinLink, confirmOcrPingwinLink, unlinkOcrPingwinLink,
     associateOcrLineArticle, unlinkOcrLineArticle, createOcrLineArticle, acceptOcrLineSuggestions,
     deleteOcrInvoice, makeOcrLineCodePrincipal, correctOcrLineArticleVat,
@@ -42,6 +45,13 @@ import Skeleton from "Components/Common/Skeleton";
  *
  * FB-1: cartão "Lançar no PingWin" (rascunho → fechar / anular), com as guardas que faltam.
  *
+ * Descontos de promoção (ex.: "Leve Mais Pague Menos" da Makro): cada um fica no artigo com o mesmo
+ * código; a linha mostra o valor, o desconto em € com o código e o líquido. "IVA por taxa" mostra o
+ * lido e o calculado. "Revalidar" volta a correr as validações sobre as linhas de agora; "Reler do
+ * documento" volta a correr o OCR (mantendo ou substituindo as alterações manuais). Depois de
+ * "Validar e guardar" fica-se no ecrã, com os passos seguintes. A imagem pode ser ocultada (a escolha
+ * fica no navegador); oculta, a tabela das linhas ocupa a largura toda.
+ *
  * F2b: coluna "Artigo" em cada linha (ligada / sugerida / por ligar), pesquisa de artigos,
  * "Criar artigo" e "Aceitar sugestões". A fatura fica "pronta para lançar" com todas as linhas
  * ligadas. As escritas no PingWin (artigo novo, código do fornecedor no artigo) são assíncronas:
@@ -53,7 +63,26 @@ const num = (v: any): number | null => (v === "" || v === null || v === undefine
 const eur = (n?: number | null) => (n ?? 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
 const approx = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.05, Math.abs(b) * 0.01);
 
-const emptyLine = (): OcrInvoiceLine => ({ supplier_code: "", item: "", quantity: null, unit: "", unit_price: null, discount_pct: null, line_total: null, vat_rate: null });
+const emptyLine = (): OcrInvoiceLine => ({ supplier_code: "", item: "", quantity: null, unit: "", unit_price: null, discount_pct: null, line_total: null, vat_rate: null, promo_code: "", discount: 0 });
+const IMAGE_KEY = "xp-fatura-imagem-oculta";
+const readImageHidden = () => { try { return window.localStorage.getItem(IMAGE_KEY) === "1"; } catch { return false; } };
+const writeImageHidden = (v: boolean) => { try { window.localStorage.setItem(IMAGE_KEY, v ? "1" : "0"); } catch { /* sem armazenamento: fica só nesta visita */ } };
+
+/** O corpo de "Validar e guardar" e de "Revalidar" (euros; o valor da linha é o da fatura, antes do desconto). */
+const bodyOf = (supplierId: number | null, supplierName: string, supplierNif: string, number: string, issueDate: string, lines: OcrInvoiceLine[], summary: OcrInvoiceSummary) => ({
+    supplier_id: supplierId, supplier_name: supplierName || null, supplier_nif: supplierNif || null,
+    number: number || null, issue_date: issueDate || null,
+    lines: lines.map((l) => ({
+        id: l.id ?? null, supplier_code: l.supplier_code || null, item: l.item || null, quantity: num(l.quantity), unit: l.unit || null,
+        unit_price: num(l.unit_price), discount_pct: num(l.discount_pct), line_total: num(l.line_total), vat_rate: l.vat_rate ?? null,
+        promo_code: l.promo_code || null,
+    })),
+    summary: {
+        goods_total: summary.goods_total, commercial_discount: summary.commercial_discount, taxable_base: summary.taxable_base,
+        vat_total: summary.vat_total, withholding: summary.withholding, financial_discount: summary.financial_discount, total: summary.total,
+        vat_breakdown: summary.vat_breakdown.filter((b) => b.rate).map((b) => ({ rate: b.rate, base: num(b.base), vat: num(b.vat) })),
+    },
+});
 const emptySummary = (): OcrInvoiceSummary => ({ goods_total: 0, commercial_discount: 0, taxable_base: 0, vat_total: 0, withholding: 0, financial_discount: 0, total: 0, vat_breakdown: [] });
 
 export default function FaturaValidacaoPage() {
@@ -86,6 +115,14 @@ export default function FaturaValidacaoPage() {
     const [lineAction, setLineAction] = useState<{ kind: "principal" | "vat_info" | "vat_fix"; lineId: number } | null>(null);
     const [acceptOpen, setAcceptOpen] = useState(false);
     const [minConf, setMinConf] = useState(0.8);
+    // Ficar no ecrã depois de "Validar e guardar", Revalidar, Reler, a imagem e o lançamento a partir do painel.
+    const [saved, setSaved] = useState(false);
+    const [revalidating, setRevalidating] = useState(false);
+    const [rereadOpen, setRereadOpen] = useState(false);
+    const [imageHidden, setImageHidden] = useState<boolean>(readImageHidden);
+    const [launchTrigger, setLaunchTrigger] = useState<LaunchTrigger>(null);
+    const [launchRefresh, setLaunchRefresh] = useState(0);
+    const savedBody = useRef<string>("");
 
     // Estado editável
     const [supplierId, setSupplierId] = useState<number | null>(null);
@@ -110,6 +147,7 @@ export default function FaturaValidacaoPage() {
         setIssueDate(d.issue_date ?? "");
         setLines(d.lines?.length ? d.lines : []);
         setSummary(d.summary ?? emptySummary());
+        savedBody.current = JSON.stringify(bodyOf(d.supplier_id, d.supplier_name ?? "", d.supplier_nif ?? "", d.number ?? "", d.issue_date ?? "", d.lines ?? [], d.summary ?? emptySummary()));
     }, []);
 
     const fetchInvoice = useCallback(async () => {
@@ -279,7 +317,8 @@ export default function FaturaValidacaoPage() {
 
     // ⚠️ A Xplendor calcula a soma das linhas (mais fiável que o sumário da IA).
     // Recalcula ao vivo quando o utilizador edita uma linha.
-    const linesSum = useMemo(() => lines.reduce((a, l) => a + (l.line_total ?? 0), 0), [lines]);
+    // Líquido: o valor de cada linha menos o desconto de promoção que lhe ficou.
+    const linesSum = useMemo(() => lines.reduce((a, l) => a + (l.line_total ?? 0) - (l.discount ?? 0), 0), [lines]);
     const round2 = (n: number) => Math.round(n * 100) / 100;
 
     // Avisos de coerência (não bloqueiam). Com QR a conferência por taxa (abaixo) substitui
@@ -297,44 +336,61 @@ export default function FaturaValidacaoPage() {
         return w;
     }, [hasQr, lines.length, linesSum, summary]);
 
-    // Reprocessar (async): a fatura volta a 'processing' e o polling acima faz o resto.
-    const reprocess = async () => {
+    // Reler do documento (async): a fatura volta a 'processing' e o polling acima faz o resto.
+    const reprocess = async (keepManual = false) => {
         setReprocessing(true);
         try {
-            await reprocessOcrInvoice(companyId, invoiceId);
+            const r: any = await reprocessOcrInvoice(companyId, invoiceId, { keep_manual: keepManual });
             setConfirmReprocess(false);
+            setRereadOpen(false);
+            setSaved(false);
+            if (r?.message) toast.info(r.message);
             setInv((prev) => (prev ? { ...prev, status: "processing" } : prev));
         } catch (e: any) {
-            toast.error(e?.message ?? "Não foi possível reprocessar a fatura.");
+            toast.error(e?.message ?? "Não foi possível reler a fatura.");
         } finally {
             setReprocessing(false);
         }
     };
 
+    const body = bodyOf(supplierId, supplierName, supplierNif, number, issueDate, lines, summary);
+    const dirty = JSON.stringify(body) !== savedBody.current;
+
+    // Validar e guardar: fica no ecrã, com a confirmação e os passos seguintes.
     const save = async () => {
         setSaving(true);
         try {
-            await updateOcrInvoice(companyId, invoiceId, {
-                supplier_id: supplierId, supplier_name: supplierName || null, supplier_nif: supplierNif || null,
-                number: number || null, issue_date: issueDate || null,
-                lines: lines.map((l) => ({
-                    id: l.id ?? null, supplier_code: l.supplier_code || null, item: l.item || null, quantity: num(l.quantity), unit: l.unit || null,
-                    unit_price: num(l.unit_price), discount_pct: num(l.discount_pct), line_total: num(l.line_total), vat_rate: l.vat_rate ?? null,
-                })),
-                summary: {
-                    goods_total: summary.goods_total, commercial_discount: summary.commercial_discount, taxable_base: summary.taxable_base,
-                    vat_total: summary.vat_total, withholding: summary.withholding, financial_discount: summary.financial_discount, total: summary.total,
-                    vat_breakdown: summary.vat_breakdown.filter((b) => b.rate).map((b) => ({ rate: b.rate, base: num(b.base), vat: num(b.vat) })),
-                },
-            });
+            const r: any = await updateOcrInvoice(companyId, invoiceId, body);
+            if (r?.data?.invoice) hydrate(r.data.invoice);
             toast.success("Fatura validada e guardada.");
-            navigate("/restauracao/faturas");
+            setSaved(true);
+            setLaunchRefresh((n) => n + 1);
+            refreshPingwin();
+            window.scrollTo?.({ top: 0, behavior: "smooth" });
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível guardar a fatura.");
         } finally {
             setSaving(false);
         }
     };
+
+    // Revalidar: grava as linhas de agora (sem mudar o estado) e volta a correr as validações. Sem IA.
+    const revalidate = async () => {
+        setRevalidating(true);
+        try {
+            const r: any = await revalidateOcrInvoice(companyId, invoiceId, body);
+            if (r?.data?.invoice) hydrate(r.data.invoice);
+            setLaunchRefresh((n) => n + 1);
+            toast.success("Validações feitas de novo.");
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível revalidar a fatura.");
+        } finally {
+            setRevalidating(false);
+        }
+    };
+
+    const toggleImage = () => setImageHidden((v) => { writeImageHidden(!v); return !v; });
+    const explained = new Set((inv?.vat_by_rate?.rows ?? []).flatMap((r) => r.explained_by));
 
     // Cabeçalho comum (página de detalhe: o título é o registo, o breadcrumb é curto).
     const crumbs: Crumb[] = [{ label: "Restauração" }, { label: "Faturas", to: "/restauracao/faturas" }];
@@ -400,7 +456,7 @@ export default function FaturaValidacaoPage() {
             </ModalBody>
             <ModalFooter>
                 <Button color="light" onClick={() => setConfirmReprocess(false)} disabled={reprocessing}>Cancelar</Button>
-                <Button color="primary" onClick={reprocess} disabled={reprocessing}>
+                <Button color="primary" onClick={() => reprocess(false)} disabled={reprocessing}>
                     {reprocessing ? <><Spinner size="sm" className="me-1" /> A pedir…</> : <><i className="ri-refresh-line me-1" />Reprocessar</>}
                 </Button>
             </ModalFooter>
@@ -481,15 +537,44 @@ export default function FaturaValidacaoPage() {
                     </>}
                     actions={<>
                         <Button size="sm" color="outline-primary" onClick={() => navigate("/restauracao/faturas")} disabled={saving}>Voltar</Button>
-                        {inv?.status !== "validada" && (
-                            <Button size="sm" color="outline-primary" onClick={() => setConfirmReprocess(true)} disabled={saving}><i className="ri-refresh-line me-1" />Reprocessar</Button>
-                        )}
+                        <Button size="sm" color="outline-secondary" onClick={toggleImage} aria-pressed={imageHidden} data-testid="toggle-image">
+                            <i className={`${imageHidden ? "ri-image-line" : "ri-image-off-line"} me-1`} />{imageHidden ? "Mostrar imagem" : "Ocultar imagem"}
+                        </Button>
+                        <Button size="sm" color="outline-primary" onClick={revalidate} disabled={saving || revalidating} data-testid="revalidate">
+                            {revalidating ? <><Spinner size="sm" className="me-1" />A revalidar…</> : <><i className="ri-checkbox-multiple-line me-1" />Revalidar</>}
+                        </Button>
+                        <Button size="sm" color="outline-primary" onClick={() => setRereadOpen(true)} disabled={saving || revalidating} data-testid="reread">
+                            <i className="ri-refresh-line me-1" />Reler do documento
+                        </Button>
                         <Button size="sm" color="primary" onClick={save} disabled={saving}>
                             {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : <><i className="ri-check-double-line me-1" /> Validar e guardar</>}
                         </Button>
                         {deleteMenu("sm")}
                     </>}
                 />
+                {saved && (
+                    <Alert color="success" className="d-flex flex-wrap align-items-center justify-content-between gap-2" data-testid="saved-panel">
+                        <span><i className="ri-checkbox-circle-line me-1" /><strong>Fatura validada e guardada.</strong> {dirty ? "Há alterações por guardar." : "O que fazer a seguir?"}</span>
+                        <span className="d-flex flex-wrap gap-2">
+                            <Button size="sm" color="primary" onClick={() => { setLaunchTrigger({ action: "draft", at: Date.now() }); document.getElementById("xp-launch")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+                                <i className="ri-upload-cloud-2-line me-1" />Gravar no PingWin como rascunho
+                            </Button>
+                            <Button size="sm" color="outline-primary" onClick={() => { setLaunchTrigger({ action: "closed", at: Date.now() }); document.getElementById("xp-launch")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+                                <i className="ri-lock-line me-1" />Gravar no PingWin como fechada
+                            </Button>
+                            <ReasonButton size="sm" color="outline-secondary" reason={inv?.next_to_launch_id ? null : "Não há outra fatura por lançar."}
+                                onClick={() => inv?.next_to_launch_id && navigate(`/restauracao/faturas/${inv.next_to_launch_id}`)} data-testid="next-invoice">
+                                Próxima fatura por lançar<i className="ri-arrow-right-line ms-1" />
+                            </ReasonButton>
+                            <Button size="sm" color="light" onClick={() => navigate("/restauracao/faturas")}>Voltar à lista</Button>
+                        </span>
+                    </Alert>
+                )}
+                {(inv?.reread_unmatched ?? []).length > 0 && (
+                    <Alert color="warning" className="py-2" data-testid="reread-unmatched">
+                        <i className="ri-error-warning-line me-1" />Estas alterações manuais não encontraram a sua linha na nova leitura e não foram aplicadas: {inv!.reread_unmatched!.join(" · ")}.
+                    </Alert>
+                )}
                 {inv?.status === "por_validar" && inv.error_message && (
                     <Alert color="warning" className="mb-3" data-testid="ocr-manual-review">
                         <i className="ri-error-warning-line me-1" />{inv.error_message}
@@ -533,8 +618,8 @@ export default function FaturaValidacaoPage() {
                 )}
 
                 <Row className="g-3">
-                    {/* Coluna dados (editável) */}
-                    <Col lg={7}>
+                    {/* Coluna dados (editável): com a imagem oculta, ocupa a largura toda. */}
+                    <Col lg={imageHidden ? 12 : 7}>
                         <Card>
                             <div className="card-header"><h5 className="card-title mb-0">Fornecedor & fatura</h5></div>
                             <CardBody>
@@ -585,21 +670,30 @@ export default function FaturaValidacaoPage() {
                                 <table className="table table-bordered align-middle mb-0" style={{ minWidth: 1280 }}>
                                     <thead className="text-muted table-light">
                                         <tr>
-                                            <th style={{ minWidth: 90 }}>Cód. fornecedor</th><th style={{ minWidth: 180 }}>Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th><th>Total</th><th>IVA</th><th style={{ minWidth: 320 }}>Artigo</th><th></th>
+                                            <th style={{ minWidth: 90 }}>Cód. fornecedor</th><th style={{ minWidth: 180 }}>Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th><th>Total</th><th title="Código da promoção da linha (ex.: coluna DD da Makro)">Promoção</th><th>IVA</th><th style={{ minWidth: 320 }}>Artigo</th><th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {lines.length === 0 ? (
-                                            <tr><td colSpan={10} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
+                                            <tr><td colSpan={11} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
                                         ) : lines.map((l, i) => (
-                                            <tr key={i}>
+                                            <tr key={i} className={l.id && explained.has(l.id) ? "table-warning" : undefined} data-testid={`line-${i}`}>
                                                 <td style={{ width: 110 }}><input className="form-control form-control-sm" value={l.supplier_code ?? ""} onChange={(e) => setLine(i, { supplier_code: e.target.value })} aria-label={`Código do fornecedor, linha ${i + 1}`} /></td>
                                                 <td><input className="form-control form-control-sm" value={l.item ?? ""} onChange={(e) => setLine(i, { item: e.target.value })} /></td>
                                                 <td style={{ width: 80 }}>{numInput(l.quantity, (v) => setLine(i, { quantity: v }))}</td>
                                                 <td style={{ width: 70 }}><input className="form-control form-control-sm" value={l.unit ?? ""} onChange={(e) => setLine(i, { unit: e.target.value })} /></td>
                                                 <td style={{ width: 100 }}>{numInput(l.unit_price, (v) => setLine(i, { unit_price: v }))}</td>
                                                 <td style={{ width: 80 }}>{numInput(l.discount_pct, (v) => setLine(i, { discount_pct: v }))}</td>
-                                                <td style={{ width: 100 }}>{numInput(l.line_total, (v) => setLine(i, { line_total: v }))}</td>
+                                                <td style={{ width: 130 }}>
+                                                    {numInput(l.line_total, (v) => setLine(i, { line_total: v }), { "aria-label": `Valor da linha ${i + 1}` })}
+                                                    {(l.discount ?? 0) > 0 && (
+                                                        <div className="fs-12 mt-1 text-nowrap" data-testid={`line-discount-${i}`}>
+                                                            <div className="text-success">{l.discount_label ?? "Desconto"} {l.discount_code}: −{eur(l.discount)}</div>
+                                                            <div className="fw-semibold">Líquido {eur((l.line_total ?? 0) - (l.discount ?? 0))}</div>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td style={{ width: 90 }}><input className="form-control form-control-sm font-monospace" value={l.promo_code ?? ""} onChange={(e) => setLine(i, { promo_code: e.target.value })} aria-label={`Código da promoção, linha ${i + 1}`} /></td>
                                                 <td style={{ width: 110, minWidth: 110 }}>
                                                     <XSelect small ariaLabel="Taxa de IVA" options={VAT_OPTS} value={l.vat_rate as any} onChange={(v) => setLine(i, { vat_rate: v as number })} placeholder="Taxa" searchable={false} />
                                                 </td>
@@ -624,6 +718,8 @@ export default function FaturaValidacaoPage() {
                                 </table>
                             </div>
                         </Card>
+
+                        <VatByRateCard vat={inv?.vat_by_rate} discounts={inv?.discounts ?? []} lines={lines} ignored={inv?.ignored_lines ?? []} />
 
                         <Card>
                             <div className="card-header"><h5 className="card-title mb-0">Sumário</h5></div>
@@ -683,7 +779,7 @@ export default function FaturaValidacaoPage() {
                         {/* FB-1: lançar no PingWin em rascunho, fechar, anular */}
                         {inv && (inv.status === "por_validar" || inv.status === "validada") && (
                             <div id="xp-launch">
-                                <LaunchCard companyId={companyId} invoiceId={invoiceId} onChanged={refreshPingwin} />
+                                <LaunchCard companyId={companyId} invoiceId={invoiceId} onChanged={refreshPingwin} trigger={launchTrigger} refreshKey={launchRefresh} />
                             </div>
                         )}
                         {/* Fatia 5: a conferência com as guias; "Lançar guia" leva ao lançamento acima (nada se grava sozinho). */}
@@ -695,10 +791,13 @@ export default function FaturaValidacaoPage() {
                         )}
                     </Col>
 
-                    {/* Coluna imagem */}
-                    <Col lg={5}>
+                    {/* Coluna imagem: oculta fica montada (o visor do PDF guarda o zoom). */}
+                    <Col lg={5} className={imageHidden ? "d-none" : undefined} data-testid="image-col">
                         <Card className="sticky-top" style={{ top: 80 }}>
-                            <div className="card-header"><h5 className="card-title mb-0">Imagem da fatura</h5></div>
+                            <div className="card-header d-flex justify-content-between align-items-center">
+                                <h5 className="card-title mb-0">Imagem da fatura</h5>
+                                <Button size="sm" color="link" className="p-0" onClick={toggleImage}>Ocultar imagem</Button>
+                            </div>
                             <CardBody className="text-center">
                                 {!imageUrl ? (
                                     <Skeleton variant="block" height="70vh" label="A carregar a imagem…" />
@@ -713,6 +812,8 @@ export default function FaturaValidacaoPage() {
                 </Row>
                 {reprocessModal}
                 {deleteModal}
+                <RereadModal isOpen={rereadOpen} companyId={companyId} invoiceId={invoiceId} busy={reprocessing} dirty={dirty}
+                    onClose={() => setRereadOpen(false)} onConfirm={(keep) => reprocess(keep)} />
 
                 {/* F2b — pesquisa de artigos, criar artigo, código diferente, aceitar sugestões */}
                 <ArticlePicker

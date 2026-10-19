@@ -3861,7 +3861,7 @@ class MyCloudPieClient(StockDocsMixin):
     )
     DOCLINES_DETAIL_FIELDS = (
         "id", "line_number", "product_id", "product_code", "entity_product_id", "description", "qnt",
-        "unit_id", "unit_code", "unit_desc", "price", "discount1", "discount_value", "total",
+        "unit_id", "unit_code", "unit_desc", "price", "discount1", "discount_value", "adjustment", "total",
         "taxgroup_id", "tax_description", "tax_value", "price_w_tax", "total_w_tax", "warehouse_id",
         "unit_value", "qnt_base", "qnt_delivered", "src_docmovdetail_id",
     )
@@ -4032,8 +4032,18 @@ class MyCloudPieClient(StockDocsMixin):
                 row = self._docw_block(r, dc, "details")[-1]  # a key mudou de versão: esta é a última
                 if str(row.get("unit_id")) != str(ln["unit_id"]):
                     raise RuntimeError(f"linha {i + 1}: a unidade não ficou ({row.get('unit_id')} ≠ {ln['unit_id']})")
+                # Desconto de promoção em € na própria linha (ex.: "Leve Mais Pague Menos"): o
+                # "adjustment" da linha, negativo, numa 2.ª EDIT (spike de 19/10/2026: fica ao cêntimo
+                # depois de SAVE, fechar e anular; o PingWin preenche discount_value sozinho).
+                adj = ln.get("adjustment")
+                if adj not in (None, "", "0", "0.00"):
+                    r = self._docw(f"{dc}/details", "EDIT", oid, [{"key": row["key"], "adjustment": str(adj)}])
+                    row = self._docw_block(r, dc, "details")[-1]
+                    if self._money(row.get("adjustment")) != self._money(adj):
+                        raise RuntimeError(f"linha {i + 1}: o desconto não ficou na linha ({row.get('adjustment')} ≠ {adj})")
                 lines_out.append({"key": row.get("key"), "product_id": row.get("product_id"), "unit_id": row.get("unit_id"),
                                   "qnt": row.get("qnt"), "price": row.get("price"), "discount1": row.get("discount1"),
+                                  "adjustment": row.get("adjustment"),
                                   "taxgroup_id": row.get("taxgroup_id"), "tax_description": row.get("tax_description"),
                                   "total": row.get("total"), "tax_value": row.get("tax_value"), "stk_qnt": row.get("stk_qnt"),
                                   "tax_override": tax_override})
