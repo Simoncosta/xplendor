@@ -1,6 +1,6 @@
 {
     "ator": "root_propria",
-    "rotas": 583,
+    "rotas": 586,
     "proibidas": [],
     "motivos": [],
     "estados": {
@@ -28,6 +28,7 @@
         "DELETE api/v1/companies/{id}/files/shortcuts/{shortcutId}": 404,
         "DELETE api/v1/companies/{id}/files/{fileId}": 404,
         "DELETE api/v1/companies/{id}/finance/classifications/{classificationId}": 404,
+        "DELETE api/v1/companies/{id}/finance/habitual-exclusions/{exclusionId}": 404,
         "DELETE api/v1/companies/{id}/finance/payments/{paymentId}": 404,
         "DELETE api/v1/companies/{id}/finance/rules/{ruleId}": 404,
         "DELETE api/v1/companies/{id}/inbound-contacts/{contactId}": 404,
@@ -151,6 +152,7 @@
         "GET api/v1/companies/{id}/files": 200,
         "GET api/v1/companies/{id}/files/trash": 200,
         "GET api/v1/companies/{id}/files/{fileId}": 404,
+        "GET api/v1/companies/{id}/finance/habitual-exclusions": 200,
         "GET api/v1/companies/{id}/finance/month": 200,
         "GET api/v1/companies/{id}/finance/payables": 200,
         "GET api/v1/companies/{id}/finance/payments/history/{docheaderId}": 200,
@@ -399,6 +401,7 @@
         "POST api/v1/companies/{id}/finance/accounting/unsent": 422,
         "POST api/v1/companies/{id}/finance/accounting/zip": 422,
         "POST api/v1/companies/{id}/finance/classifications": 422,
+        "POST api/v1/companies/{id}/finance/habitual-exclusions": 422,
         "POST api/v1/companies/{id}/finance/payments": 422,
         "POST api/v1/companies/{id}/finance/rules": 422,
         "POST api/v1/companies/{id}/followers": 422,
