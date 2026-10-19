@@ -26,6 +26,8 @@ class CreatePingwinUnitJob implements ShouldQueue
 
     public int $tries = 1; // escrita: NÃO repetir cegamente (evita duplicar no PingWin)
     public int $timeout = 120;
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+    public bool $failOnTimeout = true;
 
     public function __construct(public int $companyId, public int $creationId) {}
 

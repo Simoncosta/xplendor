@@ -24,6 +24,10 @@ class SyncPingwinStockJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 960;      // docker exec até 900 s + margem
+
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+
+    public bool $failOnTimeout = true;
     public int $maxExceptions = 1;
 
     /** @param list<string> $remaining */

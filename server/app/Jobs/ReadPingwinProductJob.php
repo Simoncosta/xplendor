@@ -24,6 +24,10 @@ class ReadPingwinProductJob implements ShouldQueue
     public int $tries = 3;
     public int $backoff = 3;
     public int $timeout = 120;
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+    public bool $failOnTimeout = true;
+    /** As tentativas são só para esperar pelo bloqueio da empresa; um erro não volta a correr. */
+    public int $maxExceptions = 1;
 
     public function __construct(public int $companyId, public string $productId, public string $token) {}
 

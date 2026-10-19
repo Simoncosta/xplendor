@@ -23,6 +23,8 @@ class SyncPingwinDocumentsJob implements ShouldQueue
 
     public int $tries = 1;
     public int $timeout = 240;
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+    public bool $failOnTimeout = true;
 
     public function __construct(public int $companyId) {}
 

@@ -97,6 +97,7 @@ class PingwinService
 
     protected function invoke(array $payload): array
     {
+        \App\Audit\AuditGuard::assertOutside('o PingWin');
         $this->assertWriteCleared($payload);
         $command = [
             'docker', 'exec', '-i',
@@ -1589,6 +1590,7 @@ class PingwinService
      */
     protected function invokeWithProgress(array $payload, callable $onProgress): array
     {
+        \App\Audit\AuditGuard::assertOutside('o PingWin');
         $this->assertWriteCleared($payload);
         $process = new Process(['docker', 'exec', '-i', env('SCRAPER_CONTAINER', 'xplendor-scraper'), 'python', self::ENTRYPOINT]);
         $process->setTimeout($this->invokeTimeout);

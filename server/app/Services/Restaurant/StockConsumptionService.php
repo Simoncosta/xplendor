@@ -279,10 +279,16 @@ final class StockConsumptionService
         if ($this->movestock[$pid] !== null) {
             return $this->movestock[$pid];
         }
-        $cfg = PingwinCatalogItem::where('company_id', $this->companyId)->where('pingwin_id', $pid)->value('stockconfig_id');
+        // A configuração de stock do catálogo inteiro numa só consulta (antes, uma por artigo).
+        $this->stockConfigs ??= PingwinCatalogItem::where('company_id', $this->companyId)->pluck('stockconfig_id', 'pingwin_id')
+            ->mapWithKeys(fn ($v, $k) => [(string) $k => $v])->all();
+        $cfg = $this->stockConfigs[$pid] ?? null;
 
         return $this->movestock[$pid] = $cfg !== null && $cfg !== '' && (string) $cfg !== '7500';
     }
+
+    /** @var array<string, ?string>|null */
+    private ?array $stockConfigs = null;
 
     private function load(): void
     {

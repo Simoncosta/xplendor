@@ -31,6 +31,8 @@ class SyncItemSalesPeriodJob implements ShouldQueue
     public int $tries = 100;
     public int $maxExceptions = 1;
     public int $timeout = 2400; // até 28 pedidos de 7 dias (92 dias, artigos e horas), com espaçamento
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+    public bool $failOnTimeout = true;
 
     public function __construct(public int $companyId, public string $from, public string $to) {}
 

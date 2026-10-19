@@ -25,6 +25,10 @@ class WritePingwinSupplierJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 200;      // docker exec (180 s) + margem
+
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+
+    public bool $failOnTimeout = true;
     public int $maxExceptions = 1;
 
     public function __construct(public int $companyId, public int $writeId) {}

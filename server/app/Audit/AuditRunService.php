@@ -48,10 +48,28 @@ final class AuditRunService
         return $run->fresh() ?? $run;
     }
 
-    public function expireStale(int $companyId): void
+    public function expireStale(?int $companyId = null): int
     {
-        AuditRun::where('company_id', $companyId)->whereIn('status', AuditRun::ACTIVE)
-            ->where('updated_at', '<', now()->subMinutes(self::STALE_MINUTES))
-            ->update(['status' => 'failed', 'error' => 'A corrida ficou parada e foi dada como falhada.', 'finished_at' => now()]);
+        $minutes = (int) config('auditoria.stale_minutes', self::STALE_MINUTES);
+        $n = 0;
+        $stale = AuditRun::whereIn('status', AuditRun::ACTIVE)->where('updated_at', '<', now()->subMinutes($minutes))
+            ->when($companyId !== null, fn ($q) => $q->where('company_id', $companyId))->get();
+        foreach ($stale as $run) {
+            $steps = $run->steps ?? [];
+            $where = null;
+            foreach ($steps as $i => $st) {
+                if ($st['status'] === 'running') {
+                    $steps[$i] = array_merge($st, ['status' => 'failed', 'error' => sprintf('Parou aqui: sem progresso há mais de %d minutos.', $minutes)]);
+                    $where = $st['title'] ?? $st['rule'];
+                }
+            }
+            $error = $where
+                ? sprintf('A corrida parou no passo «%s» (sem progresso há mais de %d minutos) e foi dada como falhada.', $where, $minutes)
+                : sprintf('A corrida ficou parada (sem progresso há mais de %d minutos) e foi dada como falhada.', $minutes);
+            $n += AuditRun::whereKey($run->id)->whereIn('status', AuditRun::ACTIVE)
+                ->update(['status' => 'failed', 'steps' => json_encode($steps), 'error' => $error, 'finished_at' => now(), 'updated_at' => now()]);
+        }
+
+        return $n;
     }
 }

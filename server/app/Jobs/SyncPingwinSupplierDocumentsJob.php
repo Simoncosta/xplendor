@@ -24,6 +24,8 @@ class SyncPingwinSupplierDocumentsJob implements ShouldQueue
 
     public int $tries = 1;
     public int $timeout = 660; // docker exec até 600 s (período largo) + margem
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+    public bool $failOnTimeout = true;
 
     public function __construct(public int $runId) {}
 

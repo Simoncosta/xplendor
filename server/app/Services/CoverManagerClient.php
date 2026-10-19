@@ -31,6 +31,7 @@ class CoverManagerClient
     /** Fatia 6a: as reservas de um intervalo de dias (um só pedido; spike: 30 dias em cerca de 0,5 s). */
     public function getReservationsRange(#[\SensitiveParameter] string $token, string $slug, string $from, string $to, ?string $baseUrl = null): array
     {
+        \App\Audit\AuditGuard::assertOutside('o CoverManager');
         $base = rtrim($baseUrl ?: (string) config('services.covermanager.base_url', self::DEFAULT_BASE), '/');
 
         // ⚠️ url-encode do token e do slug no path.
