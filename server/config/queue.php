@@ -40,8 +40,9 @@ return [
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
             // retry_after TEM de ficar acima do maior $timeout dos jobs (hoje 3600 s, SyncCarmineCarsJob),
-            // senão um job longo pode ser re-entregue a outro worker enquanto ainda corre.
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 3700),
+            // senão um job longo pode ser re-entregue a outro worker enquanto ainda corre. O .env só o pode
+            // subir: nunca abaixo de 3700 (o teste QueueTimeoutsTest confirma todos os jobs).
+            'retry_after' => max(3700, (int) env('DB_QUEUE_RETRY_AFTER', 3700)),
             'after_commit' => false,
         ],
 
@@ -70,8 +71,9 @@ return [
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
             // retry_after TEM de ficar acima do maior $timeout dos jobs (hoje 3600 s, SyncCarmineCarsJob),
-            // senão um job longo pode ser re-entregue a outro worker enquanto ainda corre.
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 3700),
+            // senão um job longo pode ser re-entregue a outro worker enquanto ainda corre. O .env só o pode
+            // subir: nunca abaixo de 3700 (o teste QueueTimeoutsTest confirma todos os jobs).
+            'retry_after' => max(3700, (int) env('REDIS_QUEUE_RETRY_AFTER', 3700)),
             'block_for' => null,
             'after_commit' => false,
         ],

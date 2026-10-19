@@ -25,6 +25,10 @@ class LaunchPingwinDocumentJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 420;      // pesquisa viva + lista viva + lançamento com releitura
+
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+
+    public bool $failOnTimeout = true;
     public int $maxExceptions = 1;
 
     public function __construct(public int $writeId) {}

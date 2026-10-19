@@ -81,6 +81,8 @@ final class FatorEmbalagemRule extends TransferRule
         // Auditoria v2.1: as linhas numa unidade global incoerente com o nome ficam na U9 (sem duplicar).
         $incoherent = array_flip(array_map(fn ($u) => mb_strtolower($u['name']), \App\Audit\Rules\Restaurant\Units\UnidadeGlobalIncoerenteRule::incoherent($scope)));
         $groups = [];
+        // As unidades de todos os artigos de uma vez (antes eram 3 consultas por artigo).
+        $units->preload(array_values(array_filter(array_unique(array_column($lines, 'pid')))));
         foreach ($lines as $l) {
             if ($l['pid'] === '' || $l['unit'] === '' || $l['uv'] === null || isset($incoherent[mb_strtolower($l['unit'])])) {
                 continue;

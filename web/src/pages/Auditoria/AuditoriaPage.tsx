@@ -69,7 +69,14 @@ export default function AuditoriaPage() {
 
     useEffect(() => {
         if (!companyId) return;
-        getAuditMeta(companyId).then((res: any) => setMeta(res?.data ?? null)).catch(() => setMeta({ areas: [], last_runs: [], financial: { visible: true, note: null } }));
+        getAuditMeta(companyId).then((res: any) => {
+            const m: AuditMeta | null = res?.data ?? null;
+            setMeta(m);
+            // Ao reabrir: uma corrida em curso abre logo o pipeline no passo em que vai.
+            const active = (m?.last_runs ?? []).filter((r) => r.status === "queued" || r.status === "running")
+                .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
+            if (active) setRun((cur) => cur ?? active);
+        }).catch(() => setMeta({ areas: [], last_runs: [], financial: { visible: true, note: null } }));
     }, [companyId, reload]);
 
     const fetchRows = useCallback(async () => {
@@ -158,6 +165,12 @@ export default function AuditoriaPage() {
     const activeFilterCount = [!!area, !!family, !!rule, !!severity, state !== "abertos"].filter(Boolean).length;
     const clearFilters = () => { setSearch(""); setParams(new URLSearchParams(), { replace: true }); };
     const lastRun = meta?.last_runs?.slice().sort((a, b) => (b.finished_at ?? "").localeCompare(a.finished_at ?? ""))[0];
+    // A corrida em curso (o botão fica "A correr…") e a última que falhou (com "Tentar de novo").
+    const activeRun = run && (run.status === "queued" || run.status === "running") ? run
+        : meta?.last_runs?.find((r) => r.status === "queued" || r.status === "running") ?? null;
+    const latest = meta?.last_runs?.slice().sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
+    const failedRun = latest?.status === "failed" && !activeRun ? latest : null;
+    const failedStep = failedRun?.steps.find((s) => s.status === "failed" || s.status === "timeout");
 
     if (meta && areas.length === 0) {
         return (
@@ -175,6 +188,15 @@ export default function AuditoriaPage() {
                 <PageHeader title="Auditoria"
                     info="A auditoria procura o que está mal nos dados (IVA, preços de compra, unidades, fichas técnicas, faturas, viaturas, eventos do site). Para cada achado diz o que viu, porque importa, o que fazer e quanto está em jogo. Nunca corrige nada sozinha: o botão Corrigir abre o sítio certo." />
                 {hidden && <FinancialNote className="mb-3" />}
+                {failedRun && (
+                    <div className="alert alert-danger d-flex flex-wrap align-items-center gap-2 fs-13 py-2" data-testid="audit-last-failed">
+                        <span className="me-auto">
+                            A última auditoria falhou{failedStep ? <> no passo «{failedStep.title}»{failedStep.error ? `: ${failedStep.error}` : ""}</> : failedRun.error ? `: ${failedRun.error}` : "."}
+                        </span>
+                        <Button size="sm" color="light" onClick={() => setRun(failedRun)}>Ver o pipeline</Button>
+                        <Button size="sm" color="primary" onClick={() => startRun(failedRun.area)} data-testid="audit-retry">Tentar de novo</Button>
+                    </div>
+                )}
                 <AuditEuros companyId={companyId} area={area || undefined} refreshKey={data ? (data as any).total ?? 0 : 0} />
                 <PageCard
                     title="Achados"
@@ -198,7 +220,11 @@ export default function AuditoriaPage() {
                             </button>
                         </div>
                         {view === "lista" && cols.selector}
-                        {areas.length === 1 ? (
+                        {activeRun ? (
+                            <Button size="sm" color="primary" onClick={() => setRun(activeRun)} data-testid="audit-run-central" aria-busy>
+                                <span className="spinner-border spinner-border-sm me-1" aria-hidden />A correr…
+                            </Button>
+                        ) : areas.length === 1 ? (
                             <Button size="sm" color="primary" onClick={() => startRun(areas[0].key)} data-testid="audit-run-central"><i className="ri-shield-check-line me-1" aria-hidden />Correr auditoria</Button>
                         ) : areas.length > 1 ? (
                             <UncontrolledDropdown className="d-inline-block">
@@ -269,7 +295,8 @@ export default function AuditoriaPage() {
                 </PageCard>
             </Container>
             {openId !== null && companyId && <AuditFindingPanel companyId={companyId} findingId={openId} onClose={() => setOpenId(null)} onChanged={() => setReload((k) => k + 1)} />}
-            {run && companyId && <AuditRunPanel companyId={companyId} run={run} onClose={() => setRun(null)} onFinished={() => setReload((k) => k + 1)} />}
+            {run && companyId && <AuditRunPanel companyId={companyId} run={run} onClose={() => setRun(null)} onFinished={() => setReload((k) => k + 1)}
+                onRetry={(r) => { setRun(null); startRun(r.area); }} />}
         </div>
     );
 }

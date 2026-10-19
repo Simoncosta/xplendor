@@ -27,6 +27,8 @@ class SyncRestaurantJob implements ShouldQueue
 
     public int $tries = 1;
     public int $timeout = 420; // PingWin (180s) + CoverManager + margem.
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+    public bool $failOnTimeout = true;
 
     /**
      * $notify: dia-a-dia (dashboard) → true (notifica no fim de cada dia).

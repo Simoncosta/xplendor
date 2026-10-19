@@ -495,6 +495,13 @@ foreach (['restaurant-reservations-morning' => '09:30', 'restaurant-reservations
         });
 }
 
+// De 5 em 5 minutos — Auditoria: uma corrida sem progresso há mais de 30 minutos (o worker morreu a meio)
+// passa a "falhou", com o passo onde parou. Interna (não chama nada lá fora).
+Schedule::call(fn () => app(\App\Audit\AuditRunService::class)->expireStale())
+    ->everyFiveMinutes()
+    ->name('audit-expire-stale-runs')
+    ->withoutOverlapping();
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

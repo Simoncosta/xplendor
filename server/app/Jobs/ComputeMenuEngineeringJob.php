@@ -27,6 +27,8 @@ class ComputeMenuEngineeringJob implements ShouldQueue, ShouldBeUnique
 
     public int $tries = 1;
     public int $timeout = 1200;
+    /** Um timeout falha o job logo (nunca fica reservado para voltar a correr depois do retry_after). */
+    public bool $failOnTimeout = true;
     public int $uniqueFor = 900;
 
     /**
