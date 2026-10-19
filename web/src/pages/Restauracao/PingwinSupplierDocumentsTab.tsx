@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import AuditButton from "pages/Auditoria/AuditButton";
 import AuditCountCell, { useAuditCounts } from "pages/Auditoria/AuditCountCell";
 import SupplierDocumentLinesModal from "./faturas/SupplierDocumentLinesModal";
+import CloseDocumentsModal, { CloseDoc } from "./faturas/CloseDocumentsModal";
 import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import XSelect from "Components/Common/Select";
@@ -13,6 +14,7 @@ import ReasonButton from "Components/Common/ReasonButton";
 import {
     getPingwinSupplierDocuments,
     getPingwinSupplierDocumentsRun,
+    readSupplierDocumentLines,
     syncPingwinSupplierDocuments,
 } from "helpers/laravel_helper";
 import { LaravelPaginator } from "common/models/pingwin.model";
@@ -34,6 +36,10 @@ import {
  * documentos no período, a tabela pagina no servidor e a ordenação fica desligada.
  *
  * F3: coluna "OCR" (escondida por omissão): ✓ quando há uma fatura carregada ligada.
+ *
+ * "Em aberto": só os documentos em Aberto (de qualquer data), com "Fechar no PingWin" em cada um e
+ * "Fechar os selecionados" (no máximo 10). Antes de fechar, a XPLENDOR confere o documento com as
+ * linhas espelhadas; se faltar alguma coisa, o botão diz porquê.
  */
 
 const API_PER_PAGE = 100;
@@ -116,6 +122,10 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
     const [types, setTypes] = useState<string[]>(DEFAULT_TYPES);
     const [supplier, setSupplier] = useState("");
     const [missingRef, setMissingRef] = useState(false);
+    const [openOnly, setOpenOnly] = useState(false);
+    const [selected, setSelected] = useState<string[]>([]);
+    const [closing, setClosing] = useState<CloseDoc[] | null>(null);
+    const [canClose, setCanClose] = useState(false);
     // Pesquisa (no browser)
     const [search, setSearch] = useState("");
     // Modo servidor (muitos documentos): página pedida à API
@@ -155,15 +165,17 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
     const fetchRows = useCallback(async () => {
         if (!companyId) return;
         setLoading(true);
+        // "Em aberto": de qualquer data (um documento esquecido em Aberto pode ser antigo).
         const params = {
-            from: from || undefined, to: to || undefined,
+            from: openOnly ? undefined : from || undefined, to: openOnly ? undefined : to || undefined,
             types: types.length ? types.join(",") : undefined,
-            supplier: supplier || undefined, missing_ref: missingRef ? 1 : undefined,
+            supplier: supplier || undefined, missing_ref: missingRef ? 1 : undefined, open: openOnly ? 1 : undefined,
         };
         try {
             const first: any = await getPingwinSupplierDocuments(companyId, { ...params, page: serverRef.current ? page : 1, perPage: API_PER_PAGE });
             const paginator = first?.data?.documents;
             setFacets(first?.data?.facets ?? null);
+            setCanClose(!!first?.data?.can_close);
             const last: SupplierDocumentsRun | null = first?.data?.last_run ?? null;
             setLastRun(last);
             if (isActive(last)) setActiveRun((cur) => cur ?? last);
@@ -194,7 +206,7 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
         } finally {
             setLoading(false);
         }
-    }, [companyId, from, to, types, supplier, missingRef, page]);
+    }, [companyId, from, to, types, supplier, missingRef, openOnly, page]);
 
     useEffect(() => { fetchRows(); }, [fetchRows]);
 
@@ -268,8 +280,23 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
 
     const running = isActive(activeRun);
     const typesChanged = [...types].sort().join() !== [...DEFAULT_TYPES].sort().join();
-    const filtersChanged = [supplier !== "", missingRef, from !== daysAgo(7), to !== today(), typesChanged].filter(Boolean).length;
-    const clearFilters = () => { setSearch(""); changeFrom(daysAgo(7)); changeTo(today()); changeSupplier(""); changeMissingRef(false); changeTypes(DEFAULT_TYPES); };
+    const filtersChanged = [supplier !== "", missingRef, openOnly, from !== daysAgo(7), to !== today(), typesChanged].filter(Boolean).length;
+    const clearFilters = () => { setSearch(""); changeFrom(daysAgo(7)); changeTo(today()); changeSupplier(""); changeMissingRef(false); changeTypes(DEFAULT_TYPES); setOpenOnly(false); setSelected([]); };
+
+    // "Fechar no PingWin": só em Aberto (8001), sem nada a impedir e com permissão de lançar faturas.
+    const isOpenDoc = (r: SupplierDocumentRow) => r.docstatus_id === "8001";
+    const closeReason = (r: SupplierDocumentRow) => !canClose ? "Só quem pode lançar faturas fecha documentos no PingWin."
+        : (r.close_problems ?? []).map((p) => p.message).join(" ") || null;
+    const toCloseDoc = (r: SupplierDocumentRow): CloseDoc => ({ docheader_id: r.docheader_id, document: r.document, supplier: r.entity_name, total_cents: Math.round(r.total * 100) });
+    const readLines = async (ids: string[]) => {
+        try {
+            const res: any = await readSupplierDocumentLines(companyId as number, ids);
+            toast.info(res?.message ?? "A ler as linhas no PingWin (só leitura)…");
+            setTimeout(fetchRows, 15000);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível pedir a leitura das linhas.");
+        }
+    };
 
     const lastSync = (() => {
         const r = activeRun ?? lastRun;
@@ -299,6 +326,11 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
                 </>}
                 loading={loading && rows.length > 0}
                 actions={<>
+                    {selected.length > 0 && (
+                        <Button color="warning" onClick={() => setClosing(rows.filter((r) => selected.includes(r.docheader_id)).map(toCloseDoc))} data-testid="sd-close-selected">
+                            <i className="ri-lock-line me-1" />Fechar os selecionados ({selected.length})
+                        </Button>
+                    )}
                     {cols.selector}
                     <AuditButton companyId={companyId} area="restauracao" origin="faturas" onFinished={() => setAuditKey((k) => k + 1)} />
                     <Button color="primary" onClick={openSync} disabled={running || !companyId}>
@@ -330,6 +362,11 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
                             <input className="form-check-input" type="checkbox" id="sd-missing-ref" checked={missingRef} onChange={(e) => changeMissingRef(e.target.checked)} />
                             <label className="form-check-label fs-13" htmlFor="sd-missing-ref">Só sem nº doc. fornecedor</label>
                         </div>
+                        <div className="form-check mb-1 align-self-end">
+                            <input className="form-check-input" type="checkbox" id="sd-open" checked={openOnly} data-testid="sd-open"
+                                onChange={(e) => { setOpenOnly(e.target.checked); setSelected([]); setPage(1); }} />
+                            <label className="form-check-label fs-13" htmlFor="sd-open">Em aberto (de qualquer data)</label>
+                        </div>
                         <div className="d-flex flex-wrap align-items-center gap-1" style={{ flex: "1 1 100%" }}>
                             <span className="fs-12 text-muted me-1">Tipo:</span>
                             {typeOptions.map((t) => {
@@ -357,9 +394,23 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
                     initialSort={{ id: "date", desc: true }}
                     rowClassName={(r) => (isVoided(r) ? "text-muted" : undefined)}
                     rowActions={(r) => (
-                        <Button size="sm" color="outline-primary" onClick={() => openLines(r.docheader_id)} aria-label={`Ver as linhas de ${r.document ?? "documento"}`} title="Ver as linhas">
-                            <i className="ri-list-unordered" aria-hidden />
-                        </Button>
+                        <div className="d-flex gap-1 justify-content-end">
+                            {isOpenDoc(r) && canClose && (
+                                <input type="checkbox" className="form-check-input align-self-center" aria-label={`Escolher ${r.document ?? "documento"}`} disabled={!!closeReason(r)}
+                                    checked={selected.includes(r.docheader_id)} onChange={() => setSelected((s) => (s.includes(r.docheader_id) ? s.filter((x) => x !== r.docheader_id) : [...s, r.docheader_id].slice(0, 10)))} />
+                            )}
+                            {isOpenDoc(r) && (r.close_problems ?? []).some((p) => p.key === "linhas") && canClose && (
+                                <Button size="sm" color="outline-secondary" onClick={() => readLines([r.docheader_id])} title="Ler as linhas do PingWin (só leitura)">Ler as linhas</Button>
+                            )}
+                            {isOpenDoc(r) && (
+                                <ReasonButton size="sm" color="outline-warning" reason={closeReason(r)} onClick={() => setClosing([toCloseDoc(r)])} data-testid={`sd-close-${r.docheader_id}`}>
+                                    Fechar no PingWin
+                                </ReasonButton>
+                            )}
+                            <Button size="sm" color="outline-primary" onClick={() => openLines(r.docheader_id)} aria-label={`Ver as linhas de ${r.document ?? "documento"}`} title="Ver as linhas">
+                                <i className="ri-list-unordered" aria-hidden />
+                            </Button>
+                        </div>
                     )}
                     caption="Documentos de fornecedor no PingWin"
                     empty={{
@@ -400,6 +451,9 @@ export default function PingwinSupplierDocumentsTab({ companyId }: { companyId: 
                 </ModalFooter>
             </Modal>
             {linesDoc && companyId && <SupplierDocumentLinesModal companyId={companyId} docheaderId={linesDoc} onClose={closeLines} />}
+            {closing && companyId && (
+                <CloseDocumentsModal companyId={companyId} docs={closing} isOpen={!!closing} onClose={() => { setClosing(null); setSelected([]); fetchRows(); }} onDone={fetchRows} />
+            )}
         </>
     );
 }

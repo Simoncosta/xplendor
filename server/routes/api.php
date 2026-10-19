@@ -561,6 +561,15 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/pingwin/supplier-documents/sync-runs/{runId}', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'run'])->whereNumber('runId');
                     // Auditoria: as linhas de um documento (do espelho), para o "Corrigir".
                     Route::get('/integrations/pingwin/supplier-documents/{docheaderId}/lines', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'lines'])->whereNumber('docheaderId');
+                    // ⚠️ ESCRITA: "Fechar no PingWin" documentos em Aberto (no máximo 10, um de cada vez, com releitura).
+                    Route::post('/integrations/pingwin/supplier-documents/close-checks', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentCloseController::class, 'checks']);
+                    Route::post('/integrations/pingwin/supplier-documents/close', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentCloseController::class, 'store'])->middleware('block_when_impersonating');
+                    Route::get('/integrations/pingwin/supplier-documents/close-batches/{batch}', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentCloseController::class, 'batch']);
+                    Route::post('/integrations/pingwin/supplier-documents/read-lines', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentCloseController::class, 'readLines']);
+                    // Finanças › Mês: resultado e tesouraria (só leitura) e a classificação dos "Por classificar".
+                    Route::get('/finance/month', [\App\Http\Controllers\Api\V1\CompanyFinanceMonthController::class, 'show']);
+                    Route::post('/finance/classifications', [\App\Http\Controllers\Api\V1\CompanyFinanceMonthController::class, 'classify']);
+                    Route::delete('/finance/classifications/{classificationId}', [\App\Http\Controllers\Api\V1\CompanyFinanceMonthController::class, 'unclassify'])->whereNumber('classificationId');
                     // S2 — Conta corrente de fornecedor (SÓ LEITURA no PingWin): visão geral, fornecedor, extrato, atualizar.
                     Route::middleware('ensure_module:restauracao_conta_corrente')->group(function () {
                         Route::get('/integrations/pingwin/supplier-cc', [\App\Http\Controllers\Api\V1\CompanySupplierCcController::class, 'index']);

@@ -43,7 +43,8 @@ final class Permissions
         // A Bússola da restauração (PingWin) e a do stand (stock).
         'bussola' => ['label' => 'Bússola', 'module' => ['pingwin', 'stock', 'radar', 'imoveis'], 'actions' => ['ver', 'criar', 'editar']],
         'resultados' => ['label' => 'Resultados', 'module' => 'marketing_analytics', 'actions' => ['ver']],
-        'financas' => ['label' => 'Finanças', 'module' => 'finance', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
+        // As Finanças valem com o módulo "finance" (despesas, clientes) ou com "Finanças: Mês" (restauração).
+        'financas' => ['label' => 'Finanças', 'module' => ['finance', 'financas_mes'], 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'restauracao' => ['label' => 'Restauração', 'module' => 'pingwin', 'actions' => ['ver', 'criar', 'editar', 'apagar', 'configurar']],
         'automovel' => ['label' => 'Automóvel', 'module' => 'stock', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         // O suporte com a XPLENDOR (pedidos, mensagens, orçamentos) é base, em todas as empresas;

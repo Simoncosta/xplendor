@@ -202,6 +202,7 @@ class SupplierDocumentsService
             ->when(! empty($f['types']), fn ($q) => $q->whereIn('docconfig_id', $f['types']))
             ->when($f['supplier'] ?? null, fn ($q, $v) => $q->where('entity_pingwin_id', $v))
             ->when(! empty($f['missing_ref']), fn ($q) => $q->where(fn ($w) => $w->whereNull('docreference_number')->orWhere('docreference_number', '')))
+            ->when(! empty($f['open']), fn ($q) => $q->where('docstatus_id', '8001'))
             ->orderByDesc('doc_date')->orderByDesc('doc_time')->orderByDesc('document');
     }
 

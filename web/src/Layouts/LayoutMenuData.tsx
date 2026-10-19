@@ -298,6 +298,7 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
+                { id: "financas-mes", label: "Mês", link: "/financas/mes", parentId: "finances", module: "financas_mes", permission: "financas.ver" },
                 { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances", module: "finance", permission: "financas.ver" },
                 { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances", module: "finance", permission: "financas.ver" },
                 { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances", module: "finance", permission: "financas.ver" },
@@ -425,7 +426,7 @@ const Navdata = () => {
     const ROOT_KEEP: Record<string, string[] | "all"> = {
         comercial: ["leads", "customers"],
         analytics: "all",
-        finances: ["expenses", "suppliers"],
+        finances: ["financas-mes", "expenses", "suppliers"],
         equipa: "all",
         settings: "all",
         ficheiros: "all",

@@ -158,6 +158,12 @@ class ModuleRegistry
             'car_specific' => false,
             'depends_on' => ['pingwin'],
         ],
+        // Finanças › Mês: resultado e tesouraria do mês (documentos de fornecedor, conta corrente e vendas).
+        'financas_mes' => [
+            'label' => 'Finanças: Mês',
+            'car_specific' => false,
+            'depends_on' => ['pingwin', 'restauracao_conta_corrente'],
+        ],
     ];
 
     /** As 10 secções de restauração (operação + cadastros), todas sob 'pingwin'. */
@@ -179,7 +185,7 @@ class ModuleRegistry
             'marketing_analytics', 'support_tasks', 'pingwin',
             'restauracao_lojas', 'restauracao_calendario', 'restauracao_artigos', 'restauracao_faturas',
             'restauracao_documentos', 'restauracao_familias', 'restauracao_fornecedores', 'restauracao_unidades',
-            'restauracao_condicoes_pagamento', 'restauracao_conta_corrente',
+            'restauracao_condicoes_pagamento', 'restauracao_conta_corrente', 'financas_mes',
         ],
     ];
 

@@ -35,6 +35,7 @@ class CompanySupplierDocumentsController extends Controller
             'types'       => ['nullable'],
             'supplier'    => ['nullable', 'string', 'max:30'],
             'missing_ref' => ['nullable', 'boolean'],
+            'open'        => ['nullable', 'boolean'],  // "Em aberto": só os documentos em Aberto (8001)
             'page'        => ['nullable', 'integer', 'min:1'],
             'perPage'     => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -49,12 +50,17 @@ class CompanySupplierDocumentsController extends Controller
             'types'       => $types,
             'supplier'    => $data['supplier'] ?? null,
             'missing_ref' => $request->boolean('missing_ref'),
+            'open'        => $request->boolean('open'),
         ])->paginate((int) ($data['perPage'] ?? 25))->appends($request->query());
 
         // F3: fatura carregada (OCR) ligada a cada documento — coluna "OCR".
         $ocrLinks = OcrInvoicePingwinLink::where('company_id', $companyId)
             ->whereIn('docheader_id', $page->getCollection()->pluck('docheader_id')->all())
             ->pluck('ocr_invoice_id', 'docheader_id')->all();
+
+        // "Fechar no PingWin": o que impede fechar cada documento em Aberto (pelo espelho).
+        $openDocs = $page->getCollection()->where('docstatus_id', \App\Services\Finance\SupplierDocumentCloseService::OPEN);
+        $closeChecks = $openDocs->isNotEmpty() ? app(\App\Services\Finance\SupplierDocumentCloseService::class)->checks($companyId, $openDocs) : [];
 
         $page->getCollection()->transform(fn (PingwinSupplierDocument $d) => [
             'id'                    => $d->id,
@@ -75,6 +81,7 @@ class CompanySupplierDocumentsController extends Controller
             'employee_name'         => $d->employee_name,
             'store_name'            => $d->store_name,
             'ocr_invoice_id'        => isset($ocrLinks[$d->docheader_id]) ? (int) $ocrLinks[$d->docheader_id] : null,
+            'close_problems'        => array_key_exists($d->docheader_id, $closeChecks) ? $closeChecks[$d->docheader_id] : null,
         ]);
 
         $this->docs->expireStale($companyId);
@@ -82,6 +89,7 @@ class CompanySupplierDocumentsController extends Controller
 
         return ApiResponse::success([
             'documents' => $page,
+            'can_close' => $this->can($companyId, 'restauracao.criar'),
             'facets'    => $this->docs->facets($companyId),
             'last_run'  => $last?->toApi(),
         ], 'Documentos de fornecedor carregados.');

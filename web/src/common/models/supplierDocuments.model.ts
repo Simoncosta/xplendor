@@ -18,6 +18,8 @@ export interface SupplierDocumentRow {
     employee_name: string | null;
     store_name: string | null;
     ocr_invoice_id: number | null; // F3: fatura carregada (OCR) ligada a este documento
+    // "Fechar no PingWin" (só nos documentos em Aberto): o que impede fechar (vazio = pode).
+    close_problems?: { key: string; message: string }[] | null;
 }
 
 export type SupplierDocumentsRunStatus = "queued" | "running" | "ok" | "failed";

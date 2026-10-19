@@ -1203,6 +1203,19 @@ export const voidOcrLaunch = (companyId: number, invoiceId: number) =>
 export const setOcrLineLaunchUnit = (companyId: number, invoiceId: number, lineId: number, data: { unit_id: string; quantity?: number | null }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/launch-unit`, data);
 
+// Finanças › Mês: resultado e tesouraria (só leitura) e a classificação manual dos "Por classificar".
+export const getFinanceMonth = (companyId: number, params: { month?: string; store?: number | null }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/finance/month`, { month: params.month, ...(params.store ? { store: params.store } : {}) });
+export const classifyFinanceDocument = (companyId: number, data: { scope: "documento" | "fornecedor"; docheader_id: string; group: string }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/finance/classifications`, data, JSON_HEADERS);
+// ⚠️ "Fechar no PingWin" documentos de fornecedor em Aberto (no máximo 10, um de cada vez, com releitura).
+export const closeSupplierDocuments = (companyId: number, docheaderIds: string[]) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/close`, { docheader_ids: docheaderIds }, JSON_HEADERS);
+export const getSupplierDocumentCloseBatch = (companyId: number, batch: string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/close-batches/${batch}`);
+export const readSupplierDocumentLines = (companyId: number, docheaderIds: string[]) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/read-lines`, { docheader_ids: docheaderIds }, JSON_HEADERS);
+
 // F2c — apagar faturas OCR (soft delete), repor, apagar várias; a lista com as apagadas.
 export const getOcrInvoicesList = (companyId: number, params: { page?: number; perPage?: number; status?: string; deleted?: 1 }) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices`, params);

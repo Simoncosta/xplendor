@@ -97,6 +97,8 @@ import DocumentTemplatesList from "pages/DocumentTemplates/DocumentTemplatesList
 import ExpenseCategoryList from "pages/ExpenseCategories/ExpenseCategoryList";
 // Expenses (DMS 1c.2b)
 import ExpenseList from "pages/Expenses/ExpenseList";
+import FinancasMesPage from "pages/Financas/FinancasMesPage";
+import FechoMesPage from "pages/Financas/FechoMesPage";
 // Blogs
 import BlogList from "pages/Blogs/BlogList";
 import BlogEditor from "pages/Blogs/Blog/BlogEditor";
@@ -281,6 +283,9 @@ const authProtectedRoutes = [
 
     // Expenses — módulo FINANÇAS
     { path: "/expenses", component: <RequireModule module="finance" permission="financas.ver"><ExpenseList /></RequireModule> },
+    // Finanças › Mês: resultado e tesouraria (só leitura) e o fecho do mês para imprimir.
+    { path: "/financas/mes", component: <RequireModule module="financas_mes" permission="financas.ver"><FinancasMesPage /></RequireModule> },
+    { path: "/financas/mes/fecho", component: <RequireModule module="financas_mes" permission="financas.ver"><FechoMesPage /></RequireModule> },
 
     // Internal tools
     // Suporte (lado stand) — tickets da própria empresa.
