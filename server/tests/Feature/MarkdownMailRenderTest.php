@@ -35,6 +35,9 @@ class MarkdownMailRenderTest extends TestCase
         // Os que recebem linhas estruturadas.
         $special = [
             'App\\Mail\\ContentReviewDigestMail' => [[['company' => 'Correio Lda', 'title' => 'Publicação aprovada', 'message' => 'Sai amanhã.', 'severity' => 'high']]],
+            'App\\Mail\\AccountantDocumentsMail' => ['Correio Lda: documentos de setembro de 2026', 'Documentos de setembro de 2026', ['Seguem os documentos.'],
+                [['number' => 'FT A/1', 'supplier' => 'Fornecedor', 'date' => '03/09/2026', 'value' => '123,00 €']], 'Obrigado.',
+                [['name' => 'contabilidade-2026-09.xlsx', 'data' => 'x', 'mime' => 'application/octet-stream']]],
         ];
 
         foreach ($classes as $class) {

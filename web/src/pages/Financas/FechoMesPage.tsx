@@ -55,7 +55,7 @@ export default function FechoMesPage() {
             <Container fluid className="fm-print-area" data-testid="finance-print">
                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div>
-                        <h4 className="mb-0">{ucfirst(title)}</h4>
+                        <h4 className="mb-0">{ucfirst(title)}{data?.provisional && <span className="badge bg-warning-subtle text-warning ms-2 align-middle" data-testid="print-provisional">Provisório</span>}</h4>
                         <div className="fs-12 text-muted">Gerado a {new Date().toLocaleDateString("pt-PT")} · vendas: {storeName ?? "todos os restaurantes"}</div>
                     </div>
                     <div className="d-flex gap-2 fm-no-print">
@@ -67,7 +67,7 @@ export default function FechoMesPage() {
                 {!data && !error && <Card><CardBody><Skeleton variant="lines" lines={8} /></CardBody></Card>}
                 {data && (
                     <>
-                        <MonthTop data={data} storeName={storeName} />
+                        <MonthTop data={data} storeName={storeName} printable />
                         <Card><CardBody><h5 className="mb-3">Resultado</h5><ResultadoTab data={data} printable /></CardBody></Card>
                     </>
                 )}

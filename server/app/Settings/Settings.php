@@ -231,6 +231,13 @@ final class Settings
                 ksort($out);
 
                 return $out;
+            case 'email':
+                $v = trim((string) $v);
+                if ($v !== '' && (filter_var($v, FILTER_VALIDATE_EMAIL) === false || mb_strlen($v) > 160)) {
+                    $fail("{$def['label']}: indique um email válido.");
+                }
+
+                return $v;
             case 'month_day':
                 $v = trim((string) $v);
                 if ($v === '') {

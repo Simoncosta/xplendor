@@ -1215,6 +1215,39 @@ export const getSupplierDocumentCloseBatch = (companyId: number, batch: string) 
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/close-batches/${batch}`);
 export const readSupplierDocumentLines = (companyId: number, docheaderIds: string[]) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/read-lines`, { docheader_ids: docheaderIds }, JSON_HEADERS);
+// Finanças v2 (só na XPLENDOR): regras de classificação, pagamentos registados e envio à contabilidade.
+const FIN = (companyId: number) => url.GET_COMPANIES + `/${companyId}/finance`;
+type FinanceScope = { month: string; docheader_ids?: string[] };
+export const getFinanceRules = (companyId: number) => api.get(`${FIN(companyId)}/rules`);
+export const createFinanceRule = (companyId: number, data: Record<string, any>) => api.create(`${FIN(companyId)}/rules`, data, JSON_HEADERS);
+export const updateFinanceRule = (companyId: number, ruleId: number, data: Record<string, any>) => api.put(`${FIN(companyId)}/rules/${ruleId}`, data);
+export const deleteFinanceRule = (companyId: number, ruleId: number) => api.delete(`${FIN(companyId)}/rules/${ruleId}`);
+export const getFinancePayables = (companyId: number) => api.get(`${FIN(companyId)}/payables`);
+export const registerFinancePayment = (companyId: number, data: { docheader_ids: string[]; paid_on: string; method: string; reference?: string | null }) =>
+    api.create(`${FIN(companyId)}/payments`, data, JSON_HEADERS);
+export const undoFinancePayment = (companyId: number, paymentId: number) => api.delete(`${FIN(companyId)}/payments/${paymentId}`);
+export const getFinancePaymentHistory = (companyId: number, docheaderId: string) => api.get(`${FIN(companyId)}/payments/history/${docheaderId}`);
+export const markFinanceSent = (companyId: number, data: { docheader_ids: string[]; sent_on: string; send_method: string }) =>
+    api.create(`${FIN(companyId)}/accounting/sent`, data, JSON_HEADERS);
+export const unmarkFinanceSent = (companyId: number, docheaderIds: string[]) => api.create(`${FIN(companyId)}/accounting/unsent`, { docheader_ids: docheaderIds }, JSON_HEADERS);
+export const editFinanceDocument = (companyId: number, docheaderId: string, data: { note?: string | null; situation?: string | null }) =>
+    api.put(`${FIN(companyId)}/accounting/documents/${docheaderId}`, data);
+export const downloadFinanceSheet = (companyId: number, data: FinanceScope) =>
+    api.create(`${FIN(companyId)}/accounting/sheet`, data, { headers: { "Content-Type": "application/json" }, responseType: "blob" } as any);
+export const getFinanceAccountingFiles = (companyId: number, data: FinanceScope) => api.create(`${FIN(companyId)}/accounting/files`, data, JSON_HEADERS);
+export const downloadFinanceZip = (companyId: number, data: FinanceScope) =>
+    api.create(`${FIN(companyId)}/accounting/zip`, data, { headers: { "Content-Type": "application/json" }, responseType: "blob" } as any);
+export const previewAccountantEmail = (companyId: number, data: FinanceScope) => api.create(`${FIN(companyId)}/accounting/email-preview`, data, JSON_HEADERS);
+export const sendAccountantEmail = (companyId: number, data: FinanceScope) => api.create(`${FIN(companyId)}/accounting/email-send`, data, JSON_HEADERS);
+export const getHabitualExclusions = (companyId: number) => api.get(`${FIN(companyId)}/habitual-exclusions`);
+export const excludeHabitual = (companyId: number, data: { entity_pingwin_id: string; scope: "mes" | "sempre"; month: string; avg_cents?: number; reason?: string | null }) =>
+    api.create(`${FIN(companyId)}/habitual-exclusions`, data, JSON_HEADERS);
+export const restoreHabitual = (companyId: number, exclusionId: number) => api.delete(`${FIN(companyId)}/habitual-exclusions/${exclusionId}`);
+export const importAccountingSheet = (companyId: number, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.create(`${FIN(companyId)}/accounting/import`, fd);
+};
 
 // F2c — apagar faturas OCR (soft delete), repor, apagar várias; a lista com as apagadas.
 export const getOcrInvoicesList = (companyId: number, params: { page?: number; perPage?: number; status?: string; deleted?: 1 }) =>

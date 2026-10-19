@@ -570,6 +570,28 @@ Route::prefix('v1')->group(function () {
                     Route::get('/finance/month', [\App\Http\Controllers\Api\V1\CompanyFinanceMonthController::class, 'show']);
                     Route::post('/finance/classifications', [\App\Http\Controllers\Api\V1\CompanyFinanceMonthController::class, 'classify']);
                     Route::delete('/finance/classifications/{classificationId}', [\App\Http\Controllers\Api\V1\CompanyFinanceMonthController::class, 'unclassify'])->whereNumber('classificationId');
+                    // Finanças v2: regras de classificação, pagamentos registados e envio à contabilidade (só na XPLENDOR).
+                    Route::get('/finance/rules', [\App\Http\Controllers\Api\V1\CompanyFinanceRulesController::class, 'index']);
+                    Route::post('/finance/rules', [\App\Http\Controllers\Api\V1\CompanyFinanceRulesController::class, 'store']);
+                    Route::put('/finance/rules/{ruleId}', [\App\Http\Controllers\Api\V1\CompanyFinanceRulesController::class, 'update'])->whereNumber('ruleId');
+                    Route::delete('/finance/rules/{ruleId}', [\App\Http\Controllers\Api\V1\CompanyFinanceRulesController::class, 'destroy'])->whereNumber('ruleId');
+                    Route::get('/finance/payables', [\App\Http\Controllers\Api\V1\CompanyFinancePaymentsController::class, 'payables']);
+                    Route::post('/finance/payments', [\App\Http\Controllers\Api\V1\CompanyFinancePaymentsController::class, 'store']);
+                    Route::delete('/finance/payments/{paymentId}', [\App\Http\Controllers\Api\V1\CompanyFinancePaymentsController::class, 'destroy'])->whereNumber('paymentId');
+                    Route::get('/finance/payments/history/{docheaderId}', [\App\Http\Controllers\Api\V1\CompanyFinancePaymentsController::class, 'history']);
+                    Route::post('/finance/accounting/sent', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'markSent']);
+                    Route::post('/finance/accounting/unsent', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'unmarkSent']);
+                    Route::put('/finance/accounting/documents/{docheaderId}', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'edit']);
+                    Route::post('/finance/accounting/sheet', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'sheet']);
+                    Route::post('/finance/accounting/files', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'files']);
+                    Route::post('/finance/accounting/zip', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'zip']);
+                    Route::post('/finance/accounting/email-preview', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'emailPreview']);
+                    Route::post('/finance/accounting/email-send', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'emailSend'])->middleware('block_when_impersonating');
+                    Route::post('/finance/accounting/import', [\App\Http\Controllers\Api\V1\CompanyFinanceAccountingController::class, 'import']);
+                    // Os documentos habituais: "Não vem este mês", "Não é habitual" e repor (com histórico).
+                    Route::get('/finance/habitual-exclusions', [\App\Http\Controllers\Api\V1\CompanyFinanceHabitualController::class, 'index']);
+                    Route::post('/finance/habitual-exclusions', [\App\Http\Controllers\Api\V1\CompanyFinanceHabitualController::class, 'store']);
+                    Route::delete('/finance/habitual-exclusions/{exclusionId}', [\App\Http\Controllers\Api\V1\CompanyFinanceHabitualController::class, 'destroy'])->whereNumber('exclusionId');
                     // S2 — Conta corrente de fornecedor (SÓ LEITURA no PingWin): visão geral, fornecedor, extrato, atualizar.
                     Route::middleware('ensure_module:restauracao_conta_corrente')->group(function () {
                         Route::get('/integrations/pingwin/supplier-cc', [\App\Http\Controllers\Api\V1\CompanySupplierCcController::class, 'index']);

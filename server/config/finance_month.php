@@ -18,6 +18,9 @@ return [
     ],
     // Pagamentos com data (saídas): a nota de liquidação e a nota de liquidação global.
     'payment_docconfigs' => ['1204', '1227'],
+    // Documentos de fornecedor que nunca são gasto (receções, devoluções, guias, consignações). Um tipo
+    // de fornecedor que não esteja em nenhuma lista é "novo": entra em "Por classificar" (Criar regra).
+    'non_expense_docconfigs' => ['1201', '1202', '1203', '1208', '1211', '1212', '1214', '1223', '1224', '1602'],
 
     // Estados: fechado conta; aberto e em edição contam mas ficam destacados ("ainda não fechados no
     // PingWin; não contam no stock"); anulado nunca conta.
@@ -59,8 +62,12 @@ return [
     // nas linhas dele nos últimos N meses.
     'habitual_months' => 12,
 
-    // Aviso: um grupo abaixo de metade da média dos 3 meses anteriores (com média de pelo menos 1 000 €).
-    'warn_below_avg_ratio' => 0.5,
+    // Mês provisório: uma entidade é habitual com documentos em pelo menos N dos 3 meses anteriores.
+    'habitual_min_months' => 2,
+    // … com no máximo 2 documentos por mês (um fornecedor de compras não é "habitual") e uma média de
+    // pelo menos 50 € no resultado.
+    'habitual_max_docs_per_month' => 2,
+    'habitual_min_avg_cents' => 5000,
 
     // "Fechar no PingWin" a partir da lista: no máximo 10 de cada vez; acerto até 0,05 €.
     'close_max_batch' => 10,

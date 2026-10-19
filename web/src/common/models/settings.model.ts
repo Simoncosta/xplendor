@@ -1,6 +1,6 @@
 /** XPLENDOR — Configurações: as definições que saíram do .env (por empresa e da plataforma). */
 
-export type SettingType = "pct" | "eur" | "number" | "bool" | "store" | "month_day" | "family_pct";
+export type SettingType = "pct" | "eur" | "number" | "bool" | "store" | "month_day" | "family_pct" | "email";
 export type SettingValue = number | boolean | string | Record<string, number>;
 
 export type SettingItem = {

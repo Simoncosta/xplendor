@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Finance;
 
 use App\Models\FinanceClassification;
+use App\Models\FinanceDocumentMark;
+use App\Models\FinanceHabitualExclusion;
+use App\Models\FinancePayment;
 use App\Models\PingwinDocumentConfig;
 use App\Models\PingwinSupplierCcDocument;
 use App\Services\Restaurant\Menu\MenuEngineeringService;
@@ -43,6 +46,14 @@ final class MonthFinanceService
 
     /** @var array<string, FinanceClassification> */
     private array $manual = [];
+
+    private ?FinanceRuleMatcher $rules = null;
+
+    /** @var array<string, FinancePayment> os pagamentos registados na XPLENDOR (não desfeitos), por documento */
+    private array $payments = [];
+
+    /** @var array<string, string> tipos de documento novos (docconfig → descrição): entram em "Por classificar" */
+    private array $newTypes = [];
 
     public function __construct(private readonly int $companyId, ?CarbonInterface $today = null)
     {
@@ -107,7 +118,11 @@ final class MonthFinanceService
         ];
         $prevSales = $sales[$prevKey]['net'] ?? 0;
         $prevResult = $prevSales - $byMonth[$prevKey]['expenses'];
-        $warnings = $this->warnings($byMonth, $ym, $avgKeys, $sales, $end);
+        $warnings = $this->warnings($ym, $sales, $end);
+        $excluded = FinanceHabitualExclusion::activeFor($this->companyId, $ym)->with('creator:id,name')->get();
+        $missing = $this->habitualMissing($docs, $parts, $ym, $avgKeys, $excluded->pluck('entity_pingwin_id')->map(fn ($v) => (string) $v)->all());
+        $missingCents = array_sum(array_column($missing, 'avg_cents'));
+        $estimated = $result - $missingCents;
 
         return [
             'month' => $ym,
@@ -116,6 +131,16 @@ final class MonthFinanceService
             'sentence' => $this->sentence($ym, $summary),
             'explain' => 'Gasto é quando a fatura chega; pago é quando o dinheiro sai.',
             'warnings' => $warnings,
+            // Mês provisório: enquanto faltarem documentos habituais, o resultado é estimado.
+            'provisional' => $missing === [] ? null : [
+                'count' => count($missing), 'cents' => $missingCents,
+                'text' => sprintf('Provisório: faltam %d %s (cerca de %s).', count($missing), count($missing) === 1 ? 'documento habitual' : 'documentos habituais', self::eur($missingCents)),
+                'missing' => $missing,
+            ],
+            // As entidades tiradas dos habituais neste mês ("Não vem este mês" ou "Não é habitual").
+            'habitual_excluded' => $excluded->map(fn ($e) => ['id' => $e->id, 'entity_pingwin_id' => $e->entity_pingwin_id, 'supplier' => $e->entity_name,
+                'scope' => $e->scope, 'month' => $e->month, 'avg_cents' => $e->avg_cents, 'reason' => $e->reason, 'by' => $e->creator?->name,
+                'at' => $e->created_at?->toIso8601String()])->values()->all(),
             'stores' => $this->stores(),
             'store_id' => $locationId,
             'cards' => [
@@ -131,6 +156,8 @@ final class MonthFinanceService
                 ],
                 'result' => [
                     'cents' => $result, 'pct' => $summary['result_pct'], 'prev_cents' => $prevResult,
+                    'estimated_cents' => $missing === [] ? null : $estimated,
+                    'estimated_pct' => $missing === [] || $salesNet <= 0 ? null : round($estimated / $salesNet * 100, 1),
                     'prev_pct' => $prevSales > 0 ? round($prevResult / $prevSales * 100, 1) : null,
                     'source' => 'Vendas sem IVA menos gastos sem IVA, da empresa toda.',
                 ],
@@ -188,13 +215,31 @@ final class MonthFinanceService
     /** Os documentos de gasto (sem anulados) de [from, to]. */
     public function expenseDocuments(string $from, string $to): Collection
     {
+        $this->newTypes = $this->newDocumentTypes();
+
         return DB::table('pingwin_supplier_documents')->where('company_id', $this->companyId)
-            ->whereIn('docconfig_id', array_map('strval', array_keys((array) $this->cfg['expense_docconfigs'])))
+            ->whereIn('docconfig_id', array_merge(array_map('strval', array_keys((array) $this->cfg['expense_docconfigs'])), array_map('strval', array_keys($this->newTypes))))
             ->where(fn ($q) => $q->whereNull('docstatus_id')->orWhere('docstatus_id', '!=', (string) $this->cfg['voided_status']))
             ->whereBetween('doc_date', [$from, $to])
             ->orderBy('doc_date')->orderBy('document')
             ->get(['docheader_id', 'docconfig_id', 'doctype', 'document', 'entity_pingwin_id', 'entity_name', 'doc_date', 'due_date', 'total_cents',
-                'total_tax_cents', 'total_products_cents', 'paid', 'docstatus_id', 'docstatus_description', 'lines_status', 'docreference_number', 'store_name']);
+                'total_tax_cents', 'total_products_cents', 'paid', 'docstatus_id', 'docstatus_description', 'lines_status', 'docreference_number', 'store_name', 'tax_number']);
+    }
+
+    /**
+     * Os tipos de documento de fornecedor que não se conhecem (nem gasto, nem encomenda, guia,
+     * pagamento…): por exemplo a despesa dos salários, quando for criada no PingWin. Entram em
+     * "Por classificar", com a sugestão "Criar regra".
+     *
+     * @return array<string, string>
+     */
+    private function newDocumentTypes(): array
+    {
+        $known = array_map('strval', array_merge(array_keys((array) $this->cfg['expense_docconfigs']), (array) $this->cfg['payment_docconfigs'], (array) ($this->cfg['non_expense_docconfigs'] ?? [])));
+
+        return DB::table('pingwin_document_configs')->where('company_id', $this->companyId)->where('entitytype', 'Fornecedor')
+            ->where('doctype_id', '17001')->where(fn ($q) => $q->whereNull('deleted')->orWhere('deleted', false))
+            ->whereNotIn('external_id', $known)->pluck('description', 'external_id')->map(fn ($v) => (string) $v)->all();
     }
 
     /** A família habitual de cada fornecedor: a de maior valor nas linhas dele nos últimos N meses. */
@@ -236,8 +281,9 @@ final class MonthFinanceService
             ->leftJoin('pingwin_catalog_items as i', fn ($j) => $j->on('i.pingwin_id', '=', 'l.product_pingwin_id')->on('i.company_id', '=', 'l.company_id'))
             ->where('l.company_id', $this->companyId)->whereIn('l.docheader_id', $docs->pluck('docheader_id')->all())
             ->orderBy('l.line_number')
-            ->get(['l.docheader_id', 'l.total_cents', 'l.description', 'i.description as article', 'i.family_pingwin_id'])
+            ->get(['l.docheader_id', 'l.total_cents', 'l.description', 'l.product_code', 'i.code as article_code', 'i.description as article', 'i.family_pingwin_id'])
             ->groupBy('docheader_id');
+        $this->rules ??= new FinanceRuleMatcher($this->companyId);
         $signs = (array) $this->cfg['expense_docconfigs'];
         $out = [];
         foreach ($docs as $d) {
@@ -246,11 +292,17 @@ final class MonthFinanceService
             $parts = [];
             foreach ($lines->get($d->docheader_id, collect()) as $l) {
                 $path = $this->classifier->path($l->family_pingwin_id);
-                $c = $this->classifier->classify($path, trim(($l->article ?? '') . ' ' . ($l->description ?? '')));
-                $parts[] = $this->part($d, $c, $path, (int) $l->total_cents, 'linha');
+                // Sem família na linha, a regra de família vê a família habitual do fornecedor.
+                $rule = $this->rules->match(['entity' => $d->entity_pingwin_id, 'docconfig' => (string) $d->docconfig_id,
+                    'codes' => array_values(array_filter([$l->product_code, $l->article_code])), 'path' => $path !== '' ? $path : ($this->habitual[(string) $d->entity_pingwin_id]['path'] ?? '')]);
+                $parts[] = $rule ? $this->rulePart($rule, $path, (int) $l->total_cents) : (isset($this->newTypes[(string) $d->docconfig_id])
+                    ? $this->newTypePart($d, $path, (int) $l->total_cents)
+                    : $this->part($d, $this->classifier->classify($path, trim(($l->article ?? '') . ' ' . ($l->description ?? ''))), $path, (int) $l->total_cents, 'linha'));
             }
             if ($parts === []) {
-                $parts[] = $this->part($d, null, '', $net, 'documento');
+                $rule = $this->rules->match(['entity' => $d->entity_pingwin_id, 'docconfig' => (string) $d->docconfig_id, 'codes' => [],
+                    'path' => $this->habitual[(string) $d->entity_pingwin_id]['path'] ?? '']);
+                $parts[] = $rule ? $this->rulePart($rule, '', $net) : (isset($this->newTypes[(string) $d->docconfig_id]) ? $this->newTypePart($d, '', $net) : $this->part($d, null, '', $net, 'documento'));
             } else {
                 $rest = $net - array_sum(array_column($parts, 'cents'));
                 if ($rest !== 0) {
@@ -267,24 +319,43 @@ final class MonthFinanceService
         return $out;
     }
 
+    /** Uma parte classificada por uma regra da XPLENDOR (a família do PingWin fica a ver-se ao lado). */
+    private function rulePart(\App\Models\FinanceRule $r, string $path, int $cents): array
+    {
+        $label = FinanceRuleMatcher::label($r, (array) $this->cfg['groups']);
+
+        return ['group' => $r->group, 'path' => $path, 'pingwin_path' => $path, 'cents' => $cents, 'source' => 'regra',
+            'rule' => ['id' => $r->id, 'label' => $label], 'reason' => "Regra: {$label}."];
+    }
+
+    /** Um tipo de documento novo: "Por classificar", com a sugestão "Criar regra". */
+    private function newTypePart(object $d, string $path, int $cents): array
+    {
+        $type = $this->newTypes[(string) $d->docconfig_id] ?? (string) $d->doctype;
+
+        return ['group' => FinanceClassifier::UNCLASSIFIED, 'path' => '', 'pingwin_path' => $path, 'cents' => $cents, 'source' => 'tipo_novo',
+            'new_type' => ['docconfig_id' => (string) $d->docconfig_id, 'label' => $type],
+            'reason' => "Tipo de documento novo ({$type}): crie uma regra para dizer em que grupo entra."];
+    }
+
     /** Uma parte: a família da linha; sem ela, a habitual do fornecedor; depois a manual; senão por classificar. */
     private function part(object $d, ?array $c, string $path, int $cents, string $kind): array
     {
         if ($c !== null) {
-            return ['group' => $c['group'], 'path' => $path, 'cents' => $cents, 'source' => ($c['by'] ?? null) === 'descricao' ? 'deposito' : 'linha', 'reason' => $c['reason']];
+            return ['group' => $c['group'], 'path' => $path, 'pingwin_path' => $path, 'cents' => $cents, 'source' => ($c['by'] ?? null) === 'descricao' ? 'deposito' : 'linha', 'reason' => $c['reason']];
         }
         $e = (string) $d->entity_pingwin_id;
         if (isset($this->habitual[$e])) {
-            return ['group' => $this->habitual[$e]['group'], 'path' => $this->habitual[$e]['path'], 'cents' => $cents, 'source' => 'fornecedor',
+            return ['group' => $this->habitual[$e]['group'], 'path' => $this->habitual[$e]['path'], 'pingwin_path' => $path, 'cents' => $cents, 'source' => 'fornecedor',
                 'reason' => $kind === 'documento' ? 'Documento sem linhas lidas: pela família habitual do fornecedor.' : 'Linha sem família: pela família habitual do fornecedor.'];
         }
         $m = $this->manual['doc:' . $d->docheader_id] ?? $this->manual['sup:' . $e] ?? null;
         if ($m) {
-            return ['group' => $m->group, 'path' => '', 'cents' => $cents, 'source' => $m->scope === FinanceClassification::DOCUMENT ? 'manual_documento' : 'manual_fornecedor',
+            return ['group' => $m->group, 'path' => '', 'pingwin_path' => $path, 'cents' => $cents, 'source' => $m->scope === FinanceClassification::DOCUMENT ? 'manual_documento' : 'manual_fornecedor',
                 'reason' => 'Classificado à mão na XPLENDOR.'];
         }
 
-        return ['group' => FinanceClassifier::UNCLASSIFIED, 'path' => '', 'cents' => $cents, 'source' => 'por_classificar',
+        return ['group' => FinanceClassifier::UNCLASSIFIED, 'path' => '', 'pingwin_path' => $path, 'cents' => $cents, 'source' => 'por_classificar',
             'reason' => $kind === 'documento'
                 ? 'Documento sem linhas lidas e o fornecedor não tem família habitual.'
                 : 'Linha sem artigo (ou artigo sem família) e o fornecedor não tem família habitual.'];
@@ -312,7 +383,8 @@ final class MonthFinanceService
                 }
                 $expenses += $p['cents'];
                 $g = $p['group'];
-                $f = FinanceClassifier::label($p['path']) ?: ($g === FinanceClassifier::UNCLASSIFIED ? 'Por classificar' : 'Classificado à mão');
+                $f = FinanceClassifier::label($p['path']) ?: ($g === FinanceClassifier::UNCLASSIFIED ? 'Por classificar' : ($p['source'] === 'regra' ? 'Sem família no PingWin' : 'Classificado à mão'));
+                $f .= $p['source'] === 'regra' ? ' (por regra)' : '';
                 $groups[$g]['cents'] = ($groups[$g]['cents'] ?? 0) + $p['cents'];
                 $groups[$g]['families'][$f] = ($groups[$g]['families'][$f] ?? 0) + $p['cents'];
             }
@@ -362,30 +434,72 @@ final class MonthFinanceService
         return $rows;
     }
 
-    /**
-     * Avisos dos dados: um grupo muito abaixo da média dos 3 meses anteriores (pode faltar lançar
-     * documentos, como a folha de salários) e as vendas com dias em falta.
-     */
-    private function warnings(array $byMonth, string $ym, array $avgKeys, array $sales, CarbonImmutable $end): array
+    /** Avisos dos dados: as vendas com dias em falta (os documentos em falta estão no mês provisório). */
+    private function warnings(string $ym, array $sales, CarbonImmutable $end): array
     {
         $out = [];
-        $ratio = (float) ($this->cfg['warn_below_avg_ratio'] ?? 0.5);
-        foreach ($this->cfg['groups'] as $g => $def) {
-            if ($g === 'fora') {
-                continue;
-            }
-            $avg = array_sum(array_map(fn ($m) => $byMonth[$m]['groups'][$g]['cents'] ?? 0, $avgKeys)) / 3;
-            $v = $byMonth[$ym]['groups'][$g]['cents'] ?? 0;
-            if ($avg >= 100000 && $v < $avg * $ratio) {
-                $out[] = sprintf('%s: %s no mês, contra %s de média nos 3 meses anteriores. Confirme se falta lançar documentos no PingWin (por exemplo, a folha de salários ou de obrigações).',
-                    $def['label'], self::eur($v), self::eur((int) round($avg)));
-            }
-        }
         $days = $sales[$ym]['days'] ?? 0;
         $want = $end->lt($this->today) ? (int) $end->format('j') : (int) $this->today->subDay()->format('j');
         if ($days < $want) {
             $out[] = sprintf('Vendas: há vendas por artigo em %d dos %d dias do mês.', $days, $want);
         }
+
+        return $out;
+    }
+
+    /**
+     * Documentos habituais em falta: as entidades com documentos em pelo menos 2 dos 3 meses
+     * anteriores (rendas, folha de obrigações, luz, água, telecomunicações, avenças), com um ou dois
+     * documentos por mês e um valor médio de pelo menos 50 €, que ainda não têm nenhum este mês, com o
+     * valor médio (no resultado) dos meses em que apareceram.
+     *
+     * @return list<array{entity_pingwin_id:string, supplier:?string, months:int, avg_cents:int, last_document:?string, last_date:?string}>
+     */
+    private function habitualMissing(Collection $docs, array $parts, string $ym, array $avgKeys, array $excluded = []): array
+    {
+        $excluded = array_flip($excluded);
+        $min = (int) ($this->cfg['habitual_min_months'] ?? 2);
+        $maxDocs = (float) ($this->cfg['habitual_max_docs_per_month'] ?? 2);
+        $minAvg = (int) ($this->cfg['habitual_min_avg_cents'] ?? 5000);
+        $by = [];
+        $count = [];
+        $names = [];
+        $last = [];
+        foreach ($docs as $d) {
+            $e = (string) $d->entity_pingwin_id;
+            if ($e === '') {
+                continue;
+            }
+            $m = substr((string) $d->doc_date, 0, 7);
+            $cents = array_sum(array_map(fn ($p) => $p['group'] === 'fora' ? 0 : $p['cents'], $parts[$d->docheader_id] ?? []));
+            $by[$e][$m] = ($by[$e][$m] ?? 0) + $cents;
+            $count[$e][$m] = ($count[$e][$m] ?? 0) + 1;
+            $names[$e] = $d->entity_name;
+            if (in_array($m, $avgKeys, true)) {
+                $last[$e] = $d;
+            }
+        }
+        $out = [];
+        foreach ($by as $e => $months) {
+            // Já veio este mês, ou alguém disse "Não vem este mês" / "Não é habitual".
+            if (isset($months[$ym]) || isset($excluded[(string) $e])) {
+                continue;
+            }
+            $present = array_values(array_filter($avgKeys, fn ($k) => isset($months[$k])));
+            if (count($present) < $min) {
+                continue;
+            }
+            $avg = (int) round(array_sum(array_map(fn ($k) => $months[$k], $present)) / count($present));
+            // Um documento por mês (ou dois): a renda, a folha, a luz, a água, uma avença. Um fornecedor de
+            // compras com muitas faturas por mês não é "um documento habitual".
+            $perMonth = array_sum(array_map(fn ($k) => $count[$e][$k], $present)) / count($present);
+            if ($avg < $minAvg || $perMonth > $maxDocs) {
+                continue;
+            }
+            $out[] = ['entity_pingwin_id' => $e, 'supplier' => $names[$e] ?? null, 'months' => count($present), 'avg_cents' => $avg,
+                'last_document' => $last[$e]->document ?? null, 'last_date' => $last[$e]->doc_date ?? null];
+        }
+        usort($out, fn ($a, $b) => $b['avg_cents'] <=> $a['avg_cents']);
 
         return $out;
     }
@@ -450,14 +564,23 @@ final class MonthFinanceService
         $auto = PingwinDocumentConfig::where('company_id', $this->companyId)->where('settled', true)->pluck('external_id')->map(fn ($v) => (string) $v)->flip();
         $paidDates = $this->paidDates($cc, $auto);
         $names = DB::table('suppliers')->where('company_id', $this->companyId)->pluck('name', 'id');
+        $this->payments = FinancePayment::where('company_id', $this->companyId)->whereNull('undone_at')->orderBy('id')->get()->keyBy('docheader_id')->all();
 
+        // A ordem: o pago no PingWin, depois o registo da XPLENDOR, por fim o por pagar.
         $states = [];
         $payables = [];
+        $ccTotal = 0;
+        $registered = 0;
         foreach ($cc as $d) {
             $isAuto = isset($auto[(string) $d->docconfig_id]);
-            $state = $this->ccState($d, $isAuto, $paidDates[$d->docheader_id] ?? null);
+            $state = $this->withPayment($this->ccState($d, $isAuto, $paidDates[$d->docheader_id] ?? null), $d->docheader_id, $isAuto ? (int) $d->total_cents : (int) $d->total_paid_cents);
             $states[$d->docheader_id] = $state;
             if (! $isAuto && $d->topay_cents !== 0 && ! in_array((string) $d->docconfig_id, (array) $this->cfg['payment_docconfigs'], true)) {
+                $ccTotal += $d->topay_cents * $d->ca_signal;
+                if ($state['state'] === 'pago_xplendor') {
+                    $registered += $d->topay_cents * $d->ca_signal;
+                    continue;
+                }
                 $payables[] = ['doc' => $d, 'cents' => $d->topay_cents * $d->ca_signal, 'state' => $state];
             }
         }
@@ -467,7 +590,21 @@ final class MonthFinanceService
             ->where('docstatus_id', (string) $this->cfg['closed_status'])
             ->where(fn ($q) => $q->whereIn('docconfig_id', (array) $this->cfg['payment_docconfigs'])->orWhereIn('docconfig_id', $auto->keys()->filter(fn ($k) => isset($this->cfg['expense_docconfigs'][$k]))->values()->all()))
             ->whereBetween('doc_date', [$start->toDateString(), $end->toDateString()])
-            ->get(['docheader_id', 'docconfig_id', 'doctype', 'document', 'entity_name', 'doc_date', 'total_cents']);
+            ->get(['docheader_id', 'docconfig_id', 'doctype', 'document', 'entity_name', 'doc_date', 'total_cents'])
+            ->map(fn ($o) => (object) ['docheader_id' => $o->docheader_id, 'doctype' => $o->doctype, 'document' => $o->document, 'entity_name' => $o->entity_name,
+                'doc_date' => $o->doc_date, 'total_cents' => (int) $o->total_cents]);
+        // E os pagamentos registados na XPLENDOR (os que o PingWin ainda não tem), pela data do pagamento.
+        $docNames = DB::table('pingwin_supplier_documents')->where('company_id', $this->companyId)->whereIn('docheader_id', array_keys($this->payments))
+            ->get(['docheader_id', 'document', 'entity_name'])->keyBy('docheader_id');
+        foreach ($this->payments as $pay) {
+            $st = $states[$pay->docheader_id] ?? null;
+            if (($st['xplendor_superseded'] ?? false) || $pay->paid_on->lt($start) || $pay->paid_on->gt($end)) {
+                continue;
+            }
+            $outflows->push((object) ['docheader_id' => $pay->docheader_id, 'doctype' => 'Pagamento registado na XPLENDOR',
+                'document' => $docNames[$pay->docheader_id]->document ?? null, 'entity_name' => $docNames[$pay->docheader_id]->entity_name ?? null,
+                'doc_date' => $pay->paid_on->toDateString(), 'total_cents' => (int) $pay->amount_cents]);
+        }
         $paidInMonth = (int) $outflows->sum('total_cents');
 
         $dueByEnd = 0;
@@ -538,7 +675,7 @@ final class MonthFinanceService
         }
         usort($list, fn ($a, $b) => [$a['state'] === 'vencido' ? 0 : 1, $a['due_date'] ?? '9999', $a['document'] ?? ''] <=> [$b['state'] === 'vencido' ? 0 : 1, $b['due_date'] ?? '9999', $b['document'] ?? '']);
 
-        $rec = $this->reconciliation($cc, $total);
+        $rec = $this->reconciliation($cc, $ccTotal) + ['registered_cents' => $registered, 'after_registers_cents' => $ccTotal - $registered];
         $syncedAt = $cc->max('synced_at');
 
         return [
@@ -557,11 +694,42 @@ final class MonthFinanceService
                 'next_30_days' => $next,
                 'overdue_cents' => $overdue,
                 'total_payable_cents' => $total,
+                'registered_note' => 'Pagos registados na XPLENDOR: contam como pagos na tesouraria e no vencido; quando a nota de liquidação aparecer no PingWin, ganha ao registo.',
                 'reconciliation' => $rec,
                 'paid_date_note' => 'O PingWin não diz que faturas cada nota de liquidação paga: a data de pagamento é a da nota com o mesmo valor; sem ela, é estimada pela ordem das notas.',
                 'cc_synced_at' => $syncedAt ? CarbonImmutable::parse($syncedAt)->toIso8601String() : null,
             ],
         ];
+    }
+
+    /**
+     * O registo de pagamento da XPLENDOR sobre o estado do PingWin: se o PingWin já o dá como pago, o
+     * PingWin ganha (e avisa se a data ou o valor não batem); se não, o documento fica "Pago (registado
+     * na XPLENDOR)".
+     */
+    private function withPayment(array $state, string $docheaderId, int $pingwinPaidCents): array
+    {
+        $pay = $this->payments[$docheaderId] ?? null;
+        if (! $pay) {
+            return $state + ['payment' => null, 'warning' => null, 'xplendor_superseded' => false];
+        }
+        $info = ['id' => $pay->id, 'paid_on' => $pay->paid_on->toDateString(), 'method' => $pay->method, 'method_label' => FinancePayment::METHODS[$pay->method] ?? $pay->method,
+            'reference' => $pay->reference, 'amount_cents' => (int) $pay->amount_cents];
+        if (in_array($state['state'], ['pago', 'pago_no_ato', 'descontado'], true)) {
+            $diff = [];
+            if ($pingwinPaidCents > 0 && $pingwinPaidCents !== (int) $pay->amount_cents) {
+                $diff[] = sprintf('o valor (%s na XPLENDOR, %s no PingWin)', self::eur((int) $pay->amount_cents), self::eur($pingwinPaidCents));
+            }
+            if ($state['paid_on'] !== null && ! $state['paid_estimated'] && $state['paid_on'] !== $info['paid_on']) {
+                $diff[] = sprintf('a data (%s na XPLENDOR, %s no PingWin)', self::dm($info['paid_on']), self::dm($state['paid_on']));
+            }
+
+            return $state + ['payment' => $info, 'xplendor_superseded' => true,
+                'warning' => $diff ? 'O pagamento registado na XPLENDOR não bate com o do PingWin: ' . implode(' e ', $diff) . '.' : null];
+        }
+
+        return ['state' => 'pago_xplendor', 'paid_on' => $info['paid_on'], 'paid_estimated' => false, 'open_cents' => 0, 'days_overdue' => 0,
+            'label' => 'Pago em ' . self::dm($info['paid_on']) . ' (registado na XPLENDOR)', 'payment' => $info, 'warning' => null, 'xplendor_superseded' => false];
     }
 
     /** O estado de um documento da conta corrente: pago (em DD/MM), pago no ato, por pagar, vencido, crédito. */
@@ -691,8 +859,11 @@ final class MonthFinanceService
         $signs = (array) $this->cfg['expense_docconfigs'];
         $open = (array) $this->cfg['open_statuses'];
         $groups = collect($this->cfg['groups'])->map(fn ($g) => $g['label'])->all() + [FinanceClassifier::UNCLASSIFIED => 'Por classificar'];
-        $ocr = DB::table('ocr_invoice_pingwin_links')->where('company_id', $this->companyId)->whereIn('docheader_id', $docs->pluck('docheader_id')->all())
-            ->pluck('ocr_invoice_id', 'docheader_id');
+        $ids = $docs->pluck('docheader_id')->all();
+        $ocr = DB::table('ocr_invoice_pingwin_links as k')->join('ocr_invoices as o', 'o.id', '=', 'k.ocr_invoice_id')
+            ->where('k.company_id', $this->companyId)->whereIn('k.docheader_id', $ids)->whereNull('o.deleted_at')
+            ->get(['k.docheader_id', 'o.id', 'o.image_path', 'o.file_purged_at'])->keyBy('docheader_id');
+        $marks = FinanceDocumentMark::where('company_id', $this->companyId)->whereIn('docheader_id', $ids)->get()->keyBy('docheader_id');
         $rows = [];
         foreach ($docs as $d) {
             $sign = (int) ($signs[(string) $d->docconfig_id] ?? 1);
@@ -702,7 +873,12 @@ final class MonthFinanceService
             $families = array_values(array_unique(array_map(fn ($p) => FinanceClassifier::label($p['path']) ?: $groups[$p['group']], $ps)));
             $unclassified = array_sum(array_map(fn ($p) => $p['cents'], array_filter($ps, fn ($p) => $p['group'] === FinanceClassifier::UNCLASSIFIED)));
             $isOpen = in_array((string) $d->docstatus_id, $open, true);
-            $st = $states[$d->docheader_id] ?? null;
+            $st = $states[$d->docheader_id] ?? $this->withPayment(['state' => 'fora_cc',
+                'label' => $d->paid ? 'Pago (fora da conta corrente sincronizada)' : 'Ainda não está na conta corrente sincronizada',
+                'paid_on' => null, 'paid_estimated' => false, 'open_cents' => 0, 'days_overdue' => 0], $d->docheader_id, 0);
+            $mark = $marks[$d->docheader_id] ?? null;
+            $o = $ocr[$d->docheader_id] ?? null;
+            $newType = collect($ps)->pluck('new_type')->filter()->first();
             $rows[] = [
                 'docheader_id' => $d->docheader_id, 'doc_date' => $d->doc_date, 'supplier' => $d->entity_name, 'entity_pingwin_id' => $d->entity_pingwin_id,
                 'doctype' => $d->doctype, 'docconfig_id' => $d->docconfig_id, 'document' => $d->document, 'supplier_doc' => $d->docreference_number,
@@ -711,21 +887,46 @@ final class MonthFinanceService
                 'net_cents' => $sign * self::net($d), 'vat_cents' => $d->total_tax_cents === null ? null : $sign * (int) $d->total_tax_cents,
                 'total_cents' => $sign * (int) $d->total_cents,
                 'parts' => array_map(fn ($p) => ['group' => $p['group'], 'group_label' => $groups[$p['group']], 'family' => FinanceClassifier::label($p['path']),
+                    'pingwin_family' => FinanceClassifier::label($p['pingwin_path'] ?? $p['path']) ?: null, 'rule' => $p['rule'] ?? null,
                     'cents' => $p['cents'], 'source' => $p['source'], 'reason' => $p['reason']], $ps),
+                'new_type' => $newType,
+                'tax_number' => $d->tax_number,
                 'unclassified_cents' => $unclassified,
                 'unclassified_reason' => $unclassified !== 0 ? collect($ps)->firstWhere('group', FinanceClassifier::UNCLASSIFIED)['reason'] : null,
                 'out_of_result' => $main !== null && $main['group'] === 'fora',
                 'docstatus_id' => $d->docstatus_id, 'docstatus' => $d->docstatus_description, 'open' => $isOpen,
                 'due_date' => $d->due_date,
-                'payment' => $st ?? ['state' => 'fora_cc', 'label' => $d->paid ? 'Pago (fora da conta corrente sincronizada)' : 'Ainda não está na conta corrente sincronizada',
-                    'paid_on' => null, 'paid_estimated' => false, 'open_cents' => 0, 'days_overdue' => 0],
-                'ocr_invoice_id' => isset($ocr[$d->docheader_id]) ? (int) $ocr[$d->docheader_id] : null,
+                'payment' => $st,
+                'ocr_invoice_id' => $o ? (int) $o->id : null,
+                'has_file' => $o !== null && $o->image_path && $o->file_purged_at === null,
+                // A folha da contabilidade: a Situação (forma de pagamento), o envio e a nota.
+                'accounting' => [
+                    'situation' => $mark?->situation ?: self::situation($st),
+                    'situation_manual' => (bool) $mark?->situation,
+                    'sent_on' => $mark?->sent_on?->toDateString(), 'send_method' => $mark?->send_method,
+                    'send_method_label' => $mark?->send_method ? (FinanceDocumentMark::SEND_METHODS[$mark->send_method] ?? $mark->send_method) : null,
+                    'note' => $mark?->note, 'sent' => $mark?->sent_on !== null,
+                ],
             ];
         }
         usort($rows, fn ($a, $b) => [$a['unclassified_cents'] !== 0 ? 0 : 1, $a['open'] ? 0 : 1, $a['doc_date'], $a['document']]
             <=> [$b['unclassified_cents'] !== 0 ? 0 : 1, $b['open'] ? 0 : 1, $b['doc_date'], $b['document']]);
 
         return $rows;
+    }
+
+    /** A "Situação" da folha da contabilidade, a partir do pagamento (TF = transferência). */
+    public static function situation(array $st): ?string
+    {
+        if ($st['state'] === 'pago_xplendor' && isset($st['payment'])) {
+            return $st['payment']['method'] === 'transferencia' ? 'TF' : $st['payment']['method_label'];
+        }
+
+        return match ($st['state']) {
+            'pago' => 'Nota de liquidação',
+            'pago_no_ato' => 'Pago no ato',
+            default => null,
+        };
     }
 
     private static function dm(?string $date): string

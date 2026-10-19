@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Alert, Button, Col, Row, Table } from "reactstrap";
 import InfoTip from "Components/Common/InfoTip";
 import { FinanceMonth, PaymentState } from "common/models/financeMonth.model";
+import { RegularizeModal } from "./FinanceModals";
 import { dm, dmy, eur } from "./format";
 
 /**
@@ -11,19 +12,23 @@ import { dm, dmy, eur } from "./format";
  */
 const STATE_CLS: Record<PaymentState, string> = {
     pago: "bg-success-subtle text-success", pago_no_ato: "bg-success-subtle text-success", pago_em_parte: "bg-warning-subtle text-warning",
-    por_pagar: "bg-info-subtle text-info", vencido: "bg-danger-subtle text-danger", credito: "bg-secondary-subtle text-secondary",
+    pago_xplendor: "bg-success-subtle text-success", por_pagar: "bg-info-subtle text-info", vencido: "bg-danger-subtle text-danger", credito: "bg-secondary-subtle text-secondary",
     descontado: "bg-secondary-subtle text-secondary", fora_cc: "bg-light text-body",
 };
 const PAGE = 50;
 
-export default function TesourariaTab({ data, onOpen }: { data: FinanceMonth; onOpen: (docheaderId: string) => void }) {
+export default function TesourariaTab({ companyId, data, onOpen, onChanged }: { companyId: number; data: FinanceMonth; onOpen: (docheaderId: string) => void; onChanged: () => void }) {
     const c = data.cash;
     const [shown, setShown] = useState(PAGE);
+    const [regularizing, setRegularizing] = useState(false);
     const rec = c.reconciliation;
 
     return (
         <div data-testid="finance-cash">
-            <Alert color="info" className="py-2 fs-13"><i className="ri-information-line me-1" />{c.entries_note}</Alert>
+            <div className="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
+                <Alert color="info" className="py-2 fs-13 mb-0 flex-grow-1"><i className="ri-information-line me-1" />{c.entries_note}</Alert>
+                {data.can.classify && <Button color="primary" onClick={() => setRegularizing(true)} data-testid="regularize"><i className="ri-checkbox-multiple-line me-1" />Regularizar</Button>}
+            </div>
             <div className="table-responsive mb-3">
                 <Table size="sm" className="fs-13 align-middle mb-0" data-testid="cash-weeks">
                     <caption className="visually-hidden">Tesouraria por semana do mês</caption>
@@ -66,6 +71,7 @@ export default function TesourariaTab({ data, onOpen }: { data: FinanceMonth; on
                             : <span className="text-danger"><i className="ri-close-circle-line me-1" />Não bate em {rec.mismatches.length} fornecedores: {rec.mismatches.slice(0, 3).map((m) => m.supplier).join(", ")}.</span>}</div>
                         <div className="fs-12 text-muted mt-1">Saldo do PingWin: {eur(rec.pingwin_balance_cents)} (conta {eur(rec.auto_paid_difference_cents)} de faturas-recibo, já pagas no ato).</div>
                         {c.cc_synced_at && <div className="fs-12 text-muted">Conta corrente sincronizada a {dmy(c.cc_synced_at.slice(0, 10))}.</div>}
+                        {(rec.registered_cents ?? 0) !== 0 && <div className="fs-12 mt-1" data-testid="cash-registered">Registados como pagos na XPLENDOR: {eur(rec.registered_cents ?? 0)}; por pagar depois dos registos: {eur(rec.after_registers_cents ?? 0)}.</div>}
                     </div>
                 </Col>
             </Row>
@@ -90,6 +96,7 @@ export default function TesourariaTab({ data, onOpen }: { data: FinanceMonth; on
                     </tbody>
                 </Table>
             </div>
+            <RegularizeModal companyId={companyId} isOpen={regularizing} onClose={() => setRegularizing(false)} onDone={onChanged} />
             {c.payments.length > shown && (
                 <Button size="sm" color="light" onClick={() => setShown((n) => n + PAGE)}>Mostrar mais ({c.payments.length - shown} por mostrar)</Button>
             )}

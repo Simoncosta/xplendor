@@ -299,6 +299,8 @@ const Navdata = () => {
             },
             subItems: [
                 { id: "financas-mes", label: "Mês", link: "/financas/mes", parentId: "finances", module: "financas_mes", permission: "financas.ver" },
+                { id: "financas-regras", label: "Regras de classificação", link: "/financas/configuracao/regras", parentId: "finances", module: "financas_mes", permission: "financas.editar" },
+                { id: "financas-habituais", label: "Entidades excluídas dos habituais", link: "/financas/configuracao/habituais", parentId: "finances", module: "financas_mes", permission: "financas.editar" },
                 { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances", module: "finance", permission: "financas.ver" },
                 { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances", module: "finance", permission: "financas.ver" },
                 { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances", module: "finance", permission: "financas.ver" },
@@ -426,7 +428,7 @@ const Navdata = () => {
     const ROOT_KEEP: Record<string, string[] | "all"> = {
         comercial: ["leads", "customers"],
         analytics: "all",
-        finances: ["financas-mes", "expenses", "suppliers"],
+        finances: ["financas-mes", "financas-regras", "financas-habituais", "expenses", "suppliers"],
         equipa: "all",
         settings: "all",
         ficheiros: "all",

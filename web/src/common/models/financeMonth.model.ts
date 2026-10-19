@@ -2,7 +2,20 @@
 
 export type FinanceGroup = "comida" | "bebida" | "pessoal" | "fse" | "outros" | "fora" | "por_classificar";
 
-export type PaymentState = "pago" | "pago_no_ato" | "pago_em_parte" | "por_pagar" | "vencido" | "credito" | "descontado" | "fora_cc";
+export type PaymentState = "pago" | "pago_no_ato" | "pago_em_parte" | "por_pagar" | "vencido" | "credito" | "descontado" | "fora_cc" | "pago_xplendor";
+
+export type PaymentMethod = "transferencia" | "cartao_debito" | "cartao_credito" | "numerario" | "debito_direto" | "outro";
+export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+    { value: "transferencia", label: "Transferência" }, { value: "cartao_debito", label: "Cartão de débito" }, { value: "cartao_credito", label: "Cartão de crédito" },
+    { value: "numerario", label: "Numerário" }, { value: "debito_direto", label: "Débito direto" }, { value: "outro", label: "Outro" },
+];
+export type SendMethod = "email" | "entregue" | "plataforma" | "outro";
+export const SEND_METHODS: { value: SendMethod; label: string }[] = [
+    { value: "email", label: "Email" }, { value: "entregue", label: "Entregue em mão" }, { value: "plataforma", label: "Plataforma do contabilista" }, { value: "outro", label: "Outro" },
+];
+
+/** O pagamento registado na XPLENDOR (enquanto não há nota de liquidação no PingWin). */
+export interface RegisteredPayment { id: number; paid_on: string; method: PaymentMethod; method_label: string; reference: string | null; amount_cents: number }
 
 export interface PaymentInfo {
     state: PaymentState;
@@ -11,6 +24,9 @@ export interface PaymentInfo {
     paid_estimated: boolean;
     open_cents: number;
     days_overdue: number;
+    payment?: RegisteredPayment | null;     // registado na XPLENDOR
+    warning?: string | null;                // o registo da XPLENDOR não bate com o PingWin
+    xplendor_superseded?: boolean;          // o PingWin já o dá como pago: ganha ao registo
 }
 
 export interface CloseProblem { key: string; message: string }
@@ -31,7 +47,13 @@ export interface FinanceDocumentRow {
     net_cents: number;
     vat_cents: number | null;
     total_cents: number;
-    parts: { group: FinanceGroup; group_label: string; family: string; cents: number; source: string; reason: string | null }[];
+    parts: { group: FinanceGroup; group_label: string; family: string; pingwin_family: string | null; rule: { id: number; label: string } | null;
+        cents: number; source: string; reason: string | null }[];
+    new_type: { docconfig_id: string; label: string } | null;   // tipo de documento novo: "Criar regra"
+    tax_number: string | null;
+    has_file: boolean;                                           // fatura (PDF) na XPLENDOR
+    accounting: { situation: string | null; situation_manual: boolean; sent_on: string | null; send_method: SendMethod | null;
+        send_method_label: string | null; note: string | null; sent: boolean };
     unclassified_cents: number;
     unclassified_reason: string | null;
     out_of_result: boolean;
@@ -73,12 +95,17 @@ export interface FinanceMonth {
     sentence: string;
     explain: string;
     warnings: string[];
+    /** Mês provisório: faltam documentos habituais (o resultado é estimado). */
+    provisional: { count: number; cents: number; text: string;
+        missing: { entity_pingwin_id: string; supplier: string | null; months: number; avg_cents: number; last_document: string | null; last_date: string | null }[] } | null;
+    /** As entidades tiradas dos habituais neste mês ("Não vem este mês" ou "Não é habitual"). */
+    habitual_excluded?: HabitualExclusion[];
     stores: { id: number; name: string }[];
     store_id: number | null;
     cards: {
         sales: { cents: number; store_cents: number | null; days: number; days_in_month: number; source: string };
         expenses: { cents: number; open_cents: number; open_count: number; unclassified_cents: number; source: string };
-        result: { cents: number; pct: number | null; prev_cents: number; prev_pct: number | null; source: string };
+        result: { cents: number; pct: number | null; prev_cents: number; prev_pct: number | null; estimated_cents: number | null; estimated_pct: number | null; source: string };
         cash: { paid_cents: number; due_by_month_end_cents: number; overdue_cents: number; source: string };
     };
     result: {
@@ -99,7 +126,8 @@ export interface FinanceMonth {
         overdue_cents: number;
         total_payable_cents: number;
         reconciliation: { screen_total_cents: number; cc_real_balance_cents: number; ok: boolean; mismatches: { supplier: string; screen_cents: number; cc_cents: number }[];
-            pingwin_balance_cents: number; auto_paid_difference_cents: number; note: string };
+            pingwin_balance_cents: number; auto_paid_difference_cents: number; note: string; registered_cents?: number; after_registers_cents?: number };
+        registered_note?: string;
         paid_date_note: string;
         cc_synced_at: string | null;
     };
@@ -128,4 +156,58 @@ export interface DocumentClose {
     user: string | null;
     created_at: string | null;
     finished_at: string | null;
+}
+
+/** "Regularizar": por fornecedor, os documentos por pagar e vencidos da conta corrente. */
+export interface PayableSupplier {
+    supplier_id: number;
+    supplier: string | null;
+    entity_pingwin_id: string;
+    total_cents: number;
+    overdue_cents: number;
+    documents: { docheader_id: string; document: string | null; doc_date: string | null; due_date: string | null; open_cents: number; overdue: boolean }[];
+}
+
+export interface FinanceRule {
+    id: number;
+    match_type: "artigo" | "entidade" | "tipo_documento" | "familia";
+    match_values: string[];
+    match_label: string | null;
+    entity_pingwin_id: string | null;
+    entity_name: string | null;
+    group: FinanceGroup;
+    active: boolean;
+    priority: number;
+    label: string;
+    updated_at: string | null;
+}
+
+export interface FinanceRuleEvent { id: number; rule_id: number; action: string; before: any; after: any; user: string | null; reason: string | null; at: string | null }
+
+export interface AccountantEmailPreview {
+    to: string | null;
+    subject: string;
+    lines: string[];
+    documents: { docheader_id: string; number: string; supplier: string; date: string; value: string }[];
+    attachments: { name: string; bytes: number }[];
+    missing: { docheader_id: string; document: string | null; supplier: string | null }[];
+    bytes: number;
+    can_send: boolean;
+    problems: string[];
+}
+
+/** Uma entidade tirada dos "Documentos habituais em falta" (mes = só esse mês; sempre = desse mês em diante). */
+export interface HabitualExclusion {
+    id: number;
+    entity_pingwin_id: string;
+    supplier: string | null;
+    scope: "mes" | "sempre";
+    month: string;
+    avg_cents: number | null;
+    reason: string | null;
+    by: string | null;
+    at: string | null;
+    active?: boolean;
+    removed_at?: string | null;
+    removed_by?: string | null;
 }

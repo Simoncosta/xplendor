@@ -105,7 +105,7 @@ export default function FinancasMesPage() {
                 {!data && loading && <Card><CardBody><Skeleton variant="lines" lines={8} /></CardBody></Card>}
                 {data && (
                     <div style={{ opacity: loading ? 0.6 : 1 }}>
-                        <MonthTop data={data} storeName={storeName} />
+                        <MonthTop data={data} storeName={storeName} companyId={companyId} canEdit={data.can.classify} onChanged={load} />
                         <Card className="mb-3" data-testid="finance-tabs">
                             <CardHeader className="pb-0 border-bottom-0">
                                 {/* No telemóvel os separadores ficam em lista. */}
@@ -123,7 +123,7 @@ export default function FinancasMesPage() {
                             </CardHeader>
                             <CardBody className="p-3 p-md-4">
                                 {tab === "resultado" && <ResultadoTab data={data} />}
-                                {tab === "tesouraria" && <TesourariaTab data={data} onOpen={setOpenDoc} />}
+                                {tab === "tesouraria" && companyId && <TesourariaTab companyId={companyId} data={data} onOpen={setOpenDoc} onChanged={load} />}
                                 {tab === "documentos" && companyId && <DocumentosTab companyId={companyId} data={data} onOpen={setOpenDoc} onChanged={load} />}
                             </CardBody>
                         </Card>

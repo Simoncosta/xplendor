@@ -26,6 +26,7 @@ final class SettingsCatalog
         'auditoria' => 'Auditoria',
         'caixa' => 'Documentos de caixa',
         'calendario' => 'Calendário',
+        'financas' => 'Finanças',
     ];
 
     public const VOIDS_CONSENT = 'Ao ligar, o dono autoriza mostrar padrões por funcionário ao administrador.';
@@ -102,6 +103,11 @@ final class SettingsCatalog
                 'config' => 'services.pingwin.pos_documents_sync', 'env' => 'PINGWIN_POS_DOCUMENTS_SYNC',
                 'label' => 'Ler os documentos de caixa',
                 'info' => 'Todas as noites, fora do horário de serviço, a XPLENDOR lê no PingWin as anulações, as consultas de mesa e as vendas do dia anterior. Só leitura.',
+            ],
+            'finance.accountant_email' => [
+                'level' => self::COMPANY, 'section' => 'financas', 'type' => 'email', 'default' => '', 'config' => null, 'env' => null,
+                'label' => 'Email do contabilista',
+                'info' => 'Para onde vai "Enviar ao contabilista" em Finanças › Mês. Antes de enviar, a XPLENDOR mostra o assunto, a lista e os anexos.',
             ],
             'calendar.municipal_holiday' => [
                 'level' => self::COMPANY, 'section' => 'calendario', 'type' => 'month_day', 'default' => '', 'config' => null, 'env' => null,

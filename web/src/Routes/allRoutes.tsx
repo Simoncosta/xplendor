@@ -99,6 +99,8 @@ import ExpenseCategoryList from "pages/ExpenseCategories/ExpenseCategoryList";
 import ExpenseList from "pages/Expenses/ExpenseList";
 import FinancasMesPage from "pages/Financas/FinancasMesPage";
 import FechoMesPage from "pages/Financas/FechoMesPage";
+import RegrasClassificacaoPage from "pages/Financas/RegrasClassificacaoPage";
+import HabituaisExcluidosPage from "pages/Financas/HabituaisExcluidosPage";
 // Blogs
 import BlogList from "pages/Blogs/BlogList";
 import BlogEditor from "pages/Blogs/Blog/BlogEditor";
@@ -286,6 +288,8 @@ const authProtectedRoutes = [
     // Finanças › Mês: resultado e tesouraria (só leitura) e o fecho do mês para imprimir.
     { path: "/financas/mes", component: <RequireModule module="financas_mes" permission="financas.ver"><FinancasMesPage /></RequireModule> },
     { path: "/financas/mes/fecho", component: <RequireModule module="financas_mes" permission="financas.ver"><FechoMesPage /></RequireModule> },
+    { path: "/financas/configuracao/regras", component: <RequireModule module="financas_mes" permission="financas.editar"><RegrasClassificacaoPage /></RequireModule> },
+    { path: "/financas/configuracao/habituais", component: <RequireModule module="financas_mes" permission="financas.editar"><HabituaisExcluidosPage /></RequireModule> },
 
     // Internal tools
     // Suporte (lado stand) — tickets da própria empresa.

@@ -70,6 +70,16 @@ export default function SettingField({ item, value, onChange, stores = [], disab
             </div>
         );
     }
+    if (item.type === "email") {
+        return (
+            <div className="mb-3" data-testid={id}>
+                {label}
+                <Input id={id} type="email" bsSize="sm" placeholder="contabilidade@exemplo.pt" style={{ maxWidth: 320 }} value={String(value ?? "")} disabled={disabled}
+                    onChange={(e) => onChange(e.target.value)} />
+                {hint}
+            </div>
+        );
+    }
     if (item.type === "month_day") {
         return (
             <div className="mb-3" data-testid={id}>
