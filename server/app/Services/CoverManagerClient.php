@@ -25,14 +25,20 @@ class CoverManagerClient
      */
     public function getReservations(#[\SensitiveParameter] string $token, string $slug, string $date, ?string $baseUrl = null): array
     {
+        return $this->getReservationsRange($token, $slug, $date, $date, $baseUrl);
+    }
+
+    /** Fatia 6a: as reservas de um intervalo de dias (um só pedido; spike: 30 dias em cerca de 0,5 s). */
+    public function getReservationsRange(#[\SensitiveParameter] string $token, string $slug, string $from, string $to, ?string $baseUrl = null): array
+    {
         $base = rtrim($baseUrl ?: (string) config('services.covermanager.base_url', self::DEFAULT_BASE), '/');
 
         // ⚠️ url-encode do token e do slug no path.
         $url = $base . '/api/restaurant/get_reservs/'
             . rawurlencode($token) . '/'
             . rawurlencode($slug) . '/'
-            . rawurlencode($date) . '/'
-            . rawurlencode($date);
+            . rawurlencode($from) . '/'
+            . rawurlencode($to);
 
         try {
             $response = Http::withHeaders(['apikey' => $token])

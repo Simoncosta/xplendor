@@ -40,16 +40,16 @@ final class FoodCostAcimaAlvoRule extends MenuRule
         return 'media';
     }
 
-    public static function targetFor(string $family): float
+    public static function targetFor(string $family, ?int $companyId = null): float
     {
-        $targets = (array) config('menu_engineering.family_targets', []);
+        $targets = (array) \App\Settings\Settings::company($companyId, 'menu.family_targets');
         foreach ($targets as $f => $t) {
             if (mb_strtolower((string) $f) === mb_strtolower($family) || str_starts_with(mb_strtolower($family), mb_strtolower((string) $f) . ' ›')) {
                 return (float) $t;
             }
         }
 
-        return (float) config('menu_engineering.food_cost_target_pct', 35);
+        return (float) \App\Settings\Settings::company($companyId, 'menu.food_cost_target_pct');
     }
 
     public function run(int $companyId, AuditScope $scope): iterable
@@ -62,7 +62,7 @@ final class FoodCostAcimaAlvoRule extends MenuRule
             if ($i->excluded !== null || $i->cost === null || $i->price === null || $i->price <= 0 || $i->confidence === 'sem_custo') {
                 continue;
             }
-            $target = self::targetFor((string) $i->family);
+            $target = self::targetFor((string) $i->family, $companyId);
             $fc = $i->cost / $i->price * 100;
             if ($fc <= $target) {
                 continue;

@@ -1,0 +1,3 @@
+/* Fatia 6a: os valores previstos noutra cor (o "≈" à frente), legíveis em claro e em escuro. */
+.xp-forecast { color: var(--vz-info); }
+.xp-forecast .xp-infotip { color: var(--vz-info); }

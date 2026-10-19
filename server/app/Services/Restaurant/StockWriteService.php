@@ -24,7 +24,7 @@ final class StockWriteService
     /** Escrita do mínimo/máximo de um artigo num armazém. */
     public function requestLimits(int $companyId, ?int $userId, string $productId, string $warehouseId, array $changes): PingwinStockWrite
     {
-        if ($guard = PingwinService::stockWriteGuard($productId)) {
+        if ($guard = PingwinService::stockWriteGuard($productId, $companyId)) {
             throw ValidationException::withMessages(['pingwin' => [$guard['reason']]]);
         }
         $row = PingwinStock::where('company_id', $companyId)->where('product_pingwin_id', $productId)->where('warehouse_pingwin_id', $warehouseId)->first();
@@ -58,7 +58,7 @@ final class StockWriteService
     public function requestCreate(int $companyId, ?int $userId, array $fields): PingwinStockWrite
     {
         $fields = $this->warehouseFields($companyId, $fields, null);
-        if ($guard = PingwinService::warehouseWriteGuard($fields['description'])) {
+        if ($guard = PingwinService::warehouseWriteGuard($fields['description'], $companyId)) {
             throw ValidationException::withMessages(['pingwin' => [$guard['reason']]]);
         }
         $this->assertFree($companyId, fn ($q) => $q->where('kind', 'like', 'armazem_%'));
@@ -70,11 +70,11 @@ final class StockWriteService
     public function requestUpdate(int $companyId, ?int $userId, string $warehouseId, array $fields): PingwinStockWrite
     {
         $w = $this->activeWarehouse($companyId, $warehouseId);
-        if ($guard = PingwinService::warehouseWriteGuard($w->description)) {
+        if ($guard = PingwinService::warehouseWriteGuard($w->description, $companyId)) {
             throw ValidationException::withMessages(['pingwin' => [$guard['reason']]]);
         }
         $fields = $this->warehouseFields($companyId, $fields, $w);
-        if (isset($fields['description']) && ($guard = PingwinService::warehouseWriteGuard($fields['description']))) {
+        if (isset($fields['description']) && ($guard = PingwinService::warehouseWriteGuard($fields['description'], $companyId))) {
             throw ValidationException::withMessages(['pingwin' => [$guard['reason']]]);
         }
         $expected = ['description' => $w->description, 'inv_costmethod' => $w->inv_costmethod, 'exit_costmethod' => $w->exit_costmethod,
@@ -99,7 +99,7 @@ final class StockWriteService
     public function requestDelete(int $companyId, ?int $userId, string $warehouseId, ?string $confirmName): PingwinStockWrite
     {
         $w = $this->activeWarehouse($companyId, $warehouseId);
-        if ($guard = PingwinService::warehouseWriteGuard($w->description)) {
+        if ($guard = PingwinService::warehouseWriteGuard($w->description, $companyId)) {
             throw ValidationException::withMessages(['pingwin' => [$guard['reason']]]);
         }
         $withStock = PingwinStock::where('company_id', $companyId)->where('warehouse_pingwin_id', $warehouseId)->where('qnt', '!=', 0)->count();

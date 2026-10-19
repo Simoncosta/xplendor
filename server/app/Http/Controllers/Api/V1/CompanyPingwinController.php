@@ -1471,6 +1471,8 @@ class CompanyPingwinController extends Controller
             'month' => $data['month'],
             'location_id' => $locationId,
             'days' => $dashboard->calendar($companyId, $year, $month, $locationId),
+            // Fatia 6a: a previsão (de hoje em diante), as reservas lidas, os feriados, as anomalias e o erro medido.
+            'forecast' => (new \App\Services\Restaurant\Forecast\RestaurantForecastService($companyId))->calendarBlock($data['month'], $locationId),
             // Lojas sem dados no mês e dias em falta (null = mês no futuro).
             'coverage' => $coverage ? \App\Services\Restaurant\RestaurantSalesCoverage::compact($coverage) : null,
             // Só as lojas com vendas (o Economato e as lojas sem vendas não entram), com o nome da base de dados.

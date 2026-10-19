@@ -53,7 +53,7 @@ class CompanyStockTransferController extends Controller
             'transfers' => $transfers->map(fn ($t) => $this->transfer($t, $names))->values(),
             'orders_sync' => Cache::get(SyncTransferOrdersJob::cacheKey($companyId)),
             'last_orders_sync' => StockTransferRequest::where('company_id', $companyId)->max('synced_at'),
-            'flags' => ['send_proven' => (bool) config('stock_transfers.send_proven'), 'new_guide_proven' => (bool) config('stock_transfers.new_guide_proven')],
+            'flags' => ['send_proven' => (bool) \App\Settings\Settings::platform('pingwin.proven.transfers'), 'new_guide_proven' => (bool) \App\Settings\Settings::platform('pingwin.proven.new_guide')],
             'can' => [
                 'send' => $this->can($companyId, 'restauracao.editar'), 'receive' => $this->can($companyId, 'restauracao.criar'),
                 'void' => $this->can($companyId, 'restauracao.apagar'), 'configure' => $this->can($companyId, 'restauracao.configurar'),

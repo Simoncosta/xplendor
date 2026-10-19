@@ -18,10 +18,10 @@ final class StockDocuments
 {
     public function __construct(private int $companyId, private PingwinService $pingwin, private StockSyncService $sync) {}
 
-    /** A loja dos documentos de stock: config STOCK_DOC_STORE_ID; senão a que todos os armazéns ativos servem. */
+    /** A loja dos documentos de stock: a definição da empresa (antes STOCK_DOC_STORE_ID); senão a que todos os armazéns ativos servem. */
     public static function storeId(int $companyId): ?string
     {
-        if ($id = config('stock_counts.document_store_id')) {
+        if ($id = \App\Settings\Settings::company($companyId, 'stock.document_store_id')) {
             return (string) $id;
         }
         $sets = PingwinWarehouse::where('company_id', $companyId)->where('deleted', false)->get()->map(fn ($w) => $w->servedStoreIds())->filter()->values()->all();

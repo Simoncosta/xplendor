@@ -61,6 +61,8 @@ return [
         App\Audit\Rules\Restaurant\Money\ForaDoPadraoRule::class,
         App\Audit\Rules\Restaurant\Money\FaturaDuplicadaRule::class,
         App\Audit\Rules\Restaurant\Money\GuiaSemFaturaRule::class,
+        // Fatia 5: o inverso da C6 (a fatura refere guias que não estão lançadas).
+        App\Audit\Rules\Restaurant\Money\FaturaGuiasEmFaltaRule::class,
         // Automóvel
         App\Audit\Rules\Automotive\AutocaravanaSemTipologiaRule::class,
         // Tracking dos sites (GA4 × XPLENDOR)

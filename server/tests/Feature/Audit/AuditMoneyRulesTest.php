@@ -44,6 +44,8 @@ class AuditMoneyRulesTest extends TestCase
     {
         parent::setUp();
         $this->setUpYuko();   // hoje: 15/10/2026
+        // A regra das anulações por funcionário está desligada por defeito: o dono autoriza (Configurações).
+        \App\Settings\Settings::setCompany($this->c, ['audit.voids_by_employee' => true], null);
         PingwinUnit::create(['company_id' => $this->c, 'pingwin_id' => 'CX24', 'description' => 'Caixa 24', 'parent_pingwin_id' => '11001', 'unit_value' => 24, 'is_active' => true]);
     }
 
@@ -228,6 +230,15 @@ class AuditMoneyRulesTest extends TestCase
         $this->assertTrue(app(ForaDoPadraoRule::class)->sensitive());
     }
 
+    public function test_c3_is_off_until_the_owner_turns_it_on(): void
+    {
+        $this->week(['Ana' => [12, 4, 5000], 'Bruno' => [15, 1, 1000], 'Carla' => [12, 1, 600]]);
+        $this->pos('1018', 'Outro', '2026-10-13', '13:00:00', 5000);
+        $this->assertCount(1, $this->findings(ForaDoPadraoRule::class));
+        \App\Settings\Settings::setCompany($this->c, ['audit.voids_by_employee' => false], null);
+        $this->assertSame([], $this->findings(ForaDoPadraoRule::class));
+    }
+
     public function test_c3_nothing_when_the_voids_are_like_the_colleagues(): void
     {
         $this->week(['Ana' => [12, 1, 900], 'Bruno' => [15, 1, 1000], 'Carla' => [12, 1, 800]]);
@@ -330,7 +341,7 @@ class AuditMoneyRulesTest extends TestCase
     public function test_money_family_in_the_registry_and_the_pos_documents_mirror(): void
     {
         $this->assertSame(['restauracao.dinheiro_preco_subiu', 'restauracao.dinheiro_mais_barato', 'restauracao.dinheiro_margem_prato', 'restauracao.dinheiro_fora_do_padrao',
-            'restauracao.dinheiro_fatura_duplicada', 'restauracao.dinheiro_guia_sem_fatura'], AuditRegistry::familyCodes('dinheiro'));
+            'restauracao.dinheiro_fatura_duplicada', 'restauracao.dinheiro_guia_sem_fatura', 'restauracao.dinheiro_fatura_guias_em_falta'], AuditRegistry::familyCodes('dinheiro'));
         $this->assertSame(['restauracao.dinheiro_fora_do_padrao'], AuditRegistry::sensitiveCodes());
 
         PosDocumentsService::upsert($this->c, [['id' => '9', 'docconfig_id' => '1002', 'doc_date' => '20261017T00:00:00', 'doc_time' => '00000000T23:44:05',

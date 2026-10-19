@@ -203,9 +203,9 @@ final class StockCountService
     /** A revisão: uma linha por artigo, com a diferença em € e o pedido de recontagem sugerido. */
     public function review(StockCount $count): array
     {
-        $eur = (float) config('stock_counts.recount_eur', 25);
-        $pct = (float) config('stock_counts.recount_pct', 20);
-        $minQ = (float) config('stock_counts.recount_min_qty', 1);
+        $eur = (float) \App\Settings\Settings::company($this->companyId, 'stock.recount_eur');
+        $pct = (float) \App\Settings\Settings::company($this->companyId, 'stock.recount_pct');
+        $minQ = (float) \App\Settings\Settings::company($this->companyId, 'stock.recount_min_qty');
         $rows = [];
         $tot = ['counted_eur' => 0.0, 'theoretical_eur' => 0.0, 'diff_eur' => 0.0, 'with_diff' => 0, 'not_counted' => 0, 'counted' => 0];
         foreach ($count->lines()->get() as $l) {
@@ -278,12 +278,12 @@ final class StockCountService
      */
     public function sendBlock(StockCount $count): ?array
     {
-        if (! config('stock_counts.unlisted_untouched_proven')) {
+        if (! \App\Settings\Settings::platform('pingwin.proven.count')) {
             return ['mode' => 'por_provar', 'reason' => 'O envio está bloqueado: ainda não ficou provado no PingWin que uma Contagem só altera os artigos que lista. Até lá, os artigos não contados poderiam ficar a zero.'];
         }
         $codes = $count->lines()->whereNotNull('qty_base')->pluck('code')->map(fn ($v) => (string) $v)->all();
 
-        return PingwinService::stockDocWriteGuard($codes);
+        return PingwinService::stockDocWriteGuard($codes, $this->companyId);
     }
 
     /** Aprovar e enviar: um documento por ação de um gestor; nunca se reenvia sozinho. */

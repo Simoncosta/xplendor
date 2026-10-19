@@ -207,7 +207,7 @@ class TransferTest extends TestCase
             $svc->send($this->auto, null, [['product_id' => 'B', 'qty' => 2]], $this->admin->id);
             $this->fail('devia recusar');
         } catch (TransferBlocked $e) {
-            $this->assertStringContainsString('STOCK_TRANSFER_NEW_GUIDE_PROVEN', $e->getMessage());
+            $this->assertStringContainsString('Admin › Integrações › PingWin', $e->getMessage());
         }
         config(['stock_transfers.new_guide_proven' => true]);
         $t = $svc->send($this->auto, null, [['product_id' => 'B', 'qty' => 2]], $this->admin->id);
@@ -292,7 +292,7 @@ class TransferTest extends TestCase
         $this->actingAs($viewer, 'sanctum')->postJson($this->url(), $body)->assertForbidden();
         // Não provado: 403 com o porquê; nada na fila.
         config(['stock_transfers.send_proven' => false]);
-        $this->actingAs($this->admin, 'sanctum')->postJson($this->url(), $body)->assertForbidden()->assertJsonFragment(['message' => 'O envio de transferências para o PingWin ainda não foi provado neste ambiente (STOCK_TRANSFER_SEND_PROVEN). A preparação funciona; o envio fica bloqueado.']);
+        $this->actingAs($this->admin, 'sanctum')->postJson($this->url(), $body)->assertForbidden()->assertJsonFragment(['message' => 'O envio de transferências para o PingWin ainda não foi provado neste ambiente (Admin › Integrações › PingWin). A preparação funciona; o envio fica bloqueado.']);
         config(['stock_transfers.send_proven' => true, 'services.pingwin.stockdoc_write_allowlist' => '101343']);
         $this->actingAs($this->admin, 'sanctum')->postJson($this->url(), $body)->assertForbidden();
         $this->assertSame(0, PingwinStockWrite::count());

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * XPLENDOR — Auditoria v2-C · C3: documentos de caixa (SÓ LEITURA), à noite e fora do horário de
  * serviço: os últimos NIGHTLY_DAYS dias de cada empresa com o PingWin ligado (um lote por empresa).
- * Desliga-se com PINGWIN_POS_DOCUMENTS_SYNC=false.
+ * Desliga-se por empresa em Configurações › Restauração e Auditoria.
  */
 class SyncPingwinPosDocumentsJob implements ShouldQueue
 {
@@ -27,14 +27,15 @@ class SyncPingwinPosDocumentsJob implements ShouldQueue
 
     public function handle(PosDocumentsService $docs): void
     {
-        if (! config('services.pingwin.pos_documents_sync', true)) {
-            return;
-        }
         $to = now('Europe/Lisbon')->subDay()->toDateString();
         $from = now('Europe/Lisbon')->subDays(PosDocumentsService::NIGHTLY_DAYS)->toDateString();
         $companyIds = CompanyIntegration::where('platform', 'pingwin')->where('status', '!=', 'revoked')
             ->pluck('company_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
         foreach ($companyIds as $companyId) {
+            // A definição da empresa (Configurações › Restauração e Auditoria; antes PINGWIN_POS_DOCUMENTS_SYNC).
+            if (! \App\Settings\Settings::company($companyId, 'pingwin.pos_documents_sync')) {
+                continue;
+            }
             try {
                 $s = $docs->sync($companyId, $from, $to);
                 Log::info('[PingWin Caixa] documentos lidos', ['company_id' => $companyId, 'from' => $from, 'to' => $to] + $s);

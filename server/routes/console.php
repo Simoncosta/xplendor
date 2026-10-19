@@ -481,6 +481,20 @@ Schedule::job(new \App\Jobs\TrackingHealthDailyJob())
         \Illuminate\Support\Facades\Log::error('[Auditoria] Tracking diário falhou no scheduler');
     });
 
+// 09:30 e 18:30 (Lisboa) — Fatia 6a: as reservas dos próximos 30 dias (CoverManager, SÓ LEITURA, um
+// pedido por loja) e, a seguir, a previsão e o erro medido. De manhã (depois das vendas da noite) e ao
+// fim da tarde (antes do jantar), para "amanhã" usar as reservas mais recentes.
+foreach (['restaurant-reservations-morning' => '09:30', 'restaurant-reservations-evening' => '18:30'] as $name => $at) {
+    Schedule::job(new \App\Jobs\SyncFutureReservationsJob())
+        ->dailyAt($at)
+        ->timezone('Europe/Lisbon')
+        ->name($name)
+        ->withoutOverlapping()
+        ->onFailure(function () {
+            \Illuminate\Support\Facades\Log::error('[Previsão] Leitura das reservas falhou no scheduler');
+        });
+}
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

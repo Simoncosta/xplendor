@@ -188,6 +188,9 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/integrations/pingwin/excluded-items/{itemId}/include',
         // Fatia 7c: configurar o circuito das transferências (moradas, receção automática) pede restauracao.configurar.
         'PUT api/v1/companies/{id}/restaurant/transfers/routes/{routeId}',
+        // Configurações › Restauração e Auditoria: restauracao.configurar.
+        'GET api/v1/companies/{id}/settings/restaurant',
+        'PUT api/v1/companies/{id}/settings/restaurant',
     ];
 
     private Company $agency;

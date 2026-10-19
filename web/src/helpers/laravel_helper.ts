@@ -182,6 +182,16 @@ export const getCaptionSuggestion = (companyId: number, postId: number, id: numb
     api.get(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/caption-suggestions/${id}`);
 // Modelos de IA por função e teste às cegas: só root.
 export const getAiModels = () => api.get(`/admin/ai-models`);
+// Compras sugeridas do Economato (só leitura).
+export const getPurchaseSuggestions = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/restaurant/purchase-suggestions`);
+// Configurações: Restauração e Auditoria (por empresa) e Admin › Integrações › PingWin (só root).
+export const getRestaurantSettings = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/settings/restaurant`);
+export const updateRestaurantSettings = (companyId: number, values: Record<string, unknown>, consent?: boolean) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/settings/restaurant`, { values, ...(consent ? { consent: true } : {}) });
+export const getPingwinAdminSettings = () => api.get(`/admin/integrations/pingwin`);
+export const updatePingwinPlatformSettings = (values: Record<string, unknown>, reason?: string) => api.put(`/admin/integrations/pingwin/platform`, { values, reason });
+export const updatePingwinCompanySettings = (companyId: number, values: Record<string, unknown>, reason?: string) =>
+    api.put(`/admin/integrations/pingwin/companies/${companyId}`, { values, reason });
 export const updateAiModel = (fn: string, data: { model: string; effort: string }) => api.put(`/admin/ai-models/${fn}`, data);
 export const applyAiModelToAll = (data: { model: string; effort: string }) => api.create(`/admin/ai-models/apply-all`, data);
 export const getAiBlindTests = () => api.get(`/admin/ai-blind-tests`);
@@ -858,6 +868,8 @@ export const uploadOcrInvoice = (companyId: number, file: File) => {
     fd.append("file", file);
     return api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices`, fd, { headers: { "Content-Type": "multipart/form-data" } });
 };
+// Fatia 5: a conferência da fatura com as guias (só leitura).
+export const getOcrInvoiceGuides = (companyId: number, invoiceId: number) => api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/guides`);
 export const getOcrInvoice = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`);
 // A rota só aceita PUT (o api.update envia PATCH e dava 405 ao gravar a fatura).

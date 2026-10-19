@@ -132,6 +132,9 @@ import ServiceCatalogPage from "pages/Admin/ServiceCatalogPage";
 import AdminStockList from "pages/Admin/AdminStockList";
 import CreativeFormatRulesPage from "pages/Admin/CreativeFormatRulesPage";
 import AiModelsPage from "pages/Admin/AiModelsPage";
+import PingwinAdminPage from "pages/Admin/PingwinAdminPage";
+import RestaurantSettingsPage from "pages/Configuracoes/RestaurantSettingsPage";
+import ComprasSugeridasPage from "pages/Restauracao/ComprasSugeridasPage";
 import SetupPublicPage from "pages/SetupPublic";
 import RequireSuperAdmin from "./RequireSuperAdmin";
 import RequireModule from "./RequireModule";
@@ -161,6 +164,8 @@ const authProtectedRoutes = [
     { path: "/root/companies", component: <AdminCompaniesPage /> },
     { path: "/root/companies/:companyId/users", component: <AdminCompanyUsersPage /> },
     // Dashboard de restauração — só empresas com o módulo pingwin (backend recusa na mesma).
+    { path: "/restauracao/compras-sugeridas", component: <RequireModule module="restauracao_faturas" permission="restauracao.ver"><ComprasSugeridasPage /></RequireModule> },
+    { path: "/configuracoes/restauracao", component: <RequireModule module="pingwin" permission="restauracao.configurar"><RestaurantSettingsPage /></RequireModule> },
     { path: "/restauracao", component: <RequireModule module="pingwin" permission="restauracao.ver"><PingwinDashboard /></RequireModule> },
     { path: "/restauracao/lojas", component: <RequireModule module="restauracao_lojas" permission="restauracao.ver"><LojasPage /></RequireModule> },
     { path: "/restauracao/calendario", component: <RequireModule module="restauracao_calendario" permission="restauracao.ver"><CalendarioPage /></RequireModule> },
@@ -313,6 +318,7 @@ const authProtectedRoutes = [
     // Regras de formato (referência de mercado) do "Sugerir criativo": só o root.
     { path: "/admin/creative-format-rules", component: <RequireSuperAdmin><CreativeFormatRulesPage /></RequireSuperAdmin> },
     { path: "/admin/ai-models", component: <RequireSuperAdmin><AiModelsPage /></RequireSuperAdmin> },
+    { path: "/admin/integracoes/pingwin", component: <RequireSuperAdmin><PingwinAdminPage /></RequireSuperAdmin> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

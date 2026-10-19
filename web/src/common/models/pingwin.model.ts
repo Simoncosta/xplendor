@@ -346,6 +346,25 @@ export interface PingwinCalendarResponse {
     days: PingwinCalendarDay[];
     coverage?: PingwinCoverage | null; // lojas sem dados no mês e dias em falta
     locations: { id: number; display_name: string | null; winrest_name: string | null; winrest_store_id: string }[];
+    /** Fatia 6a: a previsão, as reservas lidas, os feriados, as anomalias e o erro medido. */
+    forecast?: CalendarForecast;
+}
+
+/** Fatia 6a: um valor previsto (pessoas ou faturação com IVA, em €) com o intervalo (percentis 10 e 90 dos erros). */
+export interface ForecastValue { value: number; low: number; high: number; model: "media" | "reservas" }
+export interface CalendarForecastDay { date: string; holiday: string | null; notes: string[]; guests: ForecastValue | null; invoiced: ForecastValue | null }
+export interface CalendarAnomaly { metric: "guests" | "invoiced"; pct: number; text: string; text_full: string }
+export interface ForecastErrorMetric {
+    days_2_30: number | null; tomorrow_simple: number | null; tomorrow_reservations: number | null;
+    tomorrow_model: "media" | "reservas"; tomorrow_reason: string; p10: number | null; p90: number | null; n: number; from: string | null; to: string | null;
+}
+export interface CalendarForecast {
+    today: string;
+    days: CalendarForecastDay[];
+    reservations: Record<string, { tables: number; guests: number; read_at: string }>;
+    holidays: Record<string, string>;
+    anomalies: Record<string, CalendarAnomaly[]>;
+    errors: { location_id: number; name: string; guests: ForecastErrorMetric; invoiced: ForecastErrorMetric }[];
 }
 
 export interface PingwinDashboard {

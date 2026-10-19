@@ -23,7 +23,7 @@ export const ENTITY_LABEL: Record<string, string> = {
     artigo: "Artigo", linha_compra: "Linha de compra", unidade: "Unidade", artigo_unidade: "Artigo e unidade de compra",
     grupo_artigos: "Grupo de artigos", ficha: "Ficha técnica", documento: "Documento", viatura: "Viatura",
     evento_tracking: "Evento do site", recusa_tracking: "Eventos recusados", fornecedor: "Fornecedor", familia: "Família", armazem: "Armazém",
-    funcionario: "Funcionário",
+    funcionario: "Funcionário", fatura_ocr: "Fatura carregada",
 };
 
 export function SeverityBadge({ severity }: { severity: AuditSeverity }) {

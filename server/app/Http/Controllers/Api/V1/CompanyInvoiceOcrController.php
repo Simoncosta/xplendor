@@ -376,6 +376,23 @@ class CompanyInvoiceOcrController extends Controller
         return ApiResponse::success(['id' => $invoiceId], 'Fatura reposta.');
     }
 
+    // ------------------------------------------------------------ Fatia 5: conferência com as guias
+
+    /** A conferência fatura × guias (só leitura): cada guia referida contra os documentos do mesmo fornecedor no PingWin. */
+    public function guides(int $companyId, int $invoiceId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $invoice = OcrInvoice::where('company_id', $companyId)->find($invoiceId);
+        if (! $invoice) {
+            return ApiResponse::error('Fatura não encontrada.', 404);
+        }
+        $data = app(\App\Services\Restaurant\GuideReconciliationService::class)->for($invoice);
+
+        return ApiResponse::success(['reconciliation' => $data], $data ? 'Conferência com as guias.' : 'A fatura não refere guias.');
+    }
+
     // ------------------------------------------------------------ F3: ligação ao PingWin
 
     /** "Procurar no PingWin": corre a ligação já (espelhos) e, sem fornecedor, pesquisa-o no worker. */

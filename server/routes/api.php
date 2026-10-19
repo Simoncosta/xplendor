@@ -381,6 +381,11 @@ Route::prefix('v1')->group(function () {
                     // Auditoria: o "Confirmar fator" de um artigo (esteja ou não numa ficha) e o artigo principal dos duplicados.
                     Route::get('/restaurant/recipes/{productId}/conversion', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'conversionInfo'])->whereNumber('productId');
                     Route::put('/restaurant/article-groups/main', [\App\Http\Controllers\Api\V1\CompanyArticleGroupController::class, 'setMain']);
+                    // Configurações da empresa › Restauração e Auditoria (o administrador da empresa).
+                    Route::get('/settings/restaurant', [\App\Http\Controllers\Api\V1\CompanyRestaurantSettingsController::class, 'show']);
+                    Route::put('/settings/restaurant', [\App\Http\Controllers\Api\V1\CompanyRestaurantSettingsController::class, 'update']);
+                    // Compras sugeridas do Economato (só leitura).
+                    Route::get('/restaurant/purchase-suggestions', [\App\Http\Controllers\Api\V1\CompanyPurchaseSuggestionController::class, 'index']);
                     // Auditoria v2-C (Dinheiro): o histórico de preços por fornecedor (só leitura).
                     Route::get('/restaurant/money/price-history/{productId}', [\App\Http\Controllers\Api\V1\CompanyMoneyController::class, 'priceHistory'])->whereNumber('productId');
                     // Auditoria v2: o Guião de unidades (fila, artigo, decisões, "Aplicar no PingWin") e o substituto do M2.
@@ -525,6 +530,8 @@ Route::prefix('v1')->group(function () {
                     Route::delete('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'destroy'])->whereNumber('invoiceId');
                     Route::post('/ocr/invoices/{invoiceId}/restore', [CompanyInvoiceOcrController::class, 'restore'])->whereNumber('invoiceId');
                     // F3: ligação Fatura OCR ↔ documento(s) do PingWin (só espelhos; nunca escreve no PingWin)
+                    // Fatia 5: a conferência da fatura com as guias (só leitura).
+                    Route::get('/ocr/invoices/{invoiceId}/guides', [CompanyInvoiceOcrController::class, 'guides'])->whereNumber('invoiceId');
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-link', [CompanyInvoiceOcrController::class, 'pingwinSearch']);
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-link/confirm', [CompanyInvoiceOcrController::class, 'pingwinConfirm']);
                     Route::delete('/ocr/invoices/{invoiceId}/pingwin-link', [CompanyInvoiceOcrController::class, 'pingwinUnlink']);
@@ -914,6 +921,10 @@ Route::prefix('v1')->group(function () {
             Route::put('/creative-format-rules/{ruleId}', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'update'])->whereNumber('ruleId');
             Route::delete('/creative-format-rules/{ruleId}', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'destroy'])->whereNumber('ruleId');
             // Modelos de IA por função (o OCR não entra), histórico, custos e teste às cegas: só o root.
+            // Configurações: Admin › Integrações › PingWin (provas, escrita e modo de testes por empresa).
+            Route::get('/integrations/pingwin', [\App\Http\Controllers\Api\V1\Admin\PingwinSettingsController::class, 'index']);
+            Route::put('/integrations/pingwin/platform', [\App\Http\Controllers\Api\V1\Admin\PingwinSettingsController::class, 'updatePlatform']);
+            Route::put('/integrations/pingwin/companies/{companyId}', [\App\Http\Controllers\Api\V1\Admin\PingwinSettingsController::class, 'updateCompany'])->whereNumber('companyId');
             Route::get('/ai-models', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'index']);
             Route::put('/ai-models/{function}', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'update'])->where('function', '[a-z_]+');
             Route::post('/ai-models/apply-all', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'applyAll']);

@@ -125,7 +125,7 @@ class CompanyRecipeController extends Controller
         }
 
         // Fatia 4: a guarda das gravações neste ambiente, para o menu "Apagar" já vir desativado.
-        $detail['write_guard'] = \App\Services\PingwinService::bomWriteGuard($productId);
+        $detail['write_guard'] = \App\Services\PingwinService::bomWriteGuard($productId, $companyId);
 
         return ApiResponse::success($this->forUser($detail, CompassFinancials::visibleTo($request->user(), $companyId)), 'Ficha técnica carregada.');
     }
