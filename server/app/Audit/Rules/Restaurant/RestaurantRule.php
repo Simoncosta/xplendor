@@ -21,7 +21,7 @@ abstract class RestaurantRule extends AuditRuleBase
 
     protected static function articleUrl(string $pid): string
     {
-        return "/restauracao/artigos/{$pid}";
+        return "/cadastros/artigos/{$pid}";
     }
 
     protected static function documentUrl(string $docheaderId): string

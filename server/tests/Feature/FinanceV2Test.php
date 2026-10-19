@@ -143,6 +143,17 @@ class FinanceV2Test extends TestCase
         $this->assertNull($m['cards']['result']['estimated_cents']);
     }
 
+    public function test_the_six_month_chart_marks_the_months_still_provisional(): void
+    {
+        // Em outubro: setembro e outubro sem a folha (veio em julho e agosto); agosto olha para maio a julho e não está provisório.
+        $chart = array_column($this->month('2026-10')['result']['chart'], 'provisional', 'month');
+        $this->assertSame(['2026-05' => false, '2026-06' => false, '2026-07' => false, '2026-08' => false, '2026-09' => true, '2026-10' => true], $chart);
+        // "Não vem este mês" em setembro: setembro deixa de estar provisório no gráfico de outubro.
+        $this->api('POST', '/habitual-exclusions', ['entity_pingwin_id' => 'E-FOLHA', 'scope' => 'mes', 'month' => '2026-09'])->assertCreated();
+        $chart = array_column($this->month('2026-10')['result']['chart'], 'provisional', 'month');
+        $this->assertSame([false, true], [$chart['2026-09'], $chart['2026-10']]);
+    }
+
     public function test_not_coming_this_month_removes_it_only_from_this_month_and_the_month_stops_being_provisional(): void
     {
         $this->api('POST', '/habitual-exclusions', ['entity_pingwin_id' => 'E-FOLHA', 'scope' => 'mes', 'month' => '2026-09', 'avg_cents' => 100000, 'reason' => 'Vem em outubro'])

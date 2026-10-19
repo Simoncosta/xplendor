@@ -1,12 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import FinancasMesPage, { lastMonth } from "./FinancasMesPage";
+import { summarySentence } from "./mes/ResumoTab";
 import FechoMesPage from "./FechoMesPage";
 import { documentsCsv } from "./mes/DocumentosTab";
 
 /**
- * Finanças › Mês: a frase-resumo, os cartões e a linha "gasto e pago"; o Resultado por grupo e família;
- * a Tesouraria com a conferência da conta corrente; os Documentos (por classificar no topo com a
- * classificação rápida, os em Aberto com "Fechar no PingWin", o CSV); e o fecho do mês para imprimir.
+ * Finanças › Mês por camadas: o Resumo (o estado do mês, os cartões, os grupos e os 6 meses), o detalhe
+ * no painel (o resultado por grupo e família, um grupo, o dinheiro), o Trabalho do mês só com Finanças ›
+ * Editar (os contadores, os documentos com a classificação rápida e o "Fechar no PingWin", os pagamentos,
+ * o envio à contabilidade e os habituais em falta) e o fecho do mês para imprimir.
  */
 const mockNavigate = jest.fn();
 const mockApi = { month: jest.fn(), classify: jest.fn(), close: jest.fn(), batch: jest.fn(), sent: jest.fn(), pay: jest.fn(), payables: jest.fn(),
@@ -41,7 +43,8 @@ jest.mock("helpers/laravel_helper", () => ({
 }));
 jest.mock("contexts/WorkingCompanyContext", () => ({ useWorkingCompanyId: () => 5 }));
 jest.mock("Components/Common/PageHeader", () => ({ __esModule: true, default: ({ title }: any) => <h1>{title}</h1> }));
-jest.mock("Components/Common/InfoTip", () => ({ __esModule: true, default: () => null }));
+// O "?" mostra o texto como rótulo (para os testes lerem a explicação sem o tooltip).
+jest.mock("Components/Common/InfoTip", () => ({ __esModule: true, default: ({ label, text }: any) => <span data-testid={`tip-${label}`} aria-label={label} title={typeof text === "string" ? text : undefined} /> }));
 jest.mock("react-apexcharts", () => ({ __esModule: true, default: () => <div data-testid="chart" /> }));
 jest.mock("Components/Common/Select", () => ({
     __esModule: true,
@@ -125,34 +128,97 @@ beforeEach(() => {
     mockApi.month.mockResolvedValue({ data });
 });
 
-test("o topo: a frase-resumo, os avisos, os cartões e a linha que explica gasto e pago", async () => {
+test("Resumo: o estado do mês provisório, os quatro números, os grupos e os 6 meses; o detalhe por família abre no painel", async () => {
     render(<FinancasMesPage />);
-    expect(await screen.findByTestId("finance-sentence")).toHaveTextContent(data.sentence);
-    expect(screen.getByTestId("finance-explain")).toHaveTextContent("Gasto é quando a fatura chega; pago é quando o dinheiro sai.");
+    // Provisório: falta a folha de obrigações; o resultado estimado ao lado do real. No Resumo, euros sem cêntimos.
+    expect(await screen.findByTestId("finance-provisional")).toHaveTextContent(/Provisório\s*Faltam 1 documento habitual \(cerca de 1000\s€\)|Faltam 1 documento habitual \(cerca de 1 000\s€\)/);
+    expect(screen.getByTestId("finance-status")).toHaveTextContent("Setembro de 2026");
     expect(screen.getByTestId("finance-warnings")).toHaveTextContent("2 dos 30 dias");
-    expect(screen.getByTestId("card-sales")).toHaveTextContent(/5000,00\s€|5 000,00\s€/);
-    expect(screen.getByTestId("card-expenses-open")).toHaveTextContent(/Em aberto: 1 documento \(61,50\s€\)/);
-    // Provisório: falta a folha de obrigações; o resultado estimado ao lado do real.
-    expect(screen.getByTestId("finance-provisional")).toHaveTextContent("Provisório: faltam 1 documento habitual (cerca de 1 000,00 €).");
-    fireEvent.click(screen.getByText("Documentos habituais em falta"));
-    expect(screen.getByTestId("finance-missing")).toHaveTextContent("FOLHA DE OBRIGAÇÕES");
-    expect(screen.getByTestId("card-result-estimated")).toHaveTextContent(/2513,50\s€|2 513,50\s€/);
+    expect(screen.getByTestId("card-sales")).toHaveTextContent(/5000\s€|5 000\s€/);
+    expect(screen.getByTestId("card-expenses-open")).toHaveTextContent(/Inclui 1 documento em aberto \(62\s€\)/);
+    expect(screen.getByTestId("card-result-estimated")).toHaveTextContent(/2514\s€|2 514\s€/);
     expect(screen.getByTestId("card-result-estimated")).toHaveTextContent("estimado");
-    expect(screen.getByTestId("card-result")).toHaveTextContent("real até agora");
-    expect(screen.getByTestId("card-cash")).toHaveTextContent(/Vencido\s*282,90\s€/);
+    expect(screen.getByTestId("card-result")).toHaveTextContent(/Real até agora: 3514\s€|Real até agora: 3 514\s€/);
+    expect(screen.getByTestId("card-cash")).toHaveTextContent(/Vencido\s*283\s€/);
+    expect(screen.getByTestId("donut-group-comida")).toHaveTextContent(/Comida\s*130\s€\s*2,6\s%/);
+    expect(screen.getByTestId("donut-total")).toHaveTextContent(/Custos\s*1487\s€|Custos\s*1 487\s€/);
+    expect(screen.getAllByTestId("chart")).toHaveLength(2); // o donut e os 6 meses
+    // A frase do topo, numa linha, com os números dos cartões.
+    expect(screen.getByTestId("finance-summary-sentence")).toHaveTextContent(
+        /^Em setembro de 2026 vendeu 5\s?000\s€\. Os custos lançados são 1\s?487\s€, faltam cerca de 1\s?000\s€ em documentos habituais e o resultado estimado é 2\s?514\s€\.$/);
     expect(mockApi.month).toHaveBeenCalledWith(5, { month: "2026-09", store: null });
-    // Resultado (separador por omissão): grupo e família, food cost, IVA estimado, fora do resultado e o gráfico.
-    expect(screen.getByTestId("result-group-comida")).toHaveTextContent("Comida");
-    expect(screen.getByTestId("result-food-cost")).toHaveTextContent("2,9 %");
-    expect(screen.getByTestId("result-vat")).toHaveTextContent("Estimativa; a declaração é do contabilista.");
-    expect(screen.getByTestId("result-out")).toHaveTextContent("Cauções de embalagens");
-    expect(screen.getByText(data.result.store_note)).toBeInTheDocument();
-    expect(screen.getByTestId("chart")).toBeInTheDocument();
+    // O detalhe: grupo e família, food cost, IVA estimado, fora do resultado.
+    fireEvent.click(screen.getByTestId("detail-resultado"));
+    const panel = await screen.findByTestId("detail-panel");
+    expect(within(panel).getByTestId("result-group-comida")).toHaveTextContent("Comida");
+    expect(within(panel).getByTestId("result-food-cost")).toHaveTextContent("2,9 %");
+    expect(within(panel).getByTestId("result-vat")).toHaveTextContent("Estimativa; a declaração é do contabilista.");
+    expect(within(panel).getByTestId("result-out")).toHaveTextContent("Cauções de embalagens");
+    expect(within(panel).getByText(data.result.store_note)).toBeInTheDocument();
+});
+
+test("Resumo de um mês sem habituais em falta: Completo (não é um fecho) e só o resultado real", async () => {
+    mockApi.month.mockResolvedValue({ data: { ...data, provisional: null, cards: { ...data.cards, result: { ...data.cards.result, estimated_cents: null, estimated_pct: null } } } });
+    render(<FinancasMesPage />);
+    expect(await screen.findByTestId("finance-complete")).toHaveTextContent("Completo");
+    expect(screen.queryByText("Fechado")).toBeNull();
+    expect(screen.getByTestId("tip-De onde vem: Completo")).toHaveAttribute("title", "Não falta nenhum documento habitual.");
+    expect(screen.getByTestId("finance-summary-sentence")).toHaveTextContent(/^Em setembro de 2026 vendeu 5\s?000\s€, os custos foram 1\s?487\s€ e o resultado é 3\s?514\s€\.$/);
+    expect(screen.queryByTestId("finance-provisional")).toBeNull();
+    expect(screen.queryByTestId("card-result-estimated")).toBeNull();
+    expect(screen.getByTestId("card-result-real")).toHaveTextContent(/3514\s€|3 514\s€/);
+});
+
+test("um grupo abre o detalhe: as famílias em barras, os 5 fornecedores e os documentos", async () => {
+    render(<FinancasMesPage />);
+    fireEvent.click(await screen.findByTestId("donut-group-comida"));
+    const g = await screen.findByTestId("group-detail-comida");
+    expect(within(g).getByTestId("group-families")).toHaveTextContent("COMPRAS › COMIDAS");
+    expect(within(g).getByTestId("group-suppliers")).toHaveTextContent("Carnes");
+    expect(within(g).getByTestId("group-docs")).toHaveTextContent("DOC/D1");
+    expect(within(g).getByTestId("group-food-cost")).toHaveTextContent("1,6 %");
+});
+
+test("sem Finanças › Editar: só o Resumo; os links antigos dos Documentos abrem o painel, sem o Trabalho do mês", async () => {
+    mockApi.month.mockResolvedValue({ data: { ...data, can: { classify: false, close: false } } });
+    render(<FinancasMesPage />);
+    await screen.findByTestId("finance-summary");
+    expect(screen.queryByTestId("finance-tabs")).toBeNull();
+    expect(screen.queryByText("Trabalho do mês")).toBeNull();
+    expect(screen.queryByTestId("finance-work")).toBeNull();
+    // "Ver quais" mostra a lista ali mesmo, sem os botões de editar.
+    fireEvent.click(screen.getByTestId("see-missing"));
+    expect(screen.getByTestId("finance-missing")).toHaveTextContent("FOLHA DE OBRIGAÇÕES");
+    expect(screen.queryByText("Não vem este mês")).toBeNull();
+    // O Dinheiro abre a tesouraria só para ver.
+    fireEvent.click(screen.getByTestId("detail-dinheiro"));
+    expect(await screen.findByTestId("cash-weeks")).toBeInTheDocument();
+    expect(screen.queryByTestId("regularize")).toBeNull();
+});
+
+test("Trabalho do mês: os contadores abrem a lista filtrada", async () => {
+    render(<FinancasMesPage />);
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
+    expect(screen.getByTestId("work-por_classificar")).toHaveTextContent(/Por classificar.*2/);
+    expect(screen.getByTestId("work-vencido")).toHaveTextContent(/Vencidos.*1/);
+    expect(screen.getByTestId("work-habituais")).toHaveTextContent(/Habituais em falta.*1/);
+    fireEvent.click(screen.getByTestId("work-vencido"));
+    expect(screen.getByLabelText("Estado")).toHaveValue("vencido");
+    expect(screen.getByTestId("doc-FO8")).toBeInTheDocument();
+    expect(screen.queryByTestId("doc-D1")).toBeNull();
+    fireEvent.click(screen.getByTestId("work-por_classificar"));
+    expect(screen.getByLabelText("Família")).toHaveValue("por_classificar");
+    expect(screen.getByTestId("doc-D7")).toBeInTheDocument();
+    expect(screen.queryByTestId("doc-FO8")).toBeNull();
+    fireEvent.click(screen.getByTestId("work-sec-fecho"));
+    fireEvent.click(screen.getByTestId("work-close-generate"));
+    expect(mockNavigate).toHaveBeenCalledWith("/financas/mes/fecho?mes=2026-09");
 });
 
 test("Tesouraria: semanas, pagamentos com os vencidos e a conferência com a conta corrente", async () => {
     render(<FinancasMesPage />);
-    fireEvent.click(await screen.findByText("Tesouraria"));
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
+    fireEvent.click(screen.getByTestId("work-sec-pagamentos"));
     expect(screen.getByText(data.cash.entries_note)).toBeInTheDocument();
     expect(screen.getByTestId("cash-weeks")).toHaveTextContent("01/09 a 06/09");
     expect(screen.getByTestId("cash-payments")).toHaveTextContent("Vencido há 24 dias");
@@ -164,7 +230,7 @@ test("Tesouraria: semanas, pagamentos com os vencidos e a conferência com a con
 test("Documentos: por classificar no topo com a classificação rápida", async () => {
     mockApi.classify.mockResolvedValue({ message: "Classificado: sempre assim para Fornecedor novo." });
     render(<FinancasMesPage />);
-    fireEvent.click(await screen.findByText("Documentos"));
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
     const box = screen.getByTestId("docs-unclassified");
     expect(box).toHaveTextContent("Linha sem artigo e o fornecedor não tem família habitual.");
     fireEvent.change(within(box).getByLabelText("Grupo de DOC/D7"), { target: { value: "fse" } });
@@ -176,7 +242,7 @@ test("Documentos: por classificar no topo com a classificação rápida", async 
 test("Documentos em Aberto: destacados, com o aviso e o Fechar no PingWin", async () => {
     mockApi.close.mockResolvedValue({ data: { batch: "B1", closes: [{ id: 1, docheader_id: "D9", document: "DOC/D9", status: "pendente" }] } });
     render(<FinancasMesPage />);
-    fireEvent.click(await screen.findByText("Documentos"));
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
     expect(screen.getByTestId("docs-open")).toHaveTextContent(/Em aberto: 1 documento \(61,50\s€\) ainda não estão fechados no PingWin; não contam no stock./);
     expect(screen.getByTestId("doc-D9")).toHaveClass("table-warning");
     fireEvent.click(within(screen.getByTestId("doc-D9")).getByText("Fechar no PingWin"));
@@ -188,20 +254,25 @@ test("Documentos em Aberto: destacados, com o aviso e o Fechar no PingWin", asyn
 
 test("Gerar fecho do mês abre a página para imprimir", async () => {
     render(<FinancasMesPage />);
-    await screen.findByTestId("finance-sentence");
+    await screen.findByTestId("finance-status");
     fireEvent.click(screen.getByTestId("finance-close-month"));
     expect(mockNavigate).toHaveBeenCalledWith("/financas/mes/fecho?mes=2026-09");
 });
 
-test("o fecho do mês: o topo e o Resultado, para imprimir ou guardar em PDF", async () => {
+test("o fecho do mês: o Resumo primeiro (em tabelas) e depois o Resultado, para imprimir ou guardar em PDF", async () => {
     const print = jest.fn();
     window.print = print;
     render(<FechoMesPage />);
     expect(await screen.findByText("Fecho de setembro de 2026")).toBeInTheDocument();
     expect(screen.getByTestId("print-provisional")).toHaveTextContent("Provisório");
     expect(screen.getByTestId("finance-missing")).toHaveTextContent("FOLHA DE OBRIGAÇÕES");
-    expect(screen.getByTestId("finance-sentence")).toHaveTextContent(data.sentence);
+    expect(screen.getByTestId("finance-summary-sentence")).toHaveTextContent("Em setembro de 2026 vendeu");
+    expect(screen.queryByTestId("print-complete")).toBeNull();
+    expect(screen.getByTestId("donut-legend")).toHaveTextContent("Comida");
+    expect(screen.getByTestId("resumo-months")).toHaveTextContent("Setembro de 2026");
     expect(screen.getByTestId("result-table")).toHaveTextContent("Total dos gastos");
+    // O Resumo vem antes do Resultado.
+    expect(screen.getByTestId("finance-summary").compareDocumentPosition(screen.getByTestId("result-table")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByTestId("chart")).toBeNull();
     fireEvent.click(screen.getByTestId("finance-print-button"));
     expect(print).toHaveBeenCalled();
@@ -217,7 +288,7 @@ test("CSV dos documentos e o mês por omissão", () => {
 
 test("Documentos: a regra aplicada com a família do PingWin, Criar regra para o tipo novo e as colunas da contabilidade", async () => {
     render(<FinancasMesPage />);
-    fireEvent.click(await screen.findByText("Documentos"));
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
     expect(screen.getByTestId("rule-FO8")).toHaveTextContent("Regra: Artigos 100833 a 100835 de FOLHA DE OBRIGAÇÕES → Pessoal · no PingWin: OUTROS DEVEDORES/CREDORES › ESTADO › IMPOSTO DO SELO");
     expect(screen.getByTestId("create-rule-S9")).toHaveAttribute("href", "/financas/configuracao/regras?tipo=tipo_documento&valor=777001&rotulo=Despesa%20de%20sal%C3%A1rios");
     const table = screen.getByTestId("docs-table");
@@ -232,7 +303,7 @@ test("Marcar como enviado e registar um pagamento nos escolhidos", async () => {
     mockApi.sent.mockResolvedValue({ message: "1 documentos marcados." });
     mockApi.pay.mockResolvedValue({ message: "Pagamento registado na XPLENDOR." });
     render(<FinancasMesPage />);
-    fireEvent.click(await screen.findByText("Documentos"));
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
     fireEvent.click(screen.getByLabelText("Escolher DOC/FO8"));
     fireEvent.click(screen.getByTestId("mark-sent"));
     fireEvent.click(screen.getByTestId("sent-confirm"));
@@ -254,7 +325,9 @@ test("Enviar ao contabilista: a pré-visualização primeiro e o envio só com o
         attachments: [{ name: "contabilidade-2026-09.xlsx", bytes: 8000 }], missing: [{ docheader_id: "D1", document: "DOC/D1", supplier: "Carnes" }], bytes: 8000, can_send: true, problems: [] } });
     mockApi.send.mockResolvedValue({ message: "Enviado." });
     render(<FinancasMesPage />);
-    fireEvent.click(await screen.findByText("Documentos"));
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
+    fireEvent.click(screen.getByTestId("work-sec-contabilidade"));
+    expect(screen.getByLabelText("Estado")).toHaveValue("por_enviar");
     fireEvent.click(screen.getByLabelText("Escolher DOC/D1"));
     fireEvent.click(screen.getByTestId("send-accountant"));
     const preview = await screen.findByTestId("email-preview");
@@ -270,7 +343,9 @@ test("Enviar ao contabilista: a pré-visualização primeiro e o envio só com o
 test("Importar a folha antiga mostra o que não emparelhou", async () => {
     mockApi.importSheet.mockResolvedValue({ data: { matched: 1, unmatched: [{ row: 8, nif: "999999990", titular: "Desconhecido", number: "FT 9/9", reason: "Sem documento com este NIF e este número." }] } });
     render(<FinancasMesPage />);
-    fireEvent.click(await screen.findByText("Documentos"));
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
+    expect(screen.queryByTestId("import-sheet")).toBeNull(); // a barra da contabilidade fica no Envio à contabilidade
+    fireEvent.click(screen.getByTestId("work-sec-contabilidade"));
     fireEvent.click(screen.getByTestId("import-sheet"));
     fireEvent.change(screen.getByLabelText("Folha em XLSX"), { target: { files: [new File(["x"], "folha.xlsx")] } });
     fireEvent.click(screen.getByTestId("import-confirm"));
@@ -285,7 +360,8 @@ test("Tesouraria: Regularizar vários documentos de um fornecedor com um só pag
         { docheader_id: "D44", document: "DOC/D44", doc_date: "2026-10-12", due_date: "2026-10-30", open_cents: 24600, overdue: false }] }] } });
     mockApi.pay.mockResolvedValue({ message: "2 pagamentos registados na XPLENDOR." });
     render(<FinancasMesPage />);
-    fireEvent.click(await screen.findByText("Tesouraria"));
+    fireEvent.click(await screen.findByTestId("finance-tab-trabalho"));
+    fireEvent.click(screen.getByTestId("work-sec-pagamentos"));
     fireEvent.click(screen.getByTestId("regularize"));
     fireEvent.change(await screen.findByLabelText("Fornecedor"), { target: { value: "3" } });
     fireEvent.click(screen.getByLabelText("Escolher todos"));
@@ -301,7 +377,8 @@ test("Documentos habituais em falta: Não vem este mês pede confirmação e rec
     mockApi.exclude.mockResolvedValue({ message: "FOLHA DE OBRIGAÇÕES: não vem este mês." });
     render(<FinancasMesPage />);
     await screen.findByTestId("finance-provisional");
-    fireEvent.click(screen.getByText("Documentos habituais em falta"));
+    fireEvent.click(screen.getByTestId("see-missing")); // com Finanças › Editar: Trabalho do mês › Habituais em falta
+    expect(screen.getByTestId("work-sec-habituais")).toHaveClass("active");
     fireEvent.click(within(screen.getByTestId("missing-E-FOLHA")).getByText("Não vem este mês"));
     const modal = screen.getByTestId("habitual-modal");
     expect(modal).toHaveTextContent("FOLHA DE OBRIGAÇÕES sai da lista só em setembro de 2026.");
@@ -311,15 +388,15 @@ test("Documentos habituais em falta: Não vem este mês pede confirmação e rec
     await waitFor(() => expect(mockApi.month).toHaveBeenCalledTimes(2)); // recalcula logo
 });
 
-test("Não é habitual e repor a partir do topo", async () => {
+test("Não é habitual e repor, em Trabalho do mês › Habituais em falta", async () => {
     mockApi.month.mockResolvedValue({ data: { ...data, habitual_excluded: [{ id: 4, entity_pingwin_id: "E-X", supplier: "WELCOME", scope: "sempre", month: "2026-09", avg_cents: 3500000, reason: null, by: "Root", at: null }] } });
     mockApi.exclude.mockResolvedValue({ message: "ok" });
     mockApi.restore.mockResolvedValue({ message: "WELCOME volta a contar como habitual." });
     render(<FinancasMesPage />);
-    expect(await screen.findByTestId("finance-excluded")).toHaveTextContent("WELCOME (não é habitual, por Root)");
+    fireEvent.click(await screen.findByTestId("see-missing"));
+    expect(screen.getByTestId("finance-excluded")).toHaveTextContent("WELCOME (não é habitual, por Root)");
     fireEvent.click(within(screen.getByTestId("finance-excluded")).getByText("Repor"));
     await waitFor(() => expect(mockApi.restore).toHaveBeenCalledWith(5, 4));
-    fireEvent.click(screen.getByText("Documentos habituais em falta"));
     fireEvent.click(within(screen.getByTestId("missing-E-FOLHA")).getByText("Não é habitual"));
     expect(screen.getByTestId("habitual-modal")).toHaveTextContent("deixa de entrar nos documentos habituais a partir de setembro de 2026");
     fireEvent.click(screen.getByTestId("habitual-confirm"));
@@ -331,6 +408,21 @@ test("o fecho do mês deixa de dizer Provisório quando não falta nenhum docume
     render(<FechoMesPage />);
     expect(await screen.findByText("Fecho de setembro de 2026")).toBeInTheDocument();
     expect(screen.queryByTestId("print-provisional")).toBeNull();
+    expect(screen.getByTestId("print-complete")).toHaveTextContent("Completo");
+    expect(screen.getByTestId("print-complete")).toHaveAttribute("title", "Não falta nenhum documento habitual.");
+    expect(screen.queryByText("Fechado")).toBeNull();
     expect(screen.queryByTestId("finance-provisional")).toBeNull();
     expect(screen.queryByTestId("card-result-estimated")).toBeNull();
+});
+
+test("a frase do topo: com uma loja escolhida e com resultado negativo, provisório e completo", () => {
+    const store = { ...data.cards.sales, store_cents: 120000 };
+    // Provisório: a loja, os custos lançados da empresa toda, os habituais em falta e o estimado negativo.
+    const prov = { ...data, cards: { ...data.cards, sales: store, result: { ...data.cards.result, estimated_cents: -50000 } } } as any;
+    expect(summarySentence(prov, "Baixa")).toMatch(
+        /^Em setembro de 2026, Baixa vendeu 1\s?200\s€\. Na empresa toda, os custos lançados são 1\s?487\s€, faltam cerca de 1\s?000\s€ em documentos habituais e o resultado estimado é negativo, -500\s€\.$/);
+    // Completo: sem os habituais, o resultado real.
+    const done = { ...data, provisional: null, cards: { ...data.cards, sales: store, result: { ...data.cards.result, cents: -20000, estimated_cents: null, estimated_pct: null } } } as any;
+    expect(summarySentence(done, "Baixa")).toMatch(/^Em setembro de 2026, Baixa vendeu 1\s?200\s€; na empresa toda, os custos foram 1\s?487\s€ e o resultado é negativo, -200\s€\.$/);
+    expect(summarySentence(done, null)).toMatch(/^Em setembro de 2026 vendeu 5\s?000\s€, os custos foram 1\s?487\s€ e o resultado é negativo, -200\s€\.$/);
 });

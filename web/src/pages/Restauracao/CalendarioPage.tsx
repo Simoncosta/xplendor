@@ -15,7 +15,7 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import "./calendario.css";
 
 /**
- * XPLENDOR — Restauração › Calendário de faturação. Calendário MENSAL (FullCalendar
+ * XPLENDOR — Marketing › Calendário de Faturação. Calendário MENSAL (FullCalendar
  * do Velzon) SÓ LEITURA: cada dia mostra faturação + pessoas + ticket médio (dados
  * que já existem). Filtro por loja (default: todas somadas). Em PT. Sem criar/
  * arrastar/editar. Dias sem dados → célula vazia (portão de honestidade).
@@ -69,7 +69,7 @@ const monthWeeks = (ym: string) => {
 };
 
 export default function CalendarioPage() {
-    document.title = "Calendário de faturação | Restauração | Xplendor";
+    document.title = "Calendário de Faturação | Marketing | Xplendor";
 
     const companyId = useWorkingCompanyId();
 
@@ -146,8 +146,8 @@ export default function CalendarioPage() {
             <ToastContainer />
             <Container fluid>
                 <PageHeader
-                    title="Calendário de faturação"
-                    breadcrumbs={[{ label: "Restauração" }]}
+                    title="Calendário de Faturação"
+                    breadcrumbs={[{ label: "Marketing" }]}
                     info="A faturação com IVA, as pessoas que reservaram e o ticket médio de cada dia. Os dias sem dados sincronizados ficam vazios (ou dizem «Vendas em falta» quando só há reservas); o ticket médio só aparece com faturação e reservas."
                     filters={<>
                         <div className="form-check form-switch mb-0 me-2 d-inline-flex align-items-center" data-testid="calendar-forecast-toggle">

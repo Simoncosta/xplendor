@@ -150,6 +150,21 @@ class FinanceMonthTest extends TestCase
         $this->assertSame(2.9, $m['result']['food_cost']['pct']);
     }
 
+    public function test_summary_extras_for_the_layers_previous_month_and_provisional_months(): void
+    {
+        // O Resumo compara cada cartão com o mês anterior (agosto: 4 000,00 € de vendas e 40,00 € de gastos).
+        $m = $this->month();
+        $this->assertSame([400000, 4000], [$m['cards']['sales']['prev_cents'], $m['cards']['expenses']['prev_cents']]);
+        // Dinheiro: o que entrou (as vendas com IVA, como nas semanas da tesouraria) e o que saiu em agosto.
+        $this->assertSame(array_sum(array_column($m['cash']['weeks'], 'in_cents')), $m['cards']['cash']['in_cents']);
+        $this->assertSame([565000, 452000, 0], [$m['cards']['cash']['in_cents'], $m['cards']['cash']['in_prev_cents'], $m['cards']['cash']['paid_prev_cents']]);
+        // Os números de sempre não mudam.
+        $this->assertSame([18645, 25830], [$m['cards']['cash']['paid_cents'], $m['cards']['cash']['due_by_month_end_cents']]);
+        // Sem documentos habituais em falta, nenhum dos 6 meses do gráfico está provisório.
+        $this->assertSame(['2026-04' => false, '2026-05' => false, '2026-06' => false, '2026-07' => false, '2026-08' => false, '2026-09' => false],
+            array_column($m['result']['chart'], 'provisional', 'month'));
+    }
+
     public function test_api_needs_the_finance_month_module_and_the_finance_permission(): void
     {
         $url = "/api/v1/companies/{$this->company->id}/finance/month?month=2026-09";

@@ -139,7 +139,7 @@ class AuditRestaurantRulesTest extends TestCase
         $this->assertStringContainsString('ignore com esse motivo', $f[0]->suggestion);
         $this->assertStringStartsWith('187,00 € de IVA, se a taxa certa for 23%', $f[0]->stake);
         $this->assertSame(100 * 187, $f[0]->impactCents);   // 23/123 de 10,00 € por dia, 100 dias
-        $this->assertSame('/restauracao/artigos/PL', $f[0]->fixUrl);
+        $this->assertSame('/cadastros/artigos/PL', $f[0]->fixUrl);
     }
 
     public function test_vat_with_two_rates_in_90_days(): void

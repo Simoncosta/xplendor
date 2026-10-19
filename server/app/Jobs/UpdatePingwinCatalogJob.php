@@ -97,7 +97,7 @@ class UpdatePingwinCatalogJob implements ShouldQueue
             title: 'Artigo editado no PingWin',
             message: 'O artigo «' . $write->description . '» foi editado no PingWin.',
             severity: 'low',
-            detailPath: '/restauracao/artigos',
+            detailPath: '/cadastros/artigos',
         );
         Log::info('[PingWin Editar Artigo] Concluído', ['write_id' => $this->writeId, 'code' => $item->code]);
     }
@@ -149,7 +149,7 @@ class UpdatePingwinCatalogJob implements ShouldQueue
             title: 'Falha ao editar o artigo',
             message: 'Não foi possível editar o artigo «' . $write->description . '» no PingWin: ' . mb_substr($message, 0, 200),
             severity: 'high',
-            detailPath: '/restauracao/artigos',
+            detailPath: '/cadastros/artigos',
         );
     }
 

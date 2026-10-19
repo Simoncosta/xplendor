@@ -87,7 +87,7 @@ class DeletePingwinCatalogJob implements ShouldQueue
             title: 'Artigo apagado no PingWin',
             message: 'O artigo «' . $write->description . '» (code ' . ($item->code ?? '?') . ') foi apagado no PingWin.',
             severity: 'low',
-            detailPath: '/restauracao/artigos',
+            detailPath: '/cadastros/artigos',
         );
         Log::info('[PingWin Anular Artigo] Concluído', ['write_id' => $this->writeId, 'code' => $item->code]);
     }
@@ -101,7 +101,7 @@ class DeletePingwinCatalogJob implements ShouldQueue
             title: 'Falha ao apagar o artigo',
             message: 'Não foi possível apagar o artigo «' . $write->description . '» no PingWin: ' . mb_substr($message, 0, 200),
             severity: 'high',
-            detailPath: '/restauracao/artigos',
+            detailPath: '/cadastros/artigos',
         );
     }
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Alert, Button, Card, CardBody, CardHeader, Col, Container, Label, Nav, NavItem, NavLink, Row } from "reactstrap";
+import { Alert, Button, Card, CardBody, Col, Container, Label, Nav, NavItem, NavLink, Row } from "reactstrap";
 import PageHeader from "Components/Common/PageHeader";
 import XSelect from "Components/Common/Select";
 import Skeleton from "Components/Common/Skeleton";
@@ -8,23 +8,21 @@ import { getFinanceMonth } from "helpers/laravel_helper";
 import { FinanceMonth } from "common/models/financeMonth.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import SupplierDocumentLinesModal from "pages/Restauracao/faturas/SupplierDocumentLinesModal";
-import MonthTop from "./mes/MonthTop";
-import ResultadoTab from "./mes/ResultadoTab";
-import TesourariaTab from "./mes/TesourariaTab";
-import DocumentosTab from "./mes/DocumentosTab";
+import ResumoTab, { DetailKind } from "./mes/ResumoTab";
+import TrabalhoTab, { WORK_SECTIONS, WorkSection } from "./mes/TrabalhoTab";
+import DetailPanel from "./mes/DetailPanel";
 
 /**
- * XPLENDOR — Finanças › Mês: resultado e tesouraria num só ecrã (só leitura; o "Fechar no PingWin" dos
- * documentos em Aberto é o da lista de documentos). Para a dona (o resumo, se o mês deu lucro e o que
- * sai) e para a responsável administrativa (preparar, classificar e enviar o fecho do mês). Padrão da
- * Engenharia de menu: cartões sobre o fundo da página, um (i) em cada número a dizer de onde vem; no
- * telemóvel, o topo e os separadores em lista.
+ * XPLENDOR — Finanças › Mês, por camadas. Resumo (por omissão, para todos): o estado do mês, os quatro
+ * números, para onde foi o dinheiro e os últimos 6 meses. O detalhe (um grupo, o resultado por família,
+ * o dinheiro, os documentos) abre num painel lateral. Trabalho do mês (só com Finanças › Editar): o que
+ * falta fazer e o sítio de cada tarefa. Nada se escreve no PingWin, exceto o "Fechar no PingWin" dos
+ * documentos em Aberto.
  */
-type Tab = "resultado" | "tesouraria" | "documentos";
+type Tab = "resumo" | "trabalho";
 const TABS: { id: Tab; label: string; icon: string }[] = [
-    { id: "resultado", label: "Resultado", icon: "ri-funds-line" },
-    { id: "tesouraria", label: "Tesouraria", icon: "ri-bank-line" },
-    { id: "documentos", label: "Documentos", icon: "ri-file-list-3-line" },
+    { id: "resumo", label: "Resumo", icon: "ri-pie-chart-2-line" },
+    { id: "trabalho", label: "Trabalho do mês", icon: "ri-task-line" },
 ];
 
 /** O mês anterior ao de hoje (o último mês completo), "AAAA-MM". */
@@ -38,7 +36,7 @@ export default function FinancasMesPage() {
     const companyId = useWorkingCompanyId();
     const navigate = useNavigate();
     const [params, setParams] = useSearchParams();
-    const tab = (TABS.find((t) => t.id === params.get("tab"))?.id ?? "resultado") as Tab;
+    const rawTab = params.get("tab");
     const month = params.get("mes") ?? lastMonth();
     const store = Number(params.get("loja") ?? 0);
     const [data, setData] = useState<FinanceMonth | null>(null);
@@ -69,6 +67,18 @@ export default function FinancasMesPage() {
     useEffect(() => { load(); }, [load]);
 
     const storeName = data && store ? data.stores.find((s) => s.id === store)?.name ?? null : null;
+    const canEdit = !!data?.can.classify;
+    // Os separadores antigos (Resultado, Tesouraria, Documentos) continuam a abrir o sítio certo.
+    const legacy: Record<string, { sec: WorkSection; panel: DetailKind } | undefined> = {
+        tesouraria: { sec: "pagamentos", panel: "dinheiro" }, documentos: { sec: "documentos", panel: "documentos" },
+    };
+    const old = rawTab ? legacy[rawTab] : undefined;
+    const tab: Tab = canEdit && (rawTab === "trabalho" || old) ? "trabalho" : "resumo";
+    const sec = (WORK_SECTIONS.find((w) => w.id === params.get("sec"))?.id ?? old?.sec ?? "documentos") as WorkSection;
+    const panel = (params.get("painel") as DetailKind | null) ?? (!canEdit && old ? old.panel : null);
+    const goWork = (s: WorkSection, f?: { group?: string; state?: string }) =>
+        set({ tab: "trabalho", sec: s === "documentos" ? null : s, grupo: f?.group ?? null, estado: f?.state ?? null, painel: null });
+    const closeMonth = () => navigate(`/financas/mes/fecho?mes=${month}${store ? `&loja=${store}` : ""}`);
 
     return (
         <div className="page-content">
@@ -76,7 +86,7 @@ export default function FinancasMesPage() {
                 <PageHeader
                     title="Mês"
                     breadcrumbs={[{ label: "Finanças" }]}
-                    info="O resultado e o dinheiro do mês num só ecrã: vendas, gastos por família, resultado, o que saiu e o que falta pagar. Lê os documentos de fornecedor, a conta corrente e as vendas do PingWin; nada se escreve no PingWin."
+                    info="O mês num só ecrã: o Resumo com as vendas, os custos, o resultado e o dinheiro, e o detalhe ao tocar em cada bloco; com Finanças › Editar, o Trabalho do mês com o que falta fazer. Lê os documentos de fornecedor, a conta corrente e as vendas do PingWin."
                 />
                 <Card className="mb-3" data-testid="finance-filters">
                     <CardBody className="p-3">
@@ -93,7 +103,7 @@ export default function FinancasMesPage() {
                                     onChange={(v) => set({ loja: String(v) })} />
                             </Col>
                             <Col xs={12} lg={6} className="text-lg-end">
-                                <Button color="primary" onClick={() => navigate(`/financas/mes/fecho?mes=${month}${store ? `&loja=${store}` : ""}`)} disabled={!data} data-testid="finance-close-month">
+                                <Button color="light" onClick={closeMonth} disabled={!data} data-testid="finance-close-month">
                                     <i className="ri-file-pdf-2-line me-1" />Gerar fecho do mês
                                 </Button>
                             </Col>
@@ -105,28 +115,32 @@ export default function FinancasMesPage() {
                 {!data && loading && <Card><CardBody><Skeleton variant="lines" lines={8} /></CardBody></Card>}
                 {data && (
                     <div style={{ opacity: loading ? 0.6 : 1 }}>
-                        <MonthTop data={data} storeName={storeName} companyId={companyId} canEdit={data.can.classify} onChanged={load} />
-                        <Card className="mb-3" data-testid="finance-tabs">
-                            <CardHeader className="pb-0 border-bottom-0">
-                                {/* No telemóvel os separadores ficam em lista. */}
-                                <Nav tabs className="nav-tabs-custom card-header-tabs border-bottom flex-column flex-sm-row">
-                                    {TABS.map((t) => (
-                                        <NavItem key={t.id}>
-                                            <NavLink href="#" active={tab === t.id} onClick={(e) => { e.preventDefault(); set({ tab: t.id === "resultado" ? null : t.id }); }}>
-                                                <i className={`${t.icon} me-1 align-bottom`} />{t.label}
-                                                {t.id === "documentos" && data.documents.unclassified.length > 0 && <span className="badge bg-danger-subtle text-danger ms-1">{data.documents.unclassified.length} por classificar</span>}
-                                                {t.id === "documentos" && data.documents.open.count > 0 && <span className="badge bg-warning-subtle text-warning ms-1">{data.documents.open.count} em aberto</span>}
-                                            </NavLink>
-                                        </NavItem>
-                                    ))}
-                                </Nav>
-                            </CardHeader>
-                            <CardBody className="p-3 p-md-4">
-                                {tab === "resultado" && <ResultadoTab data={data} />}
-                                {tab === "tesouraria" && companyId && <TesourariaTab companyId={companyId} data={data} onOpen={setOpenDoc} onChanged={load} />}
-                                {tab === "documentos" && companyId && <DocumentosTab companyId={companyId} data={data} onOpen={setOpenDoc} onChanged={load} />}
-                            </CardBody>
-                        </Card>
+                        {canEdit && (
+                            <Nav tabs className="nav-tabs-custom border-bottom mb-3 flex-column flex-sm-row" data-testid="finance-tabs">
+                                {TABS.map((t) => (
+                                    <NavItem key={t.id}>
+                                        <NavLink href="#" active={tab === t.id} onClick={(e) => { e.preventDefault(); set({ tab: t.id === "resumo" ? null : t.id, sec: null, grupo: null, estado: null, painel: null }); }}
+                                            data-testid={`finance-tab-${t.id}`}>
+                                            <i className={`${t.icon} me-1 align-bottom`} />{t.label}
+                                            {t.id === "trabalho" && data.documents.unclassified.length > 0 && <span className="badge bg-warning-subtle text-warning ms-1">{data.documents.unclassified.length} por classificar</span>}
+                                            {t.id === "trabalho" && data.documents.open.count > 0 && <span className="badge bg-warning-subtle text-warning ms-1">{data.documents.open.count} em aberto</span>}
+                                        </NavLink>
+                                    </NavItem>
+                                ))}
+                            </Nav>
+                        )}
+                        {tab === "resumo" && (
+                            <ResumoTab data={data} storeName={storeName} canEdit={canEdit} onDetail={(k) => set({ painel: k })}
+                                onSeeMissing={() => goWork("habituais")} />
+                        )}
+                        {tab === "trabalho" && companyId && (
+                            <Card className="mb-3"><CardBody className="p-3 p-md-4">
+                                <TrabalhoTab data={data} companyId={companyId} sec={sec} group={params.get("grupo") ?? ""} state={params.get("estado") ?? ""}
+                                    onGo={goWork} onOpen={setOpenDoc} onChanged={load} onCloseMonth={closeMonth} />
+                            </CardBody></Card>
+                        )}
+                        <DetailPanel kind={panel} data={data} companyId={companyId} onClose={() => set({ painel: null, ...(old ? { tab: null } : {}) })}
+                            onDetail={(k) => set({ painel: k })} onOpen={setOpenDoc} onChanged={load} />
                     </div>
                 )}
             </Container>

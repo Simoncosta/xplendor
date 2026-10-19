@@ -208,6 +208,22 @@ class ModuleRegistry
         return 'base';
     }
 
+    /**
+     * O ramo de uma empresa (o slug do setor ou do antepassado que decide o preset: restauracao,
+     * automovel, imobiliario), ou null. Para o menu mostrar o que é de cada ramo.
+     */
+    public static function branchForSector(?int $sectorId): ?string
+    {
+        $sector = $sectorId ? \App\Models\ContentSector::find($sectorId) : null;
+        foreach ($sector ? $sector->pathFromRoot() : [] as $node) {
+            if (isset(self::SECTOR_PRESETS[$node->slug])) {
+                return (string) $node->slug;
+            }
+        }
+
+        return null;
+    }
+
     /** @return string[] */
     public static function keys(): array
     {

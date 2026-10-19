@@ -38,7 +38,7 @@ const Navdata = () => {
     // Fase 2/3 — módulos ATIVOS da empresa vêm da fonte única (ModulesContext),
     // partilhada com o guard de rotas. `has(module)` = ativo OU root/desconhecido.
     // ACL (F4): e as permissões efetivas (as mesmas do backend), com a mesma falha fechada.
-    const { has: hasModule, can } = useModules();
+    const { has: hasModule, can, inBranch } = useModules();
 
     // Helper do Velzon para o modo two-column (icon sidebar). Guardado para não
     // rebentar no layout vertical (onde #two-column-menu pode não existir).
@@ -206,6 +206,8 @@ const Navdata = () => {
                 { id: "linha-editorial", label: "Linha Editorial", link: "/editorial", parentId: "analytics", module: "linha_editorial", permission: "editorial.ver" },
                 // Bússola comum: com o PingWin (restauração) ou com o stock (stand), pelos módulos da empresa.
                 { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", anyModule: ["pingwin", "stock", "radar", "imoveis"], permission: "bussola.ver" },
+                // O calendário de faturação (vendas, reservas e feriados): só no ramo da restauração.
+                { id: "pingwin-calendario", label: "Calendário de Faturação", link: "/marketing/calendario-faturacao", parentId: "analytics", module: "restauracao_calendario", permission: "restauracao.ver", branch: "restauracao" },
             ],
         },
         // ── Restauração — OPERAÇÃO (dia-a-dia). O grupo aparece se a empresa tem
@@ -224,9 +226,6 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "pingwin-lojas", label: "Lojas", link: "/restauracao/lojas", parentId: "restauracao", module: "restauracao_lojas", permission: "restauracao.ver" },
-                { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "restauracao_calendario", permission: "restauracao.ver" },
-                { id: "pingwin-artigos", label: "Artigos", link: "/restauracao/artigos", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-fichas-tecnicas", label: "Fichas técnicas", link: "/restauracao/fichas-tecnicas", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-stock", label: "Stock", link: "/restauracao/stock", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
                 { id: "pingwin-contagens", label: "Contagens", link: "/restauracao/stock/contagens", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
@@ -262,13 +261,15 @@ const Navdata = () => {
                 { id: "site-consultor", label: "Site do consultor", link: "/site-consultor", parentId: "imobiliario", module: "site_consultor", permission: "site_consultor.ver" },
             ],
         },
-        // ── Cadastros — base/registos da restauração. (Nome distinto de "Configurações".)
+        // ── Cadastros — os dados de base da restauração (configuram-se e raramente mudam). Só no ramo
+        //    da restauração e com o módulo de cada item. (Nome distinto de "Configurações".)
         {
             id: "cadastros",
             label: "Cadastros",
             icon: "ri-archive-2-line",
             link: "/#",
             module: "pingwin",
+            branch: "restauracao",
             stateVariables: isCadastros,
             click: function (e: any) {
                 e.preventDefault();
@@ -277,12 +278,14 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "pingwin-documentos", label: "Documentos", link: "/restauracao/documentos", parentId: "cadastros", module: "restauracao_documentos", permission: "restauracao.ver" },
-                { id: "pingwin-familias", label: "Famílias", link: "/restauracao/familias", parentId: "cadastros", module: "restauracao_familias", permission: "restauracao.ver" },
-                { id: "pingwin-fornecedores", label: "Fornecedores", link: "/restauracao/fornecedores", parentId: "cadastros", module: "restauracao_fornecedores", permission: "restauracao.ver" },
-                { id: "pingwin-unidades", label: "Unidades", link: "/restauracao/unidades", parentId: "cadastros", module: "restauracao_unidades", permission: "restauracao.ver" },
-                { id: "pingwin-armazens", label: "Armazéns", link: "/restauracao/armazens", parentId: "cadastros", module: "restauracao_artigos", permission: "restauracao.ver" },
-                { id: "pingwin-condicoes-pagamento", label: "Condições de Pagamento", link: "/restauracao/condicoes-pagamento", parentId: "cadastros", module: "restauracao_condicoes_pagamento", permission: "restauracao.ver" },
+                { id: "pingwin-lojas", label: "Lojas", link: "/cadastros/lojas", parentId: "cadastros", module: "restauracao_lojas", permission: "restauracao.ver", branch: "restauracao" },
+                { id: "pingwin-artigos", label: "Artigos", link: "/cadastros/artigos", parentId: "cadastros", module: "restauracao_artigos", permission: "restauracao.ver", branch: "restauracao" },
+                { id: "pingwin-documentos", label: "Documentos", link: "/restauracao/documentos", parentId: "cadastros", module: "restauracao_documentos", permission: "restauracao.ver", branch: "restauracao" },
+                { id: "pingwin-familias", label: "Famílias", link: "/restauracao/familias", parentId: "cadastros", module: "restauracao_familias", permission: "restauracao.ver", branch: "restauracao" },
+                { id: "pingwin-fornecedores", label: "Fornecedores", link: "/restauracao/fornecedores", parentId: "cadastros", module: "restauracao_fornecedores", permission: "restauracao.ver", branch: "restauracao" },
+                { id: "pingwin-unidades", label: "Unidades", link: "/restauracao/unidades", parentId: "cadastros", module: "restauracao_unidades", permission: "restauracao.ver", branch: "restauracao" },
+                { id: "pingwin-armazens", label: "Armazéns", link: "/restauracao/armazens", parentId: "cadastros", module: "restauracao_artigos", permission: "restauracao.ver", branch: "restauracao" },
+                { id: "pingwin-condicoes-pagamento", label: "Condições de Pagamento", link: "/restauracao/condicoes-pagamento", parentId: "cadastros", module: "restauracao_condicoes_pagamento", permission: "restauracao.ver", branch: "restauracao" },
             ],
         },
         {
@@ -303,7 +306,7 @@ const Navdata = () => {
                 { id: "financas-habituais", label: "Entidades excluídas dos habituais", link: "/financas/configuracao/habituais", parentId: "finances", module: "financas_mes", permission: "financas.editar" },
                 { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances", module: "finance", permission: "financas.ver" },
                 { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances", module: "finance", permission: "financas.ver" },
-                { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances", module: "finance", permission: "financas.ver" },
+                { id: "suppliers", label: "Fornecedores de despesas", link: "/suppliers", parentId: "finances", module: "finance", permission: "financas.ver" },
                 { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances", module: "documents", permission: "automovel.ver" },
             ],
         },
@@ -403,9 +406,10 @@ const Navdata = () => {
     // app/Access/RoutePermissions.php). Enquanto carrega, nada que dependa deles aparece.
     // anyModule: basta um destes módulos (a Bússola: o PingWin ou o stock).
     // anyAccess: basta um par módulo + permissão (a Auditoria: qualquer área com regras).
-    const visible = (it: any): boolean => it.anyAccess
+    // branch: o item só aparece às empresas desse ramo (por exemplo, os cadastros da restauração).
+    const visible = (it: any): boolean => inBranch(it.branch) && (it.anyAccess
         ? it.anyAccess.some((a: { module: string; permission: string }) => hasModule(a.module) && can(a.permission))
-        : (it.anyModule ? it.anyModule.some((m: string) => hasModule(m)) : hasModule(it.module)) && can(it.permission);
+        : (it.anyModule ? it.anyModule.some((m: string) => hasModule(m)) : hasModule(it.module)) && can(it.permission));
 
     const filterMenu = (items: any[]): any[] =>
         items.reduce((acc: any[], it: any) => {

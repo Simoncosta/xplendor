@@ -123,6 +123,7 @@ final class MonthFinanceService
         $missing = $this->habitualMissing($docs, $parts, $ym, $avgKeys, $excluded->pluck('entity_pingwin_id')->map(fn ($v) => (string) $v)->all());
         $missingCents = array_sum(array_column($missing, 'avg_cents'));
         $estimated = $result - $missingCents;
+        $chartProvisional = $this->provisionalMonths($months, $ym, $docs, $parts);
 
         return [
             'month' => $ym,
@@ -147,10 +148,11 @@ final class MonthFinanceService
                 'sales' => [
                     'cents' => $salesNet, 'store_cents' => $storeSales[$ym]['net'] ?? null,
                     'days' => $sales[$ym]['days'] ?? 0, 'days_in_month' => (int) $end->format('j'),
+                    'prev_cents' => $prevSales,
                     'source' => 'Vendas por artigo do PingWin, sem IVA (a mesma base da Engenharia de menu).',
                 ],
                 'expenses' => [
-                    'cents' => $cur['expenses'], 'open_cents' => array_sum(array_column($open, 'net_cents')), 'open_count' => count($open),
+                    'cents' => $cur['expenses'], 'prev_cents' => $byMonth[$prevKey]['expenses'], 'open_cents' => array_sum(array_column($open, 'net_cents')), 'open_count' => count($open),
                     'unclassified_cents' => $cur['groups'][FinanceClassifier::UNCLASSIFIED]['cents'] ?? 0,
                     'source' => 'Faturas, faturas-recibo, notas de débito e de crédito de fornecedor, pela data da fatura, sem IVA; sem os documentos anulados e sem o que fica fora do resultado.',
                 ],
@@ -164,6 +166,7 @@ final class MonthFinanceService
                 'cash' => [
                     'paid_cents' => $cash['paid_in_month_cents'], 'due_by_month_end_cents' => $cash['due_by_month_end_cents'],
                     'overdue_cents' => $cash['overdue_cents'],
+                    'paid_prev_cents' => $cash['paid_prev_cents'], 'in_cents' => $cash['in_cents'], 'in_prev_cents' => $cash['in_prev_cents'],
                     'source' => 'Pago: notas de liquidação e faturas-recibo do mês. Por pagar e vencido: a conta corrente dos fornecedores (sincronizada a ' . ($cash['cc_synced_at'] ?? '—') . ').',
                 ],
             ],
@@ -172,7 +175,8 @@ final class MonthFinanceService
                 'out_of_result' => $cur['out'],
                 'food_cost' => $foodCost,
                 'chart' => array_map(fn ($mm) => ['month' => $mm, 'label' => self::monthLabel($mm), 'sales_cents' => $sales[$mm]['net'] ?? 0,
-                    'expenses_cents' => $byMonth[$mm]['expenses'], 'result_cents' => ($sales[$mm]['net'] ?? 0) - $byMonth[$mm]['expenses']], $months),
+                    'expenses_cents' => $byMonth[$mm]['expenses'], 'result_cents' => ($sales[$mm]['net'] ?? 0) - $byMonth[$mm]['expenses'],
+                    'provisional' => $mm === $ym ? $missing !== [] : $chartProvisional[$mm]], $months),
                 'vat' => $vat,
                 'store_note' => 'O resultado é da empresa toda: por loja só as vendas, porque as compras entram no Economato.',
             ],
@@ -504,6 +508,34 @@ final class MonthFinanceService
         return $out;
     }
 
+    /**
+     * Para o gráfico dos últimos 6 meses: os meses anteriores ao escolhido que ainda estão provisórios
+     * (faltam documentos habituais, a mesma regra do mês). Cada mês olha para os 3 meses antes dele, por
+     * isso lêem-se os documentos dos 3 meses antes do gráfico.
+     *
+     * @param  string[]  $months
+     * @return array<string, bool>
+     */
+    private function provisionalMonths(array $months, string $ym, Collection $docs, array $parts): array
+    {
+        $first = CarbonImmutable::parse($months[0] . '-01');
+        $older = $this->expenseDocuments($first->subMonths(3)->toDateString(), $first->subDay()->toDateString());
+        $all = $older->concat($docs);
+        $allParts = $this->parts($older) + $parts;
+        $out = [];
+        foreach ($months as $mm) {
+            if ($mm === $ym) {
+                continue;
+            }
+            $m = CarbonImmutable::parse($mm . '-01');
+            $keys = [$m->subMonths(3)->format('Y-m'), $m->subMonths(2)->format('Y-m'), $m->subMonth()->format('Y-m')];
+            $off = FinanceHabitualExclusion::activeFor($this->companyId, $mm)->pluck('entity_pingwin_id')->map(fn ($v) => (string) $v)->all();
+            $out[$mm] = $this->habitualMissing($all, $allParts, $mm, $keys, $off) !== [];
+        }
+
+        return $out;
+    }
+
     /** O food cost do mês: o da Engenharia de menu (compras de comida e bebidas ÷ vendas). */
     private function foodCost(string $ym, CarbonImmutable $end): array
     {
@@ -585,27 +617,15 @@ final class MonthFinanceService
             }
         }
 
-        // Saídas com data: as notas de liquidação e as faturas-recibo (pagas no ato), do espelho dos documentos.
-        $outflows = DB::table('pingwin_supplier_documents')->where('company_id', $this->companyId)
-            ->where('docstatus_id', (string) $this->cfg['closed_status'])
-            ->where(fn ($q) => $q->whereIn('docconfig_id', (array) $this->cfg['payment_docconfigs'])->orWhereIn('docconfig_id', $auto->keys()->filter(fn ($k) => isset($this->cfg['expense_docconfigs'][$k]))->values()->all()))
-            ->whereBetween('doc_date', [$start->toDateString(), $end->toDateString()])
-            ->get(['docheader_id', 'docconfig_id', 'doctype', 'document', 'entity_name', 'doc_date', 'total_cents'])
-            ->map(fn ($o) => (object) ['docheader_id' => $o->docheader_id, 'doctype' => $o->doctype, 'document' => $o->document, 'entity_name' => $o->entity_name,
-                'doc_date' => $o->doc_date, 'total_cents' => (int) $o->total_cents]);
-        // E os pagamentos registados na XPLENDOR (os que o PingWin ainda não tem), pela data do pagamento.
-        $docNames = DB::table('pingwin_supplier_documents')->where('company_id', $this->companyId)->whereIn('docheader_id', array_keys($this->payments))
-            ->get(['docheader_id', 'document', 'entity_name'])->keyBy('docheader_id');
-        foreach ($this->payments as $pay) {
-            $st = $states[$pay->docheader_id] ?? null;
-            if (($st['xplendor_superseded'] ?? false) || $pay->paid_on->lt($start) || $pay->paid_on->gt($end)) {
-                continue;
-            }
-            $outflows->push((object) ['docheader_id' => $pay->docheader_id, 'doctype' => 'Pagamento registado na XPLENDOR',
-                'document' => $docNames[$pay->docheader_id]->document ?? null, 'entity_name' => $docNames[$pay->docheader_id]->entity_name ?? null,
-                'doc_date' => $pay->paid_on->toDateString(), 'total_cents' => (int) $pay->amount_cents]);
-        }
+        $outflows = $this->outflows($start, $end, $auto, $states);
         $paidInMonth = (int) $outflows->sum('total_cents');
+        // O mês anterior, só para a comparação do cartão Dinheiro (o que saiu e o que entrou).
+        $prevStart = $start->subMonth();
+        $paidPrev = (int) $this->outflows($prevStart, $prevStart->endOfMonth()->startOfDay(), $auto, $states)->sum('total_cents');
+        $inPrev = (int) DB::table('pingwin_item_sales_daily')->where('company_id', $this->companyId)
+            ->whereBetween('business_date', [$prevStart->toDateString(), $prevStart->endOfMonth()->toDateString()])
+            ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+            ->sum(DB::raw('net_cents + tax_cents'));
 
         $dueByEnd = 0;
         $overdue = 0;
@@ -681,6 +701,9 @@ final class MonthFinanceService
         return [
             'states' => $states,
             'paid_in_month_cents' => $paidInMonth,
+            'paid_prev_cents' => $paidPrev,
+            'in_cents' => array_sum(array_column($weeks, 'in_cents')),
+            'in_prev_cents' => $inPrev,
             'due_by_month_end_cents' => $dueByEnd,
             'overdue_cents' => $overdue,
             'cc_synced_at' => $syncedAt ? CarbonImmutable::parse($syncedAt)->format('d/m/Y') : null,
@@ -700,6 +723,35 @@ final class MonthFinanceService
                 'cc_synced_at' => $syncedAt ? CarbonImmutable::parse($syncedAt)->toIso8601String() : null,
             ],
         ];
+    }
+
+    /**
+     * As saídas com data entre duas datas: as notas de liquidação e as faturas-recibo (pagas no ato), do
+     * espelho dos documentos, e os pagamentos registados na XPLENDOR (os que o PingWin ainda não tem),
+     * pela data do pagamento.
+     */
+    private function outflows(CarbonImmutable $start, CarbonImmutable $end, Collection $auto, array $states): Collection
+    {
+        $outflows = DB::table('pingwin_supplier_documents')->where('company_id', $this->companyId)
+            ->where('docstatus_id', (string) $this->cfg['closed_status'])
+            ->where(fn ($q) => $q->whereIn('docconfig_id', (array) $this->cfg['payment_docconfigs'])->orWhereIn('docconfig_id', $auto->keys()->filter(fn ($k) => isset($this->cfg['expense_docconfigs'][$k]))->values()->all()))
+            ->whereBetween('doc_date', [$start->toDateString(), $end->toDateString()])
+            ->get(['docheader_id', 'docconfig_id', 'doctype', 'document', 'entity_name', 'doc_date', 'total_cents'])
+            ->map(fn ($o) => (object) ['docheader_id' => $o->docheader_id, 'doctype' => $o->doctype, 'document' => $o->document, 'entity_name' => $o->entity_name,
+                'doc_date' => $o->doc_date, 'total_cents' => (int) $o->total_cents]);
+        $docNames = DB::table('pingwin_supplier_documents')->where('company_id', $this->companyId)->whereIn('docheader_id', array_keys($this->payments))
+            ->get(['docheader_id', 'document', 'entity_name'])->keyBy('docheader_id');
+        foreach ($this->payments as $pay) {
+            $st = $states[$pay->docheader_id] ?? null;
+            if (($st['xplendor_superseded'] ?? false) || $pay->paid_on->lt($start) || $pay->paid_on->gt($end)) {
+                continue;
+            }
+            $outflows->push((object) ['docheader_id' => $pay->docheader_id, 'doctype' => 'Pagamento registado na XPLENDOR',
+                'document' => $docNames[$pay->docheader_id]->document ?? null, 'entity_name' => $docNames[$pay->docheader_id]->entity_name ?? null,
+                'doc_date' => $pay->paid_on->toDateString(), 'total_cents' => (int) $pay->amount_cents]);
+        }
+
+        return $outflows;
     }
 
     /**

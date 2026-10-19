@@ -30,11 +30,15 @@ beforeEach(() => {
     mockPut.mockReset().mockResolvedValue({ data: payload, message: "Configurações guardadas." });
 });
 
-test("mostra as secções e guarda só o que mudou", async () => {
+test("mostra as secções com a frase de para que servem, a ajuda de cada definição, e guarda só o que mudou", async () => {
     render(<RestaurantSettingsPage />);
     expect(await screen.findByText("Engenharia de menu")).toBeInTheDocument();
-    expect(screen.getByLabelText("Sobre: Food cost alvo (geral)")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-section-help-menu")).toHaveTextContent("Os alvos de food cost");
+    expect(screen.getByText("Sobre Food cost alvo (geral)")).toBeInTheDocument(); // a ajuda à vista
+    // O Guardar só aparece quando há alterações.
+    expect(screen.queryByTestId("settings-savebar")).toBeNull();
     fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "32" } });
+    expect(screen.getByTestId("settings-savebar")).toHaveTextContent("1 alteração por guardar.");
     fireEvent.click(screen.getByTestId("settings-save"));
     await waitFor(() => expect(mockPut).toHaveBeenCalledWith(5, { "menu.food_cost_target_pct": 32 }, false));
 });

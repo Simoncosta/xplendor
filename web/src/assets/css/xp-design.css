@@ -112,3 +112,14 @@
     .placeholder-wave { -webkit-mask-image: none; mask-image: none; animation: none !important; }
     .xp-reloading { transition: none; }
 }
+
+/* Faturas › linhas: o código e o Item ficam fixos à esquerda e o menu da linha à direita quando a
+   tabela faz scroll horizontal (com o PDF visível). */
+.xp-lines .xp-sticky-1, .xp-lines .xp-sticky-2, .xp-lines .xp-sticky-end { position: sticky; z-index: 2; background-color: var(--vz-secondary-bg, #fff); }
+.xp-lines thead .xp-sticky-1, .xp-lines thead .xp-sticky-2, .xp-lines thead .xp-sticky-end { background-color: var(--vz-light, #f3f6f9); z-index: 3; }
+.xp-lines tr.table-warning .xp-sticky-1, .xp-lines tr.table-warning .xp-sticky-2, .xp-lines tr.table-warning .xp-sticky-end { background-color: var(--vz-warning-bg-subtle, #fef4e4); }
+.xp-lines .xp-sticky-1 { left: 0; }
+.xp-lines .xp-sticky-2 { left: 128px; box-shadow: 4px 0 4px -4px rgba(0, 0, 0, 0.12); }
+.xp-lines .xp-sticky-end { right: 0; box-shadow: -4px 0 4px -4px rgba(0, 0, 0, 0.12); }
+.xp-lines td .form-control-sm, .xp-lines td .form-control-plaintext { min-height: 31px; }
+.xp-lines td input[type="number"]::-webkit-inner-spin-button { margin-left: 2px; }

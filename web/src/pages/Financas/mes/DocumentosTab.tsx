@@ -19,7 +19,17 @@ import { dmy, eur } from "./format";
  * contabilidade substitui a folha manual: marcar como enviado, a folha em XLSX, o ZIP, o email ao
  * contabilista e importar a folha antiga. Tudo só na XPLENDOR, menos o "Fechar no PingWin".
  */
-type Props = { companyId: number; data: FinanceMonth; onOpen: (docheaderId: string) => void; onChanged: () => void };
+type Props = {
+    companyId: number; data: FinanceMonth; onOpen: (docheaderId: string) => void; onChanged: () => void;
+    /** O filtro inicial (os contadores de Trabalho do mês abrem a lista já filtrada). */
+    initialGroup?: string; initialState?: string;
+    /**
+     * all: tudo (o painel do Resumo); documentos: sem a barra da contabilidade (Trabalho do mês ›
+     * Documentos); contabilidade: a barra da contabilidade primeiro, sem os por classificar (Trabalho do
+     * mês › Envio à contabilidade).
+     */
+    view?: "all" | "documentos" | "contabilidade";
+};
 
 const csvCell = (v: any) => {
     const s = v === null || v === undefined ? "" : String(v);
@@ -60,9 +70,9 @@ function NoteCell({ companyId, row, canEdit, onSaved }: { companyId: number; row
     return <Input bsSize="sm" value={v} maxLength={500} aria-label={`Nota de ${row.document}`} onChange={(e) => setV(e.target.value)} onBlur={commit} style={{ minWidth: 140 }} />;
 }
 
-export default function DocumentosTab({ companyId, data, onOpen, onChanged }: Props) {
-    const [group, setGroup] = useState<string>("");
-    const [state, setState] = useState<string>("");
+export default function DocumentosTab({ companyId, data, onOpen, onChanged, initialGroup = "", initialState = "", view = "all" }: Props) {
+    const [group, setGroup] = useState<string>(initialGroup);
+    const [state, setState] = useState<string>(initialState);
     const [supplier, setSupplier] = useState<string>("");
     const [busy, setBusy] = useState<string | null>(null);
     const [choice, setChoice] = useState<Record<string, FinanceGroup>>({});
@@ -132,9 +142,24 @@ export default function DocumentosTab({ companyId, data, onOpen, onChanged }: Pr
         ? `/financas/configuracao/regras?tipo=tipo_documento&valor=${encodeURIComponent(r.new_type.docconfig_id)}&rotulo=${encodeURIComponent(r.new_type.label)}`
         : `/financas/configuracao/regras?tipo=entidade&valor=${encodeURIComponent(r.entity_pingwin_id ?? "")}&rotulo=${encodeURIComponent(r.supplier ?? "")}`;
 
+    const accounting = (
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-2" data-testid="docs-accounting">
+            <span className="fs-12 text-muted text-uppercase fw-semibold me-1">Contabilidade{selected.length ? ` (${selected.length} escolhidos)` : " (os documentos à vista)"}:</span>
+            <Button size="sm" color="outline-secondary" onClick={exportSheet} disabled={busy === "sheet"} data-testid="export-sheet"><i className="ri-file-excel-2-line me-1" />Exportar folha da contabilidade</Button>
+            <Button size="sm" color="outline-secondary" onClick={prepareZip} disabled={busy === "zip"} data-testid="prepare-zip"><i className="ri-folder-zip-line me-1" />Preparar envio</Button>
+            <ReasonButton size="sm" color="outline-primary" reason={canEdit ? null : "Só quem edita as Finanças envia."} onClick={() => setEmailing(scope().docheader_ids)} data-testid="send-accountant">
+                <i className="ri-mail-send-line me-1" />Enviar ao contabilista
+            </ReasonButton>
+            <ReasonButton size="sm" color="link" reason={canEdit ? null : "Só quem edita as Finanças importa."} onClick={() => setImporting(true)} data-testid="import-sheet">Importar folha antiga (XLSX)</ReasonButton>
+        </div>
+    );
+
     return (
         <div data-testid="finance-documents">
-            {unclassified.length > 0 && (
+            {view === "contabilidade" && (
+                <p className="fs-13 text-muted mb-2">A folha, o ZIP com as faturas e o email ao contabilista levam os documentos escolhidos na lista ou, sem nenhum escolhido, os que estão à vista com os filtros.</p>
+            )}
+            {view !== "contabilidade" && unclassified.length > 0 && (
                 <div className="mb-3" data-testid="docs-unclassified">
                     <div className="fs-12 text-danger text-uppercase fw-semibold mb-1">Por classificar ({unclassified.length})</div>
                     <ul className="list-unstyled mb-0">
@@ -164,7 +189,7 @@ export default function DocumentosTab({ companyId, data, onOpen, onChanged }: Pr
                     </ul>
                 </div>
             )}
-            {open.length > 0 && (
+            {view !== "contabilidade" && open.length > 0 && (
                 <Alert color="warning" className="py-2 fs-13" data-testid="docs-open">
                     <i className="ri-error-warning-line me-1" />Em aberto: {data.documents.open.count} {data.documents.open.count === 1 ? "documento" : "documentos"} ({eur(data.documents.open.total_cents)}) ainda não estão fechados no PingWin; não contam no stock.
                 </Alert>
@@ -191,15 +216,7 @@ export default function DocumentosTab({ companyId, data, onOpen, onChanged }: Pr
                     <Button size="sm" color="light" onClick={exportCsv} data-testid="docs-csv"><i className="ri-download-2-line me-1" />Exportar CSV</Button>
                 </Col>
             </Row>
-            <div className="d-flex flex-wrap align-items-center gap-2 mb-2" data-testid="docs-accounting">
-                <span className="fs-12 text-muted text-uppercase fw-semibold me-1">Contabilidade{selected.length ? ` (${selected.length} escolhidos)` : " (os documentos à vista)"}:</span>
-                <Button size="sm" color="outline-secondary" onClick={exportSheet} disabled={busy === "sheet"} data-testid="export-sheet"><i className="ri-file-excel-2-line me-1" />Exportar folha da contabilidade</Button>
-                <Button size="sm" color="outline-secondary" onClick={prepareZip} disabled={busy === "zip"} data-testid="prepare-zip"><i className="ri-folder-zip-line me-1" />Preparar envio</Button>
-                <ReasonButton size="sm" color="outline-primary" reason={canEdit ? null : "Só quem edita as Finanças envia."} onClick={() => setEmailing(scope().docheader_ids)} data-testid="send-accountant">
-                    <i className="ri-mail-send-line me-1" />Enviar ao contabilista
-                </ReasonButton>
-                <ReasonButton size="sm" color="link" reason={canEdit ? null : "Só quem edita as Finanças importa."} onClick={() => setImporting(true)} data-testid="import-sheet">Importar folha antiga (XLSX)</ReasonButton>
-            </div>
+            {view !== "documentos" && accounting}
 
             {selected.length > 0 && (
                 <div className="d-flex flex-wrap align-items-center gap-2 mb-2 p-2 border rounded" data-testid="docs-selection">

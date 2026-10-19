@@ -103,16 +103,19 @@ export interface FinanceMonth {
     stores: { id: number; name: string }[];
     store_id: number | null;
     cards: {
-        sales: { cents: number; store_cents: number | null; days: number; days_in_month: number; source: string };
-        expenses: { cents: number; open_cents: number; open_count: number; unclassified_cents: number; source: string };
+        sales: { cents: number; store_cents: number | null; days: number; days_in_month: number; source: string; prev_cents?: number };
+        expenses: { cents: number; prev_cents?: number; open_cents: number; open_count: number; unclassified_cents: number; source: string };
         result: { cents: number; pct: number | null; prev_cents: number; prev_pct: number | null; estimated_cents: number | null; estimated_pct: number | null; source: string };
-        cash: { paid_cents: number; due_by_month_end_cents: number; overdue_cents: number; source: string };
+        cash: { paid_cents: number; due_by_month_end_cents: number; overdue_cents: number; source: string;
+            /** O que saiu no mês anterior e o que entrou (as vendas com IVA) neste mês e no anterior. */
+            paid_prev_cents?: number; in_cents?: number; in_prev_cents?: number };
     };
     result: {
         rows: ResultRow[];
         out_of_result: { label: string; cents: number; reason: string | null }[];
         food_cost: { pct: number | null; comida_pct: number | null; bebida_pct: number | null; avg3_pct: number | null; source: string };
-        chart: { month: string; label: string; sales_cents: number; expenses_cents: number; result_cents: number }[];
+        /** provisional: o mês ainda tem documentos habituais em falta (mais claro no gráfico). */
+        chart: { month: string; label: string; sales_cents: number; expenses_cents: number; result_cents: number; provisional?: boolean }[];
         vat: { sales_vat_cents: number; purchases_vat_cents: number; estimate_cents: number; docs_without_vat: number; note: string };
         store_note: string;
     };

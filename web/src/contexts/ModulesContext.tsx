@@ -3,6 +3,7 @@ import { getMyAccess } from "helpers/laravel_helper";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { getHomeCompanyId } from "helpers/workingCompany";
 import { isRootRole, sessionUser } from "helpers/roles";
+import { branchAllows } from "./branch";
 
 /**
  * XPLENDOR — Fonte ÚNICA (frontend) do que a pessoa pode fazer na empresa em que trabalha:
@@ -35,13 +36,17 @@ export interface AccessState {
     agencyAdmin: boolean;
     /** O nome do perfil da pessoa nesta empresa. */
     profileName: string | null;
+    /** O ramo da empresa (restauracao, automovel, imobiliario) ou null. */
+    branch: string | null;
+    /** A empresa é deste ramo (o root na própria empresa vê todos os ramos, como vê todos os módulos). */
+    inBranch: (branch?: string) => boolean;
 }
 
 const LOADING_REASON = "A carregar as permissões…";
 
 const ModulesContext = createContext<AccessState>({
-    modules: null, isRoot: false, loading: true, failed: false, agencyAdmin: false, profileName: null,
-    has: (m) => !m, can: (p) => !p, reason: () => LOADING_REASON,
+    modules: null, isRoot: false, loading: true, failed: false, agencyAdmin: false, profileName: null, branch: null,
+    has: (m) => !m, can: (p) => !p, reason: () => LOADING_REASON, inBranch: (b) => !b,
 });
 
 /** O root na própria empresa vê todos os módulos; noutra empresa, o ecrã segue os módulos dela. */
@@ -55,6 +60,7 @@ type Payload = {
     agency_admin?: boolean;
     profile?: { name: string } | null;
     agency_profile?: { name: string } | null;
+    branch?: string | null;
 };
 
 export const ModulesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -86,6 +92,8 @@ export const ModulesProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const modules = data?.modules ?? null;
     const has = (module?: string): boolean => !module || isRoot || (!!modules && modules.includes(module));
     const can = (permission?: string): boolean => !permission || !!data?.permissions?.[permission];
+    const branch = data?.branch ?? null;
+    const inBranch = (b?: string): boolean => branchAllows(b, branch, isRoot);
     const reason = (permission: string): string | null => {
         if (can(permission)) return null;
         if (loading) return LOADING_REASON;
@@ -95,7 +103,7 @@ export const ModulesProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     return (
         <ModulesContext.Provider value={{
-            modules, isRoot, loading, failed, has, can, reason,
+            modules, isRoot, loading, failed, has, can, reason, branch, inBranch,
             agencyAdmin: !!data?.agency_admin,
             profileName: data?.agency_profile?.name ?? data?.profile?.name ?? null,
         }}>

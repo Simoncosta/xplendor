@@ -13,9 +13,11 @@ type Props = {
     label?: string;
     placement?: "top" | "bottom" | "left" | "right" | "auto";
     className?: string;
+    /** O ícone (por omissão o (i); o Resumo das Finanças usa o "?"). */
+    icon?: string;
 };
 
-export default function InfoTip({ text, label = "Sobre esta página", placement = "bottom", className = "" }: Props) {
+export default function InfoTip({ text, label = "Sobre esta página", placement = "bottom", className = "", icon = "ri-information-line" }: Props) {
     const id = `info-${useId().replace(/:/g, "")}`;
     const [open, setOpen] = useState(false);
     return (
@@ -35,7 +37,7 @@ export default function InfoTip({ text, label = "Sobre esta página", placement 
                 onClick={(e) => { e.stopPropagation(); setOpen(true); }}
                 onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
             >
-                <i className="ri-information-line" aria-hidden="true" />
+                <i className={icon} aria-hidden="true" />
             </button>
             <Tooltip target={id} isOpen={open} trigger="manual" placement={placement} innerClassName="xp-infotip-text" fade={false}>
                 {text}

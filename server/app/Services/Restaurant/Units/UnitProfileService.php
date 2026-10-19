@@ -236,7 +236,7 @@ final class UnitProfileService
 
         return [
             'article' => ['product_id' => $pid, 'code' => $code, 'label' => $e['label'], 'description' => $e['description'], 'family' => $e['family'],
-                'base_unit' => $e['base_unit'], 'base_family' => $e['base_family'], 'url' => "/restauracao/artigos/{$pid}"],
+                'base_unit' => $e['base_unit'], 'base_family' => $e['base_family'], 'url' => "/cadastros/artigos/{$pid}"],
             'profile' => $profile ? [
                 'state' => $profile->state, 'base_confirmed' => $profile->base_confirmed, 'type' => $profile->article_type,
                 'count_unit' => $profile->count_unit, 'confirmed_by' => $profile->confirmer?->name, 'confirmed_at' => $profile->confirmed_at?->toIso8601String(),

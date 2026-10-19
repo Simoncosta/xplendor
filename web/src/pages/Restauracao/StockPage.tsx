@@ -82,7 +82,7 @@ export default function StockPage() {
     const familyOptions: Opt[] = useMemo(() => [{ value: "", label: "Todas as famílias" }, ...(data?.families ?? []).map((f) => ({ value: f, label: f }))], [data?.families]);
     const stateOptions: Opt[] = useMemo(() => [{ value: "", label: "Todos os estados" }, ...(data?.states ?? []).map((s) => ({ value: s.id, label: `${s.label} (${summary?.counts?.[s.id] ?? 0})` }))], [data?.states, summary?.counts]);
 
-    const open = (r: StockRow) => navigate(`/restauracao/artigos/${r.product_id}?tab=stock`);
+    const open = (r: StockRow) => navigate(`/cadastros/artigos/${r.product_id}?tab=stock`);
     const [auditKey, setAuditKey] = useState(0);
     const auditCounts = useAuditCounts(companyId, "artigo", rows.map((r) => r.product_id), auditKey);
 

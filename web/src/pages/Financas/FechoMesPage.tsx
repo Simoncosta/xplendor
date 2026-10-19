@@ -5,14 +5,15 @@ import Skeleton from "Components/Common/Skeleton";
 import { getFinanceMonth } from "helpers/laravel_helper";
 import { FinanceMonth } from "common/models/financeMonth.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
-import MonthTop from "./mes/MonthTop";
+import ResumoTab from "./mes/ResumoTab";
 import ResultadoTab from "./mes/ResultadoTab";
 import { lastMonth } from "./FinancasMesPage";
 import { ucfirst } from "./mes/format";
 
 /**
- * XPLENDOR — Finanças › Mês › Fecho do mês: a página para imprimir (ou guardar em PDF pelo navegador)
- * com o topo e o separador Resultado, para a responsável administrativa enviar à dona.
+ * XPLENDOR — Finanças › Mês › Fecho do mês: a página para imprimir (ou guardar em PDF pelo navegador),
+ * na mesma ordem do ecrã: o Resumo primeiro (o estado do mês, os quatro números, os grupos e os últimos
+ * 6 meses, em tabelas em vez de gráficos) e depois o resultado por grupo e família.
  */
 const PRINT_CSS = `
 @media print {
@@ -26,6 +27,9 @@ const PRINT_CSS = `
     .fm-print-area table { font-size: 10px; }
     .fm-print-area tr { break-inside: avoid; }
     .fm-print-area .col-xl-3 { flex: 0 0 25%; max-width: 25%; }
+    .fm-print-area .col-xl-5 { flex: 0 0 41.666%; max-width: 41.666%; }
+    .fm-print-area .col-xl-7 { flex: 0 0 58.333%; max-width: 58.333%; }
+    .fm-print-area .fm-break { break-before: page; }
 }
 `;
 
@@ -55,7 +59,9 @@ export default function FechoMesPage() {
             <Container fluid className="fm-print-area" data-testid="finance-print">
                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div>
-                        <h4 className="mb-0">{ucfirst(title)}{data?.provisional && <span className="badge bg-warning-subtle text-warning ms-2 align-middle" data-testid="print-provisional">Provisório</span>}</h4>
+                        <h4 className="mb-0">{ucfirst(title)}{data && (data.provisional
+                            ? <span className="badge bg-warning-subtle text-warning ms-2 align-middle" data-testid="print-provisional">Provisório</span>
+                            : <span className="badge bg-success-subtle text-success ms-2 align-middle" data-testid="print-complete" title="Não falta nenhum documento habitual.">Completo</span>)}</h4>
                         <div className="fs-12 text-muted">Gerado a {new Date().toLocaleDateString("pt-PT")} · vendas: {storeName ?? "todos os restaurantes"}</div>
                     </div>
                     <div className="d-flex gap-2 fm-no-print">
@@ -67,8 +73,8 @@ export default function FechoMesPage() {
                 {!data && !error && <Card><CardBody><Skeleton variant="lines" lines={8} /></CardBody></Card>}
                 {data && (
                     <>
-                        <MonthTop data={data} storeName={storeName} printable />
-                        <Card><CardBody><h5 className="mb-3">Resultado</h5><ResultadoTab data={data} printable /></CardBody></Card>
+                        <ResumoTab data={data} storeName={storeName} printable />
+                        <Card className="fm-break"><CardBody><h5 className="mb-3">Resultado por grupo e família</h5><ResultadoTab data={data} printable /></CardBody></Card>
                     </>
                 )}
             </Container>

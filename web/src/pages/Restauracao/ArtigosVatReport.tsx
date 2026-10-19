@@ -67,7 +67,7 @@ export default function ArtigosVatReport({ companyId, viewToggle }: { companyId:
                 pageSize={20}
                 initialSort={{ id: "lines", desc: true }}
                 caption="IVA a rever"
-                onRowClick={(a) => a.pingwin_id && navigate(`/restauracao/artigos/${a.pingwin_id}`, { state: { catalogItemId: a.article_id } })}
+                onRowClick={(a) => a.pingwin_id && navigate(`/cadastros/artigos/${a.pingwin_id}`, { state: { catalogItemId: a.article_id } })}
                 empty={{ message: "Nenhum artigo com IVA faturado diferente do catálogo." }}
             />
         </PageCard>

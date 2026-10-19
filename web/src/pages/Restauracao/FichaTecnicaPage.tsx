@@ -102,7 +102,7 @@ function LinesTable({ lines, hidden, tableKey, depth = 0, total, wh, factorActio
                     {l.similar && (
                         <div className="fs-12 text-muted" data-testid="similar">
                             <i className="ri-lightbulb-line me-1" aria-hidden />Compra-se um parecido:{" "}
-                            <Link to={`/restauracao/artigos/${l.similar.product_id}`} onClick={(e) => e.stopPropagation()}>{l.similar.code} {l.similar.description}</Link>
+                            <Link to={`/cadastros/artigos/${l.similar.product_id}`} onClick={(e) => e.stopPropagation()}>{l.similar.code} {l.similar.description}</Link>
                             {", último "}<Money value={l.similar.last_eur} hidden={hidden} decimals={4} seed={9} />
                         </div>
                     )}
@@ -349,7 +349,7 @@ export default function FichaTecnicaPage() {
                             actions={<>
                                 {data && <StateBadge state={data.state} label={STATE_LABEL[data.state]} />}
                                 {data?.flags.map((f) => <span key={f} className="badge bg-warning-subtle text-warning" data-testid="recipe-flag">{FLAG_LABEL[f]}</span>)}
-                                <Button size="sm" color="outline-primary" onClick={() => navigate(`/restauracao/artigos/${productId}`)}>
+                                <Button size="sm" color="outline-primary" onClick={() => navigate(`/cadastros/artigos/${productId}`)}>
                                     <i className="ri-external-link-line me-1" />Abrir o artigo
                                 </Button>
                             </>}

@@ -47,7 +47,7 @@ class SyncPingwinCatalogJob implements ShouldQueue
                 title: 'Falha ao sincronizar artigos',
                 message: 'Não foi possível obter os artigos do PingWin. Tenta novamente.',
                 severity: 'high',
-                detailPath: '/restauracao/artigos',
+                detailPath: '/cadastros/artigos',
             );
 
             return;
@@ -59,7 +59,7 @@ class SyncPingwinCatalogJob implements ShouldQueue
             title: 'Artigos atualizados',
             message: "Catálogo de artigos do PingWin atualizado ({$count}).",
             severity: 'low',
-            detailPath: '/restauracao/artigos',
+            detailPath: '/cadastros/artigos',
         );
         Log::info('[PingWin Artigos] Job concluído', ['company_id' => $this->companyId, 'count' => $count]);
     }
@@ -73,7 +73,7 @@ class SyncPingwinCatalogJob implements ShouldQueue
             title: 'Falha ao sincronizar artigos',
             message: 'Não foi possível obter os artigos do PingWin. Tenta novamente.',
             severity: 'high',
-            detailPath: '/restauracao/artigos',
+            detailPath: '/cadastros/artigos',
         );
     }
 }

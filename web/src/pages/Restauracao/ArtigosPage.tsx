@@ -46,13 +46,13 @@ const YesNo = ({ v, color }: { v: boolean; color: string }) =>
     v ? <span className={`badge bg-${color}-subtle text-${color}`}>Sim</span> : <span className="text-muted">—</span>;
 
 export default function ArtigosPage() {
-    document.title = "Artigos | Restauração | Xplendor";
+    document.title = "Artigos | Cadastros | Xplendor";
     const navigate = useNavigate();
 
     // ⚠️ Abrir um artigo: navega com o pingwin_id no URL (para LER) + o id local no
     // state (catalogItemId, para EDITAR/ANULAR). São ids diferentes (ver ArtigoFormPage).
     const openArticle = (a: PingwinCatalogItem) =>
-        navigate(`/restauracao/artigos/${a.pingwin_id}`, { state: { catalogItemId: a.id } });
+        navigate(`/cadastros/artigos/${a.pingwin_id}`, { state: { catalogItemId: a.id } });
 
     const companyId = useWorkingCompanyId();
 
@@ -205,7 +205,7 @@ export default function ArtigosPage() {
             <Container fluid>
                 <PageHeader
                     title="Artigos"
-                    breadcrumbs={[{ label: "Restauração" }]}
+                    breadcrumbs={[{ label: "Cadastros" }]}
                     info="O catálogo de artigos do PingWin."
                 />
 
@@ -223,7 +223,7 @@ export default function ArtigosPage() {
                                 <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                                 </Button>
-                                <Button size="sm" color="primary" onClick={() => navigate("/restauracao/artigos/novo")}>
+                                <Button size="sm" color="primary" onClick={() => navigate("/cadastros/artigos/novo")}>
                                     <i className="ri-add-line me-1" /> Novo artigo
                                 </Button>
                             </>}

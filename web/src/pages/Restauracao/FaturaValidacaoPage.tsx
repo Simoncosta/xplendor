@@ -15,6 +15,7 @@ import LineArticleCell from "./faturas/LineArticleCell";
 import LaunchCard, { LaunchTrigger } from "./faturas/LaunchCard";
 import VatByRateCard from "./faturas/VatByRateCard";
 import RereadModal from "./faturas/RereadModal";
+import PromoModal, { promoTag } from "./faturas/PromoModal";
 import GuidesCard from "./faturas/GuidesCard";
 import {
     getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice, revalidateOcrInvoice,
@@ -123,6 +124,7 @@ export default function FaturaValidacaoPage() {
     const [launchTrigger, setLaunchTrigger] = useState<LaunchTrigger>(null);
     const [launchRefresh, setLaunchRefresh] = useState(0);
     const savedBody = useRef<string>("");
+    const [promoLine, setPromoLine] = useState<number | null>(null);   // "Promoção…" da linha
 
     // Estado editável
     const [supplierId, setSupplierId] = useState<number | null>(null);
@@ -375,10 +377,10 @@ export default function FaturaValidacaoPage() {
     };
 
     // Revalidar: grava as linhas de agora (sem mudar o estado) e volta a correr as validações. Sem IA.
-    const revalidate = async () => {
+    const revalidate = async (override?: OcrInvoiceLine[]) => {
         setRevalidating(true);
         try {
-            const r: any = await revalidateOcrInvoice(companyId, invoiceId, body);
+            const r: any = await revalidateOcrInvoice(companyId, invoiceId, override ? bodyOf(supplierId, supplierName, supplierNif, number, issueDate, override, summary) : body);
             if (r?.data?.invoice) hydrate(r.data.invoice);
             setLaunchRefresh((n) => n + 1);
             toast.success("Validações feitas de novo.");
@@ -387,6 +389,14 @@ export default function FaturaValidacaoPage() {
         } finally {
             setRevalidating(false);
         }
+    };
+
+    // "Promoção…": muda o código da linha e revalida (a repartição é a do servidor).
+    const applyPromo = async (i: number, code: string | null) => {
+        const next = lines.map((l, k) => (k === i ? { ...l, promo_code: code } : l));
+        setLines(next);
+        await revalidate(next);
+        setPromoLine(null);
     };
 
     const toggleImage = () => setImageHidden((v) => { writeImageHidden(!v); return !v; });
@@ -540,7 +550,7 @@ export default function FaturaValidacaoPage() {
                         <Button size="sm" color="outline-secondary" onClick={toggleImage} aria-pressed={imageHidden} data-testid="toggle-image">
                             <i className={`${imageHidden ? "ri-image-line" : "ri-image-off-line"} me-1`} />{imageHidden ? "Mostrar imagem" : "Ocultar imagem"}
                         </Button>
-                        <Button size="sm" color="outline-primary" onClick={revalidate} disabled={saving || revalidating} data-testid="revalidate">
+                        <Button size="sm" color="outline-primary" onClick={() => revalidate()} disabled={saving || revalidating} data-testid="revalidate">
                             {revalidating ? <><Spinner size="sm" className="me-1" />A revalidar…</> : <><i className="ri-checkbox-multiple-line me-1" />Revalidar</>}
                         </Button>
                         <Button size="sm" color="outline-primary" onClick={() => setRereadOpen(true)} disabled={saving || revalidating} data-testid="reread">
@@ -666,38 +676,58 @@ export default function FaturaValidacaoPage() {
                                     <Button size="sm" color="outline-primary" onClick={() => setLines((p) => [...p, emptyLine()])}><i className="ri-add-line me-1" />Adicionar linha</Button>
                                 </div>
                             </div>
-                            <div className="table-responsive">
-                                <table className="table table-bordered align-middle mb-0" style={{ minWidth: 1280 }}>
+                            {/* Larguras pelo conteúdo; tudo alinhado pelo topo; o Item e o menu da linha ficam à vista
+                                com scroll horizontal (o PDF visível tira largura). */}
+                            <div className="table-responsive xp-lines-scroll">
+                                <table className="table table-bordered align-top mb-0 xp-lines" style={{ tableLayout: "fixed", width: "100%", minWidth: 1150 }} data-testid="lines-table">
+                                    <colgroup>
+                                        <col style={{ width: 128 }} /><col style={{ minWidth: 220 }} /><col style={{ width: 84 }} /><col style={{ width: 66 }} />
+                                        <col style={{ width: 98 }} /><col style={{ width: 66 }} /><col style={{ width: 112 }} /><col style={{ width: 100 }} />
+                                        <col style={{ width: 230 }} /><col style={{ width: 46 }} />
+                                    </colgroup>
                                     <thead className="text-muted table-light">
                                         <tr>
-                                            <th style={{ minWidth: 90 }}>Cód. fornecedor</th><th style={{ minWidth: 180 }}>Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th><th>Total</th><th title="Código da promoção da linha (ex.: coluna DD da Makro)">Promoção</th><th>IVA</th><th style={{ minWidth: 320 }}>Artigo</th><th></th>
+                                            <th className="xp-sticky-1">Cód. fornecedor</th><th className="xp-sticky-2">Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th>
+                                            <th className="text-end">Total</th><th>IVA</th><th>Artigo</th><th className="xp-sticky-end"><span className="visually-hidden">Ações da linha</span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {lines.length === 0 ? (
-                                            <tr><td colSpan={11} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
-                                        ) : lines.map((l, i) => (
+                                            <tr><td colSpan={10} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
+                                        ) : lines.map((l, i) => {
+                                            const tag = promoTag(l, inv?.discounts ?? []);
+                                            const disc = l.discount ?? 0;
+                                            return (
                                             <tr key={i} className={l.id && explained.has(l.id) ? "table-warning" : undefined} data-testid={`line-${i}`}>
-                                                <td style={{ width: 110 }}><input className="form-control form-control-sm" value={l.supplier_code ?? ""} onChange={(e) => setLine(i, { supplier_code: e.target.value })} aria-label={`Código do fornecedor, linha ${i + 1}`} /></td>
-                                                <td><input className="form-control form-control-sm" value={l.item ?? ""} onChange={(e) => setLine(i, { item: e.target.value })} /></td>
-                                                <td style={{ width: 80 }}>{numInput(l.quantity, (v) => setLine(i, { quantity: v }))}</td>
-                                                <td style={{ width: 70 }}><input className="form-control form-control-sm" value={l.unit ?? ""} onChange={(e) => setLine(i, { unit: e.target.value })} /></td>
-                                                <td style={{ width: 100 }}>{numInput(l.unit_price, (v) => setLine(i, { unit_price: v }))}</td>
-                                                <td style={{ width: 80 }}>{numInput(l.discount_pct, (v) => setLine(i, { discount_pct: v }))}</td>
-                                                <td style={{ width: 130 }}>
-                                                    {numInput(l.line_total, (v) => setLine(i, { line_total: v }), { "aria-label": `Valor da linha ${i + 1}` })}
-                                                    {(l.discount ?? 0) > 0 && (
-                                                        <div className="fs-12 mt-1 text-nowrap" data-testid={`line-discount-${i}`}>
-                                                            <div className="text-success">{l.discount_label ?? "Desconto"} {l.discount_code}: −{eur(l.discount)}</div>
-                                                            <div className="fw-semibold">Líquido {eur((l.line_total ?? 0) - (l.discount ?? 0))}</div>
-                                                        </div>
+                                                <td className="xp-sticky-1"><input className="form-control form-control-sm font-monospace" value={l.supplier_code ?? ""} title={l.supplier_code ?? ""} onChange={(e) => setLine(i, { supplier_code: e.target.value })} aria-label={`Código do fornecedor, linha ${i + 1}`} /></td>
+                                                <td className="xp-sticky-2">
+                                                    <input className="form-control form-control-sm" value={l.item ?? ""} title={l.item ?? ""} onChange={(e) => setLine(i, { item: e.target.value })} aria-label={`Item, linha ${i + 1}`} />
+                                                    {tag && (
+                                                        <button type="button" className={`badge border-0 mt-1 ${tag.warn ? "bg-warning-subtle text-warning" : "bg-light text-body"}`} onClick={() => setPromoLine(i)} data-testid={`line-promo-${i}`}>
+                                                            <i className="ri-price-tag-3-line me-1" />{tag.text}
+                                                        </button>
                                                     )}
                                                 </td>
-                                                <td style={{ width: 90 }}><input className="form-control form-control-sm font-monospace" value={l.promo_code ?? ""} onChange={(e) => setLine(i, { promo_code: e.target.value })} aria-label={`Código da promoção, linha ${i + 1}`} /></td>
-                                                <td style={{ width: 110, minWidth: 110 }}>
+                                                <td>{numInput(l.quantity, (v) => setLine(i, { quantity: v }), { "aria-label": `Quantidade, linha ${i + 1}`, title: l.quantity ?? "" })}</td>
+                                                <td><input className="form-control form-control-sm" value={l.unit ?? ""} title={l.unit ?? ""} onChange={(e) => setLine(i, { unit: e.target.value })} aria-label={`Unidade, linha ${i + 1}`} /></td>
+                                                <td>{numInput(l.unit_price, (v) => setLine(i, { unit_price: v }), { "aria-label": `Preço unitário, linha ${i + 1}`, title: l.unit_price ?? "" })}</td>
+                                                <td>{numInput(l.discount_pct, (v) => setLine(i, { discount_pct: v }), { "aria-label": `Desconto em percentagem, linha ${i + 1}` })}</td>
+                                                <td className="text-end">
+                                                    {disc > 0 ? (
+                                                        <div data-testid={`line-discount-${i}`}>
+                                                            <div className="form-control form-control-sm form-control-plaintext text-end fw-semibold px-1" title="Líquido: o valor da linha menos o desconto da promoção">{eur((l.line_total ?? 0) - disc)}</div>
+                                                            <div className="d-flex align-items-center justify-content-end gap-1 mt-1 fs-11 text-muted">
+                                                                <span>bruto</span>
+                                                                <input type="number" step="any" className="form-control form-control-sm text-end py-0 px-1 fs-11" style={{ maxWidth: 70, height: 22 }}
+                                                                    value={l.line_total ?? ""} onChange={(e) => setLine(i, { line_total: num(e.target.value) })} aria-label={`Valor da linha ${i + 1}`} />
+                                                            </div>
+                                                        </div>
+                                                    ) : numInput(l.line_total, (v) => setLine(i, { line_total: v }), { "aria-label": `Valor da linha ${i + 1}` })}
+                                                </td>
+                                                <td>
                                                     <XSelect small ariaLabel="Taxa de IVA" options={VAT_OPTS} value={l.vat_rate as any} onChange={(v) => setLine(i, { vat_rate: v as number })} placeholder="Taxa" searchable={false} />
                                                 </td>
-                                                <td style={{ minWidth: 320 }}>
+                                                <td>
                                                     <LineArticleCell
                                                         link={l.id ? links[l.id] ?? null : null}
                                                         saved={!!l.id}
@@ -711,9 +741,15 @@ export default function FaturaValidacaoPage() {
                                                         onVatFix={() => l.id && setLineAction({ kind: "vat_fix", lineId: l.id })}
                                                     />
                                                 </td>
-                                                <td style={{ width: 40 }}><button type="button" className="btn btn-sm btn-outline-danger" aria-label={`Remover linha ${i + 1}`} onClick={() => setLines((p) => p.filter((_, idx) => idx !== i))}><i className="ri-delete-bin-line" /></button></td>
+                                                <td className="xp-sticky-end text-center">
+                                                    <ActionsMenu size="sm" label={`Ações da linha ${i + 1}`} items={[
+                                                        { label: "Promoção…", icon: "ri-price-tag-3-line", onClick: () => setPromoLine(i) },
+                                                        { label: "Remover linha", icon: "ri-delete-bin-line", danger: true, onClick: () => setLines((p) => p.filter((_, idx) => idx !== i)) },
+                                                    ]} />
+                                                </td>
                                             </tr>
-                                        ))}
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -812,6 +848,8 @@ export default function FaturaValidacaoPage() {
                 </Row>
                 {reprocessModal}
                 {deleteModal}
+                <PromoModal isOpen={promoLine !== null} index={promoLine} lines={lines} discounts={inv?.discounts ?? []} busy={revalidating}
+                    onClose={() => setPromoLine(null)} onApply={applyPromo} />
                 <RereadModal isOpen={rereadOpen} companyId={companyId} invoiceId={invoiceId} busy={reprocessing} dirty={dirty}
                     onClose={() => setRereadOpen(false)} onConfirm={(keep) => reprocess(keep)} />
 

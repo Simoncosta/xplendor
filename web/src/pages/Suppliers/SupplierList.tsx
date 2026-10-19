@@ -24,7 +24,7 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const SupplierList = () => {
     const dispatch: any = useDispatch();
-    document.title = "Fornecedores | Xplendor";
+    document.title = "Fornecedores de despesas | Finanças | Xplendor";
 
     // UI-2c: todos os fornecedores (sem perPage, a API devolve-os todos, por nome); o DataTable
     // ordena, pesquisa e pagina no browser.
@@ -125,7 +125,7 @@ const SupplierList = () => {
             <div className="page-content">
                 <ToastContainer />
                 <Container fluid>
-                    <PageHeader title="Fornecedores" breadcrumbs={[{ label: "Finanças" }]}
+                    <PageHeader title="Fornecedores de despesas" breadcrumbs={[{ label: "Finanças" }]}
                         info="Os fornecedores da sua empresa (base para as despesas)." />
 
                     <PageCard

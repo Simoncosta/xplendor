@@ -37,7 +37,7 @@ const fmtDateTime = (d?: string | null) =>
 const emptyForm = () => ({ winrest_store_id: "", winrest_name: "", display_name: "", opened_on: "", is_active: true, cm_slug: "", cm_token: "" });
 
 export default function LojasPage() {
-    document.title = "Lojas | Restauração | Xplendor";
+    document.title = "Lojas | Cadastros | Xplendor";
 
     const companyId = useWorkingCompanyId();
 
@@ -206,7 +206,7 @@ export default function LojasPage() {
             <Container fluid>
                 <PageHeader
                     title="Lojas"
-                    breadcrumbs={[{ label: "Restauração" }]}
+                    breadcrumbs={[{ label: "Cadastros" }]}
                     info="As lojas da empresa e a última sincronização das reservas de cada uma."
                 />
 

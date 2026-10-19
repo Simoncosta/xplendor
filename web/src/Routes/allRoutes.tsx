@@ -1,5 +1,6 @@
 import React from "react";
 import { Navigate, useParams } from "react-router-dom";
+import { MovedTo } from "./MovedTo";
 
 // Dashboard
 import Dashboard from "pages/Dashboards/Dashboard";
@@ -171,10 +172,15 @@ const authProtectedRoutes = [
     { path: "/restauracao/compras-sugeridas", component: <RequireModule module="restauracao_faturas" permission="restauracao.ver"><ComprasSugeridasPage /></RequireModule> },
     { path: "/configuracoes/restauracao", component: <RequireModule module="pingwin" permission="restauracao.configurar"><RestaurantSettingsPage /></RequireModule> },
     { path: "/restauracao", component: <RequireModule module="pingwin" permission="restauracao.ver"><PingwinDashboard /></RequireModule> },
-    { path: "/restauracao/lojas", component: <RequireModule module="restauracao_lojas" permission="restauracao.ver"><LojasPage /></RequireModule> },
-    { path: "/restauracao/calendario", component: <RequireModule module="restauracao_calendario" permission="restauracao.ver"><CalendarioPage /></RequireModule> },
+    // Cadastros › Lojas e Marketing › Calendário de Faturação (antes em Restauração): os URLs antigos redirecionam.
+    { path: "/cadastros/lojas", component: <RequireModule module="restauracao_lojas" permission="restauracao.ver"><LojasPage /></RequireModule> },
+    { path: "/restauracao/lojas", component: <MovedTo to="/cadastros/lojas" /> },
+    { path: "/marketing/calendario-faturacao", component: <RequireModule module="restauracao_calendario" permission="restauracao.ver"><CalendarioPage /></RequireModule> },
+    { path: "/restauracao/calendario", component: <MovedTo to="/marketing/calendario-faturacao" /> },
     { path: "/restauracao/documentos", component: <RequireModule module="restauracao_documentos" permission="restauracao.ver"><DocumentosPage /></RequireModule> },
-    { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigosPage /></RequireModule> },
+    // Cadastros › Artigos (antes em Restauração): os URLs antigos redirecionam.
+    { path: "/cadastros/artigos", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigosPage /></RequireModule> },
+    { path: "/restauracao/artigos", component: <MovedTo to="/cadastros/artigos" /> },
     // Linha Editorial (transversal)
     { path: "/ficheiros", component: <RequireModule module="ficheiros" permission="ficheiros.ver"><FilesPage /></RequireModule> },
     // Auditoria (plataforma): a página decide o que mostrar pelas áreas que a pessoa vê (getAuditMeta).
@@ -188,8 +194,10 @@ const authProtectedRoutes = [
     { path: "/editorial", component: <RequireModule module="linha_editorial" permission="editorial.ver"><EditorialPage /></RequireModule> },
     // Link de aprovação visto pela equipa ("Ver como o cliente"): sem ações e sem contar como abertura.
     { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial" permission="editorial.ver"><ContentReviewPreview /></RequireModule> },
-    { path: "/restauracao/artigos/novo", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
-    { path: "/restauracao/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
+    { path: "/cadastros/artigos/novo", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
+    { path: "/cadastros/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
+    { path: "/restauracao/artigos/novo", component: <MovedTo to="/cadastros/artigos/novo" /> },
+    { path: "/restauracao/artigos/:pingwinId", component: <MovedTo to="/cadastros/artigos/:pingwinId" /> },
     { path: "/restauracao/fichas-tecnicas", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><FichasTecnicasPage /></RequireModule> },
     { path: "/restauracao/fichas-tecnicas/:productId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><FichaTecnicaPage /></RequireModule> },
     // Fatia 7a: stock (leitura) e armazéns.

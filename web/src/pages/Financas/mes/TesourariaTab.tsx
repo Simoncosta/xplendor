@@ -17,7 +17,11 @@ const STATE_CLS: Record<PaymentState, string> = {
 };
 const PAGE = 50;
 
-export default function TesourariaTab({ companyId, data, onOpen, onChanged }: { companyId: number; data: FinanceMonth; onOpen: (docheaderId: string) => void; onChanged: () => void }) {
+export default function TesourariaTab({ companyId, data, onOpen, onChanged, readOnly = false }: {
+    companyId: number; data: FinanceMonth; onOpen: (docheaderId: string) => void; onChanged: () => void;
+    /** O painel "Dinheiro" do Resumo: só para ver (o Regularizar fica em Trabalho do mês › Pagamentos). */
+    readOnly?: boolean;
+}) {
     const c = data.cash;
     const [shown, setShown] = useState(PAGE);
     const [regularizing, setRegularizing] = useState(false);
@@ -27,7 +31,7 @@ export default function TesourariaTab({ companyId, data, onOpen, onChanged }: { 
         <div data-testid="finance-cash">
             <div className="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
                 <Alert color="info" className="py-2 fs-13 mb-0 flex-grow-1"><i className="ri-information-line me-1" />{c.entries_note}</Alert>
-                {data.can.classify && <Button color="primary" onClick={() => setRegularizing(true)} data-testid="regularize"><i className="ri-checkbox-multiple-line me-1" />Regularizar</Button>}
+                {data.can.classify && !readOnly && <Button color="primary" onClick={() => setRegularizing(true)} data-testid="regularize"><i className="ri-checkbox-multiple-line me-1" />Regularizar</Button>}
             </div>
             <div className="table-responsive mb-3">
                 <Table size="sm" className="fs-13 align-middle mb-0" data-testid="cash-weeks">

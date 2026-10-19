@@ -1,15 +1,14 @@
 import { Fragment, useMemo, useState } from "react";
-import ReactApexChart from "react-apexcharts";
 import { Alert, Col, Row, Table } from "reactstrap";
 import InfoTip from "Components/Common/InfoTip";
 import { FinanceMonth, ResultRow } from "common/models/financeMonth.model";
-import { tokenColor } from "pages/Restauracao/menu/menuFormat";
 import { eur, pct } from "./format";
 
 /**
  * XPLENDOR — Finanças › Mês › Resultado: por grupo e por família (valor, % das vendas, mês anterior e
- * média dos 3 meses anteriores), o food cost (o da Engenharia de menu), os últimos 6 meses, o IVA
- * estimado e o que fica fora do resultado. printable = sem gráfico (o fecho do mês).
+ * média dos 3 meses anteriores), o food cost (o da Engenharia de menu), o IVA estimado e o que fica
+ * fora do resultado. É a segunda camada do Resumo (o painel "Ver o detalhe") e a tabela do fecho do mês
+ * (printable: as famílias sem gastos não se mostram); os últimos 6 meses estão no Resumo.
  */
 /** Quantos segmentos iniciais são iguais em todas as famílias (deixando sempre pelo menos um). */
 function commonPrefix(parts: string[][]): number {
@@ -44,23 +43,6 @@ export default function ResultadoTab({ data, printable = false }: { data: Financ
     const r = data.result;
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
     const groups = useMemo(() => groupRows(r.rows), [r.rows]);
-    const chart = useMemo(() => ({
-        series: [
-            { name: "Vendas", type: "column", data: r.chart.map((m) => m.sales_cents / 100) },
-            { name: "Gastos", type: "column", data: r.chart.map((m) => m.expenses_cents / 100) },
-            { name: "Resultado", type: "line", data: r.chart.map((m) => m.result_cents / 100) },
-        ],
-        options: {
-            chart: { toolbar: { show: false }, animations: { enabled: false } },
-            colors: [tokenColor("var(--vz-primary)"), tokenColor("var(--vz-warning)"), tokenColor("var(--vz-success)")],
-            stroke: { width: [0, 0, 3] },
-            dataLabels: { enabled: false },
-            xaxis: { categories: r.chart.map((m) => m.label) },
-            yaxis: { labels: { formatter: (v: number) => `${Math.round(v / 1000).toLocaleString("pt-PT")} mil €` } },
-            tooltip: { shared: true, y: { formatter: (v: number) => eur(Math.round(v * 100)) } },
-            legend: { position: "bottom" },
-        },
-    }), [r.chart]);
 
     return (
         <div data-testid="finance-result">
@@ -125,12 +107,6 @@ export default function ResultadoTab({ data, printable = false }: { data: Financ
                     <ul className="fs-13 mb-0 ps-3">
                         {r.out_of_result.map((o) => <li key={o.label}>{o.label}: {eur(o.cents)} <span className="text-muted">({o.reason})</span></li>)}
                     </ul>
-                </div>
-            )}
-            {!printable && (
-                <div data-testid="result-chart">
-                    <div className="fs-12 text-muted text-uppercase fw-semibold mb-1">Últimos 6 meses</div>
-                    <ReactApexChart type="line" height={300} series={chart.series as any} options={chart.options as any} />
                 </div>
             )}
         </div>

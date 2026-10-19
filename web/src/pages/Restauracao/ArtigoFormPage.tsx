@@ -71,7 +71,7 @@ export default function ArtigoFormPage() {
     const { pingwinId } = useParams<{ pingwinId?: string }>();
     const isCreate = !pingwinId;
 
-    document.title = (isCreate ? "Novo artigo" : "Editar artigo") + " | Restauração | Xplendor";
+    document.title = (isCreate ? "Novo artigo" : "Editar artigo") + " | Cadastros | Xplendor";
 
     const companyId = useWorkingCompanyId();
 
@@ -214,7 +214,7 @@ export default function ArtigoFormPage() {
             text: "Tem alterações de fornecedores por guardar. Se sair, perdem-se.",
             confirmText: "Sair", icon: "warning",
         }))) return;
-        navigate("/restauracao/artigos");
+        navigate("/cadastros/artigos");
     }, [compras.hasPending, navigate]);
 
     // ── Opções dos selects ──
@@ -315,7 +315,7 @@ export default function ArtigoFormPage() {
         if (r.status === "ok") {
             setAnularOpen(false);
             toast.success("Artigo anulado no PingWin.");
-            navigate("/restauracao/artigos"); // volta à lista (o item fica esbatido/inativo no re-fetch)
+            navigate("/cadastros/artigos"); // volta à lista (o item fica esbatido/inativo no re-fetch)
         } else {
             toast.error(r.row?.error_message ?? "Não foi possível anular o artigo.");
         }
@@ -328,7 +328,7 @@ export default function ArtigoFormPage() {
                 <PageHeader
                     title={isCreate ? "Novo artigo" : (f.description || "Editar artigo")}
                     crumbLabel={isCreate ? "Novo artigo" : "Editar"}
-                    breadcrumbs={[{ label: "Restauração" }, { label: "Artigos", to: "/restauracao/artigos" }]}
+                    breadcrumbs={[{ label: "Cadastros" }, { label: "Artigos", to: "/cadastros/artigos" }]}
                     info={isCreate ? "Cria um artigo no PingWin." : "Altera o artigo no PingWin, incluindo o Estado."}
                 />
 

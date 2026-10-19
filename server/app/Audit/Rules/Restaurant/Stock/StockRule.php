@@ -60,7 +60,7 @@ abstract class StockRule extends RestaurantRule
     /** O link do separador "Stock" do artigo. */
     protected static function stockUrl(string $pid): string
     {
-        return "/restauracao/artigos/{$pid}?tab=stock";
+        return "/cadastros/artigos/{$pid}?tab=stock";
     }
 
     /** As linhas da tabela de evidência, uma por armazém. */

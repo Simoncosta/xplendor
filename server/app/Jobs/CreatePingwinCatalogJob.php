@@ -83,7 +83,7 @@ class CreatePingwinCatalogJob implements ShouldQueue
             title: 'Artigo criado no PingWin',
             message: 'O artigo «' . $write->description . '» (code ' . ($result['code'] ?? '?') . ') foi criado no PingWin.',
             severity: 'low',
-            detailPath: '/restauracao/artigos',
+            detailPath: '/cadastros/artigos',
         );
         Log::info('[PingWin Criar Artigo] Concluído', ['write_id' => $this->writeId, 'code' => $result['code'] ?? null]);
     }
@@ -131,7 +131,7 @@ class CreatePingwinCatalogJob implements ShouldQueue
             title: 'Falha ao criar o artigo',
             message: 'Não foi possível criar o artigo «' . $write->description . '» no PingWin: ' . mb_substr($message, 0, 200),
             severity: 'high',
-            detailPath: '/restauracao/artigos',
+            detailPath: '/cadastros/artigos',
         );
     }
 

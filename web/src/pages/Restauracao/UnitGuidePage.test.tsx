@@ -40,7 +40,7 @@ const queue = { data: { total: 3, counts: { por_identificar: 1, administrador: 0
 
 const question = { id: "uso", kind: "choice", text: "Cafe: como se mede nas fichas?", options: [{ value: "dose_peso", label: "Em gramas" }, { value: "peca", label: "À peça (unidade)" }], answer: null };
 const view = (pid: string, over: any = {}) => ({ data: {
-    article: { product_id: pid, code: pid, label: pid === "100" ? "100 · Café em grão" : "200 · Açúcar", description: "Café", family: "COMPRAS", base_unit: "Unidade", base_family: "un", url: `/restauracao/artigos/${pid}` },
+    article: { product_id: pid, code: pid, label: pid === "100" ? "100 · Café em grão" : "200 · Açúcar", description: "Café", family: "COMPRAS", base_unit: "Unidade", base_family: "un", url: `/cadastros/artigos/${pid}` },
     profile: { state: pid === "100" ? "sugerido" : "por_identificar", base_confirmed: null, type: null, count_unit: null, confirmed_by: null, confirmed_at: null, reason: null, info_text: null, has_photo: false, photo_url: null, skipped: false },
     answers: {}, por_identificar: pid === "200", confidence: pid === "200" ? 0.4 : 0.9,
     seen: [{ source: "faturas", text: "Fornecedor A: 20 un a 15,00 €/un (300 €) desde maio, na descrição «CAFE GRAO 1KG»." }, { source: "fichas", text: "Entra em 2 fichas, de 0,007 un a 0,014 un por porção." }],

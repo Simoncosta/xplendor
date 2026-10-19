@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Col, Container, Modal, ModalBody, ModalFooter, ModalHeader, Row } from "reactstrap";
+import { Button, Container, Modal, ModalBody, ModalFooter, ModalHeader } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
@@ -15,7 +15,19 @@ import SettingsHistory from "./SettingsHistory";
  * ficheiro de configuração do servidor (food cost alvo, recontagem, transferências, loja dos
  * documentos de stock, urgências da auditoria, anulações por funcionário, documentos de caixa e
  * feriado municipal), com o histórico. Ligar as anulações por funcionário pede a autorização do dono.
+ * Uma só grelha: um cartão por assunto (título e para que serve) e, em cada definição, o nome e a
+ * ajuda à esquerda e o campo à direita. O Guardar fica à vista enquanto houver alterações.
  */
+
+/** Para que serve cada assunto (uma frase). */
+const SECTION_HELP: Record<string, string> = {
+    menu: "Os alvos de food cost que a Engenharia de menu e a Auditoria usam para avisar dos pratos caros.",
+    stock: "Quando pedir uma recontagem, quando confirmar uma transferência e em que loja se emitem os documentos de stock.",
+    auditoria: "A partir de que valor um achado da Auditoria fica com urgência alta ou média, e a regra das anulações por funcionário.",
+    caixa: "A leitura noturna dos documentos de caixa do PingWin (só leitura).",
+    calendario: "O feriado do concelho, para o Calendário e para a previsão das vendas.",
+    financas: "Para onde vai o envio dos documentos ao contabilista.",
+};
 export default function RestaurantSettingsPage() {
     document.title = "Restauração e Auditoria | Configurações | Xplendor";
     const companyId = useWorkingCompanyId();
@@ -69,30 +81,32 @@ export default function RestaurantSettingsPage() {
                     info="As definições da restauração e da auditoria desta empresa. Cada alteração fica registada no histórico, com quem a fez e quando." />
                 {error && !data ? <p className="text-danger">{error}</p> : !data ? <Skeleton variant="lines" lines={8} label="A abrir as configurações…" /> : (
                     <>
-                        <Row className="g-3">
-                            {Object.entries(data.sections).map(([section, title]) => {
-                                const items = data.settings.filter((s) => s.section === section);
-                                if (items.length === 0) return null;
-                                return (
-                                    <Col xl={6} key={section}>
-                                        <PageCard title={title} flush={false} className="h-100" data-testid={`settings-section-${section}`}>
-                                            {items.map((it) => (
-                                                <SettingField key={it.key} item={it} value={value(it.key)} stores={data.stores}
-                                                    disabled={it.owner && !data.can_voids}
-                                                    disabledReason={it.owner && !data.can_voids ? "Só o administrador da própria empresa liga esta regra." : undefined}
-                                                    onChange={(v) => setDraft((d) => ({ ...d, [it.key]: v }))} />
-                                            ))}
-                                            {section === "auditoria" && voids && <p className="text-muted fs-12 mb-0">{data.owner_note}</p>}
-                                        </PageCard>
-                                    </Col>
-                                );
-                            })}
-                        </Row>
-                        <div className="xp-guide-actions d-flex flex-wrap align-items-center gap-2 py-2 my-3" style={{ position: "sticky", bottom: 0, background: "var(--vz-secondary-bg)", zIndex: 2 }}>
-                            <span className="text-muted fs-13 me-auto">{changed.length ? `${changed.length} ${changed.length === 1 ? "alteração" : "alterações"} por guardar.` : "Sem alterações por guardar."}</span>
-                            <Button color="light" disabled={!changed.length || saving} onClick={() => setDraft({})}>Desfazer</Button>
-                            <Button color="primary" disabled={!changed.length || saving} onClick={() => save(false)} data-testid="settings-save">Guardar</Button>
-                        </div>
+                        {Object.entries(data.sections).map(([section, title]) => {
+                            const items = data.settings.filter((s) => s.section === section);
+                            if (items.length === 0) return null;
+                            return (
+                                <PageCard key={section} title={title} flush={false} data-testid={`settings-section-${section}`}
+                                    status={SECTION_HELP[section] ? <span data-testid={`settings-section-help-${section}`}>{SECTION_HELP[section]}</span> : undefined}>
+                                    <div className="xp-settings-grid">
+                                        {items.map((it) => (
+                                            <SettingField key={it.key} item={it} value={value(it.key)} stores={data.stores}
+                                                disabled={it.owner && !data.can_voids}
+                                                disabledReason={it.owner && !data.can_voids ? "Só o administrador da própria empresa liga esta regra." : undefined}
+                                                onChange={(v) => setDraft((d) => ({ ...d, [it.key]: v }))} />
+                                        ))}
+                                    </div>
+                                    {section === "auditoria" && voids && <p className="text-muted fs-12 mb-0 mt-3">{data.owner_note}</p>}
+                                </PageCard>
+                            );
+                        })}
+                        {changed.length > 0 && (
+                            <div className="d-flex flex-wrap align-items-center gap-2 px-3 py-2 my-3 border rounded shadow-sm" data-testid="settings-savebar"
+                                style={{ position: "sticky", bottom: 12, background: "var(--vz-secondary-bg)", zIndex: 5 }}>
+                                <span className="fs-13 fw-medium me-auto">{`${changed.length} ${changed.length === 1 ? "alteração" : "alterações"} por guardar.`}</span>
+                                <Button color="light" disabled={saving} onClick={() => setDraft({})}>Desfazer</Button>
+                                <Button color="primary" disabled={saving} onClick={() => save(false)} data-testid="settings-save">Guardar</Button>
+                            </div>
+                        )}
                         <PageCard title="Histórico" flush={false}><SettingsHistory rows={data.history} /></PageCard>
                     </>
                 )}

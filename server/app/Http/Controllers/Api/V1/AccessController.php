@@ -53,6 +53,8 @@ class AccessController extends Controller
             'is_root' => $user->isRoot(),
             'impersonating' => ImpersonationSession::activeFor($user) !== null,
             'modules' => $this->modules->enabledKeys($companyId),
+            // O ramo da empresa (restauracao, automovel, imobiliario): o menu mostra o que é de cada ramo.
+            'branch' => \App\Modules\ModuleRegistry::branchForSector(Company::whereKey($companyId)->value('content_sector_id')),
             'permissions' => $permissions,
             'reasons' => (object) $reasons,
             'profile' => $user->profile ? ['id' => $user->profile->id, 'name' => $user->profile->name] : null,

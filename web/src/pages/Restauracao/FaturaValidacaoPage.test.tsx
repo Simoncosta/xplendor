@@ -88,11 +88,14 @@ beforeEach(() => {
     mockApi.launchGet.mockResolvedValue({ data: preview() });
 });
 
-test("a linha mostra o valor, o desconto com o código e o líquido; o IVA por taxa mostra a diferença e quem a explica", async () => {
+test("a linha mostra a etiqueta da promoção, o líquido em destaque e o bruto; o IVA por taxa mostra a diferença e quem a explica", async () => {
     render(<FaturaValidacaoPage />);
-    expect(await screen.findByTestId("line-discount-0")).toHaveTextContent(/Leve Mais Pague Menos 45238: −3,78\s€/);
-    expect(screen.getByTestId("line-discount-0")).toHaveTextContent(/Líquido 26,19\s€/);
+    expect(await screen.findByTestId("line-promo-0")).toHaveTextContent(/Promoção 45238 · −3,78\s€/);
+    expect(screen.getByTestId("line-discount-0")).toHaveTextContent(/26,19\s€/);
+    expect(screen.getByLabelText("Valor da linha 1")).toHaveValue(29.97);
     expect(screen.queryByTestId("line-discount-1")).toBeNull();
+    expect(screen.queryByTestId("line-promo-1")).toBeNull();
+    expect(screen.queryByText("Promoção", { selector: "th" })).toBeNull(); // a coluna Promoção saiu
     // A linha que explica a diferença dos 6 % fica destacada.
     expect(screen.getByTestId("line-1")).toHaveClass("table-warning");
     const row = screen.getByTestId("vat-row-6");
@@ -121,11 +124,41 @@ test("Validar e guardar fica no ecrã, com a confirmação e os passos seguintes
 test("Revalidar envia as linhas de agora (com o código da promoção corrigido) e mostra o resultado", async () => {
     mockApi.revalidate.mockResolvedValue({ data: { invoice: invoice({ vat_by_rate: { ...invoice().vat_by_rate, ok: true, rows: [] }, discounts: [] }) } });
     render(<FaturaValidacaoPage />);
-    fireEvent.change(await screen.findByLabelText("Código da promoção, linha 2"), { target: { value: "43520" } });
+    fireEvent.change(await screen.findByLabelText("Quantidade, linha 2"), { target: { value: "5" } });
     fireEvent.click(screen.getByTestId("revalidate"));
     await waitFor(() => expect(mockApi.revalidate).toHaveBeenCalled());
-    expect(mockApi.revalidate.mock.calls[0][2].lines[1]).toMatchObject({ id: 12, promo_code: "43520" });
+    expect(mockApi.revalidate.mock.calls[0][2].lines[1]).toMatchObject({ id: 12, quantity: 5 });
     await waitFor(() => expect(screen.queryByTestId("vat-row-6")).toBeNull());
+});
+
+test("Promoção… no menu da linha: o código, o desconto da fatura, a repartição e Aplicar", async () => {
+    mockApi.revalidate.mockResolvedValue({ data: { invoice: invoice() } });
+    render(<FaturaValidacaoPage />);
+    await screen.findByTestId("line-1");
+    fireEvent.click(within(screen.getByTestId("line-1")).getByText("Promoção…"));
+    const modal = screen.getByTestId("promo-modal");
+    fireEvent.change(within(modal).getByLabelText("Código da promoção"), { target: { value: "43520" } });
+    const view = within(modal).getByTestId("promo-view");
+    expect(view).toHaveTextContent(/Leve Mais Pague Menos 43520: −0,96\s€/);
+    expect(view).toHaveTextContent("por atribuir");
+    expect(view).toHaveTextContent(/2 · PÃO HOT DOG MAXI 320G BIMBO\s*6,68\s€\s*−0,96\s€\s*5,72\s€/);
+    fireEvent.click(within(modal).getByTestId("promo-apply"));
+    await waitFor(() => expect(mockApi.revalidate).toHaveBeenCalled());
+    expect(mockApi.revalidate.mock.calls[0][2].lines[1]).toMatchObject({ id: 12, promo_code: "43520" });
+});
+
+test("Promoção sem desconto na fatura: a etiqueta fica amarela e o modal avisa; Remover promoção", async () => {
+    mockApi.get.mockResolvedValue({ data: { invoice: invoice({ lines: [invoice().lines[0], { ...invoice().lines[1], promo_code: "99999" }] }), pingwin: null, suppliers: [] } });
+    mockApi.revalidate.mockResolvedValue({ data: { invoice: invoice() } });
+    render(<FaturaValidacaoPage />);
+    const tag = await screen.findByTestId("line-promo-1");
+    expect(tag).toHaveTextContent("Promoção sem desconto na fatura");
+    expect(tag).toHaveClass("bg-warning-subtle");
+    fireEvent.click(tag);
+    expect(within(screen.getByTestId("promo-modal")).getByTestId("promo-no-discount")).toHaveTextContent("não há nenhuma linha de desconto com o código 99999");
+    fireEvent.click(screen.getByTestId("promo-remove"));
+    await waitFor(() => expect(mockApi.revalidate).toHaveBeenCalled());
+    expect(mockApi.revalidate.mock.calls[0][2].lines[1]).toMatchObject({ id: 12, promo_code: null });
 });
 
 test("Reler do documento mostra o que foi mudado à mão e pergunta: manter ou substituir", async () => {
