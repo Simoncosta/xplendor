@@ -20,7 +20,7 @@ class CarLeadRepository extends BaseRepository implements CarLeadRepositoryInter
     public function getTimelineByCar(int $carId)
     {
         return $this->model
-            ->select('id', 'created_at')
+            ->select('id', 'type', 'created_at')
             ->where('car_id', $carId)
             ->latest('created_at')
             ->get();

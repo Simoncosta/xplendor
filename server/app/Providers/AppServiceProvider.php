@@ -114,6 +114,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Antivírus dos documentos de financiamento (ficheiros do público): ClamAV num contentor
+        // (ANTIVIRUS_DRIVER=clamav) ou nenhum (os documentos ficam "não analisados").
+        $this->app->bind(\App\Services\Financing\Antivirus\VirusScanner::class, fn () => config('financing.antivirus.driver') === 'clamav'
+            ? new \App\Services\Financing\Antivirus\ClamAvScanner((string) config('financing.antivirus.host'), (int) config('financing.antivirus.port'), (int) config('financing.antivirus.timeout'))
+            : new \App\Services\Financing\Antivirus\NullScanner());
         // Motor de recomendações (regras de especialista, explicáveis). Registo das
         // regras: para acrescentar uma regra nova, juntá-la a esta lista.
         $this->app->singleton(\App\Recommendations\RecommendationEngine::class, fn ($app) =>
@@ -227,6 +232,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Página pública dos orçamentos: limites por IP (o IP só é usado aqui, de passagem,
         // e nunca é guardado). Respostas do cliente: também por token.
+        // Ficha da viatura: o endereço curto do QR (/q/{código}).
+        \Illuminate\Support\Facades\RateLimiter::for('vehicle-qr', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('vq|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('quote-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('qr|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('quote-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('qo|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('quote-public-action', fn (\Illuminate\Http\Request $r) => [
@@ -256,6 +263,25 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by('scm|' . hash('sha256', (string) $r->header('X-Visitor-IP', $r->ip()))),
             \Illuminate\Cache\RateLimiting\Limit::perHour(20)->by('sch|' . hash('sha256', (string) $r->header('X-Visitor-IP', $r->ip()))),
             \Illuminate\Cache\RateLimiting\Limit::perHour(300)->by('sct|' . hash('sha256', (string) $r->bearerToken())),
+        ]);
+        // Leads do site (car-lead e car-proposal, a partir do browser do visitante): por visitante e
+        // empresa (o IP só aqui, em hash, e nunca guardado) e um teto por empresa (o token público).
+        \Illuminate\Support\Facades\RateLimiter::for('public-lead', function (\Illuminate\Http\Request $r) {
+            $company = hash('sha256', (string) $r->query('token', ''));
+            $visitor = hash('sha256', $company . '|' . $r->ip());
+
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by('plm|' . $visitor),
+                \Illuminate\Cache\RateLimiting\Limit::perHour(20)->by('plh|' . $visitor),
+                \Illuminate\Cache\RateLimiting\Limit::perHour(300)->by('plt|' . $company),
+            ];
+        });
+        // Envio seguro de documentos para financiamento (página pública, sem conta): leitura e
+        // ações por IP (em hash) e por link (o código em hash, no cabeçalho X-Financing-Token).
+        \Illuminate\Support\Facades\RateLimiter::for('financing-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('fr|' . hash('sha256', (string) $r->ip())));
+        \Illuminate\Support\Facades\RateLimiter::for('financing-public-action', fn (\Illuminate\Http\Request $r) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(20)->by('fa|' . hash('sha256', (string) $r->ip())),
+            \Illuminate\Cache\RateLimiting\Limit::perHour(60)->by('ft|' . hash('sha256', (string) $r->header('X-Financing-Token', ''))),
         ]);
         \Illuminate\Support\Facades\RateLimiter::for('review-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('rr|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('review-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('ro|' . $r->ip()));

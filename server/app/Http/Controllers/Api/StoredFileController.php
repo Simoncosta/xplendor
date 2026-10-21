@@ -31,7 +31,8 @@ class StoredFileController extends Controller
         $disk = Storage::disk($f->disk);
         abort_unless($disk->exists($f->path), 404, 'Ficheiro não encontrado.');
         $mime = (string) ($f->mime ?: 'application/octet-stream');
-        $attachment = $request->boolean('download') || ! in_array($mime, self::INLINE, true);
+        // Os documentos de financiamento descarregam-se sempre (nunca abrem no browser).
+        $attachment = $request->boolean('download') || ! in_array($mime, self::INLINE, true) || $f->source === \App\Services\Financing\FinancingFiles::SOURCE;
         $isSvg = $mime === 'image/svg+xml' || $f->extension === 'svg';
         if ($isSvg) {
             $attachment = true;

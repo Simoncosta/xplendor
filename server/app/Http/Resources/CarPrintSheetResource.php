@@ -46,9 +46,25 @@ class CarPrintSheetResource extends JsonResource
         $model   = $this->model;
         $category = $this->category ?? null;
 
+        // A apresentação (a mesma da API pública e do site) e o QR da ficha.
+        $public = \App\Http\Resources\Public\CarPublicResource::make($this->resource)->resolve($request);
+        $siteUrl = \App\Services\Cars\VehicleQr::siteUrl($company, (int) $this->id);
+        if ($siteUrl !== null) {
+            $short = \App\Services\Cars\VehicleQr::shortUrl(\App\Services\Cars\VehicleQr::ensureCode($this->resource));
+            $qr = ['available' => true, 'short_url' => $short, 'svg' => \App\Services\Cars\VehicleQr::svg($short),
+                'site_url' => $siteUrl, 'site_label' => \App\Services\Cars\VehicleQr::shortLabel($siteUrl)];
+        } else {
+            $qr = ['available' => false, 'reason' => 'missing_template'];
+        }
+
         return [
+            'presentation' => $public['presentation'],
+            'qr' => $qr,
+            'seller' => $public['seller'] ?? null,
             // ── Empresa (para cabeçalho + rodapé) ─────────────────────────
             'company' => [
+                'id'           => $company?->id,
+                'nipc'         => $company?->nipc,
                 'trade_name'   => $company?->trade_name,
                 'fiscal_name'  => $company?->fiscal_name,
                 'logo_path'    => $company?->logo_path, // FE prefixa REACT_APP_PUBLIC_URL

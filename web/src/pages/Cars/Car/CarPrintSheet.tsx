@@ -1,557 +1,87 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Spinner } from "reactstrap";
 import { getCarPrintSheet } from "helpers/laravel_helper";
-import {
-    labelOf,
-    FUEL_TYPE_LABELS,
-    TRANSMISSION_LABELS,
-    CONDITION_LABELS,
-    ORIGIN_LABELS,
-    EXTERIOR_COLOR_LABELS,
-} from "helpers/labels";
-import { BED_LABELS, type BedType } from "./data/vehicleAttributes";
-import {
-    MOTORHOME_CABIN_LIST,
-    MOTORHOME_JANTES,
-    isCabinItemChecked,
-    otherMarkedExtras,
-    type ExtrasByGroup,
-} from "./data/motorhomeCabinList";
-import type { CarPrintSheet as CarPrintSheetType } from "types/api";
+import type { CarPrintSheet as CarPrintSheetType, CarPresentation } from "types/api";
 
 /**
- * Ficha de impressão A4 de viatura (2026-06-27, Fase 1).
+ * Ficha de impressão A4 da viatura (a folha que o stand imprime e põe na viatura).
  *
- * A cliente (Matilde, autocaravanas) imprime esta ficha e cola nas viaturas
- * do stand. Layout: cabeçalho + faixa de dados-chave + 2 colunas de grupos
- * de características + rodapé com contactos. Uma página A4 por viatura, SEM
- * foto da viatura.
+ * Desenha o campo `presentation` montado na plataforma (CarPresentation, o mesmo da API pública
+ * e, depois, do site do cliente), com a hierarquia da ficha do site adaptada a papel:
+ * cabeçalho (logótipo, tipologia · estado · ref., título, ano · origem · cor, preço), números-chave,
+ * blocos (detalhes, equipamento com ✓, camas com explicação), a descrição e o rodapé (QR Code,
+ * contacto do vendedor, identificação da empresa). Sem galeria nem botões na folha.
  *
- * Técnica: HTML + @media print + @page A4 + `window.print()` do browser.
- * Sem `jspdf`, `react-to-print`, `puppeteer`, etc.
- *
- * Cores nesta fase são fixas (verde escuro/verde vivo), isoladas em CSS
- * variables no topo → Fase 2 (configuráveis pela empresa) não requer
- * refactor. `print-color-adjust: exact` força os browsers a imprimirem as
- * faixas coloridas.
- *
- * Overflow A4: `column-count:2 + break-inside:avoid` mantém grupos inteiros;
- * se uma viatura muito equipada não couber, cai para 2ª página em vez de
- * espremer. Fase 2 pode adicionar zoom-fit se justificar.
+ * Técnica: HTML + @media print + @page A4 + window.print() do browser. Feita para se ler bem a
+ * preto e branco: texto escuro, linhas finas, sem fundos de cor. Os blocos não se partem entre
+ * colunas nem entre páginas; com muito equipamento ou uma descrição longa, a ficha reduz-se por
+ * igual (sem cortar nada) para caber numa folha.
  */
-
-// ═══════════════ Cores (Fase 1 = fixas; Fase 2 = configuráveis) ══════════════
-const COLORS = {
-    headerBg:      "#12332a", // verde escuro (cabeçalho)
-    headerText:    "#ffffff",
-    accentBg:      "#0a8a5a", // verde vivo (faixa de dados-chave)
-    accentText:    "#ffffff",
-    groupTitle:    "#0a8a5a",
-    body:          "#1f2937",
-    muted:         "#6b7280",
-    ruleLight:     "#e5e7eb",
-};
-
-const currency = (value: number) =>
-    new Intl.NumberFormat("pt-PT", {
-        style: "currency",
-        currency: "EUR",
-        maximumFractionDigits: 0,
-    }).format(value);
-
-const numFmt = (value: number | null | undefined, suffix = "") =>
-    value == null || Number.isNaN(Number(value))
-        ? "—"
-        : `${new Intl.NumberFormat("pt-PT").format(Number(value))}${suffix}`;
-
-// ─────────────────────── Helpers de vehicle_attributes ───────────────────────
-
-type VA = Record<string, any>;
-
-/** Devolve rótulo pt-PT do enum quando marcado, senão null. */
-const enumLabel = (value: string | null | undefined, map: Record<string, string>): string | null => {
-    if (!value || value === "none") return null;
-    return map[value] ?? value;
-};
-
-const FRIDGE_TYPE_LABELS: Record<string, string> = {
-    trivalent:  "trivalente",
-    compressor: "compressor",
-    absorption: "absorção",
-};
-
-// Ficha das autocaravanas (B).
-const STOVE_TYPE_LABELS: Record<string, string> = {
-    gas:       "a gás",
-    electric:  "elétrico",
-    mixed:     "misto (gás e elétrico)",
-    induction: "de indução",
-};
-
-const SHOWER_TYPE_LABELS: Record<string, string> = {
-    separate:    "cabine dentro do WC",
-    independent: "cabine independente",
-    combined:    "combinado (sem cabine)",
-};
-
-const HEATER_SOURCE_LABELS: Record<string, string> = {
-    electric: "elétrico",
-    gas:      "gás",
-    diesel:   "diesel",
-};
-
-const INVERTER_TYPE_LABELS: Record<string, string> = {
-    pure_sine:     "onda pura",
-    modified_sine: "onda modificada",
-};
-
-const CHASSIS_TYPE_LABELS: Record<string, string> = {
-    standard: "standard",
-    alko:     "Alko",
-    other:    "outro",
-};
-
-const UPHOLSTERY_LABELS: Record<string, string> = {
-    excellent: "excelente",
-    good:      "bom",
-    fair:      "razoável",
-    worn:      "desgastado",
-    replaced:  "substituído",
-};
-
-const LIVING_ROOM_LAYOUT_LABELS: Record<string, string> = {
-    face_to_face:   "Face to Face",
-    l_shape:        "sala em L",
-    panoramic:      "panorâmica",
-    double_dinette: "sala dupla",
-};
-
-// ─────────────────────────── Builders de linha ───────────────────────────────
-
-/** Coleciona items truthy num array de strings; ignora null/undefined/false. */
-const collect = (...items: (string | null | false | undefined)[]): string[] =>
-    items.filter((x): x is string => typeof x === "string" && x.length > 0);
-
-/** 2026-06-28 — capitaliza primeira letra dos items para leitura uniforme
- *  na ficha ("Fogão · Forno" em vez de "fogão · Forno"). Aplica-se ao 1º
- *  caractere apenas; palavras seguintes ficam intactas (nomes de marcas,
- *  siglas WC/LED/TV, etc). */
-const cap = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-const capAll = (items: string[]): string[] => items.map(cap);
-
-interface Group {
-    title: string;
-    items: string[];
-}
-
-const buildKitchen = (va: VA): Group => {
-    const k = va?.habitation_basics?.kitchen ?? {};
-    const items: string[] = [];
-    if (k.has_stove) {
-        const type = enumLabel(k.stove_type, STOVE_TYPE_LABELS);
-        const burners = k.stove_burners ? `de ${k.stove_burners} bocas` : null;
-        items.push(collect("fogão", type, burners).join(" "));
-    }
-    if (k.has_oven)            items.push("forno");
-    if (k.has_extending_counter) items.push("acrescento de banca");
-    if (k.has_microwave)       items.push("micro-ondas");
-    if (k.has_extractor)       items.push(collect("exaustor", k.extractor_brand ? `(${k.extractor_brand})` : null).join(" "));
-    if (k.has_fridge) {
-        const type = enumLabel(k.fridge_type, FRIDGE_TYPE_LABELS);
-        const litres = k.fridge_litres ? `${k.fridge_litres} L` : null;
-        const brand = k.fridge_brand ? `(${k.fridge_brand})` : null;
-        const parts = collect("Frigorífico", type, litres, brand);
-        items.push(parts.join(" "));
-    }
-    return { title: "Cozinha", items: capAll(items) };
-};
-
-const buildBathroom = (va: VA): Group => {
-    const b = va?.habitation_basics?.bathroom ?? {};
-    const items: string[] = [];
-    if (b.has_toilet) items.push("WC");
-    if (b.has_shower) {
-        const type = enumLabel(b.shower_type, SHOWER_TYPE_LABELS);
-        items.push(collect("Duche", type ? `(${type})` : null).join(" "));
-    }
-    // 2026-06-29 — Depósitos: checkbox própria + litros. Se checkbox true
-    // sem litros: "Depósito águas limpas"; com litros: "Depósito águas limpas
-    // (100 L)". Retro-compat: se legacy só tem litros, mostrar como antes.
-    if (b.has_clean_water_tank || b.clean_water_litres) {
-        const litres = b.clean_water_litres ? ` (${b.clean_water_litres} L)` : "";
-        items.push(`Depósito águas limpas${litres}`);
-    }
-    if (b.has_waste_water_tank || b.waste_water_litres) {
-        const litres = b.waste_water_litres ? ` (${b.waste_water_litres} L)` : "";
-        items.push(`Depósito águas residuais${litres}`);
-    }
-    return { title: "Casa de banho", items: capAll(items) };
-};
-
-const buildEnergy = (va: VA): Group => {
-    const e = va?.energy_climate ?? {};
-    const items: string[] = [];
-    if (e.has_solar_panel) {
-        const count = e.solar_panel_count ? `${e.solar_panel_count}×` : "";
-        const watts = e.solar_panel_watts ? ` ${e.solar_panel_watts} W` : "";
-        items.push(`Painel solar ${count}${watts}`.trim());
-    }
-    if (e.has_inverter) {
-        const type = enumLabel(e.inverter_type, INVERTER_TYPE_LABELS);
-        const watts = e.inverter_watts ? `${e.inverter_watts} W` : null;
-        items.push(collect("Inversor", type, watts).join(" "));
-    }
-    if (e.has_gpl) {
-        const bottles = e.gpl_bottles_count ? `(${e.gpl_bottles_count} garrafas)` : null;
-        items.push(collect("GPL", bottles).join(" "));
-    }
-    if (e.has_generator)             items.push("Gerador");
-    if (e.has_external_power_socket) items.push("Ficha 220V exterior");
-    if (e.battery_count)             items.push(`${e.battery_count} bateria(s)`);
-    if (e.cabin_battery_count || e.cabin_battery_brand || e.cabin_battery_ah) {
-        // Ficha das autocaravanas (B): uma marca e uma capacidade para todas as de cabine.
-        const details = collect(e.cabin_battery_brand, e.cabin_battery_ah ? `${e.cabin_battery_ah} Ah` : null).join(", ");
-        const count = e.cabin_battery_count ? `${e.cabin_battery_count} bat. cabine` : "Bat. cabine";
-        items.push(details ? `${count} (${details})` : count);
-    }
-    if (e.cell_battery_count)        items.push(`${e.cell_battery_count} bat. célula`);
-    // 2026-06-29 — Baterias de lítio (quantidade + capacidade Ah opcional).
-    if (e.lithium_battery_count) {
-        const ah = e.lithium_battery_ah ? ` (${e.lithium_battery_ah} Ah)` : "";
-        items.push(`${e.lithium_battery_count} bat. lítio${ah}`);
-    }
-    if (e.has_battery_cutoff)        items.push("Corta-corrente");
-    if (e.has_aircon_220v) {
-        const brand = e.aircon_220v_brand ? `(${e.aircon_220v_brand})` : null;
-        items.push(collect("Ar condicionado 220V", brand).join(" "));
-    }
-    if (e.has_viesa) items.push("VIESA");
-    return { title: "Energia", items: capAll(items) };
-};
-
-const buildHeating = (va: VA): Group => {
-    const e = va?.energy_climate ?? {};
-    const items: string[] = [];
-    const water = enumLabel(e.water_heater_source, HEATER_SOURCE_LABELS);
-    if (water) {
-        const brand = e.water_heater_brand ? ` (${e.water_heater_brand})` : "";
-        items.push(`Termoacumulador ${water}${brand}`);
-    }
-    const amb = enumLabel(e.ambient_heating_source, HEATER_SOURCE_LABELS);
-    if (amb) {
-        const brand = e.ambient_heating_brand ? ` (${e.ambient_heating_brand})` : "";
-        items.push(`Aquecimento ambiente ${amb}${brand}`);
-    }
-    return { title: "Aquecimento", items: capAll(items) };
-};
-
-const buildExterior = (va: VA): Group => {
-    const ext = va?.exterior ?? {};
-    const items: string[] = [];
-    if (ext.has_awning) {
-        const brand = ext.awning_brand ? ` (${ext.awning_brand})` : "";
-        items.push(`Toldo${brand}`);
-    }
-    if (ext.has_national_antenna)   items.push("Antena nacional");
-    if (ext.has_parabolic_antenna)  items.push("Antena parabólica");
-    if (ext.has_bike_rack)          items.push("Porta-bicicletas");
-    if (ext.has_motorbike_rack)     items.push("Porta-motos");
-    if (ext.has_electric_step)      items.push("Degrau elétrico");
-    if (ext.has_manual_step)        items.push("Degrau manual");
-    if (ext.has_stabilizers)        items.push("Macacos estabilizadores");
-    if (ext.has_spare_wheel)        items.push("Pneu suplente");
-    if (ext.has_fix_n_go_kit)       items.push("Kit Fix'n'Go");
-    if (ext.has_bull_eye)           items.push("Olho de boi");
-    if (ext.has_external_wc)        items.push("WC exterior");
-    if (ext.has_hubcaps)            items.push("Tampões de roda");
-    if (ext.has_external_ladder)    items.push("Escada exterior");
-    const g = ext.garage ?? {};
-    if (g.has_garage) {
-        const parts: string[] = [];
-        if (g.has_double_opening)   parts.push("dupla abertura");
-        if (g.is_spacious)          parts.push("espaçosa");
-        if (g.has_height_adjuster)  parts.push("altura ajustável");
-        items.push(collect("Garagem", parts.length ? `(${parts.join(", ")})` : null).join(" "));
-    }
-    return { title: "Exterior", items: capAll(items) };
-};
-
-// Partes do chassis (as autocaravanas mostram-nas em secções diferentes).
-const chassisCoreItems = (cs: any): string[] => {
-    const items: string[] = [];
-    const type = enumLabel(cs.chassis_type, CHASSIS_TYPE_LABELS);
-    if (type) items.push(`Chassis ${type}`);
-    if (cs.has_air_suspension) {
-        items.push(cs.has_air_suspension_compressor ? "Suspensão pneumática c/ compressor" : "Suspensão pneumática");
-    }
-    if (cs.has_dual_rear_wheel)       items.push("Rodado duplo");
-    return items;
-};
-const skylightItems = (cs: any): string[] => collect(
-    cs.has_turbovent_skylight && "Clarabóia turbovent",
-    cs.has_panoramic_skylight && "Clarabóia panorâmica",
-    cs.has_40x40_skylight && "Clarabóia 40×40",
-    cs.other_skylights_notes && String(cs.other_skylights_notes),
-);
-const windowNetBlackoutItems = (cs: any): string[] => collect(
-    cs.has_mosquito_nets && "Mosquiteiras janelas",
-    cs.has_door_mosquito_net && "Mosquiteira porta",
-    cs.has_window_blackouts && "Tapa-luz janelas",
-);
-const cabinBlackoutItems = (cs: any): string[] =>
-    cs.has_cabin_blackouts
-        ? [cs.cabin_blackout_type ? `Tapa-luz cabine (${cs.cabin_blackout_type})` : "Tapa-luz cabine"]
-        : [];
-
-const buildChassis = (va: VA): Group => {
-    const cs = va?.chassis_structure ?? {};
-    const items: string[] = [
-        ...chassisCoreItems(cs),
-        ...skylightItems(cs),
-        ...collect(cs.chassis_notes && String(cs.chassis_notes)),
-        // 2026-06-28 — `has_remifront` movido para o grupo "Cabine" (buildCabin
-        // abaixo). Chave JSON permanece em `chassis_structure.has_remifront`,
-        // só a apresentação vive na Cabine agora. Ver CLAUDE.md sec 6.1.
-        ...windowNetBlackoutItems(cs),
-        ...cabinBlackoutItems(cs),
-    ];
-    return { title: "Chassis e clarabóias", items: capAll(items) };
-};
-
-// Sala: tipo, mesa telescópica e mesa rebatível (o estado dos estofos sai no fim).
-const livingItems = (va: VA): string[] => {
-    const inf = va?.interior_furniture ?? {};
-    const lr = va?.living_room ?? {};
-    const items: string[] = [];
-    const layout = enumLabel(lr.layout, LIVING_ROOM_LAYOUT_LABELS);
-    if (layout) items.push(`Sala: ${layout}`);
-    if (lr.has_extending_table)  items.push("Mesa telescópica");
-    if (inf.has_foldable_table)  items.push("Mesa rebatível");
-    return items;
-};
-
-const buildInterior = (va: VA): Group => {
-    const items: string[] = [...livingItems(va), ...interiorItems(va)];
-    return { title: "Interior", items: capAll(items) };
-};
-
-// Cortinas, guarda-fatos, iluminação, TV, painel e estado dos estofos.
-const interiorItems = (va: VA): string[] => {
-    const inf = va?.interior_furniture ?? {};
-    const items: string[] = [];
-    // 2026-06-28 — `has_rotating_seats` movido para o grupo "Cabine"
-    // (buildCabin). Chave JSON `interior_furniture.has_rotating_seats`
-    // permanece intacta. Ver CLAUDE.md sec 6.1.
-    if (inf.has_curtains)        items.push("Cortinas");
-    if (inf.has_wardrobe)        items.push("Guarda-fatos");
-    if (inf.has_led_lighting)    items.push("Iluminação LED");
-    if (inf.has_halo_lighting)   items.push("Iluminação halo");
-    if (inf.has_tv_support)      items.push("Suporte TV");
-    if (inf.has_tv) {
-        // 2026-06-29 — TV com quantidade + localização opcionais.
-        const count = inf.tv_count ? `${inf.tv_count}× ` : "";
-        const loc = inf.tv_location ? ` (${inf.tv_location})` : "";
-        items.push(`${count}TV${loc}`.trim());
-    }
-    if (inf.has_command_panel)   items.push("Painel de comandos");
-    const upho = enumLabel(inf.upholstery_state, UPHOLSTERY_LABELS);
-    if (upho) items.push(`Estofos: ${upho}`);
-    return items;
-};
-
-const buildSecurity = (va: VA): Group => {
-    const s = va?.security ?? {};
-    const items: string[] = [...collect(s.has_alarm && "Alarme"), ...lockItems(va)];
-    return { title: "Segurança", items: capAll(items) };
-};
-
-// Fechaduras (sem o alarme: nas autocaravanas está na lista única).
-const lockItems = (va: VA): string[] => {
-    const s = va?.security ?? {};
-    const items: string[] = [];
-    if (s.has_hatch_lock)     items.push("Fechadura escotilha");
-    if (s.has_cabin_lock)     items.push("Fechadura cabine");
-    if (s.has_safe_door)      items.push("Porta cofre");
-    if (s.has_gas_lock)       items.push("Fechadura gás");
-    if (s.has_entry_door_lock) items.push("Fechadura porta entrada");
-    if (s.other_locks_notes)   items.push(String(s.other_locks_notes));
-    return items;
-};
-
-/** Categoria (B) — Cabine: equipamentos da cabine (não da célula).
- *  2026-06-28 — junta os 2 campos que vivem no accordion Cabine do form
- *  (chaves JSON continuam em chassis_structure e interior_furniture — só
- *  a apresentação vive aqui) com os EXTRAS de checkbox do form. */
-const buildCabin = (va: VA, extraItems: string[]): Group => {
-    const cs = va?.chassis_structure ?? {};
-    const inf = va?.interior_furniture ?? {};
-    const items: string[] = [];
-    if (cs.has_remifront)       items.push("Estores Remifront");
-    if (inf.has_rotating_seats) items.push("Bancos giratórios");
-    // Extras livres do form (checkboxes marcados por grupo).
-    items.push(...extraItems);
-    return { title: "Cabine", items: capAll(items) };
-};
-
-/**
- * Ficha das autocaravanas (parte A): os mesmos dados, pelas secções do formulário.
- * Energia e autonomia; Sala e cozinha; Duche e WC; Cabine de condução e segurança (com
- * os rótulos da lista única); Exterior (com as jantes de liga leve); Outros equipamentos.
- */
-const buildMotorhomeGroups = (va: VA, extras: { group: string; items?: string[] }[]): Group[] => {
-    const byGroup = Object.fromEntries(extras.map((g) => [g.group, g.items ?? []])) as unknown as ExtrasByGroup;
-    const cs = va?.chassis_structure ?? {};
-    const autonomy = va?.autonomy_km ? `Autonomia ${new Intl.NumberFormat("pt-PT").format(Number(va.autonomy_km))} km` : null;
-    const hasJantes = (byGroup[MOTORHOME_JANTES.group] ?? []).includes(MOTORHOME_JANTES.text);
-
-    return [
-        { title: "Energia e autonomia", items: capAll([...collect(autonomy), ...buildEnergy(va).items, ...buildHeating(va).items]) },
-        {
-            title: "Sala e cozinha",
-            items: capAll([
-                ...livingItems(va),
-                ...buildKitchen(va).items,
-                ...interiorItems(va),
-                ...skylightItems(cs),
-                ...windowNetBlackoutItems(cs),
-            ]),
-        },
-        { title: "Duche e WC", items: buildBathroom(va).items },
-        {
-            title: "Cabine de condução e segurança",
-            items: capAll([
-                ...collect(cs.has_remifront && "Estores Remifront"),
-                ...cabinBlackoutItems(cs),
-                ...chassisCoreItems(cs),
-                ...collect(cs.chassis_notes && String(cs.chassis_notes)),
-                ...lockItems(va),
-                ...MOTORHOME_CABIN_LIST.filter((item) => isCabinItemChecked(item, byGroup, va)).map((item) => item.label),
-            ]),
-        },
-        { title: "Exterior", items: capAll([...collect(hasJantes && "Jantes de liga leve"), ...buildExterior(va).items]) },
-        { title: "Outros equipamentos", items: otherMarkedExtras(byGroup).map((o) => o.text) },
-    ];
-};
-
-const buildBeds = (va: VA): Group => {
-    const beds = Array.isArray(va?.beds) ? va.beds : [];
-    const items = beds
-        .map((b: any) => {
-            const type = b?.type as BedType | undefined;
-            const label = type && BED_LABELS[type] ? BED_LABELS[type] : "cama";
-            const cap = b?.capacity ? ` (dorme ${b.capacity})` : "";
-            return `${label}${cap}`;
-        })
-        .filter(Boolean);
-    return { title: "Camas", items: capAll(items) };
-};
-
-// ─────────────────────────── Blocos factuais (sempre visíveis) ─────────────
-//
-// 2026-06-28 (pedido Matilde) — separação em duas categorias:
-//   (A) Dados FACTUAIS: sempre visíveis com "—" quando o campo não está
-//       preenchido. Razão: se o campo desaparece silenciosamente, a Matilde
-//       não sabe se a ficha esqueceu ou se ninguém registou. O "—" é
-//       honesto e sinaliza para preencher.
-//   (B) Características OPCIONAIS (has_*): mantêm-se condicionais — não
-//       mostrar "Toldo: Não", encheria a folha de negativos.
-//
-// Helper: força labels "Nome VALOR" com fallback "—".
-
-const DASH = "—";
-const fmtNum = (v: number | null | undefined, suffix = "") =>
-    v == null || Number.isNaN(Number(v)) ? DASH : `${new Intl.NumberFormat("pt-PT").format(Number(v))}${suffix}`;
-const fmtDec = (v: number | null | undefined, decimals: number, suffix = "") =>
-    v == null || Number.isNaN(Number(v))
-        ? DASH
-        : `${Number(v).toFixed(decimals).replace(".", ",")}${suffix}`;
-const fmtOr = (v: string | null | undefined) => (v && String(v).trim().length ? String(v) : DASH);
-const kv = (label: string, value: string) => `${label} ${value}`;
-
-/**
- * 2026-06-28 — Política de garantia (decisão Simon): campo por viatura
- * (`warranty_months`) manda; se vazio, cai na política por condição:
- *   USADO (used/like_new/good) → 18 meses
- *   NOVO (new) → 36 meses
- * Nunca devolve `—` — há sempre valor próprio ou política.
- * `service`/`classic`/`trade_in` caem também em 18 meses (padrão "usado").
- */
-const resolveWarrantyMonths = (
-    warrantyMonths: number | null | undefined,
-    condition: string | null | undefined,
-): number => {
-    if (warrantyMonths && warrantyMonths > 0) return warrantyMonths;
-    return condition === "new" ? 36 : 18;
-};
-
-/** Categoria (A) — Dimensões: comprimento, largura, altura. Sempre visíveis. */
-const buildDimensions = (va: VA): Group => {
-    const d = va?.dimensions ?? {};
-    return {
-        title: "Dimensões",
-        items: [
-            kv("Comprimento", fmtDec(d.length_m, 2, " m")),
-            kv("Largura",     fmtDec(d.width_m, 2, " m")),
-            kv("Altura",      fmtDec(d.height_m, 2, " m")),
-        ],
-    };
-};
-
-/** Categoria (A) — Motor e ficha: todos os campos factuais SEMPRE visíveis. */
-const buildEngineBlock = (data: CarPrintSheetType): Group => {
-    const isCaravan = data.vehicle_type === "caravan";
-    const fuel  = labelOf(data.specs.fuel_type,    FUEL_TYPE_LABELS)      ?? DASH;
-    const trans = labelOf(data.specs.transmission, TRANSMISSION_LABELS)   ?? DASH;
-    const color = labelOf(data.specs.exterior_color, EXTERIOR_COLOR_LABELS);
-    const colorLabel = color
-        ? (data.specs.is_metallic ? `${color} metalizado` : color)
-        : DASH;
-
-    const items: string[] = [];
-    // Motor: caravanas NÃO têm motor — omitir as 4 linhas de motor.
-    if (!isCaravan) {
-        items.push(kv("Marca do motor", fmtOr(data.engine_brand)));
-        items.push(kv("Combustível",    fuel));
-        items.push(kv("Transmissão",    trans));
-        if (data.specs.gear_count) items.push(kv("Velocidades", String(data.specs.gear_count)));
-        items.push(kv("Cilindrada",     fmtNum(data.specs.engine_capacity_cc, " cc")));
-        items.push(kv("Potência",       fmtNum(data.specs.power_hp, " cv")));
-    }
-    // `data.specs.doors` NÃO renderizado nesta ficha (2026-06-28) — ruído
-    // técnico para autocaravanas; com o princípio "factuais mostram —" ficaria
-    // "Portas —" uma linha inteira a dizer nada quando o campo está vazio.
-    // Campo mantido intacto em toda a app (form, CarSpecsResource, API pública) —
-    // é só não o mostrar aqui. Não requer separador extra: o `.join(" · ")`
-    // no render trata dos separadores a partir do array final.
-    if (data.vehicle_type !== "motorhome" && data.vehicle_type !== "caravan") {
-        items.push(kv("Segmento", fmtOr(data.specs.segment)));
-    }
-    items.push(kv("Cor exterior", colorLabel));
-    if (data.specs.interior_color) {
-        items.push(kv("Cor interior", data.specs.interior_color));
-    }
-    return { title: "Motor e ficha", items };
-};
-
-/** Categoria (A) — Estado: condição e origem sempre visíveis. */
-/** Retoma/chave/manuais mantêm-se opcionais (B) — só se true. */
-const buildStateBlock = (data: CarPrintSheetType): Group => {
-    const cond   = labelOf(data.state.condition, CONDITION_LABELS) ?? DASH;
-    const origin = labelOf(data.state.origin,    ORIGIN_LABELS)    ?? DASH;
-    const items: string[] = [
-        kv("Condição", cap(cond)),
-        kv("Origem",   cap(origin)),
-    ];
-    if (data.state.is_trade_in)   items.push("Retoma");
-    if (data.state.has_spare_key) items.push("Chave reserva");
-    if (data.state.has_manuals)   items.push("Manuais");
-    return { title: "Estado", items };
-};
-
-// ─────────────────────────── Componente ─────────────────────────────────────
 
 const publicUrl = process.env.REACT_APP_PUBLIC_URL ?? "";
+
+// Área útil da folha A4 com as margens do @page (297 - 11 - 10 mm), em px CSS (96 por polegada).
+const A4_CONTENT_PX = (276 * 96) / 25.4;
+// Abaixo disto a letra fica pequena demais para ler na viatura: passa antes para uma segunda folha.
+const MIN_FIT = 0.72;
+
+// A descrição vem do editor do painel em HTML (o site mostra-a assim): na folha, texto simples
+// em parágrafos, sem os estilos colados. O DOMParser não corre scripts nem carrega imagens.
+export function descriptionParagraphs(html: string): string[] {
+    const marked = html
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/(p|div|li|h[1-6]|blockquote)>/gi, "\n\n");
+    const text = new DOMParser().parseFromString(marked, "text/html").body.textContent ?? "";
+    return text.split(/\n\s*\n/).map((t) => t.replace(/[ \t\u00a0]+/g, " ").trim()).filter(Boolean);
+}
+
+// Código postal guardado sem hífen (4450745): na folha, 4450-745.
+const postalCode = (value?: string | null) => (value && /^\d{7}$/.test(value) ? `${value.slice(0, 4)}-${value.slice(4)}` : value);
+
+// Como o site: "57 900 €", com espaço também nos milhares de 4 algarismos ("9 500 €"; o pt-PT do
+// Intl não os agrupa). Espaço fixo, para o preço não partir entre linhas.
+const euros = (value: number) => `${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0")}\u00a0€`;
+
+function PriceBox({ price }: { price: CarPresentation["price"] }) {
+    if (price.hidden || price.current == null) {
+        return <div className="ps-price"><span className="ps-price-current">{price.label ?? "Sob consulta"}</span></div>;
+    }
+    return (
+        <div className="ps-price">
+            {price.promo && price.regular != null && <span className="ps-price-old">{euros(price.regular)}</span>}
+            <span className="ps-price-current">{euros(price.current)}</span>
+            {price.promo && <span className="ps-price-tag">Promoção</span>}
+        </div>
+    );
+}
+
+function Section({ section }: { section: CarPresentation["sections"][number] }) {
+    return (
+        <section className="ps-section" data-testid={`ps-section-${section.id}`}>
+            <h3 className="ps-section-title">{section.title}</h3>
+            {section.details.length > 0 && (
+                <dl className="ps-details">
+                    {section.details.map((d) => (
+                        <div key={d.label} className="ps-detail"><dt>{d.label}</dt><dd>{d.value}</dd></div>
+                    ))}
+                </dl>
+            )}
+            {section.beds && section.beds.length > 0 && (
+                <ul className="ps-beds">
+                    {section.beds.map((b, i) => (
+                        <li key={`${b.label}-${i}`}><strong>{b.label}</strong>{b.description ? <span>{b.description}</span> : null}</li>
+                    ))}
+                </ul>
+            )}
+            {section.items.length > 0 && (
+                <ul className="ps-items">
+                    {section.items.map((it) => <li key={it}><span className="ps-check" aria-hidden>✓</span>{it}</li>)}
+                </ul>
+            )}
+        </section>
+    );
+}
 
 export default function CarPrintSheet() {
     const { companyId, id } = useParams();
@@ -559,275 +89,155 @@ export default function CarPrintSheet() {
     const [data, setData] = useState<CarPrintSheetType | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    // 2026-06-28 — fallback textual quando a logo falha a carregar (URL
-    // errada, ficheiro apagado, etc). Sem isto o browser mostra ícone
-    // partido no cabeçalho (crítico — é a única exigência da cliente).
+    // Sem logótipo (ou se falhar a carregar), o nome da empresa em texto.
     const [logoBroken, setLogoBroken] = useState(false);
+    // Fator para a ficha caber numa folha (1 = tamanho normal).
+    const [fit, setFit] = useState(1);
+    const fitRef = useRef<HTMLDivElement>(null);
+
+    // Procura o maior fator com que a ficha cabe na área útil do A4 (a largura no ecrã é a mesma
+    // da folha, por isso o ecrã mostra o que sai na impressora). Mede-se a altura real em cada
+    // tentativa: reduzida, cabe mais texto por linha e a altura não desce na proporção.
+    const measure = useCallback(() => {
+        const el = fitRef.current;
+        if (!el) return;
+        const available = A4_CONTENT_PX * 0.985;
+        el.classList.add("ps-measuring");
+        const heightAt = (f: number) => {
+            el.style.setProperty("--ps-fit", String(f));
+            return el.getBoundingClientRect().height;
+        };
+        let best = 1;
+        if (heightAt(1) > available) {
+            if (heightAt(MIN_FIT) > available) best = MIN_FIT;
+            else {
+                let lo = MIN_FIT, hi = 1;
+                for (let i = 0; i < 10; i++) {
+                    const mid = (lo + hi) / 2;
+                    if (heightAt(mid) <= available) lo = mid; else hi = mid;
+                }
+                best = Math.floor(lo * 1000) / 1000;
+            }
+        }
+        el.style.setProperty("--ps-fit", String(best));
+        el.classList.remove("ps-measuring");
+        if (heightAt(best) > 0) setFit(best);
+    }, []);
+
+    useLayoutEffect(() => { if (data) measure(); }, [data, measure]);
 
     const goBack = () => {
-        // Preferência: voltar à Ficha da viatura (mantém contexto natural).
-        // Fallback: window.history se o utilizador entrou directamente por URL.
-        if (id) {
-            navigate(`/cars/${id}/ficha`);
-        } else {
-            window.history.back();
-        }
+        if (id) navigate(`/cars/${id}/ficha`);
+        else window.history.back();
     };
 
     useEffect(() => {
-        document.title = "Ficha para impressão | Xplendor";
         if (!companyId || !id) return;
+        let alive = true;
         setLoading(true);
-        setError(false);
         getCarPrintSheet(Number(companyId), Number(id))
-            .then((res: any) => setData(res?.data ?? null))
-            .catch(() => setError(true))
-            .finally(() => setLoading(false));
+            .then((res: any) => { if (alive) setData((res?.data ?? res) as CarPrintSheetType); })
+            .catch(() => { if (alive) setError(true); })
+            .finally(() => { if (alive) setLoading(false); });
+        return () => { alive = false; };
     }, [companyId, id]);
 
-    const groups = useMemo<Group[]>(() => {
-        if (!data) return [];
-        const va = data.vehicle_attributes ?? {};
-        const isHabitation = data.vehicle_type === "motorhome" || data.vehicle_type === "caravan";
-
-        // Categoria (A) — sempre visíveis (mostram "—" quando null).
-        const factualGroups: Group[] = [
-            buildEngineBlock(data),
-            buildStateBlock(data),
-        ];
-        if (isHabitation) {
-            // Dimensões só faz sentido para habitação (autocaravana / caravana).
-            factualGroups.unshift(buildDimensions(va));
-        }
-
-        // Autocaravanas: as secções do formulário (os extras entram na Cabine de
-        // condução e segurança, no Exterior e em Outros equipamentos).
-        if (data.vehicle_type === "motorhome") {
-            return [
-                ...factualGroups,
-                ...[buildBeds(va), ...buildMotorhomeGroups(va, data.extras ?? [])].filter((g) => g.items.length > 0),
-            ];
-        }
-
-        // Categoria (B) — opcionais (só se tiverem items).
-        const optionalGroups: Group[] = isHabitation
-            ? [
-                buildKitchen(va),
-                buildBathroom(va),
-                buildEnergy(va),
-                buildHeating(va),
-                buildExterior(va),
-                buildChassis(va),
-                buildInterior(va),
-                buildSecurity(va),
-                buildBeds(va),
-              ]
-            : [];
-
-        // 2026-06-28 — Grupo "Cabine" = Estores Remifront + Bancos giratórios
-        // (que vivem no accordion Cabine do form) + Extras livres (checkboxes
-        // marcados). Substitui o antigo grupo "Extras". Nome do subtítulo:
-        // "Cabine" (renome pedido Matilde).
-        const extraItems = (data.extras ?? []).flatMap((g) => g.items ?? []);
-        const cabinGroup = buildCabin(va, extraItems);
-        const cabinNonEmpty: Group | null = cabinGroup.items.length > 0 ? cabinGroup : null;
-
-        // Ordem final: factuais primeiro, depois opcionais habitação, depois
-        // Cabine. Só se filtram os OPCIONAIS vazios — os factuais aparecem
-        // sempre por definição.
-        const result: Group[] = [
-            ...factualGroups,
-            ...optionalGroups.filter((g) => g.items.length > 0),
-        ];
-        if (cabinNonEmpty) result.push(cabinNonEmpty);
-        return result;
+    useEffect(() => {
+        if (data) document.title = `Ficha: ${data.presentation.display_name}`;
     }, [data]);
 
     if (loading) {
-        return (
-            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
-                <Spinner color="primary" />
-            </div>
-        );
+        return <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}><Spinner color="primary" /></div>;
     }
-
     if (error || !data) {
-        return (
-            <div className="text-center text-muted py-5">
-                Ficha indisponível.
-            </div>
-        );
+        return <div className="text-center text-muted py-5">Ficha indisponível.</div>;
     }
 
-    // Formatação do preço com regra "Sob consulta" da CarPublicResource.
-    const priceGross = data.price.promo_gross ?? data.price.gross;
-    const priceLabel =
-        data.price.hide_price_online || !priceGross ? "Sob consulta" : currency(priceGross);
-    const priceSuffix = !data.price.hide_price_online && priceGross ? "c/ IVA" : null;
-
-    const logoUrl = data.company.logo_path
-        ? (data.company.logo_path.startsWith("http") ? data.company.logo_path : publicUrl + data.company.logo_path)
-        : null;
-
-    const identity = [
-        data.brand?.name,
-        data.model?.name,
-        data.version,
-    ].filter(Boolean).join(" ");
-    const categoryOrType = data.category?.name
-        ?? (data.vehicle_type === "motorhome" ? "Autocaravana"
-            : data.vehicle_type === "caravan" ? "Caravana"
-            : data.vehicle_type === "motorcycle" ? "Mota"
-            : "Automóvel");
-    const yearText = data.registration.year ? ` · ${data.registration.year}` : "";
-
-    // ── Faixa de dados-chave ─────────────────────────────────────────────────
-    const stats = data.headline_stats;
-    const showSleeps = data.vehicle_type === "motorhome" || data.vehicle_type === "caravan";
-    const showWeight = showSleeps;
-    // 2026-06-28 — "Comprimento" saiu da faixa (continua visível no grupo
-    // "Dimensões" no corpo). Substituído por "Ano" (registration_year) —
-    // decisão de produto Matilde: ano é decisor mais imediato que
-    // comprimento numa autocaravana.
-    const headlineCells: Array<{ label: string; value: string }> = [];
-    if (stats.seats != null) headlineCells.push({ label: "Lugares", value: numFmt(stats.seats) });
-    if (showSleeps)          headlineCells.push({ label: "Dormidas", value: numFmt(stats.sleeps) });
-    headlineCells.push({ label: "Ano", value: fmtOr(data.registration.year != null ? String(data.registration.year) : null) });
-    if (showWeight)          headlineCells.push({ label: "Peso bruto", value: stats.gross_weight_kg ? `${numFmt(stats.gross_weight_kg)} kg` : "—" });
-    headlineCells.push({ label: "Km", value: numFmt(stats.mileage_km) });
+    const p = data.presentation;
+    const c = data.company;
+    const companyName = c.trade_name || c.fiscal_name || "";
+    const logoUrl = c.logo_path ? (c.logo_path.startsWith("http") ? c.logo_path : publicUrl + c.logo_path) : null;
+    const address = [c.address, postalCode(c.postal_code)].filter(Boolean).join(", ");
+    const paragraphs = p.description ? descriptionParagraphs(p.description) : [];
+    const sellerPhone = data.seller?.mobile || c.mobile || c.phone;
 
     return (
         <>
             <style>{PRINT_STYLES}</style>
-
-            {/*
-                Overlay full-screen fixed — cobre o painel do Velzon (sidebar +
-                cabeçalho + rodapé) que estava a tapar o topo da ficha e a
-                deixar a toolbar invisível. Fix P1+P2 do reporte Simon
-                (2026-06-28). @media print oculta este overlay wrapper e a
-                ficha imprime normalmente.
-            */}
             <div className="print-overlay">
-                {/* Barra de acções — sticky no topo do overlay para ser SEMPRE
-                    visível; @media print esconde via .no-print. */}
                 <div className="print-toolbar no-print">
                     <div className="print-toolbar-inner">
-                        <button
-                            type="button"
-                            className="btn btn-outline-primary"
-                            onClick={goBack}
-                        >
-                            <i className="ri-arrow-left-line me-1" /> Voltar
-                        </button>
-                        <div className="print-toolbar-hint">
-                            Pré-visualização da ficha para impressão. Clique em <strong>Imprimir</strong> para escolher impressora ou guardar como PDF.
-                        </div>
-                        <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={() => window.print()}
-                        >
-                            <i className="ri-printer-line me-1" /> Imprimir
-                        </button>
+                        <button type="button" className="btn btn-outline-primary" onClick={goBack}><i className="ri-arrow-left-line me-1" /> Voltar</button>
+                        <div className="print-toolbar-hint">Pré-visualização da ficha em A4. Clique em <strong>Imprimir</strong> para escolher a impressora ou guardar como PDF.</div>
+                        <button type="button" className="btn btn-primary" onClick={() => window.print()}><i className="ri-printer-line me-1" /> Imprimir</button>
                     </div>
-                </div>
-
-                <div className="print-sheet">
-                    {/* Cabeçalho */}
-                    <header className="ps-header">
-                        <div className="ps-header-left">
-                            {logoUrl && !logoBroken ? (
-                                <img
-                                    src={logoUrl}
-                                    alt={data.company.trade_name ?? ""}
-                                    className="ps-logo"
-                                    onError={() => setLogoBroken(true)}
-                                />
-                            ) : (
-                                <div className="ps-logo-fallback">{data.company.trade_name ?? data.company.fiscal_name ?? "STAND"}</div>
-                            )}
-                            <div className="ps-identity">
-                                <div className="ps-model">{identity || "Viatura"}</div>
-                                <div className="ps-sub">{categoryOrType}{yearText}</div>
+                    {!data.qr.available && (
+                        <div className="print-toolbar-inner pt-0">
+                            <div className="alert alert-warning mb-0 w-100 py-2" role="status" data-testid="ps-qr-missing">
+                                <i className="ri-qr-code-line me-1" aria-hidden />
+                                A ficha sai sem QR Code: a empresa não tem o <strong>Endereço da viatura no site</strong>. Preencha-o em{" "}
+                                <Link to={c.id ? `/companies/${c.id}` : "/companies"}>Empresa › Dados gerais</Link>.
                             </div>
                         </div>
-                        <div className="ps-header-right">
-                            <div className="ps-price">{priceLabel}</div>
-                            {priceSuffix && <div className="ps-price-suffix">{priceSuffix}</div>}
+                    )}
+                </div>
+
+                <div className="print-sheet" data-testid="print-sheet">
+                  <div className="ps-fit" ref={fitRef} style={{ ["--ps-fit" as string]: String(fit) }} data-fit={fit}>
+                    <header className="ps-header">
+                        <div className="ps-brand">
+                            {logoUrl && !logoBroken
+                                ? <img src={logoUrl} alt={companyName} className="ps-logo" onLoad={measure} onError={() => setLogoBroken(true)} />
+                                : <div className="ps-logo-fallback">{companyName || "Stand"}</div>}
                         </div>
+                        <div className="ps-head">
+                            {p.eyebrow.length > 0 && <div className="ps-eyebrow">{p.eyebrow.join(" · ")}</div>}
+                            <h1 className="ps-title">{p.display_name}</h1>
+                            {p.meta.length > 0 && <div className="ps-meta">{p.meta.join(" · ")}</div>}
+                        </div>
+                        <PriceBox price={p.price} />
                     </header>
 
-                {/* Faixa de dados-chave */}
-                <div className="ps-headline">
-                    {headlineCells.map((c) => (
-                        <div key={c.label} className="ps-headline-cell">
-                            <div className="ps-headline-label">{c.label}</div>
-                            <div className="ps-headline-value">{c.value}</div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Grupos em 2 colunas */}
-                <div className="ps-groups">
-                    {groups.map((g) => (
-                        <section key={g.title} className="ps-group">
-                            <h3 className="ps-group-title">{g.title}</h3>
-                            <p className="ps-group-body">
-                                {g.items.join(" · ")}
-                            </p>
-                        </section>
-                    ))}
-                </div>
-
-                {/* Rodapé — colado ao fundo da folha via `.ps-groups { flex: 1 }`.
-                    Disclaimer legal (texto fixo pt-PT, igual para todas as empresas)
-                    + linha de identificação da empresa (dinâmica) + matrícula +
-                    garantia. Sem website (decisão Simon 2026-06-28). */}
-                <footer className="ps-footer">
-                    <p className="ps-disclaimer">
-                        Este preçário serve apenas como uma prévia do veículo e não faz parte de um contrato de venda.
-                        As informações fornecidas aqui são descrições não vinculativas e não representam bens garantidos.
-                        O vendedor não se responsabiliza por erros, erros de introdução e erros de transmissão de dados.
-                    </p>
-                    <div className="ps-footer-identity">
-                        {[
-                            data.company.fiscal_name ?? data.company.trade_name,
-                            data.company.address,
-                            data.company.postal_code,
-                            data.company.phone || data.company.mobile,
-                            data.company.email,
-                        ].filter(Boolean).join(" · ")}
-                    </div>
-                    {/* Matrícula à parte (condicional). Garantia migrou para
-                        o bloco de destaque abaixo (2026-06-28). */}
-                    {data.license_plate && (
-                        <div className="ps-footer-meta">
-                            <span>Matrícula {data.license_plate}</span>
+                    {p.key_figures.length > 0 && (
+                        <div className="ps-figures" data-testid="ps-figures">
+                            {p.key_figures.map((k) => (
+                                <div key={k.key} className="ps-figure"><div className="ps-figure-value">{k.value}</div><div className="ps-figure-caption">{k.caption}</div></div>
+                            ))}
                         </div>
                     )}
-                </footer>
 
-                {/* Bloco de destaque — Garantia + confiança pós-venda.
-                    Cor de marca (verde escuro do cabeçalho) para atrair olhar,
-                    fora do fluxo do disclaimer legal. Política aplicada quando
-                    warranty_months vazio (18/36 meses conforme condição). */}
-                <aside className="ps-trust">
-                    <div className="ps-trust-warranty">
-                        <span className="ps-trust-warranty-label">GARANTIA</span>
-                        <span className="ps-trust-warranty-value">
-                            {resolveWarrantyMonths(data.warranty_months, data.state.condition)} meses
-                        </span>
+                    <div className="ps-sections">
+                        {p.sections.map((s) => <Section key={s.id} section={s} />)}
                     </div>
-                    <div className="ps-trust-body">
-                        <p className="ps-trust-line">
-                            A nossa oficina é composta por técnicos especializados com mais de 20 anos
-                            de experiência, permitindo-lhe usufruir do seu sonho sem preocupações!
-                        </p>
-                        <p className="ps-trust-line ps-trust-muted">
-                            Se desejar saber as coberturas, solicite ao comercial essa informação.
-                        </p>
-                    </div>
-                </aside>
+
+                    {paragraphs.length > 0 && (
+                        <section className="ps-about" data-testid="ps-about">
+                            <h3 className="ps-section-title">{p.description_title}</h3>
+                            {paragraphs.map((t, i) => <p key={i}>{t}</p>)}
+                        </section>
+                    )}
+
+                    <footer className="ps-footer">
+                        {data.qr.available && (
+                            <div className="ps-qr" data-testid="ps-qr">
+                                <div className="ps-qr-code" dangerouslySetInnerHTML={{ __html: data.qr.svg }} />
+                                <div className="ps-qr-label">{data.qr.site_label}</div>
+                            </div>
+                        )}
+                        <div className="ps-contact">
+                            {data.qr.available && <div className="ps-qr-hint">Veja esta viatura no site: aponte a câmara ao código.</div>}
+                            {data.seller?.name && <div className="ps-seller"><strong>{data.seller.name}</strong>{sellerPhone ? ` · ${sellerPhone}` : ""}</div>}
+                            {!data.seller?.name && sellerPhone && <div className="ps-seller"><strong>{sellerPhone}</strong></div>}
+                            <div className="ps-company">
+                                <strong>{c.fiscal_name || companyName}</strong>
+                                {c.nipc ? ` · NIPC ${c.nipc}` : ""}
+                            </div>
+                            <div className="ps-company-lines">
+                                {[address, c.phone, c.email, c.website].filter(Boolean).join(" · ")}
+                            </div>
+                        </div>
+                    </footer>
+                  </div>
                 </div>
             </div>
         </>
@@ -835,262 +245,84 @@ export default function CarPrintSheet() {
 }
 
 // ─────────────────────────────── Estilo A4 ───────────────────────────────────
-// Isolado numa string para poder ser inline no <style> — reduz risco de o CSS
-// do painel (sidebar, navbar, cards) vazar para a impressão. `.no-print` esconde
-// a barra de acções na impressão.
+// Inline num <style> para o CSS do painel não vazar para a impressão. Pensado para o preto e
+// branco: tudo em tons de cinzento escuro, sem fundos coloridos (lê-se igual numa impressora
+// a cores ou a preto).
 const PRINT_STYLES = `
-@page {
-    size: A4 portrait;
-    margin: 12mm 12mm 10mm 12mm;
-}
+@page { size: A4 portrait; margin: 11mm 12mm 10mm 12mm; }
 
-/* Faixas coloridas: força os browsers a imprimirem os backgrounds. */
-.print-sheet * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-}
-
-/* Overlay full-screen fixed — cobre o painel do Velzon por completo (fix
-   P1+P2 do reporte Simon 2026-06-28). Assim a toolbar deixa de ser tapada
-   pelo cabeçalho fixo do painel e a folha A4 aparece centrada, com scroll
-   próprio, sem margens fantasmas do .page-content. */
 .print-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1500;
-    background: #f3f4f6;
-    overflow-y: auto;
+    position: fixed; inset: 0; z-index: 1500; background: #f3f4f6; overflow-y: auto;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: ${COLORS.body};
+    color: #111827;
 }
+.print-toolbar { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #e5e7eb; box-shadow: 0 2px 6px rgba(15,23,42,.06); }
+.print-toolbar-inner { max-width: 1000px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+.print-toolbar-hint { flex: 1; font-size: 12px; color: #6b7280; text-align: center; }
+@media (max-width: 640px) { .print-toolbar-hint { display: none; } }
 
-/* Toolbar sticky no topo do overlay — SEMPRE visível durante scroll do
-   preview. Fundo branco + sombra para se destacar. */
-.print-toolbar {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
-}
-.print-toolbar-inner {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.print-toolbar-hint {
-    flex: 1;
-    font-size: 12px;
-    color: #6b7280;
-    text-align: center;
-}
-@media (max-width: 640px) {
-    .print-toolbar-hint { display: none; }
-}
-
-/* Folha A4 — layout flex column para colar o rodapé ao fundo (2026-06-28).
-   ".ps-groups { flex: 1 }" expande a área de grupos, empurrando o footer
-   contra a margem inferior. Assim: viatura pouco equipada = espaço em cima
-   dos grupos vai crescer suavemente; muito equipada = grupos ocupam tudo,
-   footer permanece colado no fim sem overflow. */
-.print-sheet {
-    display: flex;
-    flex-direction: column;
-}
+.print-sheet { font-size: 10.5pt; line-height: 1.35; }
+/* A redução para caber numa folha: o zoom encolhe por igual, a largura compensa-o para a ficha
+   ocupar a largura da folha e a altura mínima mantém o rodapé no fundo. */
+.ps-fit { display: flex; flex-direction: column; zoom: var(--ps-fit, 1); width: calc(100% / var(--ps-fit, 1)); min-height: calc(276mm / var(--ps-fit, 1)); }
+.ps-fit.ps-measuring { min-height: 0; }
 @media screen {
-    .print-sheet {
-        width: 210mm;
-        min-height: 297mm;
-        margin: 20px auto;
-        padding: 12mm 12mm 10mm 12mm;
-        background: #fff;
-        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.10);
-    }
+    .print-sheet { width: 210mm; min-height: 297mm; margin: 20px auto; padding: 11mm 12mm 10mm 12mm; background: #fff; box-shadow: 0 20px 40px rgba(15,23,42,.10); box-sizing: border-box; }
 }
 @media print {
-    .print-sheet {
-        /* Em impressão, a folha ocupa a página completa; "min-height" em cm
-           garante que o flex-1 empurra o rodapé para o fundo do papel. */
-        min-height: calc(297mm - 22mm); /* A4 menos margens do @page */
-    }
-}
-@media print {
+    html, body { background: #fff !important; }
     .no-print { display: none !important; }
-    body { background: #fff; }
-    /* O overlay deixa de ser fixed em impressão para não cortar em 1 página. */
-    .print-overlay {
-        position: static !important;
-        overflow: visible !important;
-        background: #fff !important;
-        inset: auto !important;
-    }
-    .print-sheet {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        box-shadow: none;
-    }
-    /* Esconde tudo o que possa vir do layout do painel (sidebar, navbar, back-to-top). */
-    .vertical-menu, .app-menu, .navbar-header, .page-title-box, .footer, #back-to-top { display: none !important; }
+    .print-overlay { position: static !important; overflow: visible !important; background: #fff !important; inset: auto !important; }
+    .print-sheet { width: 100%; margin: 0; padding: 0; box-shadow: none; }
+    body > *:not(#root) { display: none !important; }
 }
 
-/* ── Cabeçalho ──────────────────────────────────────────────────────────── */
-.ps-header {
-    background: ${COLORS.headerBg};
-    color: ${COLORS.headerText};
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 18px;
-    border-radius: 8px 8px 0 0;
-}
-.ps-header-left { display: flex; align-items: center; gap: 14px; }
-.ps-logo { max-height: 44px; max-width: 130px; background: #fff; padding: 4px 6px; border-radius: 4px; }
-.ps-logo-fallback { font-weight: 700; letter-spacing: 0.05em; }
-.ps-model { font-size: 20px; font-weight: 700; line-height: 1.1; }
-.ps-sub { font-size: 12px; opacity: 0.85; letter-spacing: 0.04em; text-transform: uppercase; margin-top: 2px; }
-.ps-header-right { text-align: right; }
-.ps-price { font-size: 30px; font-weight: 800; line-height: 1; }
-.ps-price-suffix { font-size: 11px; opacity: 0.85; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 3px; }
+/* Cabeçalho */
+.ps-header { display: grid; grid-template-columns: auto 1fr auto; gap: 6mm; align-items: start; padding-bottom: 4mm; border-bottom: 1.5pt solid #111827; }
+.ps-logo { max-height: 16mm; max-width: 42mm; object-fit: contain; }
+.ps-logo-fallback { font-weight: 800; font-size: 13pt; letter-spacing: .02em; text-transform: uppercase; max-width: 42mm; }
+.ps-eyebrow { font-size: 8.5pt; text-transform: uppercase; letter-spacing: .08em; color: #4b5563; margin-bottom: 1mm; }
+.ps-title { font-size: 21pt; line-height: 1.1; font-weight: 800; margin: 0; color: #111827; }
+.ps-meta { margin-top: 1.5mm; font-size: 10.5pt; color: #374151; }
+.ps-price { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: .5mm; white-space: nowrap; }
+.ps-price-current { font-size: 21pt; font-weight: 800; line-height: 1.1; }
+.ps-price-old { font-size: 11pt; color: #4b5563; text-decoration: line-through; }
+.ps-price-tag { font-size: 8pt; text-transform: uppercase; letter-spacing: .08em; border: 1pt solid #111827; padding: .3mm 1.5mm; border-radius: 1mm; }
 
-/* ── Faixa de dados-chave ───────────────────────────────────────────────── */
-.ps-headline {
-    background: ${COLORS.accentBg};
-    color: ${COLORS.accentText};
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    border-radius: 0 0 8px 8px;
-    margin-bottom: 14px;
-}
-.ps-headline-cell {
-    padding: 10px 8px;
-    text-align: center;
-    border-right: 1px solid rgba(255, 255, 255, 0.18);
-}
-.ps-headline-cell:last-child { border-right: none; }
-.ps-headline-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.9; }
-.ps-headline-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+/* Números-chave */
+.ps-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(30mm, 1fr)); gap: 3mm; margin: 4mm 0; }
+.ps-figure { border: 1pt solid #9ca3af; border-radius: 2mm; padding: 2.5mm 3mm; text-align: center; }
+.ps-figure-value { font-size: 13pt; font-weight: 800; }
+.ps-figure-caption { font-size: 8pt; text-transform: uppercase; letter-spacing: .06em; color: #4b5563; }
 
-/* ── Grupos em 2 colunas ────────────────────────────────────────────────── */
-/* flex: 1 empurra o rodapé contra o fundo da folha (2026-06-28). */
-.ps-groups {
-    column-count: 2;
-    column-gap: 16px;
-    flex: 1;
-}
-/* 2026-06-28 — downgrade parcial do esticar da 1.14.14 para acomodar o
-   novo bloco de destaque no rodapé (garantia + texto oficina + nota
-   coberturas) sem estourar A4. Reduzi margin-bottom (14→10) e
-   padding-bottom (8→6) — mantendo font-size 12.5px e line-height 1.5
-   (legibilidade essencial). Poupa ~5px por grupo × ~12 grupos ≈ 60px,
-   suficiente para o novo bloco (~55px). */
-.ps-group {
-    break-inside: avoid;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid ${COLORS.ruleLight};
-}
-.ps-group-title {
-    font-size: 11.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: ${COLORS.groupTitle};
-    margin: 0 0 3px 0;
-    font-weight: 700;
-}
-.ps-group-body {
-    margin: 0;
-    font-size: 12.5px;
-    line-height: 1.5;
-    color: ${COLORS.body};
-}
+/* Blocos */
+.ps-sections { column-count: 2; column-gap: 7mm; flex: 1; }
+.ps-section { break-inside: avoid; page-break-inside: avoid; margin: 0 0 4mm; }
+.ps-section-title { font-size: 9.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; margin: 0 0 1.5mm; padding-bottom: 1mm; border-bottom: .75pt solid #6b7280; }
+.ps-details { margin: 0 0 1.5mm; }
+.ps-detail { display: flex; justify-content: space-between; gap: 3mm; padding: .6mm 0; border-bottom: .5pt dotted #d1d5db; }
+.ps-detail dt { font-weight: 400; color: #374151; }
+.ps-detail dd { margin: 0; font-weight: 700; text-align: right; }
+.ps-items { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 3mm; }
+.ps-items li { padding: .4mm 0; display: flex; gap: 1.5mm; align-items: baseline; }
+.ps-check { font-weight: 800; }
+.ps-beds { list-style: none; margin: 0 0 1.5mm; padding: 0; }
+.ps-beds li { padding: .6mm 0; }
+.ps-beds li span { display: block; font-size: 9pt; color: #4b5563; }
 
-/* ── Rodapé ─────────────────────────────────────────────────────────────── */
-/* Sem flex-grow no rodapé — a expansão vive em .ps-groups. */
-.ps-footer {
-    margin-top: 14px;
-    padding-top: 10px;
-    border-top: 2px solid ${COLORS.headerBg};
-    color: ${COLORS.muted};
-}
-/* Disclaimer — texto pequeno mas legível; text-align: justify uniformiza
-   as linhas para leitura ao pé da autocaravana. */
-.ps-disclaimer {
-    margin: 0 0 8px 0;
-    font-size: 9px;
-    line-height: 1.45;
-    text-align: justify;
-    color: ${COLORS.muted};
-}
-.ps-footer-identity {
-    font-size: 10.5px;
-    font-weight: 600;
-    color: ${COLORS.body};
-    padding-top: 6px;
-    border-top: 1px solid ${COLORS.ruleLight};
-}
-.ps-footer-meta {
-    margin-top: 6px;
-    display: flex;
-    gap: 14px;
-    font-size: 10px;
-    color: ${COLORS.muted};
-    justify-content: flex-end;
-}
+/* Descrição */
+.ps-about { break-inside: avoid; margin-top: 1mm; }
+.ps-about p { margin: 0 0 1.5mm; }
 
-/* ── Bloco de destaque — GARANTIA + confiança pós-venda (2026-06-28) ────── */
-/* Fora do <footer> (que tem borda superior própria) para ter cor de marca
-   destacada. Layout: pastilha da garantia à esquerda + texto à direita. */
-.ps-trust {
-    margin-top: 8px;
-    display: flex;
-    align-items: stretch;
-    gap: 10px;
-    background: ${COLORS.headerBg};
-    color: #ffffff;
-    border-radius: 8px;
-    overflow: hidden;
-}
-.ps-trust-warranty {
-    background: ${COLORS.accentBg};
-    padding: 10px 14px;
-    min-width: 96px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    color: #ffffff;
-}
-.ps-trust-warranty-label {
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    opacity: 0.9;
-    font-weight: 700;
-}
-.ps-trust-warranty-value {
-    font-size: 20px;
-    font-weight: 800;
-    line-height: 1.1;
-    margin-top: 2px;
-}
-.ps-trust-body {
-    flex: 1;
-    padding: 8px 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-.ps-trust-line {
-    margin: 0;
-    font-size: 10.5px;
-    line-height: 1.35;
-}
-.ps-trust-line + .ps-trust-line { margin-top: 3px; }
-.ps-trust-muted { opacity: 0.82; font-style: italic; font-size: 9.5px; }
+/* Rodapé */
+.ps-footer { display: flex; gap: 6mm; align-items: center; margin-top: 4mm; padding-top: 4mm; border-top: 1.5pt solid #111827; break-inside: avoid; }
+.ps-qr { flex: 0 0 auto; text-align: center; }
+/* 32 mm na folha mesmo quando a ficha se reduz para caber (o zoom do .ps-fit é compensado). */
+.ps-qr-code { width: calc(32mm / var(--ps-fit, 1)); height: calc(32mm / var(--ps-fit, 1)); background: #fff; }
+.ps-qr-code svg { width: 100%; height: 100%; display: block; }
+.ps-qr-label { font-size: 8pt; margin-top: 1mm; font-weight: 700; word-break: break-all; max-width: 40mm; }
+.ps-contact { flex: 1; font-size: 9.5pt; }
+.ps-qr-hint { font-size: 9pt; color: #374151; margin-bottom: 1.5mm; }
+.ps-seller { font-size: 11pt; margin-bottom: 1mm; }
+.ps-company-lines { color: #374151; }
 `;

@@ -489,9 +489,10 @@ class CarController extends Controller
         if (!$car || (int) $car->company_id !== $companyId) {
             return ApiResponse::error('Viatura não encontrada.', 404);
         }
+        $this->carService->attachSellerContact($car);
 
         return ApiResponse::success(
-            CarPrintSheetResource::make($car)->resolve(),
+            CarPrintSheetResource::make($car)->resolve(request()),
             'Ficha de impressão carregada com sucesso.'
         );
     }

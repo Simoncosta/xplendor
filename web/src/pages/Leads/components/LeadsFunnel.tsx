@@ -4,7 +4,7 @@ import SimpleBar from "simplebar-react";
 import { CardBody, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import CarThumbnail from "Components/Common/CarThumbnail";
-import { ILead, LeadStatus, LEAD_STAGES } from "common/models/lead.model";
+import { ILead, LeadStatus, LEAD_STAGES, leadOrigin } from "common/models/lead.model";
 import { getCompanyLeadsAll, updateLead } from "helpers/laravel_helper";
 import LossReasonModal from "./LossReasonModal";
 import LeadDetailModal from "./LeadDetailModal";
@@ -169,6 +169,7 @@ const LeadsFunnel = () => {
                                                                     <div className="card task-box mb-0" style={{ cursor: "pointer" }} onClick={() => setDetail(lead)}>
                                                                         <CardBody className="p-3">
                                                                             <h6 className="fs-14 mb-1 text-truncate">{lead.name}</h6>
+                                                                            {lead.type === "proposta" && <span className="badge bg-primary-subtle text-primary fs-11 mb-1">{lead.type_label ?? "Pedido de proposta"}</span>}
                                                                             <p className="text-muted mb-2 fs-12">{lead.phone || lead.email}</p>
 
                                                                             {car && (
@@ -180,7 +181,7 @@ const LeadsFunnel = () => {
 
                                                                             <div className="d-flex align-items-center justify-content-between">
                                                                                 <span className="badge bg-light text-body fs-11">
-                                                                                    <i className="ri-global-line me-1" />{lead.channel || lead.utm_source || "direto"}
+                                                                                    <i className={lead.origin_label === "QR do stand" ? "ri-qr-code-line me-1" : "ri-global-line me-1"} />{leadOrigin(lead)}
                                                                                 </span>
                                                                                 <small className="text-muted fs-11">{new Date(lead.created_at).toLocaleDateString("pt-PT")}</small>
                                                                             </div>

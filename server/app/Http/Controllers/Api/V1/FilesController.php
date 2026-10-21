@@ -232,8 +232,20 @@ class FilesController extends Controller
             ->where(fn ($q) => $q->whereColumn('p.current_version_id', 'v.id')->orWhereColumn('p.approved_version_id', 'v.id'))
             ->selectRaw('vm.media_asset_id, count(distinct p.id) as n')->groupBy('vm.media_asset_id')->pluck('n', 'media_asset_id');
         $files = (new \Illuminate\Database\Eloquent\Collection($files->all()))->loadMissing('mediaAsset');
+        // Documentos de financiamento: sem endereços diretos; descarregam-se pela rota que regista.
+        $financing = \App\Models\FinancingDocument::whereIn('stored_file_id', $files->where('source', \App\Services\Financing\FinancingFiles::SOURCE)->pluck('id'))
+            ->pluck('id', 'stored_file_id');
 
-        return $files->map(function (StoredFile $f) use ($uses) {
+        return $files->map(function (StoredFile $f) use ($uses, $financing) {
+            if ($f->source === \App\Services\Financing\FinancingFiles::SOURCE) {
+                return [
+                    'id' => $f->id, 'name' => $f->name, 'extension' => $f->extension, 'mime' => $f->mime, 'kind' => $f->kind(),
+                    'size_bytes' => $f->size_bytes, 'folder_id' => $f->folder_id, 'system' => true, 'source' => $f->source,
+                    'created_at' => optional($f->created_at)->toIso8601String(), 'deleted_at' => null, 'purge_after' => null,
+                    'media_asset_id' => null, 'media_status' => null, 'in_use' => 0, 'thumb_url' => null, 'preview_url' => null,
+                    'url' => null, 'download_url' => null, 'financing_document_id' => $financing[$f->id] ?? null,
+                ];
+            }
             $asset = $f->mediaAsset;
             $url = $f->deleted_at ? null : $this->files->signedUrl($f);
             // Uma imagem fora da media (ex.: as da viatura): a miniatura é o próprio ficheiro, se for leve.

@@ -5,6 +5,7 @@ import avatar1 from '../../../assets/images/users/avatar-company.jpg';
 // Forms
 import { FormikProvider, useFormik } from 'formik';
 import * as Yup from "yup";
+import { vehicleUrlTemplateError } from "./components/VehicleUrlTemplateField";
 // Components
 import PageHeader from 'Components/Common/PageHeader';
 import PageCard from 'Components/Common/PageCard';
@@ -100,6 +101,12 @@ export default function CompanyProfileEditor({
         nipc: Yup.string().nullable()
             .when("managed_by_company_id", ([managedBy]: any[], schema: any) => (managedBy ? schema.notRequired() : schema.required("NIPC é obrigatório")))
             .test("nipc", "NIPC deve ter 9 dígitos", (v: any) => !v || /^\d{9}$/.test(String(v))),
+        // Ficha da viatura (QR): a mesma validação do servidor.
+        vehicle_url_template: Yup.string().nullable()
+            .test("vehicle_url_template", (v: any, ctx: any) => {
+                const error = vehicleUrlTemplateError(String(v ?? ""));
+                return error ? ctx.createError({ message: error }) : true;
+            }),
     });
 
     const formik = useFormik({

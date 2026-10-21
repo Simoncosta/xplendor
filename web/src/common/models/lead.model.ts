@@ -27,7 +27,24 @@ export interface ILead {
     utm_campaign?: string | null;
     car?: LeadCar | null;
     car_id?: number;
+    // "Pedir proposta" (site): o tipo, a origem legível (ex.: "QR do stand") e o que o cliente pediu.
+    type?: "contacto" | "proposta" | string;
+    type_label?: string;
+    origin?: string | null;
+    origin_label?: string;
+    wants_financing?: boolean | null;
+    trade_in?: { brand?: string; model?: string; year?: number; km?: number } | null;
+    consent_contact_at?: string | null;
+    consent_contact_text?: string | null;
+    consent_marketing?: boolean | null;
+    consent_marketing_at?: string | null;
+    consent_marketing_text?: string | null;
+    policy_version?: string | null;
 }
+
+/** A origem em texto legível (do servidor); para leads antigas sem rótulo, o canal e o utm_source. */
+export const leadOrigin = (lead: Pick<ILead, "origin_label" | "channel" | "utm_source">): string =>
+    lead.origin_label || [lead.channel, lead.utm_source].filter(Boolean).join(" · ") || "Direto";
 
 // Colunas do funil (ordem = fluxo). `spam` NÃO entra no funil (marca-se na lista).
 // `qualified` é apresentado como "Proposta" (fase intermédia já existente).

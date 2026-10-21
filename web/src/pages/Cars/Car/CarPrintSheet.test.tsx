@@ -1,10 +1,12 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import CarPrintSheet from "./CarPrintSheet";
+import { render, screen, within } from "@testing-library/react";
+import CarPrintSheet, { descriptionParagraphs } from "./CarPrintSheet";
+import type { CarPrintSheet as Sheet } from "types/api";
 
 // O Jest do CRA não resolve o react-router-dom 7 (exports): substitui-se só o que a ficha usa.
 jest.mock("react-router-dom", () => ({
     useParams: () => ({ companyId: "1", id: "7" }),
     useNavigate: () => jest.fn(),
+    Link: ({ to, children }: any) => <a href={to}>{children}</a>,
 }), { virtual: true });
 
 const mockGetCarPrintSheet = jest.fn();
@@ -12,96 +14,88 @@ jest.mock("helpers/laravel_helper", () => ({
     getCarPrintSheet: (...args: unknown[]) => mockGetCarPrintSheet(...args),
 }));
 
-const extras = (byGroup: Record<string, string[]>) =>
-    ["comfort_multimedia", "exterior_equipment", "interior_equipment", "safety_performance"].map((group) => ({
-        group,
-        items: byGroup[group] ?? [],
-    }));
-
-const vehicleAttributes = {
-    dimensions: { length_m: 7.2 },
-    autonomy_km: 600,
-    beds: [{ type: "cama_popup_panoramica", capacity: 2 }],
-    habitation_basics: {
-        has_kitchen: true, has_bathroom: true,
-        kitchen: { has_stove: true, stove_burners: 3, stove_type: "gas" },
-        bathroom: { has_toilet: true },
+const sheet = (over: Partial<Sheet> = {}): Sheet => ({
+    presentation: {
+        version: "presentation-v1",
+        display_name: "Sunlight A72",
+        eyebrow: ["Integral", "Usado", "Ref. 7"],
+        meta: ["Integral", "2021", "Importado", "Branco metalizado"],
+        price: { hidden: false, promo: true, regular: 89900, current: 84900, label: null },
+        key_figures: [
+            { key: "km", value: "45 210 km", caption: "Quilómetros" },
+            { key: "seats", value: "4 lugares", caption: "Para viajar" },
+        ],
+        sections: [
+            { id: "camas", title: "Camas", details: [], items: [], beds: [{ label: "Cama central", description: "Cama de casal com acesso pelos dois lados" }] },
+            { id: "sala", title: "Sala e cozinha", details: [{ label: "Fogão", value: "3 bocas · Gás" }], items: ["Forno", "TV e suporte TV"] },
+            { id: "cabine", title: "Cabine de condução e segurança", details: [], items: ["ABS", "Airbags do condutor e passageiro"] },
+        ],
+        description_title: "Sobre esta autocaravana",
+        description: "<p><span style=\"background-color: rgb(255, 255, 255);\">Autocaravana integral muito bem conservada.</span></p><p>Garantia de 18 meses.</p>",
     },
-    energy_climate: { cabin_battery_count: 2, cabin_battery_brand: "Varta", cabin_battery_ah: 95 },
-    exterior: { has_awning: true },
-    security: { has_alarm: true, has_gas_lock: true },
-    chassis_structure: { chassis_type: "alko", has_remifront: true, has_cabin_blackouts: true, has_window_blackouts: true },
-    interior_furniture: { has_rotating_seats: true, has_curtains: true },
-    living_room: { layout: "l_shape" },
-};
-
-const sheet = (vehicleType: string) => ({
-    vehicle_type: vehicleType,
-    vehicle_attributes: vehicleAttributes,
-    extras: extras({
-        comfort_multimedia: ["Ecrã Táctil ou Touch Screen", "Android Auto"],
-        exterior_equipment: ["Jantes de Liga Leve"],
-        safety_performance: ["Fecho Centralizado com Comando a Distância"],
-    }),
-    specs: { fuel_type: "diesel", transmission: "manual", gear_count: 6, power_hp: 140, engine_capacity_cc: 2300, doors: 3, segment: null, exterior_color: null, is_metallic: false, interior_color: null },
-    state: { condition: "used", origin: "national", is_trade_in: false, has_spare_key: false, has_manuals: false },
-    headline_stats: { seats: 4, sleeps: 2, gross_weight_kg: 3500, mileage_km: 50000 },
-    price: { gross: 60000, promo_gross: null, hide_price_online: false },
-    registration: { year: 2020, month: 5 },
-    company: { logo_path: null, trade_name: "Quebom", fiscal_name: "Quebom Lda" },
-    brand: { id: 1, name: "Fiat" }, model: { id: 1, name: "Ducato" }, version: null, category: null,
-    license_plate: "AA-00-AA", vin: null, warranty_months: null, engine_brand: "Fiat",
+    qr: { available: true, short_url: "https://xplendor.tech/q/abcd2345", svg: "<svg viewBox=\"0 0 10 10\"></svg>", site_url: "https://quebom.pt/vehicles/7", site_label: "quebom.pt/vehicles/7" },
+    seller: { name: "Vendedor Exemplo", mobile: "910000000" },
+    company: { id: 1, nipc: "500000000", trade_name: "Stand Exemplo", fiscal_name: "Stand Exemplo Lda", logo_path: null, address: "Rua A, 1", postal_code: "1000-001", phone: null, mobile: null, email: "geral@exemplo.pt", website: "exemplo.pt" },
+    vehicle_type: "motorhome", brand: null, model: null, category: null, version: null, engine_brand: null, license_plate: null, vin: null,
+    registration: { year: 2021, month: null }, price: { gross: 89900, promo_gross: 84900, hide_price_online: false },
+    headline_stats: { seats: 4, sleeps: 4, length_m: null, gross_weight_kg: null, mileage_km: 45210 } as any,
+    specs: {} as any, state: {} as any, warranty_months: null, vehicle_attributes: {}, extras: [],
+    ...over,
 });
 
-const groupsOnScreen = () =>
-    Array.from(document.querySelectorAll(".ps-group")).map((g) => ({
-        title: g.querySelector(".ps-group-title")?.textContent,
-        body: g.querySelector(".ps-group-body")?.textContent ?? "",
-    }));
+describe("Ficha A4 da viatura", () => {
+    beforeEach(() => mockGetCarPrintSheet.mockReset());
 
-describe("CarPrintSheet", () => {
-    it("autocaravana: os grupos seguem as secções do formulário, com os rótulos da lista única", async () => {
-        mockGetCarPrintSheet.mockResolvedValue({ data: sheet("motorhome") });
+    it("desenha a apresentação: cabeçalho, números-chave, blocos com ✓, camas com explicação, descrição e rodapé com o QR", async () => {
+        mockGetCarPrintSheet.mockResolvedValue({ data: sheet() });
         render(<CarPrintSheet />);
-        await waitFor(() => expect(screen.getByText("Cabine de condução e segurança")).toBeInTheDocument());
-
-        const groups = groupsOnScreen();
-        expect(groups.map((g) => g.title)).toEqual([
-            "Dimensões", "Motor e ficha", "Estado", "Camas",
-            "Energia e autonomia", "Sala e cozinha", "Duche e WC",
-            "Cabine de condução e segurança", "Exterior", "Outros equipamentos",
-        ]);
-        const body = (title: string) => groups.find((g) => g.title === title)!.body;
-        expect(body("Motor e ficha")).toContain("Velocidades 6");
-        expect(body("Camas")).toContain("Cama pop-up panorâmica (dorme 2)");
-        expect(body("Energia e autonomia")).toContain("Autonomia 600 km");
-        expect(body("Energia e autonomia")).toContain("2 bat. cabine (Varta, 95 Ah)");
-        expect(body("Sala e cozinha")).toContain("Fogão a gás de 3 bocas");
-        expect(body("Sala e cozinha")).toContain("Tapa-luz janelas");
-        expect(body("Sala e cozinha")).not.toContain("Tapa-luz cabine");
-        const cabin = body("Cabine de condução e segurança");
-        for (const item of ["Estores Remifront", "Tapa-luz cabine", "Chassis Alko", "Fechadura gás", "Ecrã tátil", "Alarme", "Bancos giratórios", "Fecho centralizado"]) {
-            expect(cabin).toContain(item);
-        }
-        expect(cabin).not.toContain("Ecrã Táctil ou Touch Screen");
-        expect(body("Exterior")).toContain("Jantes de liga leve");
-        expect(body("Outros equipamentos")).toBe("Android Auto");
+        await screen.findByText("Sunlight A72");
+        expect(screen.getByText("Integral · Usado · Ref. 7")).toBeInTheDocument();
+        expect(screen.getByText("Integral · 2021 · Importado · Branco metalizado")).toBeInTheDocument();
+        expect(screen.getByText(/84\s900\s€/)).toBeInTheDocument();
+        expect(screen.getByText(/89\s900\s€/)).toBeInTheDocument();
+        expect(within(screen.getByTestId("ps-figures")).getByText("45 210 km")).toBeInTheDocument();
+        const camas = screen.getByTestId("ps-section-camas");
+        expect(camas).toHaveTextContent("Cama central");
+        expect(camas).toHaveTextContent("Cama de casal com acesso pelos dois lados");
+        expect(screen.getByTestId("ps-section-sala")).toHaveTextContent("✓TV e suporte TV");
+        expect(screen.getByTestId("ps-about")).toHaveTextContent("Sobre esta autocaravana");
+        expect(screen.getByText("Autocaravana integral muito bem conservada.")).toBeInTheDocument();
+        expect(screen.getByTestId("ps-about")).not.toHaveTextContent("<span");
+        expect(within(screen.getByTestId("ps-qr")).getByText("quebom.pt/vehicles/7")).toBeInTheDocument();
+        expect(screen.getByText("Vendedor Exemplo")).toBeInTheDocument();
+        expect(screen.queryByTestId("ps-qr-missing")).not.toBeInTheDocument();
     });
 
-    it("caravana: os grupos de sempre", async () => {
-        mockGetCarPrintSheet.mockResolvedValue({ data: sheet("caravan") });
+    it("preço escondido no site: Sob consulta", async () => {
+        const s = sheet();
+        s.presentation.price = { hidden: true, promo: false, regular: null, current: null, label: "Sob consulta" };
+        mockGetCarPrintSheet.mockResolvedValue({ data: s });
         render(<CarPrintSheet />);
-        await waitFor(() => expect(screen.getByText("Cabine")).toBeInTheDocument());
-        const groups = groupsOnScreen();
-        expect(groups.map((g) => g.title)).toEqual([
-            "Dimensões", "Motor e ficha", "Estado",
-            "Cozinha", "Casa de banho", "Energia", "Exterior", "Chassis e clarabóias", "Interior", "Segurança", "Camas",
-            "Cabine",
-        ]);
-        const body = (title: string) => groups.find((g) => g.title === title)!.body;
-        expect(body("Segurança")).toBe("Alarme · Fechadura gás");
-        expect(body("Chassis e clarabóias")).toBe("Chassis Alko · Tapa-luz janelas · Tapa-luz cabine");
-        expect(body("Interior")).toBe("Sala: sala em L · Cortinas");
-        expect(body("Cabine")).toContain("Ecrã Táctil ou Touch Screen");
+        await screen.findByText("Sob consulta");
+        expect(screen.queryByText(/€/)).not.toBeInTheDocument();
+    });
+
+    it("preço com espaço também nos milhares de 4 algarismos, como no site", async () => {
+        const s = sheet();
+        s.presentation.price = { hidden: false, promo: false, regular: 7500, current: 7500, label: null };
+        mockGetCarPrintSheet.mockResolvedValue({ data: s });
+        render(<CarPrintSheet />);
+        // O matcher junta os espaços: confirma-se o espaço fixo no texto do elemento.
+        expect((await screen.findByText(/^7\s500\s€$/)).textContent).toBe("7\u00a0500\u00a0€");
+    });
+
+    it("sem o endereço da viatura no site: sem QR e o ecrã diz onde preencher", async () => {
+        mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ qr: { available: false, reason: "missing_template" } }) });
+        render(<CarPrintSheet />);
+        await screen.findByTestId("ps-qr-missing");
+        expect(screen.queryByTestId("ps-qr")).not.toBeInTheDocument();
+        expect(within(screen.getByTestId("ps-qr-missing")).getByText("Empresa › Dados gerais")).toHaveAttribute("href", "/companies/1");
+    });
+
+    it("a descrição em HTML do editor passa a parágrafos de texto simples", () => {
+        expect(descriptionParagraphs("<p><span style=\"color: red\">Um &amp; dois</span></p><p><br></p><p>Linha<br>seguinte</p><script>alert(1)</script>"))
+            .toEqual(["Um & dois", "Linha\nseguinte", "alert(1)"]);
+        expect(descriptionParagraphs("Texto simples sem etiquetas.")).toEqual(["Texto simples sem etiquetas."]);
     });
 });

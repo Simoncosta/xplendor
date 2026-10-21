@@ -149,6 +149,24 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/consultant-site/unpublish',
     ];
 
+    /**
+     * Documentos para financiamento (Cartão de Cidadão, recibos, IRS): dados pessoais dos clientes,
+     * nunca a agência (área "financiamento"; o prazo de apagamento é empresa.editar, do cliente).
+     */
+    private const FINANCING_ABOVE_CEILING = [
+        'GET api/v1/companies/{id}/cars/{carId}/financing-links',
+        'POST api/v1/companies/{id}/cars/{carId}/financing-links',
+        'GET api/v1/companies/{id}/leads/{lead}/financing-links',
+        'POST api/v1/companies/{id}/leads/{lead}/financing-links',
+        'GET api/v1/companies/{id}/financing-links/{link}/url',
+        'POST api/v1/companies/{id}/financing-links/{link}/revoke',
+        'DELETE api/v1/companies/{id}/financing-links/{link}',
+        'GET api/v1/companies/{id}/financing-documents/{document}/download',
+        'DELETE api/v1/companies/{id}/financing-documents/{document}',
+        'GET api/v1/companies/{id}/financing-settings',
+        'PUT api/v1/companies/{id}/financing-settings',
+    ];
+
     /** Só o root (a agência recebe sempre 403, mesmo os administradores). */
     private const ROOT_ONLY = [
         // Postos de venda do relatório anual do PingWin (início de cada loja).
@@ -321,12 +339,12 @@ class AgencyTenancySweepTest extends TestCase
 
     public function test_agency_member_with_an_active_relation_works_everywhere_except_client_decisions_and_integrations(): void
     {
-        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING, ...self::SITE_ABOVE_CEILING]);
+        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING, ...self::SITE_ABOVE_CEILING, ...self::FINANCING_ABOVE_CEILING]);
     }
 
     public function test_agency_admin_with_an_active_relation_also_connects_integrations_but_never_decides_for_the_client(): void
     {
-        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING, ...self::SITE_ABOVE_CEILING]);
+        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING, ...self::SITE_ABOVE_CEILING, ...self::FINANCING_ABOVE_CEILING]);
     }
 
     /** Com relação ativa: 403 exatamente nas rotas indicadas e em nenhuma outra. */

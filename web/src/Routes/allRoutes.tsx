@@ -81,6 +81,7 @@ import EmpreendimentosPage from "pages/Imoveis/EmpreendimentosPage";
 import SiteConsultorPage from "pages/SiteConsultor/SiteConsultorPage";
 import ContactosPage from "pages/Contactos/ContactosPage";
 import ContentReviewPage from "pages/ContentReview";
+import FinancingUploadPage from "pages/FinancingUpload";
 import ContentReviewPreview from "pages/ContentReview/Preview";
 import QuotePublicPreview from "pages/Admin/QuotePublicPreview";
 import SatisfactionReport from "pages/SatisfactionReport";
@@ -375,6 +376,8 @@ const publicRoutes = [
     { path: "/orcamento", component: <QuotePublicPage /> },
     // Aprovação de conteúdos por lote (sem conta, sem indexação). Token no fragmento: /aprovar#<token>.
     { path: "/aprovar", component: <ContentReviewPage /> },
+    // Envio seguro de documentos para financiamento (sem conta, sem indexação). Código no fragmento: /enviar-documentos#<código>.
+    { path: "/enviar-documentos", component: <FinancingUploadPage /> },
     { path: "/configurar", component: <SetupPublicPage /> },
     // Fatura da XPLENDOR (sem conta, sem indexação): ver, descarregar e "Já paguei". Token no fragmento: /cobranca#<token>.
     { path: "/cobranca", component: <ChargePublicPage /> },

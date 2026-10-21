@@ -2,6 +2,13 @@
 
 return [
 
+    // Ficha da viatura (A4): o QR aponta para o endereço curto da plataforma ({base}/q/{código}),
+    // que conta a leitura e reencaminha para o site da empresa. Em produção, o domínio público da
+    // plataforma; no dev, o do nginx do Laravel (ex.: http://localhost:8001).
+    'vehicle_qr' => [
+        'base_url' => env('VEHICLE_QR_BASE_URL', env('APP_URL', 'http://localhost')),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

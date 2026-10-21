@@ -10,6 +10,7 @@ import { analyticsCar } from "slices/cars/thunk";
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
+import QrScansCard from "./components/QrScansCard";
 import ContactProbabilityPanel from "./components/ContactProbabilityPanel";
 
 import {
@@ -186,6 +187,8 @@ export default function CarAnalytics() {
                                     </Row>
                                 )}
                                     </CardBody></Card>
+
+                                    <QrScansCard data={carAnalytics?.qr_scans} />
 
                                     <Card className="mb-0"><CardBody>
                                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">

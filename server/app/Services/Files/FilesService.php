@@ -312,6 +312,7 @@ class FilesService
         if (! $this->access->canSeeFile($user, $file)) {
             throw new HttpException(404, 'Ficheiro não encontrado.');
         }
+        $this->assertNotFinancing($file);
         $folder = $this->userFolder($companyId, $folderId);
         if ((int) $file->folder_id === (int) $folder->id) {
             throw ValidationException::withMessages(['folder_id' => ['O ficheiro já está nesta pasta.']]);
@@ -347,6 +348,7 @@ class FilesService
         if (! $this->access->canSeeFile($user, $file)) {
             throw new HttpException(404, 'Ficheiro não encontrado.');
         }
+        $this->assertNotFinancing($file);
         if ($file->media_asset_id && ($asset = MediaAsset::where('company_id', $companyId)->find($file->media_asset_id)) && $asset->status !== MediaAsset::REJECTED) {
             return $asset;
         }
@@ -413,6 +415,9 @@ class FilesService
     /** Endereço assinado e relativo (30 minutos), gerado só depois do acesso confirmado; acaba no nome do ficheiro. */
     public function signedUrl(StoredFile $file, string $variant = 'original', bool $download = false): ?string
     {
+        if ($file->source === \App\Services\Financing\FinancingFiles::SOURCE) {
+            return null; // os documentos de financiamento só pela rota que regista a descarga
+        }
         if ($file->media_asset_id && $variant !== 'original' && ($asset = $file->mediaAsset) && $asset->pathFor($variant)) {
             return $asset->signedUrl($variant);
         }
@@ -531,6 +536,14 @@ class FilesService
         }
 
         return $candidate;
+    }
+
+    /** Os documentos de financiamento (dados pessoais) ficam só na sua pasta: sem atalhos nem Linha Editorial. */
+    private function assertNotFinancing(StoredFile $file): void
+    {
+        if ($file->source === \App\Services\Financing\FinancingFiles::SOURCE) {
+            throw ValidationException::withMessages(['file' => ['Os documentos de financiamento ficam só na sua pasta.']]);
+        }
     }
 
     private function assertQuota(int $companyId, int $size): void

@@ -30,8 +30,8 @@ function App() {
     return (
         <React.Fragment>
             <Route />
-            {/* As páginas públicas (orçamento, aprovação, cobrança, configuração) não usam cookies nem análise de terceiros. */}
-            {!/\/(orcamento|aprovar|cobranca|configurar)\/?$/.test(window.location.pathname) && <CookieBanner />}
+            {/* As páginas públicas (orçamento, aprovação, cobrança, configuração, envio de documentos) não usam cookies nem análise de terceiros. */}
+            {!/\/(orcamento|aprovar|cobranca|configurar|enviar-documentos)\/?$/.test(window.location.pathname) && <CookieBanner />}
         </React.Fragment>
     );
 }

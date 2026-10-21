@@ -86,6 +86,13 @@ class CompanyRequest extends FormRequest
             'facebook_page_id' => ['nullable', 'string', 'max:255'],
             'facebook_pixel_id' => ['nullable', 'string', 'max:255'],
             'website' => ['nullable', 'string', 'max:255'],
+            // Ficha da viatura (QR): o endereço da viatura no site, com {id} (ex.: https://quebom.pt/vehicles/{id}).
+            'vehicle_url_template' => ['nullable', 'string', 'max:255', function (string $attr, mixed $value, \Closure $fail) {
+                $error = \App\Services\Cars\VehicleQr::templateError((string) $value);
+                if ($error !== null) {
+                    $fail($error);
+                }
+            }],
             'instagram' => ['nullable', 'string', 'max:255'],
             'facebook' => ['nullable', 'string', 'max:255'],
             'youtube' => ['nullable', 'string', 'max:255'],

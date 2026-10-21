@@ -697,6 +697,21 @@ Route::prefix('v1')->group(function () {
                 Route::apiResource('/cars', CarController::class)->middleware('ensure_module:stock');
                 // ── Módulo COMERCIAL/CRM ──
                 Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update'])->middleware('ensure_module:commercial_crm');
+                // Envio seguro de documentos para financiamento (área "financiamento", módulo stock).
+                Route::middleware('ensure_module:stock')->group(function () {
+                    $fin = \App\Http\Controllers\Api\V1\FinancingLinkController::class;
+                    Route::get('/cars/{carId}/financing-links', [$fin, 'carIndex'])->whereNumber('carId');
+                    Route::post('/cars/{carId}/financing-links', [$fin, 'carStore'])->whereNumber('carId')->middleware('throttle:30,1');
+                    Route::get('/leads/{lead}/financing-links', [$fin, 'leadIndex'])->whereNumber('lead');
+                    Route::post('/leads/{lead}/financing-links', [$fin, 'leadStore'])->whereNumber('lead')->middleware('throttle:30,1');
+                    Route::get('/financing-links/{link}/url', [$fin, 'url'])->whereNumber('link');
+                    Route::post('/financing-links/{link}/revoke', [$fin, 'revoke'])->whereNumber('link');
+                    Route::delete('/financing-links/{link}', [$fin, 'destroy'])->whereNumber('link');
+                    Route::get('/financing-documents/{document}/download', [$fin, 'download'])->whereNumber('document')->middleware('throttle:120,1');
+                    Route::delete('/financing-documents/{document}', [$fin, 'destroyDocument'])->whereNumber('document');
+                    Route::get('/financing-settings', [$fin, 'settings']);
+                    Route::put('/financing-settings', [$fin, 'updateSettings']);
+                });
                 Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index')->middleware(['ensure_module:stock', 'block_when_impersonating']);
                 // Blog: conteúdo (empresa, root e impersonation) e fluxo de aprovação. Aprovar,
                 // devolver e voltar a rascunho: só o admin da própria empresa, fora de impersonation.
@@ -1073,7 +1088,10 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
     Route::get('car-filters', [PublicCarController::class, 'filters']);
 
     Route::post('car-view', [CarViewController::class, 'store']);
-    Route::post('car-lead', [PublicCarLeadController::class, 'store']);
+    // Leads do site: limite de pedidos por visitante (IP em hash, nunca guardado) e por empresa.
+    Route::post('car-lead', [PublicCarLeadController::class, 'store'])->middleware('throttle:public-lead');
+    // "Pedir proposta" (contrato no relatório da construção; o site usa-o tal e qual).
+    Route::post('car-proposal', [\App\Http\Controllers\Api\Public\CarProposalController::class, 'store'])->middleware('throttle:public-lead');
     Route::post('newsletter', [PublicNewsletterController::class, 'store']);
 
     Route::get('blogs', [PublicBlogController::class, 'index']);
@@ -1151,6 +1169,16 @@ Route::prefix('public/setup')->group(function () {
     Route::get('/ads/accounts', [$c, 'adsAccounts'])->middleware('throttle:setup-public-action');
     Route::put('/ads/account', [$c, 'adsSave'])->middleware('throttle:setup-public-action');
     Route::post('/ga4/verify', [$c, 'ga4Verify'])->middleware('throttle:setup-public-action');
+});
+
+// Envio seguro de documentos para financiamento (sem conta): o código vem no cabeçalho
+// X-Financing-Token, nunca no caminho (o link é /enviar-documentos#<código>). Só ver a lista
+// pedida, aceitar o aviso e enviar; não há rota para listar nem descarregar ficheiros.
+Route::prefix('public/financing')->group(function () {
+    $c = \App\Http\Controllers\Api\Public\FinancingPublicController::class;
+    Route::get('/', [$c, 'show'])->middleware('throttle:financing-public-read');
+    Route::post('/consent', [$c, 'consent'])->middleware('throttle:financing-public-action');
+    Route::post('/documents', [$c, 'upload'])->middleware('throttle:financing-public-action');
 });
 
 // Link de aprovação de conteúdos por lote (F3c), sem conta: o token vem no cabeçalho

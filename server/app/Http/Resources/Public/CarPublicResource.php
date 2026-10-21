@@ -31,7 +31,7 @@ class CarPublicResource extends JsonResource
 
         $isHabitation = in_array($this->vehicle_type, ['motorhome', 'caravan'], true);
 
-        return [
+        $data = [
             // --- Identificadores ---
             'id'         => $this->id,
             'created_at' => $this->created_at,
@@ -126,6 +126,12 @@ class CarPublicResource extends JsonResource
                 'whatsapp' => $this->seller_contact['whatsapp'] ?? null,
             ] : null,
         ];
+
+        // A apresentação montada na plataforma (blocos, rótulos, itens com ✓ sem duplicados): a
+        // mesma da ficha A4. Só acrescenta; o site pode passar a usá-la quando quiser.
+        $data['presentation'] = \App\Services\Cars\Presentation\CarPresentation::fromPublic($data);
+
+        return $data;
     }
 
     /** Core dimensions + weight from vehicle_attributes, plus seats from cars table. */

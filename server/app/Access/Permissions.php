@@ -47,6 +47,9 @@ final class Permissions
         'financas' => ['label' => 'Finanças', 'module' => ['finance', 'financas_mes'], 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'restauracao' => ['label' => 'Restauração', 'module' => 'pingwin', 'actions' => ['ver', 'criar', 'editar', 'apagar', 'configurar']],
         'automovel' => ['label' => 'Automóvel', 'module' => 'stock', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
+        // Envio seguro de documentos para financiamento (dados pessoais do cliente): ver e descarregar
+        // o que chegou; criar e revogar os links; apagar documentos e links.
+        'financiamento' => ['label' => 'Financiamento', 'module' => 'stock', 'actions' => ['ver', 'criar', 'apagar']],
         // O suporte com a XPLENDOR (pedidos, mensagens, orçamentos) é base, em todas as empresas;
         // as tarefas da equipa seguem o módulo "Suporte / Tarefas".
         'suporte' => ['label' => 'Suporte da XPLENDOR', 'module' => null, 'actions' => ['ver', 'criar']],

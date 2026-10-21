@@ -79,6 +79,15 @@ final class CompatibilityProfiles
             self::AGENCY_MEMBER => [],
             self::CEILING => [],
         ],
+        // Os documentos para financiamento (Cartão de Cidadão, recibos, IRS): o Administrador tudo;
+        // o utilizador (o vendedor) vê e cria os links; nunca a agência.
+        'financiamento' => [
+            self::CLIENT_ADMIN => ['ver', 'criar', 'apagar'],
+            self::CLIENT_USER => ['ver', 'criar'],
+            self::AGENCY_ADMIN => [],
+            self::AGENCY_MEMBER => [],
+            self::CEILING => [],
+        ],
     ];
 
     private static ?array $loaded = null;

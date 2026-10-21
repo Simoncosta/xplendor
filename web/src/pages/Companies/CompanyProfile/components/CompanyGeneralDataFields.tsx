@@ -6,6 +6,7 @@ import XInputMask from "Components/Common/XInputMask";
 import AddressFields from "Components/Common/AddressFields";
 import { Row, Col, Input, Label } from "reactstrap";
 import { useField } from "formik";
+import VehicleUrlTemplateField from "./VehicleUrlTemplateField";
 
 export default function CompanyGeneralDataFields({ isEdit, managed = false }: { isEdit: boolean; managed?: boolean }) {
     // NIPC: fixo depois de criado, salvo numa empresa gerida que nasceu sem ele.
@@ -183,6 +184,9 @@ export default function CompanyGeneralDataFields({ isEdit, managed = false }: { 
                     label="Website"
                     placeholder="Website"
                 />
+            </Col>
+            <Col lg={5}>
+                <VehicleUrlTemplateField />
             </Col>
             <Col lg={2}>
                 <XInput

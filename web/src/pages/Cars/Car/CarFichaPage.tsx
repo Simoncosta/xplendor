@@ -8,6 +8,7 @@ import ClientPhotosCard from "./components/ClientPhotosCard";
 import ClientReviewCard from "./components/ClientReviewCard";
 import CarExpensesCard from "./components/CarExpensesCard";
 import CarMarginCard from "./components/CarMarginCard";
+import FinancingDocumentsCard from "./components/FinancingDocumentsCard";
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
@@ -283,6 +284,11 @@ export default function CarFichaPage() {
                 {/* DMS 1c.2b — despesas desta viatura (car_id automático). */}
                 {companyId > 0 && id && (
                     <CarExpensesCard companyId={companyId} carId={Number(id)} />
+                )}
+
+                {/* Envio seguro de documentos para financiamento (área "financiamento"). */}
+                {companyId > 0 && id && (
+                    <FinancingDocumentsCard companyId={companyId} carId={Number(id)} />
                 )}
 
             </Container>

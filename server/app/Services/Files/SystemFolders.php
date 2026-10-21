@@ -30,6 +30,9 @@ final class SystemFolders
         'imoveis' => ['name' => 'Imóveis', 'module' => 'imoveis', 'permissions' => ['imoveis.ver'], 'no_agency' => false],
         'empreendimentos' => ['name' => 'Empreendimentos', 'module' => 'imoveis', 'permissions' => ['imoveis.ver'], 'no_agency' => false],
         'site_consultor' => ['name' => 'Site do consultor', 'module' => 'site_consultor', 'permissions' => ['site_consultor.ver'], 'no_agency' => false],
+        // Envio seguro de documentos para financiamento (dados pessoais dos clientes): uma subpasta
+        // por pedido; descarregam-se só pela rota que regista cada descarga (nunca por endereço direto).
+        'financiamento' => ['name' => 'Documentos de financiamento', 'module' => 'stock', 'permissions' => ['financiamento.ver'], 'no_agency' => true],
     ];
 
     /** A pasta de topo de uma chave ("editorial:2026-10" → "editorial"). */

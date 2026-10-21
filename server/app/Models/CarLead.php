@@ -24,7 +24,22 @@ class CarLead extends Model
         'sem_resposta', 'so_pesquisa', 'distancia', 'ja_comprou', 'retoma', 'outro',
     ];
 
+    // Tipos de pedido. As leads de antes (e o formulário de contacto do site) são "contacto";
+    // o "Pedir proposta" do site é "proposta".
+    public const TYPES = ['contacto' => 'Contacto', 'proposta' => 'Pedido de proposta'];
+
     protected $fillable = [
+        'type',
+        'wants_financing',
+        'trade_in',
+        'origin',
+        'consent_contact_at',
+        'consent_contact_text',
+        'consent_marketing',
+        'consent_marketing_at',
+        'consent_marketing_text',
+        'policy_version',
+        'event_id',
         'name',
         'email',
         'phone',
@@ -51,6 +66,24 @@ class CarLead extends Model
         'car_id',
         'company_id',
     ];
+
+    protected $casts = [
+        'wants_financing' => 'boolean',
+        'trade_in' => 'array',
+        'consent_contact_at' => 'datetime',
+        'consent_marketing' => 'boolean',
+        'consent_marketing_at' => 'datetime',
+    ];
+
+    public function typeLabel(): string
+    {
+        return self::TYPES[$this->type ?? 'contacto'] ?? (string) $this->type;
+    }
+
+    public function originLabel(): string
+    {
+        return \App\Services\Leads\LeadOrigin::label($this->channel, $this->utm_source, $this->origin);
+    }
 
     public function car(): BelongsTo
     {

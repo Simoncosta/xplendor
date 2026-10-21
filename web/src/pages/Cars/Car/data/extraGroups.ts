@@ -1,5 +1,9 @@
 import type { CarExtraGroup } from "common/models/car.model";
 
+// A apresentação da viatura (ficha A4, API pública e site) dá a cada texto deste catálogo uma
+// chave fixa e um tema em server/app/Services/Cars/Presentation/EquipmentCatalog.php: ao
+// acrescentar ou mudar a grafia de um extra aqui, atualizar também esse mapeamento.
+
 export interface ExtraGroup {
     key: CarExtraGroup;
     title: string;

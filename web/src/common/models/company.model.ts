@@ -51,6 +51,8 @@ export interface ICompany {
     facebook_pixel_id: string | null;
 
     website: string | null;
+    /** Ficha da viatura (QR): o endereço da viatura no site, com {id}. */
+    vehicle_url_template?: string | null;
     instagram: string | null;
     linkedin?: string | null;
     tiktok?: string | null;

@@ -30,6 +30,7 @@ final class CompanyStorageUsage
         'faturas_tickets' => 'Faturas dos pedidos de suporte',
         'fotos_relatorios' => 'Fotografias dos relatórios de satisfação',
         'ficheiros' => 'Ficheiros (documentos enviados)',
+        'financiamento' => 'Documentos de financiamento',
     ];
 
     /** @return array{bytes: array<string, int>, total: int, sem_tamanho: int} */
@@ -79,6 +80,9 @@ final class CompanyStorageUsage
         // também os da reciclagem até serem apagados de vez.
         $add($scope(DB::table('stored_files')->where('source', 'upload')->whereNull('media_asset_id'))->groupBy('company_id')
             ->selectRaw('company_id, SUM(COALESCE(size_bytes, 0)) AS bytes, 0 AS missing')->get(), 'ficheiros');
+        // Os documentos para financiamento enviados pelos clientes (até ao apagamento automático).
+        $add($scope(DB::table('stored_files')->where('source', 'financiamento'))->groupBy('company_id')
+            ->selectRaw('company_id, SUM(COALESCE(size_bytes, 0)) AS bytes, 0 AS missing')->get(), 'financiamento');
 
         foreach ($rows as $id => $r) {
             $rows[$id]['total'] = array_sum($r['bytes']);

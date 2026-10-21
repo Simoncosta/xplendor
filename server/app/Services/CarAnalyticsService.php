@@ -142,6 +142,9 @@ class CarAnalyticsService
             ],
             'interactions_breakdown' => $interactionsBreakdown,
             'traffic_sources'        => $trafficSources,
+            // Ficha da viatura: as leituras do QR no stand (contadas na plataforma) e, ao lado,
+            // as visitas do site que chegaram com utm_source=qr (script de seguimento do site).
+            'qr_scans'               => \App\Services\Cars\VehicleQr::stats($car),
             'timeline'               => $this->buildTimeline($car),
 
             // ── Novos blocos ──────────────────────────────────────────────────
@@ -328,7 +331,7 @@ class CarAnalyticsService
         foreach ($this->leadRepository->getTimelineByCar($car->id) as $lead) {
             $timeline[] = [
                 'type'       => 'lead',
-                'label'      => 'Lead registada',
+                'label'      => ($lead->type ?? 'contacto') === 'proposta' ? 'Pedido de proposta' : 'Lead registada',
                 'created_at' => $lead->created_at,
                 'icon'       => 'ri-user-follow-line',
                 'color'      => 'warning',

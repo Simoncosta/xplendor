@@ -15,6 +15,8 @@ export type FileKind = "imagem" | "video" | "pdf" | "documento";
 
 export interface StoredFileDto {
     id: number;
+    /** Documento de financiamento: sem endereço direto; descarrega-se pela rota que regista a descarga. */
+    financing_document_id?: number | null;
     name: string;
     extension: string | null;
     mime: string | null;
@@ -74,7 +76,7 @@ export const KIND_META: Record<FileKind, { icon: string; color: string; label: s
 export const SYSTEM_ICON: Record<string, string> = {
     editorial: "ri-calendar-todo-line", ocr: "ri-bill-line", xplendor: "ri-money-euro-circle-line", suporte: "ri-customer-service-2-line",
     satisfacao: "ri-emotion-happy-line", viaturas: "ri-car-line", marca: "ri-copyright-line", blog: "ri-article-line", equipa: "ri-team-line",
-    modelos: "ri-file-word-line",
+    modelos: "ri-file-word-line", financiamento: "ri-shield-user-line",
 };
 
 export const fileSrc = (url: string | null | undefined) => (url ? (/^https?:\/\//.test(url) ? url : `${process.env.REACT_APP_PUBLIC_URL ?? ""}${url}`) : undefined);

@@ -498,6 +498,12 @@ class CarService extends BaseService
         }
     }
 
+    /** Ficha da viatura (A4): o contacto do vendedor, pela mesma regra da API pública. */
+    public function attachSellerContact(\App\Models\Car $car): \App\Models\Car
+    {
+        return $this->attachSellerContactToCollection(collect([$car]))->first();
+    }
+
     private function attachSellerContactToCollection(Collection $cars): Collection
     {
         if ($cars->isEmpty()) {

@@ -467,6 +467,8 @@ export interface CarMargin {
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface PrintSheetCompany {
+    id?: number | null;
+    nipc?: string | null;
     trade_name: string | null;
     fiscal_name: string | null;
     logo_path: string | null;
@@ -486,7 +488,33 @@ export interface PrintSheetHeadlineStats {
     mileage_km: number | null;
 }
 
+/** A apresentação da viatura montada na plataforma (a mesma da API pública e, depois, do site). */
+export interface CarPresentation {
+    version: string;
+    display_name: string;
+    eyebrow: string[];
+    meta: string[];
+    price: { hidden: boolean; promo: boolean; regular: number | null; current: number | null; label: string | null };
+    key_figures: Array<{ key: "km" | "seats" | "sleeps" | "warranty"; value: string; caption: string }>;
+    sections: Array<{
+        id: string;
+        title: string;
+        details: Array<{ label: string; value: string }>;
+        items: string[];
+        beds?: Array<{ label: string; description: string | null }>;
+    }>;
+    description_title: string;
+    description: string | null;
+}
+
+export type PrintSheetQr =
+    | { available: true; short_url: string; svg: string; site_url: string; site_label: string }
+    | { available: false; reason: "missing_template" };
+
 export interface CarPrintSheet {
+    presentation: CarPresentation;
+    qr: PrintSheetQr;
+    seller: { name: string | null; avatar?: string | null; mobile: string | null; whatsapp?: string | null } | null;
     company: PrintSheetCompany;
     vehicle_type: 'car' | 'motorcycle' | 'motorhome' | 'caravan' | null;
     brand: { id: number; name: string } | null;

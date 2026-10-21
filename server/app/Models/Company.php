@@ -44,6 +44,8 @@ class Company extends Model
         'facebook_page_id',
         'facebook_pixel_id',
         'website',
+        // Ficha da viatura: o endereço da viatura no site da empresa, um modelo com {id}.
+        'vehicle_url_template',
         'instagram',
         'linkedin', // Site do consultor: as redes que faltavam
         'tiktok',

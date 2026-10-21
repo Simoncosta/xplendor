@@ -354,3 +354,8 @@ New fields added alongside existing keys:
 | `has_solar_panel` | `boolean` | Must have solar panel |
 
 All existing filters (`condition`, `min_price_gross`, `fuel_types`, etc.) remain unchanged.
+
+## `presentation` (acrescentado a 2026-10-19)
+
+A apresentação da viatura montada na plataforma (`App\Services\Cars\Presentation\CarPresentation`), a mesma da ficha A4 de impressão: `display_name`, `eyebrow`, `meta`, `price` (`hidden`, `promo`, `regular`, `current`, `label`), `key_figures` (`key`, `value`, `caption`), `sections` (`id`, `title`, `details` com `label` e `value`, `items`, e `beds` com `label` e `description` no bloco das camas), `description_title` e `description`. Segue a lógica de `utils/vehicle-presentation.js` do site da Quebom (as mesmas entradas dão os mesmos blocos e itens). Só acrescenta: nenhum campo existente mudou.
+

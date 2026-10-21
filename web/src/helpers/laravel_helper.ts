@@ -989,13 +989,28 @@ export const deleteExpense = (companyId: number, id: number) =>
 
 // LEADS
 // Lista de leads paginada no servidor: pesquisa (nome, telefone, email, carro) e ordenação (CarLeadController::sorts).
-export const getLeads = (params: { perPage: number; page: number; companyId: number; search?: string; sort?: "created_at" | "name" | "status" | "car"; dir?: "asc" | "desc" }) => {
+export const getLeads = (params: { perPage: number; page: number; companyId: number; search?: string; sort?: "created_at" | "name" | "status" | "car"; dir?: "asc" | "desc"; id?: number }) => {
     const { companyId, ...query } = params;
     return api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS, { params: query });
 };
 export const updateLead = (companyId: number, leadId: number, data: { status?: string; lost_reason?: string | null; notes?: string | null }) => api.put(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS + `/${leadId}`, data);
 // CRM/funil — todas as leads da empresa (sem paginação) para montar o Kanban.
 export const getCompanyLeadsAll = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS);
+
+// FINANCIAMENTO: envio seguro de documentos (links privados para o cliente; área "financiamento").
+const finBase = (companyId: number) => url.GET_COMPANIES + `/${companyId}`;
+export const getCarFinancingLinks = (companyId: number, carId: number) => api.get(finBase(companyId) + `/cars/${carId}/financing-links`);
+export const createCarFinancingLink = (companyId: number, carId: number, data: { customer_name: string; items: string[]; other?: string; days?: number }) =>
+    api.create(finBase(companyId) + `/cars/${carId}/financing-links`, data);
+export const getLeadFinancingLinks = (companyId: number, leadId: number) => api.get(finBase(companyId) + `/leads/${leadId}/financing-links`);
+export const createLeadFinancingLink = (companyId: number, leadId: number, data: { customer_name: string; items: string[]; other?: string; days?: number }) =>
+    api.create(finBase(companyId) + `/leads/${leadId}/financing-links`, data);
+export const getFinancingLinkUrl = (companyId: number, linkId: number) => api.get(finBase(companyId) + `/financing-links/${linkId}/url`);
+export const revokeFinancingLink = (companyId: number, linkId: number) => api.create(finBase(companyId) + `/financing-links/${linkId}/revoke`, {});
+export const deleteFinancingLink = (companyId: number, linkId: number) => api.delete(finBase(companyId) + `/financing-links/${linkId}`);
+export const getFinancingDocumentDownload = (companyId: number, documentId: number) => api.get(finBase(companyId) + `/financing-documents/${documentId}/download`);
+export const deleteFinancingDocument = (companyId: number, documentId: number) => api.delete(finBase(companyId) + `/financing-documents/${documentId}`);
+export const updateFinancingSettings = (companyId: number, retentionDays: number) => api.put(finBase(companyId) + `/financing-settings`, { retention_days: retentionDays });
 
 // CARS
 export const getCarsPaginate = (

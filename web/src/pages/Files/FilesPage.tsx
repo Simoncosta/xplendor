@@ -10,6 +10,7 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import {
     createFileFolder, deleteFileFolder, deleteFileShortcut, deleteStoredFile, getFileDetail, getFiles, getFilesTrash, restoreFileFolder, restoreFileShortcut,
     restoreStoredFile, saveFileToFolder, sendFileMediaChunk, startFileMediaUpload, updateFileFolder, updateStoredFile, uploadFileDocument,
+    getFinancingDocumentDownload,
 } from "helpers/laravel_helper";
 import {
     FileDetailDto, FileFolderDto, FilesPayload, FilesTrashPayload, KIND_META, MEDIA_EXTENSIONS, StoredFileDto, SYSTEM_ICON, fileSrc, fmtBytes, fmtDate,
@@ -183,11 +184,26 @@ export default function FilesPage() {
         }
     };
 
+    // Os documentos de financiamento descarregam-se pela rota que regista cada descarga (endereço assinado e curto).
+    const downloadFile = async (f: StoredFileDto) => {
+        if (f.financing_document_id) {
+            if (!companyId) return;
+            try {
+                const r: any = await getFinancingDocumentDownload(companyId, f.financing_document_id);
+                window.location.href = fileSrc(r?.data?.url) ?? "#";
+            } catch (e: any) {
+                toast.error(errorOf(e, "Não foi possível descarregar o documento."));
+            }
+            return;
+        }
+        window.location.href = fileSrc(f.download_url) ?? "#";
+    };
+
     const fileActions = (f: StoredFileDto) => [
-        { label: "Descarregar", icon: "ri-download-2-line", hidden: !f.download_url, onClick: () => { window.location.href = fileSrc(f.download_url) ?? "#"; } },
+        { label: "Descarregar", icon: "ri-download-2-line", hidden: !f.download_url && !f.financing_document_id, onClick: () => { downloadFile(f); } },
         { label: "Mudar o nome", icon: "ri-edit-line", hidden: f.system || !!f.shortcut_id || !data?.can.edit, onClick: () => setDialog({ kind: "rename-file", file: f }) },
         { label: "Mover", icon: "ri-folder-transfer-line", hidden: f.system || !!f.shortcut_id || !data?.can.edit, onClick: () => setDialog({ kind: "move-file", file: f }) },
-        { label: "Guardar numa pasta", icon: "ri-folder-add-line", hidden: !data?.can.create || userFolders.length === 0, onClick: () => setDialog({ kind: "save-to", file: f }) },
+        { label: "Guardar numa pasta", icon: "ri-folder-add-line", hidden: !data?.can.create || userFolders.length === 0 || !!f.financing_document_id, onClick: () => setDialog({ kind: "save-to", file: f }) },
         {
             label: f.shortcut_id ? "Tirar desta pasta" : "Apagar", icon: "ri-delete-bin-line", danger: true,
             hidden: (f.system && !f.shortcut_id) || !data?.can.delete,
@@ -505,6 +521,7 @@ function FileDetail({ file, loadingDetail, actions, onClose }: { file: FileDetai
                 </div>
                 <div className="mt-auto border-top border-top-dashed pt-3 d-flex gap-2">
                     {file.download_url && <a className="btn btn-outline-primary flex-grow-1" href={fileSrc(file.download_url)}><i className="ri-download-2-line me-1" />Descarregar</a>}
+                    {!file.download_url && file.financing_document_id && <button type="button" className="btn btn-outline-primary flex-grow-1" onClick={() => actions.find((x) => x.label === "Descarregar")?.onClick()}><i className="ri-download-2-line me-1" />Descarregar</button>}
                     <ActionsMenu label={`Mais ações: ${file.name}`} items={actions.filter((a) => a.label !== "Descarregar")} />
                 </div>
             </div>

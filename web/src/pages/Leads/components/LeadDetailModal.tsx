@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Modal, ModalHeader, ModalBody, ModalFooter, Input, Label, Badge, Spinner } from "reactstrap";
-import { ILead, LEAD_STATUS_META, lossReasonLabel } from "common/models/lead.model";
+import { ILead, LEAD_STATUS_META, leadOrigin, lossReasonLabel } from "common/models/lead.model";
+import FinancingDocumentsCard from "pages/Cars/Car/components/FinancingDocumentsCard";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
  * XPLENDOR — Detalhe de uma lead (modal). Mostra os dados que a entidade JÁ tem
@@ -32,6 +34,7 @@ const LeadDetailModal: React.FC<Props> = ({ lead, saving = false, onSaveNotes, o
             <ModalHeader toggle={onClose}>
                 <span className="me-2">{lead.name}</span>
                 <Badge color={meta.color}>{meta.label}</Badge>
+                {lead.type === "proposta" && <Badge color="primary" className="ms-1">{lead.type_label ?? "Pedido de proposta"}</Badge>}
             </ModalHeader>
             <ModalBody>
                 <div className="table-card mb-3">
@@ -39,13 +42,31 @@ const LeadDetailModal: React.FC<Props> = ({ lead, saving = false, onSaveNotes, o
                         <tbody>
                             <tr><td className="fw-medium" style={{ width: 130 }}>Contacto</td><td>{lead.phone || "—"}{lead.email ? ` · ${lead.email}` : ""}</td></tr>
                             <tr><td className="fw-medium">Veículo</td><td>{carName}</td></tr>
-                            <tr><td className="fw-medium">Origem</td><td>{[lead.channel, lead.utm_source].filter(Boolean).join(" · ") || "—"}</td></tr>
+                            <tr><td className="fw-medium">Origem</td><td>{leadOrigin(lead)}</td></tr>
+                            {lead.type === "proposta" && (
+                                <>
+                                    <tr><td className="fw-medium">Financiamento</td><td>{lead.wants_financing ? "Quer financiamento" : "Não"}</td></tr>
+                                    <tr><td className="fw-medium">Retoma</td><td>{lead.trade_in
+                                        ? [lead.trade_in.brand, lead.trade_in.model, lead.trade_in.year, lead.trade_in.km != null ? `${lead.trade_in.km.toLocaleString("pt-PT")} km` : null].filter(Boolean).join(" · ")
+                                        : "Não"}</td></tr>
+                                </>
+                            )}
                             {lead.utm_campaign && <tr><td className="fw-medium">Campanha</td><td>{lead.utm_campaign}</td></tr>}
                             <tr><td className="fw-medium">Recebida</td><td>{fmtDate(lead.created_at)}</td></tr>
                             {lead.status === "lost" && <tr><td className="fw-medium">Motivo perda</td><td>{lossReasonLabel(lead.lost_reason)}</td></tr>}
                         </tbody>
                     </table>
                 </div>
+
+                {lead.consent_contact_at && (
+                    <div className="mb-3" data-testid="lead-consents">
+                        <Label className="form-label text-uppercase fs-12">Consentimentos</Label>
+                        <p className="fs-13 mb-1"><strong>Contacto:</strong> aceite a {fmtDate(lead.consent_contact_at)}. <span className="text-muted">«{lead.consent_contact_text}»</span></p>
+                        <p className="fs-13 mb-0"><strong>Novidades:</strong> {lead.consent_marketing
+                            ? <>aceite a {fmtDate(lead.consent_marketing_at)}. <span className="text-muted">«{lead.consent_marketing_text}»</span></>
+                            : "não aceite."}{lead.policy_version ? <span className="text-muted"> Política {lead.policy_version}.</span> : null}</p>
+                    </div>
+                )}
 
                 {lead.message && (
                     <div className="mb-3">
@@ -58,6 +79,10 @@ const LeadDetailModal: React.FC<Props> = ({ lead, saving = false, onSaveNotes, o
                     <Label className="form-label text-uppercase fs-12">Notas internas</Label>
                     <Input type="textarea" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas sobre esta lead…" />
                 </div>
+
+                {lead.car_id && getWorkingCompanyId() ? (
+                    <FinancingDocumentsCard companyId={Number(getWorkingCompanyId())} leadId={lead.id} embedded />
+                ) : null}
 
                 {(phone || lead.email) && (
                     <div className="d-flex gap-2 mt-3">

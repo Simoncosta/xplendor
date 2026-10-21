@@ -41,6 +41,9 @@ class CarLeadController extends Controller
             ->select([
                 'id', 'name', 'email', 'phone', 'message', 'notes', 'status', 'lost_reason', 'created_at',
                 'channel', 'utm_medium', 'utm_source', 'utm_campaign', 'car_id',
+                // "Pedir proposta": o tipo, a origem (origem=qr), o financiamento, a retoma e os consentimentos.
+                'type', 'origin', 'wants_financing', 'trade_in', 'consent_contact_at', 'consent_contact_text',
+                'consent_marketing', 'consent_marketing_at', 'consent_marketing_text', 'policy_version',
             ])
             ->with([
                 'car:id,status,license_plate,version,car_brand_id,car_model_id',
@@ -63,6 +66,11 @@ class CarLeadController extends Controller
                     ->orWhereHas('model', fn ($m) => $m->where('name', 'like', $like))));
         }
 
+        // Uma lead (o aviso do pedido de proposta abre /leads?id=…).
+        if ($request->filled('id')) {
+            $query->where('id', (int) $request->input('id'));
+        }
+
         if ($request->filled('status')) {
             $query->where('status', (string) $request->input('status'));
         }
@@ -72,6 +80,14 @@ class CarLeadController extends Controller
         ListSort::apply($query, $request, self::sorts(), $paginate ? [['created_at', 'desc']] : [], 'car_leads.id');
 
         $leads = $paginate ? $query->paginate($paginate) : $query->get();
+        // O tipo e a origem em texto legível (ex.: "Pedido de proposta", "QR do stand").
+        $label = function (CarLead $lead) {
+            $lead->setAttribute('type_label', $lead->typeLabel());
+            $lead->setAttribute('origin_label', $lead->originLabel());
+
+            return $lead;
+        };
+        $paginate ? $leads->getCollection()->transform($label) : $leads->transform($label);
 
         return ApiResponse::success($leads, 'Leads fetched successfully.');
     }

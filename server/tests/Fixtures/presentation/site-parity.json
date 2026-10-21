@@ -1,0 +1,6452 @@
+[
+ {
+  "input": {
+   "id": 900001,
+   "title": "Sunlight A72",
+   "brand": {
+    "id": 1,
+    "name": "Sunlight"
+   },
+   "model": {
+    "id": 1,
+    "name": "A 72"
+   },
+   "category": {
+    "id": 2,
+    "name": "Integral",
+    "slug": "integral"
+   },
+   "vehicle_type": "motorhome",
+   "condition": "used",
+   "status": "active",
+   "price_gross": 89900,
+   "price_promo": 84900,
+   "has_promo_price": true,
+   "hide_price_online": false,
+   "year": 2021,
+   "mileage_km": 45210,
+   "fuel_type": "diesel",
+   "transmission": "automatic",
+   "gear_count": 9,
+   "power_hp": 170,
+   "engine_capacity_cc": 2184,
+   "engine_brand": "Fiat",
+   "exterior_color": "white",
+   "is_metallic": true,
+   "origin": "imported",
+   "warranty_months": 18,
+   "service_records": true,
+   "has_spare_key": true,
+   "has_manuals": true,
+   "specs": {
+    "seats": 4,
+    "sleeps": 4,
+    "length_m": 7.41,
+    "width_m": 2.32,
+    "height_m": 2.95,
+    "gross_weight_kg": 3500,
+    "autonomy_km": 650
+   },
+   "habitation": {
+    "has_stove": true,
+    "has_oven": true,
+    "has_microwave": true,
+    "has_extractor": true,
+    "has_fridge": true,
+    "fridge_type": "compressor",
+    "fridge_litres": 142,
+    "fridge_brand": "Thetford",
+    "stove_burners": 3,
+    "stove_type": "gas",
+    "extractor_brand": "Dometic",
+    "has_toilet": true,
+    "has_shower": true,
+    "shower_type": "separate",
+    "clean_water_litres": 100,
+    "waste_water_litres": 90
+   },
+   "features": {
+    "has_solar_panel": true,
+    "has_inverter": true,
+    "has_gpl": true,
+    "has_generator": true,
+    "has_external_power_socket": true,
+    "has_aircon_220v": true,
+    "has_viesa": true,
+    "has_battery_cutoff": true,
+    "has_foldable_table": true,
+    "has_tv": true,
+    "has_tv_support": true,
+    "has_led_lighting": true,
+    "has_halo_lighting": true,
+    "has_command_panel": true,
+    "has_mosquito_nets": true,
+    "has_door_mosquito_net": true,
+    "has_panoramic_skylight": true,
+    "has_turbovent_skylight": true,
+    "has_40x40_skylight": true,
+    "has_window_blackouts": true,
+    "has_curtains": true,
+    "has_wardrobe": true,
+    "has_rotating_seats": true,
+    "has_remifront": true,
+    "has_cabin_blackouts": true,
+    "has_alarm": true,
+    "has_entry_door_lock": true,
+    "has_cabin_lock": true,
+    "has_hatch_lock": true,
+    "has_gas_lock": true,
+    "has_safe_door": true,
+    "has_stabilizers": true,
+    "has_air_suspension": true,
+    "has_air_suspension_compressor": true,
+    "has_dual_rear_wheel": true,
+    "has_awning": true,
+    "has_bike_rack": true,
+    "has_motorbike_rack": true,
+    "has_electric_step": true,
+    "has_manual_step": true,
+    "has_national_antenna": true,
+    "has_parabolic_antenna": true,
+    "has_spare_wheel": true,
+    "has_bull_eye": true,
+    "has_external_wc": true,
+    "has_hubcaps": true,
+    "has_external_ladder": true,
+    "has_fix_n_go_kit": true,
+    "solar_panel_count": 2,
+    "solar_panel_watts": 300,
+    "inverter_type": "pure_sine",
+    "inverter_watts": 2000,
+    "cell_battery_count": 2,
+    "cabin_battery_count": 1,
+    "cabin_battery_brand": "Varta",
+    "cabin_battery_ah": 95,
+    "lithium_battery_count": 1,
+    "lithium_battery_ah": 200,
+    "gpl_bottles_count": 2,
+    "water_heater_source": "gas",
+    "water_heater_brand": "Truma",
+    "ambient_heating_source": "diesel",
+    "ambient_heating_brand": "Webasto",
+    "living_room_layout": "l_shape",
+    "upholstery_state": "good",
+    "tv_count": 1,
+    "tv_location": "Sala",
+    "has_extending_table": true,
+    "chassis_type": "alko",
+    "chassis_notes": "Chassis rebaixado",
+    "awning_brand": "Dometic",
+    "garage": {
+     "has_garage": true,
+     "has_double_opening": true,
+     "is_spacious": true,
+     "has_height_adjuster": false
+    }
+   },
+   "beds": [
+    {
+     "type": "cama_central",
+     "label": "Cama central"
+    },
+    {
+     "type": "cama_basculante",
+     "label": "Cama basculante"
+    },
+    {
+     "type": "cama_popup_panoramica",
+     "label": null
+    },
+    "Cama extra"
+   ],
+   "description_pt": "Autocaravana integral muito bem conservada.",
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": [
+      "Ar condicionado",
+      "Rádio",
+      "Vidros eléctricos",
+      "Entrada USB",
+      "Bluetooth",
+      "Ecrã Táctil ou Touch Screen",
+      "Android Auto",
+      "Computador de Bordo",
+      "Entrada AUX",
+      "Rádio Android",
+      "Rádio digital (DAB)",
+      "Carregador de smartphone",
+      "Câmara de Marcha Atrás",
+      "Sensores de marcha atrás",
+      "Cruise Control",
+      "Direcção Assistida",
+      "ABS",
+      "Airbag do Condutor",
+      "Airbag de Passageiros",
+      "Fecho Central"
+     ]
+    },
+    {
+     "group": "safety_performance",
+     "items": [
+      "Fecho Centralizado com Comando a Distância",
+      "Alertas sobre Cinto de Segurança",
+      "Alerta sobre Manutenção",
+      "ISOFIX",
+      "Start and Stop",
+      "Alarme",
+      "Suspensão Pneumatica",
+      "Apoio de Braço",
+      "Bancos Rebativeis",
+      "Bancos rotativos",
+      "Volante Multifunções",
+      "Volante com Comandos de Rádio",
+      "Mesa Rebativel",
+      "Acabamentos em Madeira",
+      "Retrovisores c/ Regulação Eléctrica",
+      "Retrovisores Rebativeis Eletricos",
+      "Jantes de Liga Leve",
+      "Faróis Reguláveis em Altura",
+      "Faróis de Nevoeiro",
+      "Faróis Diurnos",
+      "Faróis Diurnos Em Led",
+      "Gancho de Reboque",
+      "Texto que o site não conhece"
+     ]
+    }
+   ]
+  },
+  "expected": {
+   "display_name": "Sunlight A72",
+   "meta": [
+    "Integral",
+    "2021",
+    "Importado",
+    "Branco metalizado"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "45 210 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    },
+    {
+     "key": "sleeps",
+     "value": "4 dormidas",
+     "caption": "Para dormir"
+    },
+    {
+     "key": "warranty",
+     "value": "18 meses",
+     "caption": "Garantia"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Fiat · Diesel"
+      },
+      {
+       "label": "Caixa",
+       "value": "Automática · 9 velocidades"
+      },
+      {
+       "label": "Potência",
+       "value": "170 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 184 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,41 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,32 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,95 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "camas",
+     "title": "Camas",
+     "details": [],
+     "items": [],
+     "beds": [
+      {
+       "label": "Cama central",
+       "description": "Cama de casal com acesso pelos dois lados"
+      },
+      {
+       "label": "Cama basculante",
+       "description": "Desce do teto quando é precisa"
+      },
+      {
+       "label": "Cama pop-up panorâmica",
+       "description": "No teto elevatório, com vista panorâmica"
+      },
+      {
+       "label": "Cama extra",
+       "description": null
+      }
+     ]
+    },
+    {
+     "id": "energia",
+     "title": "Energia e autonomia",
+     "details": [
+      {
+       "label": "Painel solar",
+       "value": "2 · 300 W"
+      },
+      {
+       "label": "Inversor",
+       "value": "Onda pura · 2 000 W"
+      },
+      {
+       "label": "Baterias da célula",
+       "value": "2"
+      },
+      {
+       "label": "Bateria da cabine",
+       "value": "1 · Varta · 95 Ah"
+      },
+      {
+       "label": "Bateria de lítio",
+       "value": "1 un. · 200 Ah"
+      },
+      {
+       "label": "Garrafas de GPL",
+       "value": "2"
+      },
+      {
+       "label": "Aquecimento de água",
+       "value": "Gás · Truma"
+      },
+      {
+       "label": "Aquecimento ambiente",
+       "value": "Gasóleo · Webasto"
+      },
+      {
+       "label": "Autonomia",
+       "value": "650 km"
+      }
+     ],
+     "items": [
+      "Gerador",
+      "Tomada exterior 220V",
+      "Ar condicionado 220V",
+      "VIESA",
+      "Corta-corrente"
+     ]
+    },
+    {
+     "id": "sala",
+     "title": "Sala e cozinha",
+     "details": [
+      {
+       "label": "Frigorífico",
+       "value": "Compressor · 142 L · Thetford"
+      },
+      {
+       "label": "Fogão",
+       "value": "3 bocas · Gás"
+      },
+      {
+       "label": "Exaustor",
+       "value": "Dometic"
+      },
+      {
+       "label": "Sala",
+       "value": "Sala em L"
+      },
+      {
+       "label": "Estofos",
+       "value": "Bom"
+      },
+      {
+       "label": "TV",
+       "value": "1 un. · Sala"
+      }
+     ],
+     "items": [
+      "Forno",
+      "Micro-ondas",
+      "Mesa telescópica",
+      "Mesa rebatível",
+      "TV e suporte TV",
+      "Iluminação LED",
+      "Iluminação halo",
+      "Painel de comandos",
+      "Mosquiteiras nas janelas e na porta",
+      "Clarabóia panorâmica",
+      "Clarabóia turbovent",
+      "Clarabóia 40×40",
+      "Tapa-luz nas janelas",
+      "Cortinas",
+      "Guarda-fatos",
+      "Acabamentos em madeira"
+     ]
+    },
+    {
+     "id": "wc",
+     "title": "WC",
+     "details": [
+      {
+       "label": "Duche",
+       "value": "Separado"
+      },
+      {
+       "label": "Água limpa",
+       "value": "100 L"
+      },
+      {
+       "label": "Águas residuais",
+       "value": "90 L"
+      }
+     ],
+     "items": [
+      "Sanita"
+     ]
+    },
+    {
+     "id": "cabine",
+     "title": "Cabine de condução e segurança",
+     "details": [
+      {
+       "label": "Chassis",
+       "value": "Alko"
+      },
+      {
+       "label": "Notas do chassis",
+       "value": "Chassis rebaixado"
+      }
+     ],
+     "items": [
+      "Bancos rotativos e rebatíveis",
+      "Remifront",
+      "Tapa-luz na cabine",
+      "Alarme",
+      "Fecho na porta de entrada",
+      "Fecho na cabine",
+      "Fecho no alçapão",
+      "Fecho do gás",
+      "Porta de cofre",
+      "Macacos estabilizadores",
+      "Suspensão pneumática",
+      "Compressor da suspensão",
+      "Rodado duplo",
+      "Ar condicionado",
+      "Rádio",
+      "Vidros elétricos",
+      "Entrada USB",
+      "Bluetooth",
+      "Ecrã tátil",
+      "Android Auto",
+      "Computador de bordo",
+      "Entrada AUX",
+      "Rádio Android",
+      "Rádio digital (DAB)",
+      "Carregador de smartphone",
+      "Câmara de marcha atrás",
+      "Sensores de marcha atrás",
+      "Cruise control",
+      "Direção assistida",
+      "ABS",
+      "Airbags do condutor e passageiro",
+      "Fecho central",
+      "Fecho central com comando à distância",
+      "Alerta de cinto de segurança",
+      "Alerta de manutenção",
+      "ISOFIX",
+      "Start and Stop",
+      "Apoio de braço",
+      "Volante multifunções",
+      "Comandos de rádio no volante",
+      "Retrovisores com regulação elétrica",
+      "Retrovisores rebatíveis elétricos"
+     ]
+    },
+    {
+     "id": "exterior",
+     "title": "Exterior",
+     "details": [
+      {
+       "label": "Toldo",
+       "value": "Dometic"
+      },
+      {
+       "label": "Garagem",
+       "value": "abertura dos dois lados · espaçosa"
+      }
+     ],
+     "items": [
+      "Suporte de bicicletas",
+      "Suporte de mota",
+      "Degrau elétrico",
+      "Degrau manual",
+      "Antena nacional",
+      "Antena parabólica",
+      "Pneu suplente",
+      "Olho de boi",
+      "Sanita exterior",
+      "Tampões",
+      "Escada exterior",
+      "Kit Fix'n'Go",
+      "Jantes de liga leve",
+      "Faróis reguláveis em altura",
+      "Faróis de nevoeiro",
+      "Faróis diurnos",
+      "Faróis diurnos LED",
+      "Gancho de reboque"
+     ]
+    },
+    {
+     "id": "condicao",
+     "title": "Condição",
+     "details": [],
+     "items": [
+      "2ª chave",
+      "Manuais",
+      "Livro de revisões"
+     ]
+    },
+    {
+     "id": "outros",
+     "title": "Outros",
+     "details": [],
+     "items": [
+      "Texto que o site não conhece"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 900002,
+   "title": "Hobby De Luxe 495",
+   "brand": {
+    "id": 2,
+    "name": "Hobby"
+   },
+   "model": {
+    "id": 2,
+    "name": "De Luxe"
+   },
+   "category": null,
+   "vehicle_type": "caravan",
+   "condition": "used",
+   "status": "active",
+   "price_gross": 89900,
+   "price_promo": 84900,
+   "has_promo_price": true,
+   "hide_price_online": true,
+   "year": 2021,
+   "mileage_km": null,
+   "fuel_type": "diesel",
+   "transmission": "automatic",
+   "gear_count": 9,
+   "power_hp": 170,
+   "engine_capacity_cc": 2184,
+   "engine_brand": "Fiat",
+   "exterior_color": "white",
+   "is_metallic": true,
+   "origin": "imported",
+   "warranty_months": 18,
+   "service_records": true,
+   "has_spare_key": true,
+   "has_manuals": true,
+   "specs": {
+    "seats": 4,
+    "sleeps": 4,
+    "length_m": 7.41,
+    "width_m": 2.32,
+    "height_m": 2.95,
+    "gross_weight_kg": 3500,
+    "autonomy_km": 650
+   },
+   "habitation": {
+    "has_stove": true,
+    "has_oven": true,
+    "has_microwave": true,
+    "has_extractor": true,
+    "has_fridge": true,
+    "fridge_type": "compressor",
+    "fridge_litres": 142,
+    "fridge_brand": "Thetford",
+    "stove_burners": 3,
+    "stove_type": "gas",
+    "extractor_brand": "Dometic",
+    "has_toilet": true,
+    "has_shower": true,
+    "shower_type": "separate",
+    "clean_water_litres": 100,
+    "waste_water_litres": 90
+   },
+   "features": {
+    "has_solar_panel": true,
+    "has_inverter": true,
+    "has_gpl": true,
+    "has_generator": true,
+    "has_external_power_socket": true,
+    "has_aircon_220v": true,
+    "has_viesa": true,
+    "has_battery_cutoff": true,
+    "has_foldable_table": true,
+    "has_tv": true,
+    "has_tv_support": true,
+    "has_led_lighting": true,
+    "has_halo_lighting": true,
+    "has_command_panel": true,
+    "has_mosquito_nets": true,
+    "has_door_mosquito_net": true,
+    "has_panoramic_skylight": true,
+    "has_turbovent_skylight": true,
+    "has_40x40_skylight": true,
+    "has_window_blackouts": true,
+    "has_curtains": true,
+    "has_wardrobe": true,
+    "has_rotating_seats": true,
+    "has_remifront": true,
+    "has_cabin_blackouts": true,
+    "has_alarm": true,
+    "has_entry_door_lock": true,
+    "has_cabin_lock": true,
+    "has_hatch_lock": true,
+    "has_gas_lock": true,
+    "has_safe_door": true,
+    "has_stabilizers": true,
+    "has_air_suspension": true,
+    "has_air_suspension_compressor": true,
+    "has_dual_rear_wheel": true,
+    "has_awning": true,
+    "has_bike_rack": true,
+    "has_motorbike_rack": true,
+    "has_electric_step": true,
+    "has_manual_step": true,
+    "has_national_antenna": true,
+    "has_parabolic_antenna": true,
+    "has_spare_wheel": true,
+    "has_bull_eye": true,
+    "has_external_wc": true,
+    "has_hubcaps": true,
+    "has_external_ladder": true,
+    "has_fix_n_go_kit": true,
+    "solar_panel_count": 2,
+    "solar_panel_watts": 300,
+    "inverter_type": "pure_sine",
+    "inverter_watts": 2000,
+    "cell_battery_count": 2,
+    "cabin_battery_count": 1,
+    "cabin_battery_brand": "Varta",
+    "cabin_battery_ah": 95,
+    "lithium_battery_count": 1,
+    "lithium_battery_ah": 200,
+    "gpl_bottles_count": 2,
+    "water_heater_source": "gas",
+    "water_heater_brand": "Truma",
+    "ambient_heating_source": "diesel",
+    "ambient_heating_brand": "Webasto",
+    "living_room_layout": "l_shape",
+    "upholstery_state": "good",
+    "tv_count": 1,
+    "tv_location": "Sala",
+    "has_extending_table": true,
+    "chassis_type": "alko",
+    "chassis_notes": "Chassis rebaixado",
+    "awning_brand": "Dometic",
+    "garage": {
+     "has_garage": true,
+     "has_double_opening": true,
+     "is_spacious": true,
+     "has_height_adjuster": false
+    }
+   },
+   "beds": [
+    {
+     "type": "cama_central",
+     "label": "Cama central"
+    },
+    {
+     "type": "cama_basculante",
+     "label": "Cama basculante"
+    },
+    {
+     "type": "cama_popup_panoramica",
+     "label": null
+    },
+    "Cama extra"
+   ],
+   "description_pt": "Autocaravana integral muito bem conservada.",
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": [
+      "Ar condicionado",
+      "Rádio",
+      "Vidros eléctricos",
+      "Entrada USB",
+      "Bluetooth",
+      "Ecrã Táctil ou Touch Screen",
+      "Android Auto",
+      "Computador de Bordo",
+      "Entrada AUX",
+      "Rádio Android",
+      "Rádio digital (DAB)",
+      "Carregador de smartphone",
+      "Câmara de Marcha Atrás",
+      "Sensores de marcha atrás",
+      "Cruise Control",
+      "Direcção Assistida",
+      "ABS",
+      "Airbag do Condutor",
+      "Airbag de Passageiros",
+      "Fecho Central"
+     ]
+    },
+    {
+     "group": "safety_performance",
+     "items": [
+      "Fecho Centralizado com Comando a Distância",
+      "Alertas sobre Cinto de Segurança",
+      "Alerta sobre Manutenção",
+      "ISOFIX",
+      "Start and Stop",
+      "Alarme",
+      "Suspensão Pneumatica",
+      "Apoio de Braço",
+      "Bancos Rebativeis",
+      "Bancos rotativos",
+      "Volante Multifunções",
+      "Volante com Comandos de Rádio",
+      "Mesa Rebativel",
+      "Acabamentos em Madeira",
+      "Retrovisores c/ Regulação Eléctrica",
+      "Retrovisores Rebativeis Eletricos",
+      "Jantes de Liga Leve",
+      "Faróis Reguláveis em Altura",
+      "Faróis de Nevoeiro",
+      "Faróis Diurnos",
+      "Faróis Diurnos Em Led",
+      "Gancho de Reboque",
+      "Texto que o site não conhece"
+     ]
+    }
+   ]
+  },
+  "expected": {
+   "display_name": "Hobby De Luxe 495",
+   "meta": [
+    "2021",
+    "Importado",
+    "Branco metalizado"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    },
+    {
+     "key": "sleeps",
+     "value": "4 dormidas",
+     "caption": "Para dormir"
+    },
+    {
+     "key": "warranty",
+     "value": "18 meses",
+     "caption": "Garantia"
+    }
+   ],
+   "sections": [
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,41 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,32 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,95 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "camas",
+     "title": "Camas",
+     "details": [],
+     "items": [],
+     "beds": [
+      {
+       "label": "Cama central",
+       "description": "Cama de casal com acesso pelos dois lados"
+      },
+      {
+       "label": "Cama basculante",
+       "description": "Desce do teto quando é precisa"
+      },
+      {
+       "label": "Cama pop-up panorâmica",
+       "description": "No teto elevatório, com vista panorâmica"
+      },
+      {
+       "label": "Cama extra",
+       "description": null
+      }
+     ]
+    },
+    {
+     "id": "energia",
+     "title": "Energia e autonomia",
+     "details": [
+      {
+       "label": "Painel solar",
+       "value": "2 · 300 W"
+      },
+      {
+       "label": "Inversor",
+       "value": "Onda pura · 2 000 W"
+      },
+      {
+       "label": "Baterias da célula",
+       "value": "2"
+      },
+      {
+       "label": "Bateria da cabine",
+       "value": "1 · Varta · 95 Ah"
+      },
+      {
+       "label": "Bateria de lítio",
+       "value": "1 un. · 200 Ah"
+      },
+      {
+       "label": "Garrafas de GPL",
+       "value": "2"
+      },
+      {
+       "label": "Aquecimento de água",
+       "value": "Gás · Truma"
+      },
+      {
+       "label": "Aquecimento ambiente",
+       "value": "Gasóleo · Webasto"
+      },
+      {
+       "label": "Autonomia",
+       "value": "650 km"
+      }
+     ],
+     "items": [
+      "Gerador",
+      "Tomada exterior 220V",
+      "Ar condicionado 220V",
+      "VIESA",
+      "Corta-corrente"
+     ]
+    },
+    {
+     "id": "sala",
+     "title": "Sala e cozinha",
+     "details": [
+      {
+       "label": "Frigorífico",
+       "value": "Compressor · 142 L · Thetford"
+      },
+      {
+       "label": "Fogão",
+       "value": "3 bocas · Gás"
+      },
+      {
+       "label": "Exaustor",
+       "value": "Dometic"
+      },
+      {
+       "label": "Sala",
+       "value": "Sala em L"
+      },
+      {
+       "label": "Estofos",
+       "value": "Bom"
+      },
+      {
+       "label": "TV",
+       "value": "1 un. · Sala"
+      }
+     ],
+     "items": [
+      "Forno",
+      "Micro-ondas",
+      "Mesa telescópica",
+      "Mesa rebatível",
+      "TV e suporte TV",
+      "Iluminação LED",
+      "Iluminação halo",
+      "Painel de comandos",
+      "Mosquiteiras nas janelas e na porta",
+      "Clarabóia panorâmica",
+      "Clarabóia turbovent",
+      "Clarabóia 40×40",
+      "Tapa-luz nas janelas",
+      "Cortinas",
+      "Guarda-fatos",
+      "Acabamentos em madeira"
+     ]
+    },
+    {
+     "id": "wc",
+     "title": "WC",
+     "details": [
+      {
+       "label": "Duche",
+       "value": "Separado"
+      },
+      {
+       "label": "Água limpa",
+       "value": "100 L"
+      },
+      {
+       "label": "Águas residuais",
+       "value": "90 L"
+      }
+     ],
+     "items": [
+      "Sanita"
+     ]
+    },
+    {
+     "id": "cabine",
+     "title": "Segurança",
+     "details": [
+      {
+       "label": "Chassis",
+       "value": "Alko"
+      },
+      {
+       "label": "Notas do chassis",
+       "value": "Chassis rebaixado"
+      }
+     ],
+     "items": [
+      "Bancos rotativos e rebatíveis",
+      "Remifront",
+      "Tapa-luz na cabine",
+      "Alarme",
+      "Fecho na porta de entrada",
+      "Fecho na cabine",
+      "Fecho no alçapão",
+      "Fecho do gás",
+      "Porta de cofre",
+      "Macacos estabilizadores",
+      "Suspensão pneumática",
+      "Compressor da suspensão",
+      "Rodado duplo",
+      "Ar condicionado",
+      "Rádio",
+      "Vidros elétricos",
+      "Entrada USB",
+      "Bluetooth",
+      "Ecrã tátil",
+      "Android Auto",
+      "Computador de bordo",
+      "Entrada AUX",
+      "Rádio Android",
+      "Rádio digital (DAB)",
+      "Carregador de smartphone",
+      "Câmara de marcha atrás",
+      "Sensores de marcha atrás",
+      "Cruise control",
+      "Direção assistida",
+      "ABS",
+      "Airbags do condutor e passageiro",
+      "Fecho central",
+      "Fecho central com comando à distância",
+      "Alerta de cinto de segurança",
+      "Alerta de manutenção",
+      "ISOFIX",
+      "Start and Stop",
+      "Apoio de braço",
+      "Volante multifunções",
+      "Comandos de rádio no volante",
+      "Retrovisores com regulação elétrica",
+      "Retrovisores rebatíveis elétricos"
+     ]
+    },
+    {
+     "id": "exterior",
+     "title": "Exterior",
+     "details": [
+      {
+       "label": "Toldo",
+       "value": "Dometic"
+      },
+      {
+       "label": "Garagem",
+       "value": "abertura dos dois lados · espaçosa"
+      }
+     ],
+     "items": [
+      "Suporte de bicicletas",
+      "Suporte de mota",
+      "Degrau elétrico",
+      "Degrau manual",
+      "Antena nacional",
+      "Antena parabólica",
+      "Pneu suplente",
+      "Olho de boi",
+      "Sanita exterior",
+      "Tampões",
+      "Escada exterior",
+      "Kit Fix'n'Go",
+      "Jantes de liga leve",
+      "Faróis reguláveis em altura",
+      "Faróis de nevoeiro",
+      "Faróis diurnos",
+      "Faróis diurnos LED",
+      "Gancho de reboque"
+     ]
+    },
+    {
+     "id": "condicao",
+     "title": "Condição",
+     "details": [],
+     "items": [
+      "2ª chave",
+      "Manuais",
+      "Livro de revisões"
+     ]
+    },
+    {
+     "id": "outros",
+     "title": "Outros",
+     "details": [],
+     "items": [
+      "Texto que o site não conhece"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 900003,
+   "title": "",
+   "brand": {
+    "id": 3,
+    "name": "Pössl"
+   },
+   "model": {
+    "id": 3,
+    "name": "RoadCar"
+   },
+   "category": null,
+   "vehicle_type": "motorhome",
+   "condition": "used",
+   "price_gross": 39900,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "year": 2016,
+   "mileage_km": 0,
+   "specs": {
+    "seats": 2
+   },
+   "habitation": {},
+   "features": {},
+   "beds": [],
+   "extras": []
+  },
+  "expected": {
+   "display_name": "Pössl RoadCar",
+   "meta": [
+    "2016"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "2 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": []
+  }
+ },
+ {
+  "input": {
+   "id": 900004,
+   "title": "Poessl Roadcar",
+   "brand": {
+    "id": 3,
+    "name": "Pössl"
+   },
+   "model": {
+    "id": 3,
+    "name": "RoadCar"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "condition": "used",
+   "price_gross": 39900,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "year": 2016,
+   "mileage_km": 0,
+   "specs": {
+    "seats": 2
+   },
+   "habitation": {
+    "has_shower": true,
+    "has_fridge": true
+   },
+   "features": {
+    "has_tv": true,
+    "has_tv_support": true,
+    "has_mosquito_nets": true
+   },
+   "beds": [],
+   "extras": [
+    {
+     "group": "x",
+     "items": [
+      "Airbag do Condutor",
+      "Airbag de Passageiros",
+      "Bancos Rebativeis",
+      "Bancos rotativos",
+      "Alarme",
+      " Mesa Rebativel "
+     ]
+    }
+   ]
+  },
+  "expected": {
+   "display_name": "Pössl RoadCar",
+   "meta": [
+    "Van",
+    "2016"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "2 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "sala",
+     "title": "Sala e cozinha",
+     "details": [],
+     "items": [
+      "Frigorífico",
+      "TV e suporte TV",
+      "Mosquiteiras nas janelas",
+      "Mesa rebatível"
+     ]
+    },
+    {
+     "id": "wc",
+     "title": "WC",
+     "details": [],
+     "items": [
+      "Duche"
+     ]
+    },
+    {
+     "id": "cabine",
+     "title": "Cabine de condução e segurança",
+     "details": [],
+     "items": [
+      "Airbags do condutor e passageiro",
+      "Bancos rotativos e rebatíveis",
+      "Alarme"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 69,
+   "title": "S Line 5",
+   "brand": {
+    "id": 124,
+    "name": "McLouis"
+   },
+   "model": {
+    "id": 3036,
+    "name": "Menfys Van"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "inactive",
+   "price_gross": 58499.99,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2019,
+   "registration_month": 10,
+   "mileage_km": 49915,
+   "fuel_type": "diesel",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 130,
+   "engine_capacity_cc": 2287,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "imported",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6,
+    "width_m": 2.4,
+    "height_m": 2.5,
+    "gross_weight_kg": 3500
+   },
+   "habitation": {
+    "has_kitchen": true,
+    "has_bathroom": true,
+    "has_stove": true,
+    "has_fridge": true,
+    "fridge_litres": 141,
+    "fridge_type": "trivalent",
+    "has_toilet": true,
+    "has_shower": true,
+    "shower_type": "combined"
+   },
+   "features": {
+    "has_solar_panel": true,
+    "has_inverter": true,
+    "has_external_power_socket": true,
+    "water_heater_source": "diesel",
+    "ambient_heating_source": "diesel",
+    "water_heater_brand": "Webasto",
+    "ambient_heating_brand": "Webasto",
+    "battery_count": 3,
+    "inverter_watts": 2000,
+    "cabin_battery_count": 1,
+    "cell_battery_count": 2,
+    "has_bike_rack": false,
+    "has_electric_step": true,
+    "has_stabilizers": true,
+    "has_national_antenna": true,
+    "has_remifront": true,
+    "has_window_blackouts": true,
+    "has_mosquito_nets": true,
+    "has_door_mosquito_net": true,
+    "has_panoramic_skylight": false,
+    "has_40x40_skylight": true,
+    "chassis_type": "standard",
+    "has_alko_chassis": false,
+    "has_foldable_table": true,
+    "has_rotating_seats": true,
+    "has_led_lighting": true,
+    "has_tv_support": true,
+    "has_tv": true,
+    "has_command_panel": true,
+    "upholstery_state": "good",
+    "has_alarm": true
+   },
+   "beds": [
+    {
+     "type": "cama_convertivel",
+     "label": "Cama convertível de mesa"
+    },
+    {
+     "type": "cama_transversal",
+     "label": "Cama transversal"
+    }
+   ],
+   "description_pt": "<p>Esta McLouis Menfys Van S Line 5 de 2019 oferece uma configuração prática para viagens confortáveis. O espaço interior é bem aproveitado, com uma cama transversal que permite manter a área de estar sempre disponível, enquanto a cama convertível adiciona flexibilidade para mais um ocupante. A cozinha funcional e a casa de banho integrada tornam-na ideal para estadias prolongadas. O estado de conservação é notável, com menos de 50.000 km percorridos. Destacam-se os bancos rotativos, que ampliam o espaço de convívio, e a câmara de marcha atrás, que facilita as manobras em espaços apertados.</p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": [
+      "Ar condicionado",
+      "Vidros eléctricos"
+     ]
+    },
+    {
+     "group": "exterior_equipment",
+     "items": [
+      "Retrovisores c/ Regulação Eléctrica"
+     ]
+    },
+    {
+     "group": "interior_equipment",
+     "items": [
+      "Bancos Rebativeis",
+      "Apoio de Braço",
+      "Bancos rotativos",
+      "Mesa Rebativel"
+     ]
+    },
+    {
+     "group": "safety_performance",
+     "items": [
+      "ABS",
+      "Fecho Central",
+      "Alarme",
+      "Câmara de Marcha Atrás",
+      "Cruise Control"
+     ]
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "S Line 5",
+   "meta": [
+    "Van",
+    "2019",
+    "Importado",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "49 915 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Diesel"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "130 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 287 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,00 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,40 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,50 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "camas",
+     "title": "Camas",
+     "details": [],
+     "items": [],
+     "beds": [
+      {
+       "label": "Cama convertível de mesa",
+       "description": "Mesa que se transforma em cama"
+      },
+      {
+       "label": "Cama transversal",
+       "description": "Atravessada na largura, ao fundo da viatura"
+      }
+     ]
+    },
+    {
+     "id": "energia",
+     "title": "Energia e autonomia",
+     "details": [
+      {
+       "label": "Inversor",
+       "value": "2 000 W"
+      },
+      {
+       "label": "Baterias da célula",
+       "value": "2"
+      },
+      {
+       "label": "Bateria da cabine",
+       "value": "1"
+      },
+      {
+       "label": "Aquecimento de água",
+       "value": "Gasóleo · Webasto"
+      },
+      {
+       "label": "Aquecimento ambiente",
+       "value": "Gasóleo · Webasto"
+      }
+     ],
+     "items": [
+      "Painel solar",
+      "Tomada exterior 220V"
+     ]
+    },
+    {
+     "id": "sala",
+     "title": "Sala e cozinha",
+     "details": [
+      {
+       "label": "Frigorífico",
+       "value": "Trivalente · 141 L"
+      },
+      {
+       "label": "Estofos",
+       "value": "Bom"
+      }
+     ],
+     "items": [
+      "Fogão",
+      "Mesa rebatível",
+      "TV e suporte TV",
+      "Iluminação LED",
+      "Painel de comandos",
+      "Mosquiteiras nas janelas e na porta",
+      "Clarabóia 40×40",
+      "Tapa-luz nas janelas"
+     ]
+    },
+    {
+     "id": "wc",
+     "title": "WC",
+     "details": [
+      {
+       "label": "Duche",
+       "value": "Combinado"
+      }
+     ],
+     "items": [
+      "Sanita"
+     ]
+    },
+    {
+     "id": "cabine",
+     "title": "Cabine de condução e segurança",
+     "details": [
+      {
+       "label": "Chassis",
+       "value": "Standard"
+      }
+     ],
+     "items": [
+      "Bancos rotativos e rebatíveis",
+      "Remifront",
+      "Alarme",
+      "Macacos estabilizadores",
+      "Ar condicionado",
+      "Vidros elétricos",
+      "Retrovisores com regulação elétrica",
+      "Apoio de braço",
+      "ABS",
+      "Fecho central",
+      "Câmara de marcha atrás",
+      "Cruise control"
+     ]
+    },
+    {
+     "id": "exterior",
+     "title": "Exterior",
+     "details": [],
+     "items": [
+      "Degrau elétrico",
+      "Antena nacional"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 74,
+   "title": "Birthday 58 Ford",
+   "brand": {
+    "id": 63,
+    "name": "Challenger"
+   },
+   "model": {
+    "id": 2506,
+    "name": "Graphite"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "sold",
+   "price_gross": 20000,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": true,
+   "monthly_payment": null,
+   "year": 2013,
+   "registration_month": 1,
+   "mileage_km": 52866,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 140,
+   "engine_capacity_cc": 2198,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "sleeps": 2,
+    "length_m": 7.5,
+    "width_m": 2.7,
+    "height_m": 2.9,
+    "gross_weight_kg": 3500
+   },
+   "habitation": {
+    "has_kitchen": true,
+    "has_bathroom": true,
+    "has_stove": true,
+    "has_fridge": true,
+    "fridge_litres": 141,
+    "fridge_type": "trivalent",
+    "has_toilet": true,
+    "has_shower": true,
+    "shower_type": "independent"
+   },
+   "features": {
+    "has_solar_panel": true,
+    "water_heater_source": "gas",
+    "ambient_heating_source": "diesel",
+    "water_heater_brand": "Truma",
+    "ambient_heating_brand": "Webasto",
+    "battery_count": 2,
+    "has_awning": true,
+    "has_national_antenna": true,
+    "has_remifront": true,
+    "has_window_blackouts": true,
+    "has_mosquito_nets": true,
+    "has_panoramic_skylight": true,
+    "has_40x40_skylight": true,
+    "chassis_type": "standard",
+    "has_alko_chassis": false,
+    "has_foldable_table": true,
+    "has_rotating_seats": true,
+    "has_led_lighting": true,
+    "has_tv_support": true,
+    "has_tv": true,
+    "has_command_panel": true,
+    "upholstery_state": "good",
+    "living_room_layout": "panoramic",
+    "has_extending_table": true
+   },
+   "beds": [
+    {
+     "type": "cama_central",
+     "label": "Cama central"
+    },
+    {
+     "type": "cama_convertivel",
+     "label": "Cama convertível de mesa"
+    }
+   ],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Challenger Birthday 58 destaca-se pela excelente combinação entre conforto, funcionalidade e fácil condução. Com um interior moderno e bem aproveitado, esta autocaravana oferece tudo o que precisa para viajar com liberdade e comodidade em qualquer destino.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">O espaço foi pensado para proporcionar conforto em viagem, contando com zona de refeições acolhedora, cozinha equipada, casa de banho funcional e áreas de descanso confortáveis com fabuloso quarto privativo com cama central. Ideal tanto para escapadinhas de fim de semana como para férias prolongadas em família.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Esta autocaravana é uma excelente oportunidade para quem procura uma autocaravana prática, fiável e pronta a viajar. A reconhecida qualidade Challenger garante segurança, robustez e uma experiência de viagem confortável.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Na Quebom todas as autocaravanas são verificadas e preparadas antes da entrega. Incluem garantia de 18 meses e acompanhamento da nossa equipa especializada.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Se procura uma autocaravana usada e prática, confortável e pronta para viajar, esta Challenger é uma excelente escolha. Conheça este modelo à venda e em exposição nas nossas instalações em Matosinhos-Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": [
+      "Ar condicionado"
+     ]
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": [
+      "Acabamentos em Madeira",
+      "Apoio de Braço"
+     ]
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Birthday 58 Ford",
+   "meta": [
+    "Perfilada",
+    "2013",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "52 866 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    },
+    {
+     "key": "sleeps",
+     "value": "2 dormidas",
+     "caption": "Para dormir"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "140 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 198 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,50 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,70 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,90 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "camas",
+     "title": "Camas",
+     "details": [],
+     "items": [],
+     "beds": [
+      {
+       "label": "Cama central",
+       "description": "Cama de casal com acesso pelos dois lados"
+      },
+      {
+       "label": "Cama convertível de mesa",
+       "description": "Mesa que se transforma em cama"
+      }
+     ]
+    },
+    {
+     "id": "energia",
+     "title": "Energia e autonomia",
+     "details": [
+      {
+       "label": "Baterias",
+       "value": "2"
+      },
+      {
+       "label": "Aquecimento de água",
+       "value": "Gás · Truma"
+      },
+      {
+       "label": "Aquecimento ambiente",
+       "value": "Gasóleo · Webasto"
+      }
+     ],
+     "items": [
+      "Painel solar"
+     ]
+    },
+    {
+     "id": "sala",
+     "title": "Sala e cozinha",
+     "details": [
+      {
+       "label": "Frigorífico",
+       "value": "Trivalente · 141 L"
+      },
+      {
+       "label": "Sala",
+       "value": "Salão panorâmico"
+      },
+      {
+       "label": "Estofos",
+       "value": "Bom"
+      }
+     ],
+     "items": [
+      "Fogão",
+      "Mesa telescópica",
+      "Mesa rebatível",
+      "TV e suporte TV",
+      "Iluminação LED",
+      "Painel de comandos",
+      "Mosquiteiras nas janelas",
+      "Clarabóia panorâmica",
+      "Clarabóia 40×40",
+      "Tapa-luz nas janelas",
+      "Acabamentos em madeira"
+     ]
+    },
+    {
+     "id": "wc",
+     "title": "WC",
+     "details": [
+      {
+       "label": "Duche",
+       "value": "Independente"
+      }
+     ],
+     "items": [
+      "Sanita"
+     ]
+    },
+    {
+     "id": "cabine",
+     "title": "Cabine de condução e segurança",
+     "details": [
+      {
+       "label": "Chassis",
+       "value": "Standard"
+      }
+     ],
+     "items": [
+      "Bancos rotativos",
+      "Remifront",
+      "Ar condicionado",
+      "Apoio de braço"
+     ]
+    },
+    {
+     "id": "exterior",
+     "title": "Exterior",
+     "details": [],
+     "items": [
+      "Toldo",
+      "Antena nacional"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 75,
+   "title": "449",
+   "brand": {
+    "id": 58,
+    "name": "Carado"
+   },
+   "model": {
+    "id": 2459,
+    "name": "I"
+   },
+   "category": {
+    "id": 6,
+    "name": "Integral",
+    "slug": "integral"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": null,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": true,
+   "monthly_payment": null,
+   "year": 2019,
+   "registration_month": 1,
+   "mileage_km": 1,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 150,
+   "engine_capacity_cc": 2287,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 5,
+    "length_m": 7.5,
+    "width_m": 2.8,
+    "height_m": 2.95,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Carado I449 Emotion combina elegância, conforto e funcionalidade numa autocaravana integral pensada para quem valoriza viagens com máxima comodidade. O amplo salão, a excelente luminosidade interior e a qualidade de construção fazem deste modelo uma escolha perfeita para férias prolongadas ou escapadinhas durante todo o ano.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Com zonas de dormir confortáveis e fabulosas 5 dormidas, cozinha totalmente equipada, casa de banho funcional e soluções inteligentes de arrumação, esta autocaravana oferece uma experiência premium sobre rodas. O design integral proporciona ainda maior isolamento, visibilidade e conforto em viagem.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Esta autocaravana usada como semi nova destaca-se pelo equilíbrio entre robustez alemã, equipamento moderno e excelente habitabilidade. Ideal para quem procura liberdade sem abdicar do conforto. Venha conhece-la na Quebom – Matosinhos Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "449",
+   "meta": [
+    "Integral",
+    "2019",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "1 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "5 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "150 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 287 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,50 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,80 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,95 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 76,
+   "title": "Fiat",
+   "brand": {
+    "id": 63,
+    "name": "Challenger"
+   },
+   "model": {
+    "id": 2505,
+    "name": "Genesis"
+   },
+   "category": {
+    "id": 2,
+    "name": "Capucine",
+    "slug": "capucine"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 36900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2007,
+   "registration_month": 1,
+   "mileage_km": 143772,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 145,
+   "engine_capacity_cc": 2800,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 5,
+    "length_m": 7,
+    "width_m": 2.5,
+    "height_m": 3,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Challenger Genesis é a escolha ideal para quem procura liberdade, conforto e versatilidade nas viagens. Com um interior funcional, excelente aproveitamento de espaço e equipamento pensado para férias em família, esta autocaravana combina praticidade com o reconhecido conforto da marca Challenger.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Disponível e em exposição nas instalações da Quebom- em Matosinhos/Porto, esta autocaravana usada destaca-se pela zona habitacional confortável com até 7 dormidas,  cozinha equipada, casa de banho completa e amplas soluções de arrumação. Ideal para escapadinhas de fim de semana ou grandes aventuras pela Europa.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Uma autocaravana usada com garantia, pronta para proporcionar viagens inesquecíveis com toda a comodidade e segurança</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Fiat",
+   "meta": [
+    "Capucine",
+    "2007",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "143 772 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "5 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "145 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 800 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,00 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,50 m"
+      },
+      {
+       "label": "Altura",
+       "value": "3,00 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 77,
+   "title": "Cama Central Caixa Automática",
+   "brand": {
+    "id": 63,
+    "name": "Challenger"
+   },
+   "model": {
+    "id": 2498,
+    "name": "308"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 79500,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2022,
+   "registration_month": 1,
+   "mileage_km": 55919,
+   "fuel_type": "gasoline",
+   "transmission": "automatic",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 170,
+   "engine_capacity_cc": 1995,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 7,
+    "width_m": 2.8,
+    "height_m": 2.9,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Challenger 308 Graphite Edition  de Caixa Automática combina conforto, tecnologia e excelente aproveitamento de espaço para viagens sem limites.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Equipada com caixa automática, fabuloso quarto privativo com cama central, cama suspensa elétrica, zona habitacional moderna, oferece uma experiência prática e confortável para toda a família.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">O interior destaca-se pela luminosidade, cozinha totalmente equipada, WC completo e várias soluções inteligentes de arrumação.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Ideal para quem procura uma autocaravana perfilada moderna, fácil de conduzir e preparada para viagens longas com total autonomia.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Na Quebom todas as autocaravanas são verificadas e preparadas antes da entrega. Incluem garantia de 18 meses e acompanhamento da nossa equipa especializada.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Se procura uma autocaravana prática, confortável e pronta para viajar, esta Challenger é uma excelente escolha. Conheça este modelo à venda e em exposição nas nossas instalações em Matosinhos-Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Cama Central Caixa Automática",
+   "meta": [
+    "Perfilada",
+    "2022",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "55 919 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Automática"
+      },
+      {
+       "label": "Potência",
+       "value": "170 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "1 995 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,00 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,80 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,90 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 78,
+   "title": "Fiat Ducato",
+   "brand": {
+    "id": 130,
+    "name": "Moncayo"
+   },
+   "model": {
+    "id": 3078,
+    "name": "silver"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "reserved",
+   "price_gross": null,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": true,
+   "monthly_payment": null,
+   "year": 2025,
+   "registration_month": 1,
+   "mileage_km": 109823,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 110,
+   "engine_capacity_cc": 2286,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 6,
+    "length_m": 6.54,
+    "width_m": 2.55,
+    "height_m": 2.77,
+    "gross_weight_kg": 3400
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": null,
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Fiat Ducato",
+   "meta": [
+    "Perfilada",
+    "2025",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "109 823 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "6 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "110 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 286 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,54 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,55 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,77 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 400 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 79,
+   "title": "343",
+   "brand": {
+    "id": 50,
+    "name": "Benimar"
+   },
+   "model": {
+    "id": 2374,
+    "name": "Sport"
+   },
+   "category": {
+    "id": 2,
+    "name": "Capucine",
+    "slug": "capucine"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "inactive",
+   "price_gross": null,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": true,
+   "monthly_payment": null,
+   "year": 2017,
+   "registration_month": 1,
+   "mileage_km": 96774,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 130,
+   "engine_capacity_cc": 2287,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 5,
+    "length_m": 7,
+    "width_m": 2.6,
+    "height_m": 2.9,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Benimar Sport 343</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\"> é uma autocaravana capucino pensada para quem procura espaço, conforto e funcionalidade em viagem.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Com </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">5 lugares de viagem e 6 de dormida</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">, é ideal para famílias ou para quem gosta de viajar com amigos. O modelo destaca-se pela </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">cama fixa de capucino ampla</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">, </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">cama traseira fixa e transformação da sala em cama.</strong></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A zona de habitação oferece </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">cozinha em L totalmente equipada</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">, grande frigorífico de cerca de </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">140 L</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">, iluminação LED e várias soluções de arrumação. A casa de banho inclui </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">duche separado por divisoria</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">, aumentando o conforto nas viagens mais longas.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Com cerca de 7,0</span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\"> m de comprimento e capacidade para cinco pessoas</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">, esta autocaravana combina espaço interior com facilidade de condução, sendo perfeita para explorar Portugal e a Europa com total liberdade.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "343",
+   "meta": [
+    "Capucine",
+    "2017",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "96 774 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "5 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "130 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 287 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,00 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,60 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,90 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 80,
+   "title": "58",
+   "brand": {
+    "id": 162,
+    "name": "Sunlight"
+   },
+   "model": {
+    "id": 3269,
+    "name": "T"
+   },
+   "category": null,
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": null,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": true,
+   "monthly_payment": null,
+   "year": 2018,
+   "registration_month": 1,
+   "mileage_km": 91785,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 130,
+   "engine_capacity_cc": 2287,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6.2,
+    "width_m": 2.5,
+    "height_m": 2.7,
+    "gross_weight_kg": 3495
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Sunlight T58 é uma autocaravana perfilada compacta, ideal para quem procura liberdade de viajar com conforto.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Com base Fiat e motor 130 cv, oferece uma condução fácil e segura, mesmo em percursos mais longos.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">O interior foi pensado para aproveitar bem o espaço.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Dispõe de sala confortável, cozinha funcional e casa de banho prática. A cama garante descanso após um dia de viagem.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Com dimensões compactas, é uma autocaravana simples de conduzir e fácil de estacionar. Perfeita para escapadinhas de fim de semana ou viagens mais longas pela Europa.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Na Quebom todas as autocaravanas são verificadas e preparadas antes da entrega. Incluem garantia de 18 meses e acompanhamento da nossa equipa especializada.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Se procura uma autocaravana prática, confortável e pronta para viajar, a Sunlight T58 é uma excelente escolha. Conheça este modelo à venda e em exposição nas nossas instalações em Matosinhos-Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "58",
+   "meta": [
+    "2018",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "91 785 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "130 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 287 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,20 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,50 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,70 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 495 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 81,
+   "title": "32 Ford",
+   "brand": {
+    "id": 63,
+    "name": "Challenger"
+   },
+   "model": {
+    "id": 2505,
+    "name": "Genesis"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": null,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": true,
+   "monthly_payment": null,
+   "year": 2011,
+   "registration_month": 1,
+   "mileage_km": 150435,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 140,
+   "engine_capacity_cc": 2198,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 5.65,
+    "width_m": 2.3,
+    "height_m": 2.8,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Challenger Genesis 32 é uma autocaravana perfilada usada, ideal para quem procura conforto, autonomia e versatilidade em viagens de curta ou longa duração. Equipado com motor Ford 2.2 L de 140 cv e tração dianteira, este modelo oferece uma condução estável e eficiente. No interior, dispõe de cama francesa, cozinha completa, WC com duche, e aquecimento Truma, perfeito para férias em família ou escapadelas de fim-de-semana. Inclui ar condicionado, câmara de marcha-atrás, cruise control e rádio Android, além de extras de conforto como claraboia panorâmica, iluminação LED e Safe Doors. No exterior conta com toldo, painel solar, suporte de bicicletas  — tudo preparado para transformar cada viagem numa experiência inesquecível.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Se procura uma autocaravana usada, esta é uma excelente oportunidade para dar inicio às novas férias em liberdade. Encontre-a em exposição nas nossas instalações em Matosinhos – Porto – o stand da zona norte, referência no setor!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "32 Ford",
+   "meta": [
+    "Perfilada",
+    "2011",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "150 435 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "140 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 198 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "5,65 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,30 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,80 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 82,
+   "title": "P740",
+   "brand": {
+    "id": 140,
+    "name": "Pilote"
+   },
+   "model": {
+    "id": 3122,
+    "name": "Essential"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "reserved",
+   "price_gross": 51900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2015,
+   "registration_month": 1,
+   "mileage_km": 73453,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 130,
+   "engine_capacity_cc": 2287,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 7.3,
+    "width_m": 2.4,
+    "height_m": 2.75,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A autocaravana perfilada Pilote P740 é uma autocaravana espaçosa e funcional, ideal para quem quer viajar com conforto e autonomia. Com espaço para 4 pessoas viajarem e dormirem confortavelmente. Oferece um interior bem desenhado com fantástico quarto com cama central, cozinha equipada, casa de banho com duche separado e aquecimento Truma.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Construída sobre um resistente chassis Fiat Ducato 2.3 L, esta autocaravana proporciona uma condução estável e segura, sendo uma excelente opção para viagens em família ou amigos por Portugal e pela Europa.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Viatura usada à venda e em exposição em Matosinhos-Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "P740",
+   "meta": [
+    "Perfilada",
+    "2015",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "73 453 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "130 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 287 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,30 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,40 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,75 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 83,
+   "title": "Premium",
+   "brand": {
+    "id": 89,
+    "name": "Fiat"
+   },
+   "model": {
+    "id": 3399,
+    "name": "Hymer"
+   },
+   "category": {
+    "id": 6,
+    "name": "Integral",
+    "slug": "integral"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 41900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2000,
+   "registration_month": 1,
+   "mileage_km": 143925,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 120,
+   "engine_capacity_cc": 2800,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "gray",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6,
+    "width_m": 2.3,
+    "height_m": 2.8,
+    "gross_weight_kg": 3400
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Autocaravana usada Hymer é uma escolha excecional para quem procura conforto premium. Esta autocaravana integral destaca-se pela sua construção sólida, design inteligente dos interiores e soluções ergonómicas que tornam cada viagem verdadeiramente agradável. Com um layout pensado ao pormenor, oferece uma zona de estar espaçosa, área de dormir confortável, cozinha completa e casa de banho funcional, assegurando um ambiente prático e acolhedor para toda a família. A sua distribuição inteligente permite otimizar o espaço sem comprometer o conforto.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Construída sobre uma base robusta e fiável, esta autocaravana combina excelência em engenharia e detalhes de qualidade que fazem a diferença. A presença de amplas janelas permite uma excelente luminosidade interior.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Encontre-a à venda e em exposição nas nossas instalações em Matosinhos – Porto – o stand da zona norte, referência no setor!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Premium",
+   "meta": [
+    "Integral",
+    "2000",
+    "Nacional",
+    "Cinza"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "143 925 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "120 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 800 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,00 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,30 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,80 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 400 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 84,
+   "title": "Knaus 3 Ambientes",
+   "brand": {
+    "id": 116,
+    "name": "Knaus"
+   },
+   "model": {
+    "id": 2953,
+    "name": "Azur"
+   },
+   "category": null,
+   "vehicle_type": "caravan",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 16900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2001,
+   "registration_month": 1,
+   "mileage_km": null,
+   "fuel_type": null,
+   "transmission": null,
+   "gear_count": null,
+   "doors": 1,
+   "power_hp": null,
+   "engine_capacity_cc": null,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 6,
+    "length_m": 7.35,
+    "width_m": 2.3,
+    "height_m": 2.59,
+    "gross_weight_kg": 1300
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p>Esta caravana Knaus Azur de 2001 apresenta-se num estado de conservação notável para a sua idade, evidenciando um cuidado meticuloso ao longo dos anos. Com três ambientes bem definidos, é ideal para famílias que valorizam espaço e organização durante as viagens. O interior mantém-se funcional e acolhedor, com uma cozinha equipada que facilita a preparação de refeições em viagem. Os espaços de armazenamento são amplos, permitindo uma arrumação eficiente de todos os pertences. Este modelo destaca-se ainda pela sua robustez e durabilidade, características que a tornam uma escolha fiável para quem procura uma caravana usada de qualidade.</p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Knaus 3 Ambientes",
+   "meta": [
+    "2001",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "6 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,35 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,30 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,59 m"
+      },
+      {
+       "label": "Peso",
+       "value": "1 300 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 85,
+   "title": "465 com Moover",
+   "brand": {
+    "id": 87,
+    "name": "Fendt"
+   },
+   "model": {
+    "id": 2726,
+    "name": "Bianco"
+   },
+   "category": null,
+   "vehicle_type": "caravan",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 17900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2011,
+   "registration_month": 1,
+   "mileage_km": null,
+   "fuel_type": null,
+   "transmission": null,
+   "gear_count": null,
+   "doors": 1,
+   "power_hp": null,
+   "engine_capacity_cc": null,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 5.8,
+    "width_m": 2.35,
+    "height_m": 2.7,
+    "gross_weight_kg": 1700
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Imagine acordar com luz natural a entrar pela claraboia, preparar o pequeno-almoço numa cozinha totalmente equipada e planear o próximo destino com total liberdade.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">É precisamente essa experiência que a Fendt Bianco 465 proporciona. Conforto, segurança e autonomia numa caravana reconhecida pela sua construção sólida e acabamentos premium.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Desde o primeiro momento, sente-se a qualidade dos materiais e a funcionalidade da distribuição interior. Dispõe de duas camas fixas confortáveis e de uma sala que se converte facilmente numa segunda cama, permitindo acomodar até quatro pessoas com total comodidade.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Além disso, os dois ambientes estão bem definidos, criando uma separação equilibrada entre zona de descanso e área de convívio. Assim, cada elemento da família encontra o seu próprio espaço.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Na zona de cozinha, tudo foi pensado para facilitar o dia a dia. Conta com fogão, frigorífico e soluções de arrumação práticas, tornando cada refeição simples e agradável, esteja onde estiver.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Por sua vez, o WC completo com água quente e depósito de água limpa garante privacidade e autonomia. A juntar a isso, o sistema de aquecimento permite utilizar a caravana durante todo o ano. A excelente luminosidade natural reforça ainda mais a sensação de espaço e bem-estar no interior.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">No exterior, a experiência continua. O toldo cria uma área protegida ideal para relaxar ou fazer refeições ao ar livre. Já o mover elétrico facilita as manobras e permite estacionar com precisão, mesmo em espaços reduzidos. Desta forma, ganha conforto também antes e depois da viagem.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Em resumo, tudo está organizado para que cada viagem seja simples, confortável e sem compromissos.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Se procura uma caravana usada à venda no norte de Portugal, esta é uma excelente oportunidade. Visite-nos em Matosinhos – Porto e descubra-a ao vivo. </span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "465 com Moover",
+   "meta": [
+    "2011",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "5,80 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,35 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,70 m"
+      },
+      {
+       "label": "Peso",
+       "value": "1 700 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 86,
+   "title": "Transit",
+   "brand": {
+    "id": 94,
+    "name": "Ford"
+   },
+   "model": {
+    "id": 2782,
+    "name": "Transit"
+   },
+   "category": null,
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 8900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 1997,
+   "registration_month": 1,
+   "mileage_km": 530617,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 75,
+   "engine_capacity_cc": 2496,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 3,
+    "gross_weight_kg": 2830
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Um veículo adaptado para turismo que combina a confiabilidade da base Ford Transit com um interior optimizado para lazer. Esta campervan é ideal para quem procura liberdade de movimento, economia de combustível e uma plataforma fácil de conduzir, tanto em cidade como noutros destinos de aventura.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Graças ao seu design compacto, é possível integrar cama convertível em zona de sala, tornando esta Ford uma excelente opção para viagens em casal ou em pequeno grupo. Com a crescente procura por soluções de campismo sobre rodas em Portugal, esta campervan Ford combina praticidade e mobilidade em viagens. Auto caravanismo pet friendly e em total sinergia com a Natureza.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Encontre esta campervan usada à venda e em exposição nas nossas instalações em Matosinhos – Porto – o stand da zona norte, referência no setor!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Transit",
+   "meta": [
+    "1997",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "530 617 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "3 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "75 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 496 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Peso",
+       "value": "2 830 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 87,
+   "title": "9048",
+   "brand": {
+    "id": 146,
+    "name": "Rapido"
+   },
+   "model": {
+    "id": 3181,
+    "name": "Serie 90dF"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 49900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2008,
+   "registration_month": 1,
+   "mileage_km": 99143,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 130,
+   "engine_capacity_cc": 2287,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6.5,
+    "width_m": 2.7,
+    "height_m": 2.8,
+    "gross_weight_kg": 3400
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Rapido 9048 DF é uma autocaravana premium usada e pensada para quem procura conforto, espaço e autonomia. Este modelo combina a reconhecida qualidade de construção da marca francesa com um layout interior moderno e funcional. Esta autocaravana integral é ideal para casais ou famílias que valorizam viagens com o conforto de casa sobre rodas.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Dispõe de cama basculante, salão amplo e luminoso, cozinha totalmente equipada com fogão e frigorífico 143L, além de casa de banho com duche separado, garantindo comodidade em qualquer destino. O sistema de aquecimento Truma, os depósitos de água de boa capacidade e o painel solar permitem maior autonomia.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Esta autocaravana oferece uma condução estável e segura, sendo uma excelente escolha para quem quer explorar Portugal e a Europa com liberdade e conforto.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Encontre esta autocaravana integral à venda e em exposição nas nossas instalações em Matosinhos – Porto – o stand da zona norte, referência no setor.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "9048",
+   "meta": [
+    "Van",
+    "2008",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "99 143 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "130 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 287 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,50 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,70 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,80 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 400 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 88,
+   "title": "36 Ford",
+   "brand": {
+    "id": 63,
+    "name": "Challenger"
+   },
+   "model": {
+    "id": 2505,
+    "name": "Genesis"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 32900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2006,
+   "registration_month": 1,
+   "mileage_km": 196210,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 125,
+   "engine_capacity_cc": 2000,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6.3,
+    "width_m": 2.3,
+    "height_m": 2.85,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A autocaravana Challenger Genesis 36 é um modelo equilibrado, ideal para quem procura liberdade de movimento sem sacrificar conforto interior e funcionalidade. Com um layout inteligente incluindo cama francesa, sala convertível em cama para 3 pessoas , cozinha equipada e WC com duche separado, este veículo é perfeito para viagens em família ou escapadinhas itinerantes.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Esta autocaravana perfilada torna-se uma escolha equilibrada para explorar Portugal e a Europa com total autonomia, a um preço acessível. Um verdadeiro “lar sobre rodas” pronto para partir, com apenas 6,30m de comprimento.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Encontre esta fabulosa autocaravana perfilada à venda e em exposição nas nossas instalações em Matosinhos – Porto – o stand da zona norte, referência no setor!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "36 Ford",
+   "meta": [
+    "Perfilada",
+    "2006",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "196 210 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "125 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 000 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,30 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,30 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,85 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 89,
+   "title": "S-Line 5 Fiat",
+   "brand": {
+    "id": 124,
+    "name": "McLouis"
+   },
+   "model": {
+    "id": 3036,
+    "name": "Menfys Van"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 58500,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2019,
+   "registration_month": 1,
+   "mileage_km": 49915,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 130,
+   "engine_capacity_cc": 2000,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6,
+    "width_m": 2.4,
+    "height_m": 2.5,
+    "gross_weight_kg": 3300
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A McLouis Menfys S-Line 5 é uma autocaravana compacta e versátil, ideal para quem procura liberdade de viajar com conforto. Oferece condução fácil com boa performance e economia.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">No interior, destaca-se pelo design moderno e funcional, com cozinha completa, VIESA, casa de banho com duche, zona de refeições confortável e camas práticas até 3 pessoas. É perfeita para casais ou pequenas famílias que valorizam autonomia e praticidade.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Conta ainda com equipamentos como painéis solares, aquecimento, iluminação LED e bons espaços de arrumação. De sobressair o fantástico frigorifico/congelador de grande  capacidade –  140L !</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Uma excelente escolha para quem quer uma campervan compacta, bem equipada e pronta para aventura.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Fique a conhecer esta autocaravana usada à venda e em exposição nas nossas instalações em Matosinhos – Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "S-Line 5 Fiat",
+   "meta": [
+    "Van",
+    "2019",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "49 915 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "130 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 000 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,00 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,40 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,50 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 300 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 90,
+   "title": "Special 590 Fiat",
+   "brand": {
+    "id": 65,
+    "name": "CI International"
+   },
+   "model": {
+    "id": 2529,
+    "name": "Carioca"
+   },
+   "category": {
+    "id": 2,
+    "name": "Capucine",
+    "slug": "capucine"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 35500,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2011,
+   "registration_month": 1,
+   "mileage_km": 55015,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 110,
+   "engine_capacity_cc": 2198,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 6,
+    "length_m": 6.1,
+    "width_m": 2.3,
+    "height_m": 2.8,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A CI Carioca Special 590 é uma autocaravana capucino espaçosa e familiar. Ideal para quem quer viajar com conforto e autonomia. Perfeita para férias em família ou escapadinhas com amigos.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">No interior, encontra uma cama fixa no capucino e uma zona de refeições que se converte facilmente em cama. A cozinha está totalmente equipada. A casa de banho inclui duche garantindo comodidade em qualquer viagem.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Este modelo permite-lhe viajar com verdadeira independência. Está equipada com painel solar, aquecimento Truma e ampla capacidade de arrumação. Oferece conforto em todas as estações do ano.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Na estrada, beneficia de direção assistida, cruise control e câmara de marcha-atrás, tornando a condução mais simples e segura.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Venha conhecer esta </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">autocaravana usada capucino</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">, disponível para venda e em exposição nas nossas instalações em Matosinhos – Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Special 590 Fiat",
+   "meta": [
+    "Capucine",
+    "2011",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "55 015 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "6 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "110 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 198 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,10 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,30 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,80 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 91,
+   "title": "8P Ford",
+   "brand": {
+    "id": 148,
+    "name": "Rimor"
+   },
+   "model": {
+    "id": 3192,
+    "name": "Katamarano"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 39900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2008,
+   "registration_month": 1,
+   "mileage_km": 110321,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 110,
+   "engine_capacity_cc": 2200,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6.55,
+    "width_m": 2.25,
+    "height_m": 2.9,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A autocaravana perfilada Rimor KataMarano 8P destaca-se pelo seu layout funcional e confortável. No interior, oferece cozinha completa, cama de garagem e sala convertível em cama. A casa de banho inclui zona de duche separada, garantindo conforto em todas as fases da viagem.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A cabina está equipada com ABS e airbags. Inclui ar condicionado, suspensão pneumática com compressor, cruise control e sensores com câmara de marcha-atrás. Tudo para facilitar a condução e aumentar a segurança.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Para maior autonomia, dispõe de painel solar e 1 botija de gás GPL. Conta ainda com toldo exterior e garagem espaçosa com acesso por ambos os lados. A capacidade de arrumação interior é generosa.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">O sistema VIESA e o aquecimento de água e ambiente Truma Combi garantem conforto térmico em qualquer estação do ano.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Uma autocaravana prática, bem equipada e ideal para viajar em família ou com amigos.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Venha conhecer esta oportunidade, disponível para venda nas nossas instalações em Matosinhos – Porto. Somos uma empresa de referência no setor, na zona Norte.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "8P Ford",
+   "meta": [
+    "Perfilada",
+    "2008",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "110 321 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "110 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 200 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,55 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,25 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,90 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 92,
+   "title": "546",
+   "brand": {
+    "id": 59,
+    "name": "Caravelair"
+   },
+   "model": {
+    "id": 2477,
+    "name": "Soleria"
+   },
+   "category": null,
+   "vehicle_type": "caravan",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 15900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2002,
+   "registration_month": 1,
+   "mileage_km": null,
+   "fuel_type": null,
+   "transmission": null,
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": null,
+   "engine_capacity_cc": null,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 5.95,
+    "width_m": 2.5,
+    "height_m": 2.65,
+    "gross_weight_kg": 1275
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Caravelair Soleria 546 é uma caravana familiar bem equipada e prática, ideal para quem gosta de viagens em liberdade com conforto e funcionalidade. Com dormidas para até 6 pessoas, esta caravana oferece um interior versátil e bem pensado, perfeito para férias ou escapadinhas em família ou com amigos.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">O layout interior inclui cama de casal fixa, beliche e cama rebatível a partir da mesa, assim como uma cozinha completa com fogão, frigorífico e cozinha equipada para preparar refeições confortavelmente.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Para maior conforto, a Caravelair Soleria 546 vem equipada com claraboias para luz natural, aquecimento Trumatic com água quente, depósito de água limpa, iluminação interior e outros detalhes que tornam a vida a bordo mais acolhedora e funcional.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Uma excelente escolha de caravana compacta, confortável e bem equipada, ideal para explorar destinos de campismo em família ou em grupo.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Se procura uma caravana usada com 6 dormidas, esta é uma excelente oportunidade para dar inicio às novas férias em liberdade. Encontre-a à venda e em exposição nas nossas instalações em Matosinhos – Porto – o stand da zona norte, referência no setor!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "546",
+   "meta": [
+    "2002",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "5,95 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,50 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,65 m"
+      },
+      {
+       "label": "Peso",
+       "value": "1 275 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 93,
+   "title": "595",
+   "brand": {
+    "id": 180,
+    "name": "Elégante"
+   },
+   "model": {
+    "id": 3400,
+    "name": "Luxe"
+   },
+   "category": null,
+   "vehicle_type": "caravan",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 16900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2004,
+   "registration_month": 1,
+   "mileage_km": null,
+   "fuel_type": null,
+   "transmission": null,
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": null,
+   "engine_capacity_cc": null,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6.4,
+    "width_m": 2.5,
+    "height_m": 2.55,
+    "gross_weight_kg": 1640
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Elegante Luxe 595 é uma caravana moderna e funcional, ideal para quem procura conforto e estilo em viagens de lazer e campismo. Com um design bem pensado e interiores espaçosos, esta caravana oferece dormidas confortáveis para 4 pessoas, proporcionando uma experiência de viagem relaxante e prática em família ou com amigos.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">O interior destaca-se pela sua zona de estar ampla, cama fixa de casal, e uma cama convertível a partir da área de refeições. A cozinha está equipada com fogão, frigorífico e espaços funcionais, permitindo preparar refeições de forma simples e confortável.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Esta caravana inclui ainda uma casa de banho com duche espaçoso e acabamentos interiores que valorizam o conforto geral.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Elegante Luxe 595 caravana é perfeita para quem quer explorar destinos de campismo com estilo e conforto.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Fique a conhecer esta caravana usada à venda e em exposição nas nossas instalações em Matosinhos-Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "595",
+   "meta": [
+    "2004",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,40 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,50 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,55 m"
+      },
+      {
+       "label": "Peso",
+       "value": "1 640 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 94,
+   "title": "Excellent",
+   "brand": {
+    "id": 106,
+    "name": "Hobby"
+   },
+   "model": {
+    "id": 2838,
+    "name": "Excellent"
+   },
+   "category": null,
+   "vehicle_type": "caravan",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 13900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2000,
+   "registration_month": 1,
+   "mileage_km": null,
+   "fuel_type": null,
+   "transmission": null,
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": null,
+   "engine_capacity_cc": null,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 5.7,
+    "width_m": 2.4,
+    "height_m": 2.55,
+    "gross_weight_kg": 1200
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Hobby Excellent da prestigiada fabricante alemã Hobby é uma caravana de turismo reconhecida pelo conforto, qualidade de construção e excelente aproveitamento de espaço. Ideal para férias em família ou escapadinhas a dois, este modelo combina design funcional, interiores acolhedores e equipamento completo para campismo.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Perfeita para quem procura uma caravana usada em excelente estado, fácil de rebocar e pronta a viajar, a Hobby Excellent destaca-se pela zona de dormir confortável, cozinha equipada e casa de banho integrada, garantindo autonomia e comodidade em qualquer parque de campismo.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A zona interior foi pensada para oferecer ambiente acolhedor e prático, com sala de refeições convertível em cama, iluminação eficiente e ventilação natural. A cozinha permite preparar refeições completas durante a viagem, enquanto a casa de banho garante independência face às infraestruturas do parque.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">É uma excelente opção para quem valoriza autonomia no campismo, liberdade de viagem e conforto sobre rodas.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Se procura uma caravana usada à venda no norte de Portugal, esta é uma excelente oportunidade. Visite-nos em Matosinhos – Porto e descubra-a ao vivo.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Excellent",
+   "meta": [
+    "2000",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "5,70 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,40 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,55 m"
+      },
+      {
+       "label": "Peso",
+       "value": "1 200 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 95,
+   "title": "C-Line Fiat",
+   "brand": {
+    "id": 62,
+    "name": "Carthago"
+   },
+   "model": {
+    "id": 2482,
+    "name": "Chic"
+   },
+   "category": {
+    "id": 6,
+    "name": "Integral",
+    "slug": "integral"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "sold",
+   "price_gross": 81900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2016,
+   "registration_month": 1,
+   "mileage_km": 88964,
+   "fuel_type": "gasoline",
+   "transmission": "automatic",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 150,
+   "engine_capacity_cc": 2287,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 7.5,
+    "width_m": 2.55,
+    "height_m": 2.95,
+    "gross_weight_kg": 4250
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A autocaravana Carthago Chic C-Line é um veículo de lazer premium, ideal para quem procura conforto, autonomia e estabilidade em viagens de autocaravana em Portugal ou na Europa. Equipada com caixa automática, motor Fiat eficiente e um interior funcional com 4 lugares de viagem e 4 dormidas, este modelo combina elegância, segurança e praticidade.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Perfeita para férias prolongadas ou escapadinhas itinerantes, a Carthago Chic C-Line oferece uma cozinha completa, casa de banho com duche separado, zona de dormir confortável e amplos espaços de arrumação, incluindo uma garagem espaçosa. É uma excelente opção para auto caravanistas exigentes.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Carthago é uma fabricante alemã de autocaravanas premium, reconhecida na Europa pela qualidade de construção, isolamento superior e soluções técnicas inovadoras. A marca posiciona-se no segmento alto do mercado destacando-se pelo conforto de luxo, robustez estrutural e autonomia para viagens longas.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Encontre esta fantástica autocaravana usada integral à venda e em exposição em Matosinhos – Porto.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "C-Line Fiat",
+   "meta": [
+    "Integral",
+    "2016",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "88 964 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Automática"
+      },
+      {
+       "label": "Potência",
+       "value": "150 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 287 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,50 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,55 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,95 m"
+      },
+      {
+       "label": "Peso",
+       "value": "4 250 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 96,
+   "title": "Ford",
+   "brand": {
+    "id": 94,
+    "name": "Ford"
+   },
+   "model": {
+    "id": 2781,
+    "name": "Nugget"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "active",
+   "price_gross": 24900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2014,
+   "registration_month": 1,
+   "mileage_km": 263000,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 125,
+   "engine_capacity_cc": 2200,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "yellow",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 4.98,
+    "width_m": 2.4,
+    "height_m": 2.4,
+    "gross_weight_kg": 2700
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A campervan Ford de 2014 é um modelo usado e versátil, ideal para quem procura uma solução prática e confortável para viajar em família ou com amigos pelos destinos de campismo em Portugal e pela Europa. Com motor Ford de 125 cv, esta autocaravana oferece 4 lugares de viagem e 4 dormidas, combinando funcionalidade e conforto para estadias prolongadas.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Construída sobre uma base de veículo utilitário Ford fiável, destaca-se pelo seu layout inteligente com camas duplas, cozinha com refrigerador, fogão a gás portátil, e conforto interior com aquecimento Webasto e claraboia turbovent para ventilação. Destaca-se ainda pelo seu prático chuveiro ao ar livre com água quente. As maiores aventuras, com apenas 4,98m de comprimento, prática e versátil para as viagens de todo o ano !</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Se procura uma campervan usada, esta é uma excelente oportunidade para dar inicio às suas férias em liberdade. Encontre-a à venda nas nossas instalações em Matosinhos – Porto – o stand da zona norte, referência no setor!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Ford",
+   "meta": [
+    "Van",
+    "2014",
+    "Nacional",
+    "Amarelo"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "263 000 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "125 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 200 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "4,98 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,40 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,40 m"
+      },
+      {
+       "label": "Peso",
+       "value": "2 700 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 97,
+   "title": "N/E",
+   "brand": {
+    "id": 110,
+    "name": "Iveco"
+   },
+   "model": {
+    "id": 2934,
+    "name": "Daily"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "sold",
+   "price_gross": 19500,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 1995,
+   "registration_month": 1,
+   "mileage_km": 166266,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 115,
+   "engine_capacity_cc": 2500,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 3,
+    "length_m": 6.8,
+    "width_m": 2.1,
+    "height_m": 2.9,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Campervan Iveco – Autovivenda robusta e versátil com motor Iveco de 115 CV, ideal para viagens, turismo e lazer. Com 3 lugares de viagem, 3 dormidas, cozinha completa, e amplas opções de conforto (3 baterias AGM, conversor Onda Pura 2000, 2 paineis solares), esta autovivenda oferece autonomia e conforto em viagens familiares ou em aventura. Veículo com garantia de 18 meses, e excelente relação qualidade preço por €19.500. Perfeita para quem quer entrar no mundo das viagens em autocaravana sem complicações e com investimento acessível.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "N/E",
+   "meta": [
+    "Van",
+    "1995",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "166 266 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "3 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "115 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 500 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,80 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,10 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,90 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 98,
+   "title": "C636 Ford Volante à Direita",
+   "brand": {
+    "id": 64,
+    "name": "Chausson"
+   },
+   "model": {
+    "id": 2520,
+    "name": "Flash"
+   },
+   "category": {
+    "id": 2,
+    "name": "Capucine",
+    "slug": "capucine"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "used",
+   "status": "sold",
+   "price_gross": 36900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2015,
+   "registration_month": 1,
+   "mileage_km": 101560,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 154,
+   "engine_capacity_cc": 2200,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 6,
+    "length_m": 6.8,
+    "width_m": 2.3,
+    "height_m": 3,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Chausson C636 Flash é uma autocaravana usada de referência, para quem valoriza espaço, segurança e autonomia. Oferece 6 lugares homologados com cintos de segurança, distribuição de camas inteligentes (capucine + beliches + sala convertível), e uma cozinha equipada com frigorífico, forno e área de preparação de refeições.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">No plano de conforto e conveniência, inclui ar condicionado na cabine, Cruise Control, câmara de marcha-atrás, ABS, iluminação LED e sistemas de aquecimento de água Truma, e aquecimento ambiente do habitáculo Webasto.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Esta autocaravana representa uma excelente oportunidade para quem procura um veículo recreativo versátil e pronto a viajar, com autonomia para deslocações prolongadas.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Este p.v.p incluí alteração do volante à esquerda. Se não precisar desta alteração tem um desconto imediato de 4.000€.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Venha conhecer esta </span><strong style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">autocaravana usada capucino</strong><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">, disponível para venda e em exposição nas nossas instalações em Matosinhos – Porto</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "C636 Ford Volante à Direita",
+   "meta": [
+    "Capucine",
+    "2015",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "101 560 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "6 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "154 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 200 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,80 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,30 m"
+      },
+      {
+       "label": "Altura",
+       "value": "3,00 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 99,
+   "title": "879G",
+   "brand": {
+    "id": 124,
+    "name": "McLouis"
+   },
+   "model": {
+    "id": 3035,
+    "name": "MC4"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "new",
+   "status": "active",
+   "price_gross": null,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": true,
+   "monthly_payment": null,
+   "year": 2026,
+   "registration_month": 1,
+   "mileage_km": 0,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 140,
+   "engine_capacity_cc": 2287,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "gray",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 5,
+    "length_m": 7.45,
+    "width_m": 2.35,
+    "height_m": 2.95,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A McLouis MC4 879G distingue-se pela construção inteligente e estilo italiano é um veículo perfilado com layout prático e espaço interior bem aproveitado.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Com uma cama central elevada com ajuste elétrico, mesa que se transforma em cama adicional, cozinha equipada com frigorífico compressor, e uma casa de banho espaçosa com duche, esta autocaravana proporciona todos os elementos essenciais para viagens autónomas e confortáveis. O sistema de controlo integrado iNet X facilita a gestão das funções do veículo, tornando cada viagem mais fácil.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A combinação de desempenho e conforto, aliados à boa distribuição de espaço interior e características práticas, tornam a McLouis MC4 879G uma escolha excelente para quem procura uma autocaravana completa e versátil para viajar em Portugal ou na Europa.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "879G",
+   "meta": [
+    "Perfilada",
+    "2026",
+    "Nacional",
+    "Cinza"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "5 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "140 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 287 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,45 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,35 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,95 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 100,
+   "title": "640",
+   "brand": {
+    "id": 162,
+    "name": "Sunlight"
+   },
+   "model": {
+    "id": 3268,
+    "name": "Cliff"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "new",
+   "status": "active",
+   "price_gross": 90700,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2026,
+   "registration_month": 1,
+   "mileage_km": 0,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 140,
+   "engine_capacity_cc": 2200,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6.36,
+    "width_m": 2.05,
+    "height_m": 2.69,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A Sunlight Cliff 640 oferece uma solução inteligente para quem procura autocaravana compacta e bem equipada, ideal para viagens até 4 pessoas. Graças ao seu comprimento aproximado de 6,36 m e construção sobre um chassis leve, mantém excelente manobrabilidade sem comprometer o espaço interior.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">No interior, uma fabulosa cama transversal, cozinha com fogão, frigorífico e congelador e WC completo. A zona de estar transforma-se em cama confortável, e há múltiplas tomadas e pontos USB para maior conveniência. A claraboia e estores mosquiteiros aumentam a luminosidade e ventilação.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">O Sunlight Cliff 640 é uma escolha popular entre entusiastas de viagens em autovivenda, porque alia flexibilidade, conforto e um design funcional que se adapta tanto a escapadinhas de fim de semana como a dias de aventura contínua!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "640",
+   "meta": [
+    "Van",
+    "2026",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "140 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 200 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,36 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,05 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,69 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 101,
+   "title": "600",
+   "brand": {
+    "id": 162,
+    "name": "Sunlight"
+   },
+   "model": {
+    "id": 3268,
+    "name": "Cliff"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "new",
+   "status": "active",
+   "price_gross": 80100,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2026,
+   "registration_month": 1,
+   "mileage_km": 0,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 140,
+   "engine_capacity_cc": 2200,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 6,
+    "width_m": 2.05,
+    "height_m": 2.75,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A campervan nova Sunlight Cliff 600 é uma autocaravana leve e moderna, concebida para quem procura liberdade de viagem com máxima mobilidade. Esta van combina um design exterior compacto com um interior funcional bem organizado que oferece conforto e autonomia.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Equipada com soluções inteligentes de arrumação, zona de cozinha completa e cama confortável, o Sunlight Cliff 600 é sinónimo de versatilidade e qualidade de construção alemã.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "600",
+   "meta": [
+    "Van",
+    "2026",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "140 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 200 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "6,00 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,05 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,75 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 102,
+   "title": "S Line CS",
+   "brand": {
+    "id": 124,
+    "name": "McLouis"
+   },
+   "model": {
+    "id": 3036,
+    "name": "Menfys Van"
+   },
+   "category": {
+    "id": 8,
+    "name": "Campervan",
+    "slug": "campervan"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "new",
+   "status": "inactive",
+   "price_gross": 84900,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2026,
+   "registration_month": 1,
+   "mileage_km": 0,
+   "fuel_type": "gasoline",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 140,
+   "engine_capacity_cc": 2200,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "dark-blue",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 5.99,
+    "width_m": 2.05,
+    "height_m": 2.65,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A autocaravana McLouis Menfys 4 S-Line CS é uma camper van moderna e versátil, ideal para quem procura mobilidade, conforto e estilo nas viagens. Este modelo combina um layout inteligente com soluções práticas de arrumação, tornando-a perfeita para escapadinhas de fim-de-semana ou aventuras prolongadas com família ou amigos.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Com um interior pensado para maximizar espaço e conforto, a Menfys 4 S-Line CS integra cozinha equipada, zona de estar conversível em cama, WC completo com duche e opções de conforto moderno, proporcionando autonomia e conveniência em cada viagem. Este modelo é ideal tanto para quem entra no mundo do campismo itinerante como para utilizadores experientes que valorizam qualidade e funcionalidade.</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "S Line CS",
+   "meta": [
+    "Van",
+    "2026",
+    "Nacional",
+    "Azul Escuro"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "140 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 200 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "5,99 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,05 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,65 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 103,
+   "title": "979G",
+   "brand": {
+    "id": 124,
+    "name": "McLouis"
+   },
+   "model": {
+    "id": 3038,
+    "name": "Nevis"
+   },
+   "category": {
+    "id": 6,
+    "name": "Integral",
+    "slug": "integral"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "new",
+   "status": "active",
+   "price_gross": 124000,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2026,
+   "registration_month": 1,
+   "mileage_km": 0,
+   "fuel_type": "gasoline",
+   "transmission": "automatic",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 180,
+   "engine_capacity_cc": 2200,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "white",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 5,
+    "length_m": 7.45,
+    "width_m": 2.35,
+    "height_m": 2.95,
+    "gross_weight_kg": 4250
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">McLouis Nevis 979G é uma autocaravana integral que se destaca pelo seu espaço interior e conforto familiar. Combina um ambiente acolhedor com soluções modernas para viagens prolongadas. Com fabuloso quarto privado de cama central, cama suspensa elevatória e transformação da mesa em cama, esta integral proporciona até 5 dormidas ! A mesa ampla e cozinha equipada com fogão e frigorífico/congelador de grande capacidade, esta autocaravana proporciona uma experiência agradável mesmo em estadias mais longas.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">O interior bem distribuído inclui também casa de banho completa com duche separado, ampla zona de arrumação e luz natural abundante, graças às claraboias panorâmicas. A Nevis 979G integra equipamentos de conforto como sistema de aquecimento eficiente, iluminação LED, tomadas de 220 V e USB, tornando cada dia de viagem mais confortável e prático.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Conduzida sobre uma base robusta e fiável, esta autocaravana integral oferece equilíbrio entre desempenho, habitabilidade e bem-estar, sendo perfeita para quem quer combinar a liberdade de viajar com o máximo de conforto.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">É uma escolha sólida para viajantes que valorizam qualidade de construção, espaço generoso e versatilidade no seu uso!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "979G",
+   "meta": [
+    "Integral",
+    "2026",
+    "Nacional",
+    "Branco"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "5 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Automática"
+      },
+      {
+       "label": "Potência",
+       "value": "180 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 200 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,45 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,35 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,95 m"
+      },
+      {
+       "label": "Peso",
+       "value": "4 250 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 104,
+   "title": "4 Matic 381",
+   "brand": {
+    "id": 124,
+    "name": "McLouis"
+   },
+   "model": {
+    "id": 3035,
+    "name": "MC4"
+   },
+   "category": {
+    "id": 7,
+    "name": "Perfilada",
+    "slug": "perfilada"
+   },
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "new",
+   "status": "inactive",
+   "price_gross": 96100,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2026,
+   "registration_month": 1,
+   "mileage_km": 0,
+   "fuel_type": "gasoline",
+   "transmission": "automatic",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 165,
+   "engine_capacity_cc": 2200,
+   "engine_brand": null,
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "silver-gray",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": null,
+   "service_records": null,
+   "has_spare_key": false,
+   "has_manuals": false,
+   "specs": {
+    "seats": 4,
+    "length_m": 7.45,
+    "width_m": 2.35,
+    "height_m": 2.95,
+    "gross_weight_kg": 3500
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [],
+   "description_pt": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A McLouis MC4 381 representa o melhor compromisso entre habitabilidade interior e condução prática em estrada. Construída sobre um chassis robusto, esta autocaravana perfilada oferece uma experiência de viagem confortável graças à sua cama central traseira espaçosa, cama eletrica elevatória, uma área de estar face-to-face versátil e uma cozinha completa equipada com fogão, forno com grill, lavatório , frigorífico grande 137L.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">A casa de banho com duche separado garante comodidade mesmo em estadias prolongadas, enquanto as janelas amplas, claraboias e iluminação LED oferecem um ambiente interior luminoso e acolhedor. Materiais de alta qualidade e bom isolamento térmico tornam esta autocaravana adequada para viagens em todas as estações. Equipada já com ISOFIX, a pensar nas aventuras dos mais novos.</span></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgb(34, 39, 50);\">Graças à versatilidade do design e à distribuição inteligente do espaço, a McLouis MC4 381 adapta-se facilmente a diferentes estilos de viagem — desde escapadinhas de fim de semana a aventuras mais prolongadas!</span></p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "4 Matic 381",
+   "meta": [
+    "Perfilada",
+    "2026",
+    "Nacional",
+    "Cinza Prata"
+   ],
+   "key_figures": [
+    {
+     "key": "seats",
+     "value": "4 lugares",
+     "caption": "Para viajar"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Gasolina"
+      },
+      {
+       "label": "Caixa",
+       "value": "Automática"
+      },
+      {
+       "label": "Potência",
+       "value": "165 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "2 200 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "7,45 m"
+      },
+      {
+       "label": "Largura",
+       "value": "2,35 m"
+      },
+      {
+       "label": "Altura",
+       "value": "2,95 m"
+      },
+      {
+       "label": "Peso",
+       "value": "3 500 kg"
+      }
+     ],
+     "items": []
+    }
+   ]
+  }
+ },
+ {
+  "input": {
+   "id": 105,
+   "title": "Teste teste",
+   "brand": {
+    "id": 36,
+    "name": "Adria"
+   },
+   "model": {
+    "id": 2127,
+    "name": "Action"
+   },
+   "category": null,
+   "vehicle_type": "motorhome",
+   "subsegment": null,
+   "condition": "like_new",
+   "status": "active",
+   "price_gross": 100000,
+   "price_promo": null,
+   "has_promo_price": false,
+   "hide_price_online": false,
+   "monthly_payment": null,
+   "year": 2020,
+   "registration_month": 1,
+   "mileage_km": 10000,
+   "fuel_type": "diesel",
+   "transmission": "manual",
+   "gear_count": null,
+   "doors": 5,
+   "power_hp": 1000,
+   "engine_capacity_cc": 1000,
+   "engine_brand": "Fiat",
+   "cylinders": null,
+   "co2_emissions": null,
+   "toll_class": null,
+   "exterior_color": "blue",
+   "is_metallic": false,
+   "interior_color": null,
+   "origin": "national",
+   "is_trade_in": false,
+   "warranty_available": null,
+   "warranty_due_date": null,
+   "warranty_km": null,
+   "warranty_months": 36,
+   "service_records": null,
+   "has_spare_key": true,
+   "has_manuals": false,
+   "specs": {
+    "seats": 5,
+    "sleeps": 6,
+    "length_m": 10,
+    "width_m": 10,
+    "height_m": 10,
+    "gross_weight_kg": 110
+   },
+   "habitation": [],
+   "features": [],
+   "beds": [
+    {
+     "type": "outra",
+     "label": "Outra"
+    },
+    {
+     "type": "cama_capucino",
+     "label": "Cama capucino"
+    }
+   ],
+   "description_pt": "<p>Tese teste</p>",
+   "description_en": null,
+   "youtube_url": null,
+   "extras": [
+    {
+     "group": "comfort_multimedia",
+     "items": []
+    },
+    {
+     "group": "exterior_equipment",
+     "items": []
+    },
+    {
+     "group": "interior_equipment",
+     "items": []
+    },
+    {
+     "group": "safety_performance",
+     "items": []
+    }
+   ],
+   "seller": null
+  },
+  "expected": {
+   "display_name": "Teste teste",
+   "meta": [
+    "2020",
+    "Nacional",
+    "Azul"
+   ],
+   "key_figures": [
+    {
+     "key": "km",
+     "value": "10 000 km",
+     "caption": "Quilómetros"
+    },
+    {
+     "key": "seats",
+     "value": "5 lugares",
+     "caption": "Para viajar"
+    },
+    {
+     "key": "sleeps",
+     "value": "6 dormidas",
+     "caption": "Para dormir"
+    },
+    {
+     "key": "warranty",
+     "value": "36 meses",
+     "caption": "Garantia"
+    }
+   ],
+   "sections": [
+    {
+     "id": "motor",
+     "title": "Motor e condução",
+     "details": [
+      {
+       "label": "Motor",
+       "value": "Fiat · Diesel"
+      },
+      {
+       "label": "Caixa",
+       "value": "Manual"
+      },
+      {
+       "label": "Potência",
+       "value": "1000 cv"
+      },
+      {
+       "label": "Cilindrada",
+       "value": "1 000 cc"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "dimensoes",
+     "title": "Dimensões e peso",
+     "details": [
+      {
+       "label": "Comprimento",
+       "value": "10,00 m"
+      },
+      {
+       "label": "Largura",
+       "value": "10,00 m"
+      },
+      {
+       "label": "Altura",
+       "value": "10,00 m"
+      },
+      {
+       "label": "Peso",
+       "value": "110 kg"
+      }
+     ],
+     "items": []
+    },
+    {
+     "id": "camas",
+     "title": "Camas",
+     "details": [],
+     "items": [],
+     "beds": [
+      {
+       "label": "Outra",
+       "description": null
+      },
+      {
+       "label": "Cama capucino",
+       "description": "Por cima da cabine de condução"
+      }
+     ]
+    },
+    {
+     "id": "condicao",
+     "title": "Condição",
+     "details": [],
+     "items": [
+      "2ª chave"
+     ]
+    }
+   ]
+  }
+ }
+]

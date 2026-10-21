@@ -1,5 +1,7 @@
 // React
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { toast } from "react-toastify";
 // Redux
 import { useDispatch } from "react-redux";
 // Components
@@ -12,10 +14,12 @@ import CarThumbnail from "Components/Common/CarThumbnail";
 import LeadStatusBadge from "./components/LeadStatusBadge";
 import LeadsFunnel from "./components/LeadsFunnel";
 import LossReasonModal from "./components/LossReasonModal";
+import LeadDetailModal from "./components/LeadDetailModal";
+import { leadOrigin } from "common/models/lead.model";
 import { Container } from "reactstrap";
 // Slices
 import { updateLeadStatus } from "slices/leads/thunk";
-import { getLeads } from "helpers/laravel_helper";
+import { getLeads, updateLead } from "helpers/laravel_helper";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const formatTimeDiff = (dateStr: string): string => {
@@ -45,6 +49,40 @@ export default function LeadList() {
     // Perder na LISTA também exige motivo (mesmo modal do funil).
     const [pendingLost, setPendingLost] = useState<{ id: number; name: string } | null>(null);
     const [savingLost, setSavingLost] = useState(false);
+    // O detalhe (clique na linha, ou /leads?id=… a partir do aviso de um pedido de proposta).
+    const [detail, setDetail] = useState<any | null>(null);
+    const [savingNotes, setSavingNotes] = useState(false);
+    const [params, setParams] = useSearchParams();
+
+    useEffect(() => {
+        const id = Number(params.get("id"));
+        const companyId = getWorkingCompanyId();
+        if (!id || !companyId) return;
+        getLeads({ page: 1, perPage: 1, companyId, id })
+            .then((r: any) => { const lead = r?.data?.data?.[0]; if (lead) setDetail(lead); })
+            .catch(() => { /* a lista abre na mesma */ });
+    }, [params]);
+
+    const closeDetail = () => {
+        setDetail(null);
+        if (params.get("id")) { params.delete("id"); setParams(params, { replace: true }); }
+    };
+
+    const saveNotes = async (notes: string) => {
+        const companyId = getWorkingCompanyId();
+        if (!detail || !companyId) return;
+        setSavingNotes(true);
+        try {
+            await updateLead(companyId, detail.id, { status: detail.status, notes });
+            setLeads((list) => list.map((l) => (l.id === detail.id ? { ...l, notes } : l)));
+            toast.success("Notas guardadas.");
+            closeDetail();
+        } catch {
+            toast.error("Não foi possível guardar as notas.");
+        } finally {
+            setSavingNotes(false);
+        }
+    };
 
     useEffect(() => {
         const t = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 300);
@@ -122,7 +160,7 @@ export default function LeadList() {
 
                 return (
                     <div>
-                        <h6 className="mb-0">{lead.name}</h6>
+                        <h6 className="mb-0">{lead.name}{lead.type === "proposta" && <span className="badge bg-primary-subtle text-primary ms-2 fs-11">{lead.type_label ?? "Pedido de proposta"}</span>}</h6>
                         <small className="text-muted d-block">{lead.phone || "Sem telefone"}</small>
                         <small className="text-muted">{lead.email}</small>
                     </div>
@@ -159,12 +197,15 @@ export default function LeadList() {
             value: (lead) => lead.status,
             cell: (lead) => {
                 return (
-                    <LeadStatusBadge
-                        currentStatus={lead.status}
-                        onChange={(newStatus) => handleStatusChange(lead.id, newStatus, lead.name)}
-                        disabled={loadingUpdate}
-                        size="sm"
-                    />
+                    // Mudar o estado não abre o detalhe da lead.
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <LeadStatusBadge
+                            currentStatus={lead.status}
+                            onChange={(newStatus) => handleStatusChange(lead.id, newStatus, lead.name)}
+                            disabled={loadingUpdate}
+                            size="sm"
+                        />
+                    </div>
                 );
             },
         },
@@ -180,14 +221,8 @@ export default function LeadList() {
         {
             id: "channel",
             header: "Origem",
-            value: (lead) => `${lead.channel ?? ""} - ${lead.utm_source ?? ""}`,
-            cell: (lead) => {
-                return (
-                    <span className="text-muted">
-                        {lead.channel} - {lead.utm_source}
-                    </span>
-                );
-            },
+            value: (lead) => leadOrigin(lead),
+            cell: (lead) => <span className="text-muted">{leadOrigin(lead)}</span>,
         },
     ];
     const cols = useDataColumns("comercial.leads", columnDefs);
@@ -273,7 +308,7 @@ export default function LeadList() {
                     style={{ borderTop: "1px solid var(--vz-border-color)", padding: "10px 14px" }}
                 >
                     <span className="text-muted fs-12 text-truncate">
-                        {formatTimeDiff(lead.created_at)} · {lead.channel} - {lead.utm_source}
+                        {formatTimeDiff(lead.created_at)} · {leadOrigin(lead)}{lead.type === "proposta" ? " · Pedido de proposta" : ""}
                     </span>
                     <div className="d-flex gap-2 flex-shrink-0 align-items-center">
                         {phone ? (
@@ -366,11 +401,14 @@ export default function LeadList() {
                                 onSortChange,
                             } : undefined}
                             rowActions={rowActions}
+                            onRowClick={(lead: any) => setDetail(lead)}
                             mobileCard={(lead) => renderLeadMobileCard(lead)}
                         />
                     )}
                 </PageCard>
             </Container>
+
+            <LeadDetailModal lead={detail} saving={savingNotes} onSaveNotes={saveNotes} onClose={closeDetail} />
 
             <LossReasonModal
                 isOpen={!!pendingLost}

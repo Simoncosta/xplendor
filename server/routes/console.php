@@ -389,6 +389,17 @@ Schedule::job(new \App\Jobs\PurgeFilesRecycleJob())
         \Illuminate\Support\Facades\Log::error('[Ficheiros] Reciclagem falhou no scheduler');
     });
 
+// 04:10 (Lisboa) — Documentos para financiamento: aviso aos administradores 7 dias antes e
+// apagamento automático N dias depois do último envio (por empresa); links nunca usados (interna).
+Schedule::job(new \App\Jobs\PurgeFinancingDocumentsJob())
+    ->dailyAt('04:10')
+    ->timezone('Europe/Lisbon')
+    ->name('financing-retention')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Financiamento] Retenção falhou no scheduler');
+    });
+
 // 04:40 (Lisboa) — Ficheiros: regista os ficheiros novos dos módulos nas pastas do sistema
 // (empresas com o módulo ligado; nada é copiado). Interna.
 Schedule::command('files:catalog --execute')
