@@ -117,7 +117,7 @@ class AppServiceProvider extends ServiceProvider
         // Antivírus dos documentos de financiamento (ficheiros do público): ClamAV num contentor
         // (ANTIVIRUS_DRIVER=clamav) ou nenhum (os documentos ficam "não analisados").
         $this->app->bind(\App\Services\Financing\Antivirus\VirusScanner::class, fn () => config('financing.antivirus.driver') === 'clamav'
-            ? new \App\Services\Financing\Antivirus\ClamAvScanner((string) config('financing.antivirus.host'), (int) config('financing.antivirus.port'), (int) config('financing.antivirus.timeout'))
+            ? new \App\Services\Financing\Antivirus\ClamAvScanner(\App\Services\Financing\Antivirus\ClamdClient::fromConfig())
             : new \App\Services\Financing\Antivirus\NullScanner());
         // Motor de recomendações (regras de especialista, explicáveis). Registo das
         // regras: para acrescentar uma regra nova, juntá-la a esta lista.

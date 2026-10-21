@@ -30,6 +30,7 @@
 .fu-item-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .fu-sent { list-style: none; padding: 0; margin: 8px 0 0; color: var(--fu-ok); font-size: .9rem; }
 .fu-sent .fu-refused { color: var(--fu-error); }
+.fu-sent .fu-checking { color: var(--fu-muted); }
 .fu-ok { color: var(--fu-ok); margin: 6px 0 0; font-size: .9rem; }
 .fu-error { color: var(--fu-error); margin: 6px 0 0; font-size: .9rem; }
 .fu-footer { border-top: 1px solid var(--fu-line); margin-top: 16px; padding-top: 12px; }

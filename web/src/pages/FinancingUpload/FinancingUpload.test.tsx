@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import FinancingUploadPage from "./index";
 
 const TOKEN = "A".repeat(64);
@@ -47,6 +47,20 @@ describe("Página de envio de documentos (sem conta)", () => {
         const form = fetchMock.mock.calls[2][1].body as FormData;
         expect(form.get("kind")).toBe("cc");
         expect(screen.queryByRole("link", { name: /Cartão de Cidadão 1/ })).not.toBeInTheDocument();
+    });
+
+    it("enquanto o antivírus verifica, mostra a verificar; se recusar, o cliente vê a mensagem sem recarregar", async () => {
+        jest.useFakeTimers();
+        const sent = (state: string) => [{ name: "Cartão de Cidadão 1.pdf", sent_at: "2026-10-21T10:00:00Z", refused: state === "recusado", state }];
+        fetchMock
+            .mockImplementationOnce(() => reply(200, { data: payload(true, sent("em_analise")) }))
+            .mockImplementationOnce(() => reply(200, { data: payload(true, sent("recusado")) }));
+        render(<FinancingUploadPage />);
+        expect(await screen.findByText("A verificar Cartão de Cidadão 1.pdf…")).toBeInTheDocument();
+        await act(async () => { jest.advanceTimersByTime(3100); });
+        expect(await screen.findByRole("alert")).toHaveTextContent("a verificação de segurança recusou-o");
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        jest.useRealTimers();
     });
 
     it("link expirado, revogado ou desconhecido: a mesma mensagem", async () => {

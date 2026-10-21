@@ -12,8 +12,18 @@ final class NullScanner implements VirusScanner
         return false;
     }
 
+    public function ping(): bool
+    {
+        return false;
+    }
+
     public function scan(string $disk, string $path): string
     {
         throw new \LogicException('Sem analisador antivírus configurado.');
+    }
+
+    public function lastSignature(): ?string
+    {
+        return null;
     }
 }

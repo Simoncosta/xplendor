@@ -29,6 +29,7 @@ return [
     'notice_version' => '2026-10',
 
     'require_antivirus' => (bool) env('FINANCING_REQUIRE_ANTIVIRUS', env('APP_ENV', 'production') === 'production'),
+    // O ClamAV corre no contentor xplendor-clamav (docker-compose*.yml), só na rede interna.
     'antivirus' => [
         'driver' => env('ANTIVIRUS_DRIVER', 'none'), // none | clamav
         'host' => env('CLAMAV_HOST', 'clamav'),

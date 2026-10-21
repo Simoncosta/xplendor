@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./financing-upload.css";
 
 /**
@@ -13,7 +13,7 @@ import "./financing-upload.css";
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.heic,.heif,application/pdf,image/jpeg,image/png,image/heic,image/heif";
 
-interface Item { key: string; label: string; hint: string; sent: { name: string; sent_at: string | null; refused: boolean }[] }
+interface Item { key: string; label: string; hint: string; sent: { name: string; sent_at: string | null; refused: boolean; state?: "em_analise" | "recebido" | "recusado" }[] }
 export interface FinancingPublicPayload {
     company: { name: string; logo_url: string | null; fiscal_name: string | null; nipc: string | null };
     customer_first_name: string | null;
@@ -24,6 +24,9 @@ export interface FinancingPublicPayload {
 }
 
 const tokenFromHash = () => window.location.hash.replace(/^#/, "").trim();
+// Enquanto um ficheiro está a ser verificado pelo antivírus, a página pergunta de 3 em 3 segundos (até 2 minutos).
+const POLL_MS = 3000;
+const POLL_MAX = 40;
 const fmtDay = (s?: string | null) => (s ? new Date(s).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
 
 async function call(token: string, path: string, init: RequestInit = {}): Promise<{ status: number; json: any }> {
@@ -81,6 +84,22 @@ export default function FinancingUploadPage() {
 
     useEffect(() => { void load(); }, [load]);
 
+    const checking = !!data?.items.some((i) => i.sent.some((s) => s.state === "em_analise"));
+    const polls = useRef(0);
+    useEffect(() => {
+        if (!checking || status !== "ready") { polls.current = 0; return; }
+        if (polls.current >= POLL_MAX) return;
+        const t = setTimeout(async () => {
+            polls.current += 1;
+            try {
+                const r = await call(token, "");
+                if (r.status === 200 && r.json?.data) setData(r.json.data);
+                else if (r.status === 404) setStatus("notfound");
+            } catch { /* tenta na próxima */ }
+        }, POLL_MS);
+        return () => clearTimeout(t);
+    }, [checking, status, data, token]);
+
     const accept = async () => {
         setConsentError(null);
         const r = await call(token, "/consent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ privacy, cc_copy: ccCopy }) });
@@ -103,7 +122,7 @@ export default function FinancingUploadPage() {
             const r = await call(token, "/documents", { method: "POST", body: form });
             if (r.status === 201 && r.json?.data) {
                 setData(r.json.data);
-                setItemMsg((m) => ({ ...m, [item.key]: { ok: true, text: "Recebido. Obrigado." } }));
+                setItemMsg((m) => ({ ...m, [item.key]: { ok: true, text: "" } }));
             } else if (r.status === 404) {
                 setStatus("notfound");
             } else {
@@ -182,8 +201,13 @@ export default function FinancingUploadPage() {
                                     {item.sent.length > 0 && (
                                         <ul className="fu-sent">
                                             {item.sent.map((s, i) => (
-                                                <li key={`${s.name}-${i}`} className={s.refused ? "fu-refused" : ""}>
-                                                    {s.refused ? "✕ Não foi possível aceitar este ficheiro. Envie-o de novo." : `✓ ${s.name} · enviado a ${fmtDay(s.sent_at)}`}
+                                                <li key={`${s.name}-${i}`} className={s.refused ? "fu-refused" : s.state === "em_analise" ? "fu-checking" : ""}
+                                                    role={s.refused ? "alert" : undefined}>
+                                                    {s.refused
+                                                        ? "✕ Não foi possível aceitar este ficheiro: a verificação de segurança recusou-o. Envie-o de novo, de preferência uma fotografia ou um PDF tirado diretamente do original."
+                                                        : s.state === "em_analise"
+                                                            ? `A verificar ${s.name}…`
+                                                            : `✓ ${s.name} · enviado a ${fmtDay(s.sent_at)}`}
                                                 </li>
                                             ))}
                                         </ul>

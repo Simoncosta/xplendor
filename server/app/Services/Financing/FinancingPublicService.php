@@ -63,6 +63,12 @@ class FinancingPublicService
                 'sent' => $docs->where('kind', $i)->map(fn (FinancingDocument $d) => [
                     'name' => $d->name, 'sent_at' => optional($d->created_at)->toIso8601String(),
                     'refused' => $d->scan_status === FinancingDocument::SCAN_INFECTED,
+                    // em_analise (o antivírus ainda não respondeu), recebido ou recusado.
+                    'state' => match ($d->scan_status) {
+                        FinancingDocument::SCAN_PENDING => 'em_analise',
+                        FinancingDocument::SCAN_INFECTED => 'recusado',
+                        default => 'recebido',
+                    },
                 ])->values()->all(),
             ], $items),
             'limits' => [

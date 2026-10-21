@@ -212,10 +212,34 @@ services:
     networks:
       - xplendor
 
+  # Antivírus dos documentos de financiamento (ficheiros que chegam do público). Só na rede
+  # interna (o php e o worker falam com "clamav:3310"); nenhuma porta publicada no anfitrião
+  # (a 3310 do anfitrião é da MariaDB). As assinaturas ficam no volume clamav_db (o primeiro
+  # arranque descarrega-as dos servidores oficiais do ClamAV; depois o freshclam só atualiza).
+  # Limite de memória: 3 GB (as assinaturas ocupam cerca de 1,2 GB e o dobro durante a
+  # recarga em paralelo), para nunca tirar memória à base de dados.
+  clamav:
+    image: clamav/clamav:1.5.4_base-debian13-slim
+    container_name: xplendor-clamav
+    restart: unless-stopped
+    environment:
+      # Segundos à espera do clamd depois de as assinaturas estarem no disco (carregá-las leva
+      # um a dois minutos numa máquina pequena). O healthcheck é o da imagem (clamdcheck.sh,
+      # 6 minutos de arranque).
+      CLAMD_STARTUP_TIMEOUT: "900"
+    volumes:
+      - clamav_db:/var/lib/clamav
+      - ./docker/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
+    mem_limit: 3g
+    memswap_limit: 3g
+    networks:
+      - xplendor
+
 networks:
   xplendor: {}
 
 volumes:
+  clamav_db:
   minio_data:
   db_data_xplendor:
   xplendor_vendor:

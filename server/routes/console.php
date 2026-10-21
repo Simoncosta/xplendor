@@ -400,6 +400,18 @@ Schedule::job(new \App\Jobs\PurgeFinancingDocumentsJob())
         \Illuminate\Support\Facades\Log::error('[Financiamento] Retenção falhou no scheduler');
     });
 
+// De 5 em 5 minutos — Antivírus (ClamAV) dos documentos de financiamento: aviso ao root se não
+// responder há mais de 15 minutos; volta a pôr na fila as análises em atraso. Interna (rede do
+// Docker). Só com ANTIVIRUS_DRIVER=clamav.
+Schedule::command('antivirus:watch')
+    ->everyFiveMinutes()
+    ->when(fn () => config('financing.antivirus.driver') === 'clamav')
+    ->name('antivirus-watch')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Antivírus] A vigilância falhou no scheduler');
+    });
+
 // 04:40 (Lisboa) — Ficheiros: regista os ficheiros novos dos módulos nas pastas do sistema
 // (empresas com o módulo ligado; nada é copiado). Interna.
 Schedule::command('files:catalog --execute')

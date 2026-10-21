@@ -407,7 +407,9 @@ class FinancingDocumentsTest extends TestCase
     {
         $this->app->instance(VirusScanner::class, new class implements VirusScanner {
             public function configured(): bool { return true; }
+            public function ping(): bool { return true; }
             public function scan(string $disk, string $path): string { return self::INFECTED; }
+            public function lastSignature(): ?string { return 'Teste-Simulado'; }
         });
         [, $token] = $this->createLink();
         $this->consent($token);
