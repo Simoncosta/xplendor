@@ -76,6 +76,7 @@ import AdminChargesPage from "pages/Admin/AdminChargesPage";
 import StorageUsagePage from "pages/Admin/StorageUsagePage";
 import AdminRadarPage from "pages/Admin/AdminRadarPage";
 import FilesPage from "pages/Files/FilesPage";
+import SitePopupsPage from "pages/SitePopups";
 import ImoveisPage from "pages/Imoveis/ImoveisPage";
 import EmpreendimentosPage from "pages/Imoveis/EmpreendimentosPage";
 import SiteConsultorPage from "pages/SiteConsultor/SiteConsultorPage";
@@ -184,6 +185,8 @@ const authProtectedRoutes = [
     { path: "/restauracao/artigos", component: <MovedTo to="/cadastros/artigos" /> },
     // Linha Editorial (transversal)
     { path: "/ficheiros", component: <RequireModule module="ficheiros" permission="ficheiros.ver"><FilesPage /></RequireModule> },
+    // Avisos (pop-up) nos sites dos clientes (stands e sites dos consultores).
+    { path: "/avisos-site", component: <RequireModule anyModule={["stock", "site_consultor"]} permission="avisos_site.ver"><SitePopupsPage /></RequireModule> },
     // Auditoria (plataforma): a página decide o que mostrar pelas áreas que a pessoa vê (getAuditMeta).
     { path: "/auditoria", component: <AuditoriaPage /> },
     // Bússola Master (R3): a carteira do consultor imobiliário (módulo imoveis).

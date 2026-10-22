@@ -25,8 +25,10 @@ class CarProposalController extends Controller
             return response()->json(['success' => true, 'message' => 'Pedido recebido.', 'data' => null], 201);
         }
         $form = app(ProposalRequest::class); // valida aqui, depois do campo invisível
-        $this->proposals->store($request->input('public_api_company'), $form->validated(), $request);
+        $lead = $this->proposals->store($request->input('public_api_company'), $form->validated(), $request);
+        // Com retoma: o código de envio (24 horas) das fotografias e do DUA, só para esta lead.
+        $upload = $this->proposals->tradeInUpload($lead);
 
-        return response()->json(['success' => true, 'message' => 'Pedido recebido.', 'data' => null], 201);
+        return response()->json(['success' => true, 'message' => 'Pedido recebido.', 'data' => $upload ? ['trade_in_upload' => $upload] : null], 201);
     }
 }

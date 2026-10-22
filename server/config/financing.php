@@ -17,6 +17,10 @@ return [
     'max_file_bytes' => 10 * 1024 * 1024,
     'max_link_bytes' => 100 * 1024 * 1024,
 
+    // Retoma (pedido de proposta): o código de envio vale 24 horas; até 25 ficheiros por retoma.
+    'trade_in_hours' => 24,
+    'trade_in_max_files' => 25,
+
     // Retenção: dias depois do último envio (por empresa, entre o mínimo e o máximo), o aviso
     // aos administradores antes do apagamento e os links nunca usados (dias depois de expirarem).
     'retention_days_default' => 90,
@@ -25,8 +29,8 @@ return [
     'warn_days_before' => 7,
     'unused_link_grace_days' => 30,
 
-    // A versão dos textos do aviso de proteção de dados e do consentimento da cópia do CC.
-    'notice_version' => '2026-10',
+    // A versão dos textos do aviso de proteção de dados e do consentimento da cópia do documento de identificação.
+    'notice_version' => '2026-11',
 
     'require_antivirus' => (bool) env('FINANCING_REQUIRE_ANTIVIRUS', env('APP_ENV', 'production') === 'production'),
     // O ClamAV corre no contentor xplendor-clamav (docker-compose*.yml), só na rede interna.

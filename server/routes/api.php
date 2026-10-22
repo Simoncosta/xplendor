@@ -711,7 +711,27 @@ Route::prefix('v1')->group(function () {
                     Route::delete('/financing-documents/{document}', [$fin, 'destroyDocument'])->whereNumber('document');
                     Route::get('/financing-settings', [$fin, 'settings']);
                     Route::put('/financing-settings', [$fin, 'updateSettings']);
+                    // O pedido com 2 titulares: acrescentar o segundo e apagar o pedido inteiro.
+                    Route::post('/financing-requests/{financingRequest}/second-holder', [$fin, 'secondHolder'])->whereNumber('financingRequest')->middleware('throttle:30,1');
+                    Route::delete('/financing-requests/{financingRequest}', [$fin, 'destroyRequest'])->whereNumber('financingRequest');
                 });
+                // A retoma de uma lead (fotografias, km e observações seguem a lead; o DUA, a área "Financiamento").
+                Route::middleware('ensure_module:commercial_crm')->group(function () {
+                    $tin = \App\Http\Controllers\Api\V1\TradeInController::class;
+                    Route::get('/leads/{lead}/trade-in', [$tin, 'show'])->whereNumber('lead');
+                    Route::post('/leads/{lead}/trade-in/link', [$tin, 'store'])->whereNumber('lead')->middleware('throttle:30,1');
+                    Route::get('/trade-in-links/{link}/url', [$tin, 'url'])->whereNumber('link');
+                    Route::post('/trade-in-links/{link}/revoke', [$tin, 'revoke'])->whereNumber('link');
+                    Route::get('/trade-in-files/{document}/download', [$tin, 'download'])->whereNumber('document')->middleware('throttle:240,1');
+                    Route::delete('/trade-in-files/{document}', [$tin, 'destroy'])->whereNumber('document');
+                });
+                // Avisos (pop-up) do site da empresa.
+                $pop = \App\Http\Controllers\Api\V1\SitePopupController::class;
+                Route::get('/site-popups', [$pop, 'index']);
+                Route::post('/site-popups', [$pop, 'store']);
+                Route::get('/site-popups/{popup}', [$pop, 'show'])->whereNumber('popup');
+                Route::put('/site-popups/{popup}', [$pop, 'update'])->whereNumber('popup');
+                Route::delete('/site-popups/{popup}', [$pop, 'destroy'])->whereNumber('popup');
                 Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index')->middleware(['ensure_module:stock', 'block_when_impersonating']);
                 // Blog: conteúdo (empresa, root e impersonation) e fluxo de aprovação. Aprovar,
                 // devolver e voltar a rascunho: só o admin da própria empresa, fora de impersonation.
@@ -1100,6 +1120,10 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
     // Equipa (secção Equipa dos sites): só colaboradores ativos, autorizados e marcados para o site.
     Route::get('team', [PublicTeamController::class, 'index'])->middleware('throttle:60,1');
 
+    // Avisos (pop-up) do site: a lista ativa (uma chamada por visita) e as contagens anónimas.
+    Route::get('popup', [\App\Http\Controllers\Api\Public\SitePopupPublicController::class, 'index'])->middleware('throttle:popup-read');
+    Route::post('popup/{popup}/event', [\App\Http\Controllers\Api\Public\SitePopupPublicController::class, 'event'])->whereNumber('popup')->middleware('throttle:popup-event');
+
     Route::post('track', [TrackController::class, 'store']);
     Route::post('track/carmine', [TrackController::class, 'storeCarmine']);
 });
@@ -1119,6 +1143,9 @@ Route::middleware(['site_server'])->prefix('public/site/v1')->group(function () 
     });
     Route::post('contacts', [\App\Http\Controllers\Api\Site\SiteInboundController::class, 'contact'])->middleware('throttle:site-contact');
     Route::post('events', [\App\Http\Controllers\Api\Site\SiteInboundController::class, 'events'])->middleware('throttle:site-events');
+    // Avisos (pop-up) do site do consultor: os mesmos da API dos stands.
+    Route::get('popup', [\App\Http\Controllers\Api\Public\SitePopupPublicController::class, 'siteIndex'])->middleware('throttle:site-read');
+    Route::post('popup/{popup}/event', [\App\Http\Controllers\Api\Public\SitePopupPublicController::class, 'siteEvent'])->whereNumber('popup')->middleware('throttle:site-events');
 });
 
 // DMS Pós-venda — relatório público de satisfação. Grupo SEPARADO do
@@ -1179,6 +1206,10 @@ Route::prefix('public/financing')->group(function () {
     Route::get('/', [$c, 'show'])->middleware('throttle:financing-public-read');
     Route::post('/consent', [$c, 'consent'])->middleware('throttle:financing-public-action');
     Route::post('/documents', [$c, 'upload'])->middleware('throttle:financing-public-action');
+    // Os dados do titular, as observações da retoma e o segundo titular.
+    Route::put('/details', [$c, 'details'])->middleware('throttle:financing-public-action');
+    Route::put('/notes', [$c, 'notes'])->middleware('throttle:financing-public-action');
+    Route::post('/second-holder', [$c, 'secondHolder'])->middleware('throttle:financing-public-action');
 });
 
 // Link de aprovação de conteúdos por lote (F3c), sem conta: o token vem no cabeçalho

@@ -7,7 +7,9 @@ namespace App\Services\Financing;
 use App\Models\FileFolder;
 use App\Models\FinancingDocument;
 use App\Models\FinancingLink;
+use App\Models\FinancingRequest;
 use App\Models\StoredFile;
+use App\Services\Files\SystemFolders;
 use App\Services\Leads\LeadRecipients;
 use App\Support\Storage\PrivateFiles;
 use Illuminate\Http\UploadedFile;
@@ -15,44 +17,60 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Os ficheiros dos documentos de financiamento: no disco privado (o local ou o R2, nunca o
- * público) e no catálogo dos Ficheiros, na pasta do sistema "Documentos de financiamento" (uma
- * subpasta por pedido, sem o nome do cliente). Os nomes são limpos e dizem só o documento
- * ("Cartão de Cidadão 1.jpg"): o nome original do ficheiro do cliente não se guarda.
+ * Os ficheiros dos pedidos de documentos: no disco privado (o local ou o R2, nunca o público) e
+ * no catálogo dos Ficheiros, uma subpasta por pedido, sem o nome do cliente:
+ *  · os documentos de financiamento e o DUA da retoma (nome e morada do proprietário) na pasta
+ *    "Documentos de financiamento" (área "financiamento", fechada à agência; source
+ *    "financiamento": descarregam-se só pela rota que regista cada descarga);
+ *  · as fotografias da retoma na pasta "Retomas" (seguem a lead; source "retoma").
+ * Os nomes são limpos e dizem só o documento ("Titular 2 · Recibos de vencimento 1.pdf").
  */
 final class FinancingFiles
 {
     public const SOURCE = 'financiamento';
+    public const SOURCE_TRADE_IN = 'retoma';
     public const ROOT_KEY = 'financiamento';
+    public const TRADE_IN_ROOT_KEY = 'retomas';
 
-    public static function folderFor(FinancingLink $link): FileFolder
+    /** A subpasta do pedido para este item (cria-a, e à de topo, se ainda não existir). */
+    public static function folderFor(FinancingRequest $request, string $item): FileFolder
     {
-        if ($link->folder_id && ($folder = FileFolder::find($link->folder_id))) {
+        $photos = $request->isTradeIn() && ! in_array($item, FinancingDocumentTypes::PERSONAL, true);
+        $column = $photos ? 'photos_folder_id' : 'folder_id';
+        if ($request->{$column} && ($folder = FileFolder::find($request->{$column}))) {
             return $folder;
         }
-        $root = FileFolder::firstOrCreate(['company_id' => $link->company_id, 'system_key' => self::ROOT_KEY],
-            ['name' => \App\Services\Files\SystemFolders::ROOTS[self::ROOT_KEY]['name'], 'parent_id' => null]);
-        $name = mb_substr("Pedido n.º {$link->id} · " . LeadRecipients::carLabel($link->car), 0, 190);
-        $folder = FileFolder::firstOrCreate(['company_id' => $link->company_id, 'system_key' => self::ROOT_KEY . ":link_{$link->id}"],
-            ['name' => $name, 'parent_id' => $root->id]);
-        $link->forceFill(['folder_id' => $folder->id])->save();
+        $rootKey = $photos ? self::TRADE_IN_ROOT_KEY : self::ROOT_KEY;
+        $root = FileFolder::firstOrCreate(['company_id' => $request->company_id, 'system_key' => $rootKey],
+            ['name' => SystemFolders::ROOTS[$rootKey]['name'], 'parent_id' => null]);
+        $car = LeadRecipients::carLabel($request->car);
+        [$key, $name] = match (true) {
+            $photos => ["{$rootKey}:pedido_{$request->id}", "Retoma · pedido n.º {$request->id} · {$car}"],
+            $request->isTradeIn() => ["{$rootKey}:retoma_{$request->id}", "Retoma (DUA) · pedido n.º {$request->id} · {$car}"],
+            default => ["{$rootKey}:pedido_{$request->id}", "Pedido n.º {$request->id} · {$car}"],
+        };
+        $folder = FileFolder::firstOrCreate(['company_id' => $request->company_id, 'system_key' => $key],
+            ['name' => mb_substr($name, 0, 190), 'parent_id' => $root->id]);
+        $request->forceFill([$column => $folder->id])->save();
 
         return $folder;
     }
 
     public static function store(FinancingLink $link, string $item, UploadedFile $upload, string $ext, string $mime): FinancingDocument
     {
-        $folder = self::folderFor($link);
+        $request = $link->request;
+        $folder = self::folderFor($request, $item);
         $n = FinancingDocument::where('financing_link_id', $link->id)->where('kind', $item)->count() + 1;
-        $label = FinancingDocumentTypes::label($item, $item === 'outro' ? ($link->requested['other'] ?? null) : null);
-        $name = \App\Services\Files\FileTypeGuard::cleanName("{$label} {$n}.{$ext}");
+        $prefix = $link->holder === 2 ? 'Titular 2 · ' : '';
+        $name = \App\Services\Files\FileTypeGuard::cleanName($prefix . FinancingDocumentTypes::label($item, $request) . " {$n}.{$ext}");
         $disk = PrivateFiles::disk();
-        $path = "financiamento/company_{$link->company_id}/link_{$link->id}/" . Str::uuid() . ".{$ext}";
+        $path = "financiamento/company_{$link->company_id}/pedido_{$request->id}/link_{$link->id}/" . Str::uuid() . ".{$ext}";
         Storage::disk($disk)->putFileAs(dirname($path), $upload, basename($path));
         $size = (int) $upload->getSize();
+        $source = $request->isTradeIn() && ! in_array($item, FinancingDocumentTypes::PERSONAL, true) ? self::SOURCE_TRADE_IN : self::SOURCE;
         $file = StoredFile::create([
             'company_id' => $link->company_id, 'folder_id' => $folder->id, 'name' => $name, 'extension' => $ext, 'mime' => $mime,
-            'size_bytes' => $size, 'disk' => $disk, 'path' => $path, 'source' => self::SOURCE, 'source_ref' => self::SOURCE . ':' . Str::uuid(),
+            'size_bytes' => $size, 'disk' => $disk, 'path' => $path, 'source' => $source, 'source_ref' => $source . ':' . Str::uuid(),
             'is_system' => true,
         ]);
 
@@ -73,26 +91,42 @@ final class FinancingFiles
         $keepRow ? $doc->forceFill(['stored_file_id' => null])->save() : $doc->delete();
     }
 
-    /** Apaga todos os ficheiros de um pedido e a sua subpasta. */
-    public static function deleteAll(FinancingLink $link): int
+    /** Apaga todos os ficheiros de um link (um titular). */
+    public static function deleteLinkFiles(FinancingLink $link): int
     {
         $n = 0;
         foreach (FinancingDocument::where('financing_link_id', $link->id)->get() as $doc) {
             self::deleteFile($doc);
             $n++;
         }
-        if ($link->folder_id && ($folder = FileFolder::find($link->folder_id))) {
-            StoredFile::where('folder_id', $folder->id)->where('source', self::SOURCE)->get()->each(function (StoredFile $f) {
-                Storage::disk($f->disk)->delete($f->path);
-                $f->delete();
-            });
-            if (! StoredFile::where('folder_id', $folder->id)->exists() && ! FileFolder::where('parent_id', $folder->id)->exists()) {
-                $link->forceFill(['folder_id' => null])->save();
-                $folder->delete();
+        $requestId = $link->financing_request_id ?: 0;
+        Storage::disk(PrivateFiles::disk())->deleteDirectory("financiamento/company_{$link->company_id}/pedido_{$requestId}/link_{$link->id}");
+        // Links criados antes dos pedidos (a pasta antiga do disco).
+        Storage::disk(PrivateFiles::disk())->deleteDirectory("financiamento/company_{$link->company_id}/link_{$link->id}");
+
+        return $n;
+    }
+
+    /** Apaga todos os ficheiros de um pedido (todos os titulares) e as suas subpastas. */
+    public static function deleteAll(FinancingRequest $request): int
+    {
+        $n = 0;
+        foreach (FinancingLink::where('financing_request_id', $request->id)->get() as $link) {
+            $n += self::deleteLinkFiles($link);
+        }
+        foreach (['folder_id', 'photos_folder_id'] as $column) {
+            if ($request->{$column} && ($folder = FileFolder::find($request->{$column}))) {
+                StoredFile::where('folder_id', $folder->id)->whereIn('source', [self::SOURCE, self::SOURCE_TRADE_IN])->get()->each(function (StoredFile $f) {
+                    Storage::disk($f->disk)->delete($f->path);
+                    $f->delete();
+                });
+                if (! StoredFile::where('folder_id', $folder->id)->exists() && ! FileFolder::where('parent_id', $folder->id)->exists()) {
+                    $request->forceFill([$column => null])->save();
+                    $folder->delete();
+                }
             }
         }
-        // No disco local ficava a pasta vazia do pedido (no R2 não há pastas).
-        Storage::disk(PrivateFiles::disk())->deleteDirectory("financiamento/company_{$link->company_id}/link_{$link->id}");
+        Storage::disk(PrivateFiles::disk())->deleteDirectory("financiamento/company_{$request->company_id}/pedido_{$request->id}");
 
         return $n;
     }

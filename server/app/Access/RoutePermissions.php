@@ -604,6 +604,21 @@ final class RoutePermissions
         // Os dias até ao apagamento automático: uma definição da empresa.
         'GET {id}/financing-settings' => 'financiamento.ver',
         'PUT {id}/financing-settings' => 'empresa.editar',
+        'POST {id}/financing-requests/{financingRequest}/second-holder' => 'financiamento.criar',
+        'DELETE {id}/financing-requests/{financingRequest}' => 'financiamento.apagar',
+        // A retoma da lead: as fotografias, os km e as observações seguem a lead (o DUA, a área "Financiamento").
+        'GET {id}/leads/{lead}/trade-in' => 'automovel.ver',
+        'POST {id}/leads/{lead}/trade-in/link' => 'automovel.editar',
+        'GET {id}/trade-in-links/{link}/url' => 'automovel.editar',
+        'POST {id}/trade-in-links/{link}/revoke' => 'automovel.editar',
+        'GET {id}/trade-in-files/{document}/download' => 'automovel.ver',
+        'DELETE {id}/trade-in-files/{document}' => 'automovel.editar',
+        // Avisos (pop-up) do site.
+        'GET {id}/site-popups' => 'avisos_site.ver',
+        'POST {id}/site-popups' => 'avisos_site.criar',
+        'GET {id}/site-popups/{popup}' => 'avisos_site.ver',
+        'PUT {id}/site-popups/{popup}' => 'avisos_site.editar',
+        'DELETE {id}/site-popups/{popup}' => 'avisos_site.apagar',
         'GET {id}/scraper/executions' => 'automovel.ver',
         'GET {id}/scraper/executions/{runId}' => 'automovel.ver',
         'POST {id}/scraper/run' => 'automovel.editar',

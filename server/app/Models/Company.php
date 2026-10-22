@@ -75,6 +75,7 @@ class Company extends Model
     {
         return [
             'trial_starts_at' => 'datetime',
+            'financing_default_items' => 'array',
             'trial_ends_at' => 'datetime',
             'archived_at' => 'datetime',
             'archive_delete_at' => 'datetime',

@@ -66,7 +66,9 @@ class ClamAvIntegrationTest extends TestCase
         \App\Access\CompatibilityMigration::run();
         $car = Car::withoutEvents(fn () => Car::factory()->create(['company_id' => $company->id, 'seller_user_id' => $seller->id]));
         [$token, $hash] = FinancingLink::newToken();
-        FinancingLink::create(['company_id' => $company->id, 'car_id' => $car->id, 'created_by_user_id' => $seller->id, 'customer_name' => 'Cliente Teste',
+        $request = \App\Models\FinancingRequest::create(['company_id' => $company->id, 'car_id' => $car->id, 'created_by_user_id' => $seller->id,
+            'purpose' => 'financiamento', 'items' => ['cc', 'recibos']]);
+        FinancingLink::create(['financing_request_id' => $request->id, 'company_id' => $company->id, 'car_id' => $car->id, 'created_by_user_id' => $seller->id, 'customer_name' => 'Cliente Teste',
             'requested' => ['items' => ['cc', 'recibos'], 'other' => null], 'expires_at' => now()->addDays(7), 'max_files' => 20, 'max_bytes' => 104857600,
             'consented_at' => now(), ...$hash]);
         $send = function (string $kind, string $name, string $bytes) use ($token) {
@@ -88,6 +90,7 @@ class ClamAvIntegrationTest extends TestCase
         $this->assertSame(FinancingDocument::SCAN_INFECTED, $bad->scan_status);
         $this->assertNull($bad->stored_file_id, 'o ficheiro infetado é apagado');
         $this->assertSame(1, StoredFile::where('source', 'financiamento')->count());
-        $this->assertSame('recusado', $infected->json('data.items.0.sent.0.state'));
+        $this->assertSame('recusado', $infected->json('data.state'));
+        $this->assertSame('antivirus', $infected->json('data.reason'));
     }
 }

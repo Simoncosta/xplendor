@@ -283,6 +283,13 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Cache\RateLimiting\Limit::perMinute(20)->by('fa|' . hash('sha256', (string) $r->ip())),
             \Illuminate\Cache\RateLimiting\Limit::perHour(60)->by('ft|' . hash('sha256', (string) $r->header('X-Financing-Token', ''))),
         ]);
+        // Avisos do site (a partir do browser do visitante): a leitura e as contagens, por IP em hash
+        // (nunca guardado) e, nas contagens, um teto por empresa.
+        \Illuminate\Support\Facades\RateLimiter::for('popup-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(120)->by('pr|' . hash('sha256', (string) $r->ip())));
+        \Illuminate\Support\Facades\RateLimiter::for('popup-event', fn (\Illuminate\Http\Request $r) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('pe|' . hash('sha256', (string) $r->ip())),
+            \Illuminate\Cache\RateLimiting\Limit::perHour(20000)->by('pt|' . hash('sha256', (string) $r->query('token', ''))),
+        ]);
         \Illuminate\Support\Facades\RateLimiter::for('review-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('rr|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('review-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('ro|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('review-public-action', fn (\Illuminate\Http\Request $r) => [

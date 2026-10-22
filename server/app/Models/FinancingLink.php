@@ -29,13 +29,29 @@ class FinancingLink extends Model
         'company_id', 'car_id', 'car_lead_id', 'created_by_user_id', 'customer_name', 'requested', 'token_hash', 'token_encrypted',
         'expires_at', 'revoked_at', 'revoked_by_user_id', 'max_files', 'max_bytes', 'folder_id', 'consented_at', 'last_upload_at',
         'last_notified_at', 'purge_warned_at', 'purged_at',
+        // Titulares (financiamento): o pedido, o número do titular, a relação do segundo e os dados preenchidos.
+        'financing_request_id', 'holder', 'relationship', 'relationship_other', 'phone', 'email', 'housing', 'housing_other', 'housing_monthly_eur', 'details_at',
     ];
+
+    public const RELATIONSHIPS = [
+        'conjuge' => 'Cônjuge', 'unido_facto' => 'Unido de facto', 'pai_mae' => 'Pai ou mãe', 'filho_filha' => 'Filho ou filha',
+        'irmao_irma' => 'Irmão ou irmã', 'outro' => 'Outro',
+    ];
+
+    public const HOUSING = [
+        'arrendada' => 'Arrendada', 'propria_credito' => 'Própria, com crédito à habitação', 'propria_sem_credito' => 'Própria, sem crédito',
+        'outra' => 'Outra',
+    ];
+
+    /** Habitações em que se pede o valor mensal (a renda ou a prestação). */
+    public const HOUSING_WITH_AMOUNT = ['arrendada', 'propria_credito'];
 
     protected $hidden = ['token_hash', 'token_encrypted'];
 
     protected $casts = [
         'requested' => 'array', 'expires_at' => 'datetime', 'revoked_at' => 'datetime', 'consented_at' => 'datetime', 'last_upload_at' => 'datetime',
         'last_notified_at' => 'datetime', 'purge_warned_at' => 'datetime', 'purged_at' => 'datetime', 'max_files' => 'integer', 'max_bytes' => 'integer',
+        'holder' => 'integer', 'housing_monthly_eur' => 'decimal:2', 'details_at' => 'datetime',
     ];
 
     public static function hashToken(string $token): string
@@ -83,6 +99,20 @@ class FinancingLink extends Model
     public function isOpen(): bool
     {
         return $this->state() === self::ACTIVE;
+    }
+
+    public function request(): BelongsTo
+    {
+        return $this->belongsTo(FinancingRequest::class, 'financing_request_id');
+    }
+
+    public function relationshipLabel(): ?string
+    {
+        if (! $this->relationship) {
+            return null;
+        }
+
+        return $this->relationship === 'outro' && $this->relationship_other ? $this->relationship_other : (self::RELATIONSHIPS[$this->relationship] ?? $this->relationship);
     }
 
     public function company(): BelongsTo

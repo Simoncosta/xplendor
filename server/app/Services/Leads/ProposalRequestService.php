@@ -23,7 +23,35 @@ use Illuminate\Support\Facades\Mail;
  */
 class ProposalRequestService
 {
-    public function __construct(private readonly AlertService $alerts, private readonly AttributionService $attribution) {}
+    public function __construct(
+        private readonly AlertService $alerts,
+        private readonly AttributionService $attribution,
+        private readonly \App\Services\Financing\FinancingLinkService $financing,
+    ) {}
+
+    /**
+     * Com retoma: o código de envio das fotografias e do DUA (24 horas, só desta lead) e o endereço
+     * da página de envio. O mesmo pedido repetido (event_id) devolve o mesmo código enquanto valer.
+     * Sem antivírus ativo em produção, não há código (o envio não seria aceite).
+     *
+     * @return array{token: string, expires_at: string, url: string}|null
+     */
+    public function tradeInUpload(CarLead $lead): ?array
+    {
+        if (empty($lead->trade_in)) {
+            return null;
+        }
+        $link = \App\Models\FinancingLink::whereHas('request', fn ($q) => $q->where('purpose', \App\Models\FinancingRequest::TRADE_IN)->whereNull('created_by_user_id'))
+            ->where('car_lead_id', $lead->id)->orderByDesc('id')->get()->first(fn ($l) => $l->isOpen());
+        if (! $link) {
+            if (($lead->created_at && $lead->created_at->lt(now()->subMinutes(5))) || $this->financing->antivirusBlocks()) {
+                return null; // só no envio do pedido (ou na repetição logo a seguir)
+            }
+            $link = $this->financing->createTradeIn($lead, null, now()->addHours((int) config('financing.trade_in_hours')))->links()->first();
+        }
+
+        return ['token' => $link->token(), 'expires_at' => $link->expires_at->toIso8601String(), 'url' => $link->url()];
+    }
 
     /** @param array<string, mixed> $data já validado */
     public function store(Company $company, array $data, Request $request): CarLead

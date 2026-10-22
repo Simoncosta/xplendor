@@ -1010,7 +1010,26 @@ export const revokeFinancingLink = (companyId: number, linkId: number) => api.cr
 export const deleteFinancingLink = (companyId: number, linkId: number) => api.delete(finBase(companyId) + `/financing-links/${linkId}`);
 export const getFinancingDocumentDownload = (companyId: number, documentId: number) => api.get(finBase(companyId) + `/financing-documents/${documentId}/download`);
 export const deleteFinancingDocument = (companyId: number, documentId: number) => api.delete(finBase(companyId) + `/financing-documents/${documentId}`);
-export const updateFinancingSettings = (companyId: number, retentionDays: number) => api.put(finBase(companyId) + `/financing-settings`, { retention_days: retentionDays });
+export const updateFinancingSettings = (companyId: number, retentionDays: number, defaultItems?: string[]) =>
+    api.put(finBase(companyId) + `/financing-settings`, defaultItems ? { retention_days: retentionDays, default_items: defaultItems } : { retention_days: retentionDays });
+// Pedido com 2 titulares: acrescentar o segundo e apagar o pedido inteiro.
+export const addFinancingSecondHolder = (companyId: number, requestId: number, data: { customer_name?: string; relationship?: string; relationship_other?: string }) =>
+    api.create(finBase(companyId) + `/financing-requests/${requestId}/second-holder`, data);
+export const deleteFinancingRequest = (companyId: number, requestId: number) => api.delete(finBase(companyId) + `/financing-requests/${requestId}`);
+// RETOMA (pedido de proposta): fotografias e DUA da lead.
+export const getLeadTradeIn = (companyId: number, leadId: number) => api.get(finBase(companyId) + `/leads/${leadId}/trade-in`);
+export const createLeadTradeInLink = (companyId: number, leadId: number, days?: number) => api.create(finBase(companyId) + `/leads/${leadId}/trade-in/link`, days ? { days } : {});
+export const getTradeInLinkUrl = (companyId: number, linkId: number) => api.get(finBase(companyId) + `/trade-in-links/${linkId}/url`);
+export const revokeTradeInLink = (companyId: number, linkId: number) => api.create(finBase(companyId) + `/trade-in-links/${linkId}/revoke`, {});
+export const getTradeInFileDownload = (companyId: number, documentId: number) => api.get(finBase(companyId) + `/trade-in-files/${documentId}/download`);
+export const deleteTradeInFile = (companyId: number, documentId: number) => api.delete(finBase(companyId) + `/trade-in-files/${documentId}`);
+// AVISOS DO SITE (pop-up).
+export const getSitePopups = (companyId: number) => api.get(finBase(companyId) + `/site-popups`);
+export const getSitePopup = (companyId: number, popupId: number) => api.get(finBase(companyId) + `/site-popups/${popupId}`);
+// Em JSON (o POST do painel vai como formulário por omissão, e os booleanos e os nulos não passariam).
+export const createSitePopup = (companyId: number, data: any) => api.create(finBase(companyId) + `/site-popups`, data, { headers: { "Content-Type": "application/json" } });
+export const updateSitePopup = (companyId: number, popupId: number, data: any) => api.put(finBase(companyId) + `/site-popups/${popupId}`, data);
+export const deleteSitePopup = (companyId: number, popupId: number) => api.delete(finBase(companyId) + `/site-popups/${popupId}`);
 
 // CARS
 export const getCarsPaginate = (

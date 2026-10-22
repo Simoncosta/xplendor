@@ -65,6 +65,8 @@ final class Permissions
         // Publicar ou retirar o site (aprovar) é uma decisão do cliente (D1).
         'site_consultor' => ['label' => 'Site do consultor', 'module' => 'site_consultor', 'actions' => ['ver', 'editar', 'aprovar']],
         'contactos' => ['label' => 'Contactos recebidos', 'module' => ['site_consultor'], 'actions' => ['ver', 'editar', 'apagar']],
+        // Avisos (pop-up) nos sites dos clientes: os stands (stock) e os sites dos consultores.
+        'avisos_site' => ['label' => 'Avisos do site', 'module' => ['stock', 'site_consultor'], 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'agencia' => ['label' => 'Agência gestora', 'module' => null, 'actions' => ['configurar']],
         'plataforma' => ['label' => 'Plataforma', 'module' => null, 'actions' => ['configurar']],
     ];

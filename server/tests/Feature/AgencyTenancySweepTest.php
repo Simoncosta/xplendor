@@ -165,6 +165,13 @@ class AgencyTenancySweepTest extends TestCase
         'DELETE api/v1/companies/{id}/financing-documents/{document}',
         'GET api/v1/companies/{id}/financing-settings',
         'PUT api/v1/companies/{id}/financing-settings',
+        'POST api/v1/companies/{id}/financing-requests/{financingRequest}/second-holder',
+        'DELETE api/v1/companies/{id}/financing-requests/{financingRequest}',
+    ];
+
+    /** Avisos do site: a agência vê, cria e edita, mas não apaga (decisão do cliente). */
+    private const POPUPS_ABOVE_CEILING = [
+        'DELETE api/v1/companies/{id}/site-popups/{popup}',
     ];
 
     /** Só o root (a agência recebe sempre 403, mesmo os administradores). */
@@ -339,12 +346,12 @@ class AgencyTenancySweepTest extends TestCase
 
     public function test_agency_member_with_an_active_relation_works_everywhere_except_client_decisions_and_integrations(): void
     {
-        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING, ...self::SITE_ABOVE_CEILING, ...self::FINANCING_ABOVE_CEILING]);
+        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING, ...self::SITE_ABOVE_CEILING, ...self::FINANCING_ABOVE_CEILING, ...self::POPUPS_ABOVE_CEILING]);
     }
 
     public function test_agency_admin_with_an_active_relation_also_connects_integrations_but_never_decides_for_the_client(): void
     {
-        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING, ...self::SITE_ABOVE_CEILING, ...self::FINANCING_ABOVE_CEILING]);
+        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING, ...self::IMOVEIS_ABOVE_CEILING, ...self::SITE_ABOVE_CEILING, ...self::FINANCING_ABOVE_CEILING, ...self::POPUPS_ABOVE_CEILING]);
     }
 
     /** Com relação ativa: 403 exatamente nas rotas indicadas e em nenhuma outra. */

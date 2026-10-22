@@ -52,7 +52,7 @@ class ScanFinancingDocumentJob implements ShouldQueue
 
     public function handle(VirusScanner $scanner, AlertService $alerts): void
     {
-        $doc = FinancingDocument::with('storedFile', 'link.car')->find($this->documentId);
+        $doc = FinancingDocument::with('storedFile', 'link.car', 'link.request.car')->find($this->documentId);
         if (! $doc || $doc->scan_status !== FinancingDocument::SCAN_PENDING || ! $doc->storedFile) {
             return;
         }
@@ -93,13 +93,15 @@ class ScanFinancingDocumentJob implements ShouldQueue
     private function notifySeller(FinancingDocument $doc, AlertService $alerts): void
     {
         $link = $doc->link;
-        $car = $link?->car;
+        $request = $link?->request;
+        $car = $request?->car ?? $link?->car;
         $title = 'Documento recusado pelo antivírus';
-        $lines = ['Um ficheiro enviado para ' . LeadRecipients::carLabel($car) . " (pedido n.º {$doc->financing_link_id}) foi recusado pelo antivírus e apagado.",
+        $lines = ['Um ficheiro enviado para ' . LeadRecipients::carLabel($car) . ' (pedido n.º ' . ($request?->id ?? $doc->financing_link_id) . ') foi recusado pelo antivírus e apagado.',
             'Peça ao cliente que o envie de novo (de preferência uma fotografia ou um PDF tirado diretamente do original).'];
-        $path = $car ? "/cars/{$car->id}/ficha" : '/ficheiros';
+        $path = $request?->isTradeIn() && $request->car_lead_id ? "/leads?id={$request->car_lead_id}" : ($car ? "/cars/{$car->id}/ficha" : '/ficheiros');
         $alerts->createSystemAlert((int) $doc->company_id, 'warning', $title, implode(' ', $lines), 'high', $path, ownOnly: true);
-        $creator = $link?->created_by_user_id ? User::where('id', $link->created_by_user_id)->where('company_id', $doc->company_id)
+        $creatorId = $request?->created_by_user_id ?? $link?->created_by_user_id;
+        $creator = $creatorId ? User::where('id', $creatorId)->where('company_id', $doc->company_id)
             ->whereNull('deactivated_at')->whereNotNull('email')->first() : null;
         $people = $creator ? collect([$creator]) : ($car ? LeadRecipients::sellerOrAdmins($car) : LeadRecipients::admins((int) $doc->company_id));
         $url = rtrim((string) config('app.frontend_url'), '/') . $path;

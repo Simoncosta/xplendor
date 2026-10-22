@@ -81,6 +81,15 @@ final class CompatibilityProfiles
         ],
         // Os documentos para financiamento (Cartão de Cidadão, recibos, IRS): o Administrador tudo;
         // o utilizador (o vendedor) vê e cria os links; nunca a agência.
+        // Avisos do site (conteúdo de marketing, sem dados pessoais): o utilizador e a agência
+        // ver, criar e editar; apagar é do Administrador.
+        'avisos_site' => [
+            self::CLIENT_ADMIN => ['ver', 'criar', 'editar', 'apagar'],
+            self::CLIENT_USER => ['ver', 'criar', 'editar'],
+            self::AGENCY_ADMIN => ['ver', 'criar', 'editar'],
+            self::AGENCY_MEMBER => ['ver', 'criar', 'editar'],
+            self::CEILING => ['ver', 'criar', 'editar'],
+        ],
         'financiamento' => [
             self::CLIENT_ADMIN => ['ver', 'criar', 'apagar'],
             self::CLIENT_USER => ['ver', 'criar'],

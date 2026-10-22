@@ -206,6 +206,8 @@ const Navdata = () => {
                 { id: "linha-editorial", label: "Linha Editorial", link: "/editorial", parentId: "analytics", module: "linha_editorial", permission: "editorial.ver" },
                 // Bússola comum: com o PingWin (restauração) ou com o stock (stand), pelos módulos da empresa.
                 { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", anyModule: ["pingwin", "stock", "radar", "imoveis"], permission: "bussola.ver" },
+                // Avisos (pop-up) nos sites dos clientes: stands e sites dos consultores.
+                { id: "avisos-site", label: "Avisos do site", link: "/avisos-site", parentId: "analytics", anyModule: ["stock", "site_consultor"], permission: "avisos_site.ver" },
                 // O calendário de faturação (vendas, reservas e feriados): só no ramo da restauração.
                 { id: "pingwin-calendario", label: "Calendário de Faturação", link: "/marketing/calendario-faturacao", parentId: "analytics", module: "restauracao_calendario", permission: "restauracao.ver", branch: "restauracao" },
             ],

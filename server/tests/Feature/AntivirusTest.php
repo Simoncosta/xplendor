@@ -63,7 +63,9 @@ class AntivirusTest extends TestCase
         $this->scanner = new TestScanner();
         $this->app->instance(VirusScanner::class, $this->scanner);
         [, $hash] = FinancingLink::newToken();
-        $this->link = FinancingLink::create(['company_id' => $this->company->id, 'car_id' => $car->id, 'created_by_user_id' => $this->seller->id,
+        $request = \App\Models\FinancingRequest::create(['company_id' => $this->company->id, 'car_id' => $car->id, 'created_by_user_id' => $this->seller->id,
+            'purpose' => 'financiamento', 'items' => ['cc']]);
+        $this->link = FinancingLink::create(['financing_request_id' => $request->id, 'company_id' => $this->company->id, 'car_id' => $car->id, 'created_by_user_id' => $this->seller->id,
             'customer_name' => 'Cliente Teste', 'requested' => ['items' => ['cc'], 'other' => null], 'expires_at' => now()->addDays(7),
             'max_files' => 20, 'max_bytes' => 100 * 1024 * 1024, 'consented_at' => now(), ...$hash]);
     }
@@ -174,7 +176,8 @@ class AntivirusTest extends TestCase
         file_put_contents($path, "%PDF-1.4\n%%EOF\n");
         $res = $this->withHeaders(['X-Financing-Token' => $token, 'Accept' => 'application/json'])
             ->post('/api/public/financing/documents', ['kind' => 'cc', 'file' => new UploadedFile($path, 'cc.pdf', null, null, true)])->assertCreated();
-        $this->assertSame('em_analise', $res->json('data.items.0.sent.0.state'));
+        $this->assertSame('em_analise', $res->json('data.state'));
+        $this->assertIsInt($res->json('data.id'));
         Queue::assertPushed(ScanFinancingDocumentJob::class);
         $this->assertFalse(FinancingDocument::sole()->downloadable());
     }

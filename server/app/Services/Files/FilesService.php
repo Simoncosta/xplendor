@@ -538,11 +538,11 @@ class FilesService
         return $candidate;
     }
 
-    /** Os documentos de financiamento (dados pessoais) ficam só na sua pasta: sem atalhos nem Linha Editorial. */
+    /** Os documentos de financiamento e as fotografias das retomas (dos clientes) ficam só na sua pasta: sem atalhos nem Linha Editorial. */
     private function assertNotFinancing(StoredFile $file): void
     {
-        if ($file->source === \App\Services\Financing\FinancingFiles::SOURCE) {
-            throw ValidationException::withMessages(['file' => ['Os documentos de financiamento ficam só na sua pasta.']]);
+        if (in_array($file->source, [\App\Services\Financing\FinancingFiles::SOURCE, \App\Services\Financing\FinancingFiles::SOURCE_TRADE_IN], true)) {
+            throw ValidationException::withMessages(['file' => ['Os documentos de financiamento e as fotografias das retomas ficam só na sua pasta.']]);
         }
     }
 

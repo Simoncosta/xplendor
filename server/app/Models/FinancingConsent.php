@@ -19,7 +19,7 @@ class FinancingConsent extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['financing_link_id', 'kind', 'text', 'version', 'accepted_at'];
+    protected $fillable = ['financing_link_id', 'kind', 'text', 'version', 'accepted_at', 'signed_name'];
 
     protected $casts = ['accepted_at' => 'datetime'];
 

@@ -33,6 +33,9 @@ final class SystemFolders
         // Envio seguro de documentos para financiamento (dados pessoais dos clientes): uma subpasta
         // por pedido; descarregam-se só pela rota que regista cada descarga (nunca por endereço direto).
         'financiamento' => ['name' => 'Documentos de financiamento', 'module' => 'stock', 'permissions' => ['financiamento.ver'], 'no_agency' => true],
+        // As fotografias das retomas (pedido de proposta): seguem a lead. O DUA (dados pessoais do
+        // proprietário) fica na pasta dos documentos de financiamento.
+        'retomas' => ['name' => 'Retomas (fotografias)', 'module' => 'commercial_crm', 'permissions' => ['automovel.ver'], 'no_agency' => false],
     ];
 
     /** A pasta de topo de uma chave ("editorial:2026-10" → "editorial"). */

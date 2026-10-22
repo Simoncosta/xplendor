@@ -53,12 +53,14 @@ final class ProfileSuggestions
             // integrações nem o back-office da restauração.
             self::READ_ONLY => [PermissionProfile::SIDE_CLIENT, 'Só leitura', 'Consulta, sem alterar nada. Não vê as finanças, a faturação, a equipa, as integrações nem o back-office da restauração.', false, [
                 'empresa.ver', 'editorial.ver', 'blog.ver', 'marca.ver', 'bussola.ver', 'resultados.ver', 'suporte.ver', 'tarefas.ver', 'ficheiros.ver',
+                'avisos_site.ver',
             ]],
             // D14: o caso de uma agência dentro de uma empresa cliente (utilizadores da própria empresa).
             self::GUEST_AGENCY => [PermissionProfile::SIDE_CLIENT, 'Agência convidada', 'Para uma agência que trabalha com a empresa: produz na Linha Editorial e na Bússola e vê os resultados, sem aprovar.', false, [
                 'editorial.ver', 'editorial.criar', 'editorial.editar', 'editorial.apagar', 'bussola.ver', 'bussola.criar', 'bussola.editar', 'resultados.ver',
                 'ficheiros.ver', 'ficheiros.criar', 'ficheiros.editar', 'imoveis.ver', 'imoveis.criar', 'imoveis.editar',
                 'site_consultor.ver', 'site_consultor.editar',
+                'avisos_site.ver', 'avisos_site.criar', 'avisos_site.editar',
             ]],
             self::AGENCY_ADMIN => [PermissionProfile::SIDE_AGENCY, 'Administrador da agência', 'Trabalha em todos os clientes, dentro do que cada cliente permite.', false, $everything],
             self::AGENCY_MANAGER => [PermissionProfile::SIDE_AGENCY, 'Gestor de clientes', 'Produz conteúdos, trata da marca e da Bússola e vê os resultados dos clientes que gere.', false, [

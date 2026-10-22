@@ -34,3 +34,10 @@
 .fu-ok { color: var(--fu-ok); margin: 6px 0 0; font-size: .9rem; }
 .fu-error { color: var(--fu-error); margin: 6px 0 0; font-size: .9rem; }
 .fu-footer { border-top: 1px solid var(--fu-line); margin-top: 16px; padding-top: 12px; }
+.fu-banner { background: #fef3c7; color: #92400e; border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; font-weight: 600; }
+@media (prefers-color-scheme: dark) { .fu-banner { background: #451a03; color: #fde68a; } }
+.fu-field { display: flex; flex-direction: column; gap: 4px; margin: 10px 0; font-size: .95rem; }
+.fu-field input, .fu-field select, .fu-textarea { min-height: 44px; border: 1px solid var(--fu-line); border-radius: 8px; padding: 8px 10px; font-size: 1rem; background: var(--fu-card); color: var(--fu-text); }
+.fu-textarea { width: 100%; box-sizing: border-box; font-family: inherit; }
+.fu-copy { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fu-copy input { flex: 1; min-width: 0; min-height: 44px; border: 1px solid var(--fu-line); border-radius: 8px; padding: 8px 10px; background: var(--fu-card); color: var(--fu-text); }

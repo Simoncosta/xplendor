@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Modal, ModalHeader, ModalBody, ModalFooter, Input, Label, Badge, Spinner } from "reactstrap";
 import { ILead, LEAD_STATUS_META, leadOrigin, lossReasonLabel } from "common/models/lead.model";
 import FinancingDocumentsCard from "pages/Cars/Car/components/FinancingDocumentsCard";
+import TradeInCard from "./TradeInCard";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
@@ -79,6 +80,8 @@ const LeadDetailModal: React.FC<Props> = ({ lead, saving = false, onSaveNotes, o
                     <Label className="form-label text-uppercase fs-12">Notas internas</Label>
                     <Input type="textarea" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas sobre esta lead…" />
                 </div>
+
+                {lead.trade_in && getWorkingCompanyId() ? <TradeInCard companyId={Number(getWorkingCompanyId())} leadId={lead.id} /> : null}
 
                 {lead.car_id && getWorkingCompanyId() ? (
                     <FinancingDocumentsCard companyId={Number(getWorkingCompanyId())} leadId={lead.id} embedded />
