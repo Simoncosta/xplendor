@@ -212,7 +212,7 @@ function Star({ filled }: { filled: boolean }) {
     );
 }
 
-/* Widget "A sua avaliação" — estrelas + comentário + ramo ≥4/<4 (Incremento 3). */
+/* Widget "A sua avaliação" — estrelas + comentário + mensagem por nota (≥4/<4) e botão do Google para todos (Incremento 3). */
 function RatingWidget({ token, companyName, googleReviewUrl, initial }: {
     token?: string;
     companyName: string;
@@ -295,14 +295,15 @@ function RatingWidget({ token, companyName, googleReviewUrl, initial }: {
                                 </button>
                             </div>
                         )}
-                        {googleReviewUrl && (
-                            <a className="xsr-btn-primary" href={googleReviewUrl} target="_blank" rel="noopener noreferrer">
-                                Ir para o Google
-                            </a>
-                        )}
                     </>
                 ) : (
                     <p className="xsr-rate-thanks">Obrigado pelo seu feedback. Vamos usá-lo para melhorar{companyName ? ` na ${companyName}` : ""}. 🙏</p>
+                )}
+                {/* O botão aparece a todos, qualquer que seja a nota: a Google proíbe pedir avaliações só a quem está satisfeito. */}
+                {googleReviewUrl && (
+                    <a className="xsr-btn-primary" href={googleReviewUrl} target="_blank" rel="noopener noreferrer">
+                        Ir para o Google
+                    </a>
                 )}
             </section>
         );
