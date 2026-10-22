@@ -3,3 +3,5 @@ docker/scraper/scraper.log
 docker/**/*.log
 # Dados locais do Redis (dev): o contentor escreve aqui; nunca no git.
 docker/redis/db/dump.rdb
+# Permissões locais do Claude Code: são de cada máquina e podem ter credenciais; nunca no git.
+.claude/settings.local.json
