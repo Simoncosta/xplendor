@@ -188,8 +188,29 @@
     display: none !important;
   }
 
-  .menu-dropdown.xp-flyout-up {
+  // Para cima, o painel fica por cima do rótulo: os cantos redondos e a sombra de baixo (do :hover do
+  // Velzon) caíam sobre a linha do rótulo e viam-se como uma marca entre os dois. O rótulo passa à
+  // frente do painel (tapa essa sombra) e leva ele a sombra de baixo, para ficar um bloco único, como
+  // quando abre para baixo.
+  .nav-item:is(:hover, .xp-flyout-open) > .menu-dropdown.xp-flyout-up {
     border-radius: 3px 3px 0 0;
+  }
+
+  .nav-item:is(:hover, .xp-flyout-open):has(> .menu-dropdown.xp-flyout-up) > a.menu-link {
+    z-index: 1;
+
+    &::before {
+      content: "";
+      display: block;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: var(--#{$prefix}vertical-menu-width-sm);
+      border-radius: 0 0 3px 0;
+      box-shadow: 0 3px 4px -1px rgba(15, 34, 58, 0.12); // a sombra do painel, sem passar para cima
+      pointer-events: none;
+    }
   }
 
   .menu-dropdown.xp-flyout-scroll {
