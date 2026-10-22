@@ -54,7 +54,7 @@ class FinancingRetention
             $n = count($w['requests']);
             $cars = collect($w['requests'])->pluck('car_id')->filter()->unique();
             $path = $cars->count() === 1 ? "/cars/{$cars->first()}/ficha" : '/ficheiros';
-            $this->notifier->companyAdmins($company, 'Documentos para financiamento a apagar', [
+            $this->notifier->automatic()->companyAdmins($company, 'Documentos para financiamento a apagar', [
                 ($n === 1 ? 'Um pedido de documentos (financiamento ou retoma) vai ser apagado' : "{$n} pedidos de documentos (financiamento ou retoma) vão ser apagados")
                     . ' automaticamente a partir de ' . $w['first']->format('d/m/Y') . '.',
                 'O prazo conta-se do último envio (' . RetentionDays::for($company) . ' dias). Se ainda precisar dos documentos, descarregue-os antes.',

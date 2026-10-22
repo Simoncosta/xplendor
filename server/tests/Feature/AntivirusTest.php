@@ -125,6 +125,7 @@ class AntivirusTest extends TestCase
 
     public function test_an_infected_file_notifies_the_seller_by_email_and_bell(): void
     {
+        config(['scheduler.external_jobs' => true]);
         $doc = $this->pendingDocument();
         $this->scanner->mode = 'infected';
         (new ScanFinancingDocumentJob($doc->id))->handle($this->scanner, app(\App\Services\AlertService::class));
@@ -133,8 +134,27 @@ class AntivirusTest extends TestCase
         Mail::assertQueued(AgencyNoticeMail::class, fn (AgencyNoticeMail $m) => $m->hasTo('vendedor@exemplo.pt') && ! str_contains(implode(' ', $m->lines), 'Cliente Teste'));
     }
 
+    public function test_with_external_calls_off_the_notices_stay_in_the_bell_without_email(): void
+    {
+        config(['scheduler.external_jobs' => false]);
+        $doc = $this->pendingDocument();
+        $this->scanner->mode = 'infected';
+        (new ScanFinancingDocumentJob($doc->id))->handle($this->scanner, app(\App\Services\AlertService::class));
+        $this->assertSame(1, Alert::where('title', 'Documento recusado pelo antivírus')->count());
+
+        $this->pendingDocument();
+        $this->scanner->mode = 'down';
+        $health = app(AntivirusHealth::class);
+        $health->watch();
+        $this->travel(16)->minutes();
+        $this->assertTrue($health->watch()['alerted']);
+        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
+    }
+
     public function test_the_root_is_warned_once_after_15_minutes_down_and_when_it_comes_back(): void
     {
+        config(['scheduler.external_jobs' => true]);
         $this->pendingDocument();
         $this->scanner->mode = 'down';
         $health = app(AntivirusHealth::class);

@@ -42,18 +42,20 @@ class SetupLinkNotifier
         $this->send($link, "O cliente não concluiu a ligação ao Facebook: {$this->name($company)}", [
             "O cliente de {$this->name($company)} começou o passo \"" . CompanySetupLink::STEPS[$step] . '" há mais de 30 minutos e não o concluiu.',
             'Pode ter ficado num erro da Meta dentro do Facebook (por exemplo, enquanto a app não estiver aprovada só as contas de teste conseguem ligar). Fale com o cliente ou envie de novo o link.',
-        ], 'warning');
+        ], 'warning', automatic: true);
     }
 
-    private function send(CompanySetupLink $link, string $title, array $lines, string $type): void
+    /** $automatic: aviso do agendador (passo parado), com o email sujeito à guarda ExternalCalls. */
+    private function send(CompanySetupLink $link, string $title, array $lines, string $type, bool $automatic = false): void
     {
         $company = $link->company;
         $path = '/companies/' . $company->id . '?tab=integrations';
+        $notify = $automatic ? $this->notify->automatic() : $this->notify;
         $management = CompanyManagement::active()->where('managed_company_id', $company->id)->with('agency')->first();
         if ($management?->agency) {
-            $this->notify->agency($management->agency, $title, $lines, $path, $type);
+            $notify->agency($management->agency, $title, $lines, $path, $type);
         } else {
-            $this->notify->companyAdmins($company, $title, $lines, $path, $type);
+            $notify->companyAdmins($company, $title, $lines, $path, $type);
         }
     }
 

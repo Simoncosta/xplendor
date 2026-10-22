@@ -63,7 +63,7 @@ class CompanyArchiveService
             if ($company->archive_warned_at === null && $company->archive_delete_at && $company->archive_delete_at->lte(now()->addDays(self::WARN_DAYS_BEFORE))) {
                 if ($to = self::contactEmail($company)) {
                     $name = AgencyNotifier::name($company);
-                    $this->notify->email($to, "A empresa {$name} vai ser apagada da XPLENDOR", [
+                    $this->notify->automatic()->email($to, "A empresa {$name} vai ser apagada da XPLENDOR", [
                         "A empresa {$name} está arquivada desde " . $company->archived_at->format('d/m/Y') . ', sem administrador nem agência.',
                         'A empresa e os dados dela são apagados a ' . $company->archive_delete_at->format('d/m/Y') . '.',
                         'Para a manter, contacte a XPLENDOR (ou uma agência) antes dessa data.',

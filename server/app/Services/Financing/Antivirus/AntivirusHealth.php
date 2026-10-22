@@ -54,7 +54,7 @@ class AntivirusHealth
             if ($since && now()->getTimestamp() - $since >= self::ALERT_AFTER_MINUTES * 60 && Cache::add(self::ALERTED, 1, now()->addDays(30))) {
                 $waiting = FinancingDocument::where('scan_status', FinancingDocument::SCAN_PENDING)->count();
                 Log::warning('[Antivírus] Indisponível há mais de 15 minutos', ['desde' => date('c', $since), 'em_analise' => $waiting]);
-                $this->notifier->roots('Antivírus indisponível', [
+                $this->notifier->automatic()->roots('Antivírus indisponível', [
                     'O antivírus (ClamAV) dos documentos de financiamento não responde desde ' . now()->setTimestamp($since)->timezone('Europe/Lisbon')->format('d/m/Y H:i') . '.',
                     "Documentos à espera de análise: {$waiting}. Nada se perde: ficam em análise e não se descarregam até o antivírus voltar.",
                     'Verifique o contentor xplendor-clamav (docker ps; docker logs xplendor-clamav) e corra php artisan antivirus:check.',
@@ -69,7 +69,7 @@ class AntivirusHealth
         $wasDown = self::downSince() !== null;
         self::markUp();
         if ($wasDown && Cache::pull(self::ALERTED)) {
-            $this->notifier->roots('Antivírus disponível de novo', ['O antivírus (ClamAV) dos documentos de financiamento voltou a responder. As análises em espera seguem na fila.'], '/admin/espaco');
+            $this->notifier->automatic()->roots('Antivírus disponível de novo', ['O antivírus (ClamAV) dos documentos de financiamento voltou a responder. As análises em espera seguem na fila.'], '/admin/espaco');
             $out['recovered'] = true;
         }
         $out['requeued'] = $this->requeue();

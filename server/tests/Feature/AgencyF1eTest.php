@@ -104,6 +104,7 @@ class AgencyF1eTest extends TestCase
 
         // Resumo por email: os admins da agência e o email de avisos dela, nunca CONTENT_REVIEW_TEAM_EMAILS.
         $this->assertEqualsCanonicalizing(['ana@norte.pt', 'avisos@norte.pt'], ContentReviewNotifier::recipients($this->client->id, null));
+        config(['scheduler.external_jobs' => true]); // o resumo é um email automático (guarda ExternalCalls)
         (new ContentReviewDigestJob())->handle();
         Mail::assertSent(ContentReviewDigestMail::class, fn ($m) => $m->hasTo('ana@norte.pt'));
         Mail::assertSent(ContentReviewDigestMail::class, fn ($m) => $m->hasTo('avisos@norte.pt'));

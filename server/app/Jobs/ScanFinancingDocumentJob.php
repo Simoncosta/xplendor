@@ -13,6 +13,7 @@ use App\Services\Financing\Antivirus\ClamdUnavailable;
 use App\Services\Financing\Antivirus\VirusScanner;
 use App\Services\Financing\FinancingFiles;
 use App\Services\Leads\LeadRecipients;
+use App\Support\ExternalCalls;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -100,6 +101,9 @@ class ScanFinancingDocumentJob implements ShouldQueue
             'Peça ao cliente que o envie de novo (de preferência uma fotografia ou um PDF tirado diretamente do original).'];
         $path = $request?->isTradeIn() && $request->car_lead_id ? "/leads?id={$request->car_lead_id}" : ($car ? "/cars/{$car->id}/ficha" : '/ficheiros');
         $alerts->createSystemAlert((int) $doc->company_id, 'warning', $title, implode(' ', $lines), 'high', $path, ownOnly: true);
+        if (! ExternalCalls::allowed((int) $doc->company_id)) {
+            return;
+        }
         $creatorId = $request?->created_by_user_id ?? $link?->created_by_user_id;
         $creator = $creatorId ? User::where('id', $creatorId)->where('company_id', $doc->company_id)
             ->whereNull('deactivated_at')->whereNotNull('email')->first() : null;

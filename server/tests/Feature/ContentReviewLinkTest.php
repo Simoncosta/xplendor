@@ -358,8 +358,28 @@ class ContentReviewLinkTest extends TestCase
 
     // ── Lembretes e resumo ───────────────────────────────────────────────────
 
+    public function test_with_external_calls_off_reminders_and_digest_send_no_email(): void
+    {
+        config(['scheduler.external_jobs' => false]);
+        $this->travelTo(now('Europe/Lisbon')->startOfDay()->setTime(9, 0)->utc());
+        $soon = $this->postInReview($this->a, 'Amanhã', 1);
+        $this->createLink([$soon], ['recipient_name' => 'Rita', 'recipient_email' => 'rita@cliente.test']);
+        Mail::assertQueued(ContentReviewRequestMail::class, 1); // o envio do link é um gesto de quem o cria: não muda
+
+        $this->travel(4)->days();
+        $done = (new ContentReviewRemindersJob())->handle(app(\App\Services\ContentReview\ContentReviewNotifier::class));
+        $this->assertSame([0, 1, 1], [$done['client'], $done['team'], $done['urgent']], 'os avisos da equipa ficam no sino');
+        $this->assertNull(ContentReviewLink::sole()->client_reminder_sent_at, 'o lembrete ao cliente fica por enviar');
+        Mail::assertQueued(ContentReviewRequestMail::class, 1);
+
+        $this->assertSame(['emails' => 0, 'notifications' => 0], (new ContentReviewDigestJob())->handle());
+        Mail::assertNothingSent();
+        $this->assertSame(2, \App\Models\ContentReviewNotification::whereNull('emailed_at')->count());
+    }
+
     public function test_reminders_and_team_digest(): void
     {
+        config(['scheduler.external_jobs' => true]);
         $this->travelTo(now('Europe/Lisbon')->startOfDay()->setTime(9, 0)->utc());
         $soon = $this->postInReview($this->a, 'Amanhã', 1);
         $later = $this->postInReview($this->a, 'Daqui a 20 dias', 20);

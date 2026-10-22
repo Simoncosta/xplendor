@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\ContentReviewLink;
 use App\Models\ContentReviewNotification;
 use App\Services\ContentReview\ContentReviewNotifier;
+use App\Support\ExternalCalls;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,7 +20,8 @@ use Illuminate\Support\Facades\Mail;
 /**
  * Resumo por email dos avisos dos links de aprovação, a cada 15 minutos e só quando há
  * novidades: um email por destinatário com tudo o que aconteceu desde o último resumo.
- * Os avisos já estão no sino; o email é para não ter de o vigiar.
+ * Os avisos já estão no sino; o email é para não ter de o vigiar. Com a guarda das chamadas
+ * externas desligada (dev), não envia nem marca nada: os avisos ficam só no sino.
  */
 class ContentReviewDigestJob implements ShouldQueue
 {
@@ -29,6 +31,9 @@ class ContentReviewDigestJob implements ShouldQueue
 
     public function handle(): array
     {
+        if (! ExternalCalls::allowed()) {
+            return ['emails' => 0, 'notifications' => 0];
+        }
         $pending = ContentReviewNotification::whereNull('emailed_at')->orderBy('id')->limit(500)->get();
         if ($pending->isEmpty()) {
             return ['emails' => 0, 'notifications' => 0];

@@ -467,6 +467,7 @@ class FinancingDocumentsTest extends TestCase
         $this->travel(82)->days(); // 82 dias depois do último envio
         $this->assertSame(0, $retention->run()['avisados']);
         $this->travel(1)->days();
+        config(['scheduler.external_jobs' => true]); // o aviso é um email automático (guarda ExternalCalls)
         $this->assertSame(1, $retention->run()['avisados']);
         Mail::assertQueued(AgencyNoticeMail::class, fn (AgencyNoticeMail $m) => $m->hasTo('admin@exemplo.pt') && $m->title === 'Documentos para financiamento a apagar');
 

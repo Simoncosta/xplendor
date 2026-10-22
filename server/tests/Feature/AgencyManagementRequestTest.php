@@ -396,6 +396,7 @@ class AgencyManagementRequestTest extends TestCase
         $this->assertTrue(EditorialPost::whereKey($post->id)->exists(), 'Durante o arquivo os dados ficam guardados.');
 
         $this->travel(84)->days();
+        config(['scheduler.external_jobs' => true]); // o aviso dos 7 dias é um email automático (guarda ExternalCalls)
         app(CompanyArchiveJob::class)->handle(app(\App\Services\Agency\CompanyArchiveService::class));
         Mail::assertQueued(AgencyNoticeMail::class, fn ($m) => $m->hasTo('geral@orfa.pt') && str_contains($m->title, 'vai ser apagada'));
         $this->assertNotNull(Company::find($orphan->id));

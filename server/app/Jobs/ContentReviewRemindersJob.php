@@ -9,6 +9,7 @@ use App\Models\ContentReviewLink;
 use App\Models\ContentReviewLinkOpen;
 use App\Services\ContentReview\ContentReviewNotifier;
 use App\Services\ContentReview\ContentReviewPresenter;
+use App\Support\ExternalCalls;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -53,7 +54,9 @@ class ContentReviewRemindersJob implements ShouldQueue
                         $n = $pending->count();
                         $plural = $n === 1 ? 'publicação pendente' : 'publicações pendentes';
 
-                        if ($link->recipient_email && ! $link->client_reminder_sent_at && $sentAt->lte($now->subDays($clientDays))) {
+                        // O email ao cliente segue a guarda das chamadas externas (no dev fica por enviar).
+                        if ($link->recipient_email && ! $link->client_reminder_sent_at && $sentAt->lte($now->subDays($clientDays))
+                            && ExternalCalls::allowed($link->company)) {
                             Mail::to($link->recipient_email)->queue(new ContentReviewRequestMail(
                                 $link->recipient_name, ContentReviewPresenter::companyIdentity($link->company)['name'], $link->title, $n,
                                 $link->url(), CarbonImmutable::parse($link->expires_at)->setTimezone('Europe/Lisbon')->format('d/m/Y'), true,

@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\User;
 use App\Services\AlertService;
 use App\Services\Billing\ChargeService;
+use App\Support\ExternalCalls;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -19,14 +20,31 @@ use Illuminate\Support\Facades\Mail;
  */
 class AgencyNotifier
 {
+    /** Aviso que a plataforma envia sozinha (agendador ou fila): o email segue a guarda ExternalCalls. */
+    private bool $automatic = false;
+
     public function __construct(private readonly AlertService $alerts) {}
+
+    /** O mesmo notificador para avisos automáticos: o sino fica sempre; o email só com a guarda ligada. */
+    public function automatic(): static
+    {
+        $copy = clone $this;
+        $copy->automatic = true;
+
+        return $copy;
+    }
+
+    private function mailAllowed(): bool
+    {
+        return ! $this->automatic || ExternalCalls::allowed();
+    }
 
     /** @param string[] $lines */
     public function companyAdmins(Company $company, string $title, array $lines, string $path, string $type = 'opportunity'): void
     {
         $this->alerts->createSystemAlert($company->id, $type, $title, mb_substr(implode(' ', $lines), 0, 900), 'medium', $path, ownOnly: true);
         $emails = self::adminEmails($company->id);
-        if ($emails !== []) {
+        if ($emails !== [] && $this->mailAllowed()) {
             Mail::to($emails)->queue(new AgencyNoticeMail($title, $title, $lines, 'Abrir a XPLENDOR', self::url($path)));
         }
     }
@@ -40,7 +58,7 @@ class AgencyNotifier
             $emails[] = mb_strtolower($agency->agency_notification_email);
         }
         $emails = array_values(array_unique($emails));
-        if ($emails !== []) {
+        if ($emails !== [] && $this->mailAllowed()) {
             Mail::to($emails)->queue(new AgencyNoticeMail($title, $title, $lines, 'Abrir a XPLENDOR', self::url($path)));
         }
     }
@@ -52,7 +70,7 @@ class AgencyNotifier
             $this->alerts->createSystemAlert($team, 'opportunity', $title, mb_substr(implode(' ', $lines), 0, 900), 'medium', $path);
         }
         $roots = User::where('role', 'root')->whereNull('deactivated_at')->whereNotNull('email')->pluck('email')->unique()->values()->all();
-        if ($roots !== []) {
+        if ($roots !== [] && $this->mailAllowed()) {
             Mail::to($roots)->queue(new AgencyNoticeMail($title, $title, $lines, 'Abrir a XPLENDOR', self::url($path)));
         }
     }
@@ -60,6 +78,9 @@ class AgencyNotifier
     /** @param string[] $lines */
     public function email(string $to, string $title, array $lines): void
     {
+        if (! $this->mailAllowed()) {
+            return;
+        }
         Mail::to($to)->queue(new AgencyNoticeMail($title, $title, $lines));
     }
 

@@ -476,11 +476,23 @@ class CompanySetupLinkTest extends TestCase
         $this->assertSame(1, app(SetupPublicService::class)->notifyStalled());
         $this->assertSame(0, app(SetupPublicService::class)->notifyStalled());
         $this->assertSame(1, Alert::where('company_id', $this->agency->id)->where('title', 'O cliente não concluiu a ligação ao Facebook: Domiway Lda')->count());
+        // Aviso automático: com a guarda ExternalCalls desligada (testes, dev) fica só no sino.
+        Mail::assertNotQueued(\App\Mail\AgencyNoticeMail::class, fn ($m) => str_starts_with($m->title, 'O cliente não concluiu'));
 
         // Mesmo voltando a iniciar, não há segundo aviso para o mesmo passo e link.
         $this->pub($token)->getJson('/api/public/setup/social/auth-url')->assertOk();
         Carbon::setTestNow(now()->addMinutes(31));
         $this->assertSame(0, app(SetupPublicService::class)->notifyStalled());
+    }
+
+    public function test_with_external_calls_on_the_stalled_step_is_also_emailed(): void
+    {
+        config(['scheduler.external_jobs' => true]);
+        $token = $this->generate(['social', 'ga4']);
+        $this->pub($token)->getJson('/api/public/setup/social/auth-url')->assertOk();
+        Carbon::setTestNow(now()->addMinutes(31));
+        $this->assertSame(1, app(SetupPublicService::class)->notifyStalled());
+        Mail::assertQueued(\App\Mail\AgencyNoticeMail::class, fn ($m) => str_starts_with($m->title, 'O cliente não concluiu') && $m->hasTo('ana@norte.pt'));
     }
 
     // ── Tenancy ──────────────────────────────────────────────────────────────

@@ -285,7 +285,7 @@ function RatingWidget({ token, companyName, googleReviewUrl, initial }: {
 
                 {high ? (
                     <>
-                        <p className="xsr-rate-thanks">Que bom que gostou! 💚 Ajudava-nos imenso se deixasse esta avaliação no Google.</p>
+                        <p className="xsr-rate-thanks">Que bom que gostou! 💚</p>
                         {finalMessage && (
                             <div className="xsr-review-quote">
                                 <p>“{finalMessage}”</p>
@@ -299,11 +299,14 @@ function RatingWidget({ token, companyName, googleReviewUrl, initial }: {
                 ) : (
                     <p className="xsr-rate-thanks">Obrigado pelo seu feedback. Vamos usá-lo para melhorar{companyName ? ` na ${companyName}` : ""}. 🙏</p>
                 )}
-                {/* O botão aparece a todos, qualquer que seja a nota: a Google proíbe pedir avaliações só a quem está satisfeito. */}
+                {/* A frase e o botão são os mesmos para qualquer nota: a Google proíbe pedir avaliações só a quem está satisfeito. */}
                 {googleReviewUrl && (
-                    <a className="xsr-btn-primary" href={googleReviewUrl} target="_blank" rel="noopener noreferrer">
-                        Ir para o Google
-                    </a>
+                    <>
+                        <p className="xsr-rate-thanks">Se quiser, também pode partilhar a sua opinião no Google.</p>
+                        <a className="xsr-btn-primary" href={googleReviewUrl} target="_blank" rel="noopener noreferrer">
+                            Ir para o Google
+                        </a>
+                    </>
                 )}
             </section>
         );
