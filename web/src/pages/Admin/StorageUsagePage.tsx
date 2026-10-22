@@ -5,6 +5,7 @@ import PageCard from "Components/Common/PageCard";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import { getAdminStorageUsage } from "helpers/laravel_helper";
+import SystemHealthCard from "./SystemHealthCard";
 
 /**
  * Espaço por empresa (só o root): o que cada empresa tem guardado, por tipo (Linha Editorial
@@ -62,6 +63,8 @@ export default function StorageUsagePage() {
             <Container fluid>
                 <PageHeader title="Espaço por empresa" breadcrumbs={[{ label: "Administração" }]}
                     info={`O que cada empresa tem guardado, por tipo, somado a partir do tamanho de cada ficheiro registado na base de dados.${quota ? ` Quota por empresa: ${quota}.` : ""}`} />
+
+                <SystemHealthCard />
 
                 <Row className="g-3 mb-3">
                     <Col sm={6} xl={3}>

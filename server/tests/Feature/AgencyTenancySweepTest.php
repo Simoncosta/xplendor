@@ -52,6 +52,7 @@ class AgencyTenancySweepTest extends TestCase
         'GET api/files/stored/{file}/{name?}' => 'Ficheiros: abrir ou descarregar por endereço assinado (gerado depois do ACL e da regra da pasta)',
         'GET api/oauth/meta/callback' => 'OAuth (empresa no nonce)',
         'GET api/oauth/meta/social/callback' => 'OAuth (empresa no nonce)',
+        'GET api/health' => 'monitorização: só 200 ou 503, sem dados de nenhuma empresa',
         'GET api/social-avatar/{account}' => 'URL assinado',
         'GET api/user' => 'o próprio utilizador',
         'GET api/v1/car-brands' => 'referência',

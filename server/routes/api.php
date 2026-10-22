@@ -81,6 +81,9 @@ Route::get('/oauth/meta/callback', [MetaOAuthController::class, 'handleCallbackR
 // URL completo: /api/oauth/meta/social/callback (registar também em "Valid OAuth Redirect URIs").
 Route::get('/oauth/meta/social/callback', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'callback']);
 
+// Monitorização: o serviço externo abre /api/health de 5 em 5 minutos (200 ou 503, sem detalhes).
+Route::get('/health', \App\Http\Controllers\Api\HealthController::class)->middleware('throttle:30,1');
+
 Route::prefix('v1')->group(function () {
     Route::post('/register', [UserController::class, 'store']);
     Route::post('/login', [UserController::class, 'login']);
@@ -1005,6 +1008,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/platform/summary', [AdminController::class, 'platformSummary']);
             // Espaço usado por cada empresa (por tipo e total), somado na base de dados.
             Route::get('/storage-usage', [\App\Http\Controllers\Api\V1\Admin\StorageUsageController::class, 'index']);
+            // Saúde do sistema (monitorização): cada verificação com o detalhe e o estado dos avisos.
+            Route::get('/health', [\App\Http\Controllers\Api\V1\Admin\SystemHealthController::class, 'index']);
             // Radar de oportunidade (R1): o que entrou dos feeds públicos, o que o filtro tirou e porquê.
             Route::get('/radar', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'summary']);
             Route::get('/radar/items', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'items']);

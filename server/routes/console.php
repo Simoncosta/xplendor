@@ -525,6 +525,26 @@ Schedule::call(fn () => app(\App\Audit\AuditRunService::class)->expireStale())
     ->name('audit-expire-stale-runs')
     ->withoutOverlapping();
 
+// De minuto a minuto — Monitorização: sinal de vida do scheduler (bate já) e do worker (um job na fila,
+// que só bate quando o worker o corre). Interna.
+Schedule::call(fn () => \App\Services\Health\SystemHealth::beat('scheduler'))
+    ->everyMinute()
+    ->name('health-heartbeat-scheduler');
+
+Schedule::job(new \App\Jobs\WorkerHeartbeatJob())
+    ->everyMinute()
+    ->name('health-heartbeat-worker');
+
+// De 5 em 5 minutos — Monitorização: base de dados, Redis, antivírus, disco e os sinais de vida; aviso
+// ao root (email direto, sem fila) quando uma falha dura mais de 10 minutos e quando volta. Interna.
+Schedule::command('health:watch')
+    ->everyFiveMinutes()
+    ->name('health-watch')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Saúde] A vigilância falhou no scheduler');
+    });
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {
