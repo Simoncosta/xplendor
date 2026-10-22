@@ -96,9 +96,50 @@ class MetaGraphPublishingClient implements MetaPublishingClient
         return $r['ok'] ? ['ok' => true, 'media_id' => (string) ($r['json']['id'] ?? '')] : $r;
     }
 
+    /**
+     * F2.6 · Na Página: texto (POST /feed), uma fotografia (POST /photos com url e message), várias
+     * (uma POST /photos por fotografia com published=false e depois POST /feed com attached_media) ou
+     * vídeo (POST /videos com file_url e description). Devolve o identificador para o link.
+     */
     public function publishFacebook(string $pageId, string $token, array $payload): array
     {
-        return self::failure(self::KIND_PERMANENT, 'O Facebook ainda não sai sozinho: publique à mão e marque como publicada.', 'not_yet');
+        $message = (string) ($payload['message'] ?? '');
+        $urls = array_values((array) ($payload['urls'] ?? []));
+        $post = fn (string $edge, array $params) => $this->call(fn () => Http::asForm()->timeout(self::TIMEOUT)
+            ->post(self::url($pageId . '/' . $edge), $params + ['access_token' => $token]));
+
+        switch ($payload['type'] ?? 'text') {
+            case 'text':
+                $r = $post('feed', ['message' => $message]);
+
+                return $r['ok'] ? ['ok' => true, 'post_id' => (string) ($r['json']['id'] ?? '')] : $r;
+            case 'photo':
+                $r = $post('photos', ['url' => (string) ($urls[0] ?? ''), 'message' => $message]);
+
+                return $r['ok'] ? ['ok' => true, 'post_id' => (string) ($r['json']['post_id'] ?? $r['json']['id'] ?? '')] : $r;
+            case 'photos':
+                $attached = [];
+                foreach ($urls as $url) {
+                    $r = $post('photos', ['url' => (string) $url, 'published' => 'false']);
+                    if (! $r['ok']) {
+                        return $r; // as fotografias já enviadas ficam por publicar (nunca aparecem na Página)
+                    }
+                    $attached[] = json_encode(['media_fbid' => (string) ($r['json']['id'] ?? '')]);
+                }
+                $params = ['message' => $message];
+                foreach ($attached as $i => $media) {
+                    $params["attached_media[{$i}]"] = $media;
+                }
+                $r = $post('feed', $params);
+
+                return $r['ok'] ? ['ok' => true, 'post_id' => (string) ($r['json']['id'] ?? '')] : $r;
+            case 'video':
+                $r = $post('videos', ['file_url' => (string) ($urls[0] ?? ''), 'description' => $message]);
+
+                return $r['ok'] ? ['ok' => true, 'post_id' => (string) ($r['json']['id'] ?? '')] : $r;
+        }
+
+        return self::failure(self::KIND_PERMANENT, 'Este formato ainda não sai sozinho no Facebook.');
     }
 
     public function permalink(string $network, string $mediaId, string $token): array

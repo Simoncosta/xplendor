@@ -149,8 +149,11 @@ class AutoPublishingTest extends TestCase
         $this->assertSame("Venha provar\n\n#natal #porto", $container[1]['caption']);
         $this->assertNotEmpty($container[1]['image_url']);
         $this->assertCount(1, $this->meta->callsTo('publishInstagram'));
-        // Facebook: a legenda própria, como texto.
-        $this->assertSame([['1001', ['type' => 'text', 'message' => "Venha provar, no Facebook\n\n#natal #porto"]]], $this->meta->callsTo('publishFacebook'));
+        // Facebook: a legenda própria; a publicação de texto leva a imagem (F2.6: sai como fotografia).
+        $fb = $this->meta->callsTo('publishFacebook');
+        $this->assertCount(1, $fb);
+        $this->assertSame(['1001', 'photo', "Venha provar, no Facebook\n\n#natal #porto"], [$fb[0][0], $fb[0][1]['type'], $fb[0][1]['message']]);
+        $this->assertCount(1, $fb[0][1]['urls']);
 
         $post->refresh();
         $this->assertSame(EditorialPost::STAGE_PUBLISHED, $post->stage);

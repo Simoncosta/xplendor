@@ -220,14 +220,18 @@ class AutoPublisher
         return $this->meta->createInstagramContainer($igId, $token, ['media_type' => 'CAROUSEL', 'children' => $children, 'caption' => $caption]);
     }
 
-    /** Facebook: texto, fotografias ou vídeo na Página. */
+    /**
+     * Facebook (F2.6): texto, uma fotografia, várias fotografias ou vídeo na Página. A publicação de
+     * texto com uma imagem sai como fotografia com a legenda. Os Reels do Facebook ficam para a F5.
+     */
     private function facebook(string $pageId, string $token, string $format, string $caption, array $items): array
     {
+        $image = ($items[0] ?? null)?->kind === MediaAsset::IMAGE ? $this->imageUrl($items[0]) : null;
         $payload = match ($format) {
-            'fb_post' => ['type' => 'text', 'message' => $caption],
+            'fb_post' => $image ? ['type' => 'photo', 'message' => $caption, 'urls' => [$image]] : ['type' => 'text', 'message' => $caption],
             'fb_photos' => ($urls = array_values(array_filter(array_map(fn ($a) => $this->imageUrl($a), $items))))
                 ? ['type' => count($urls) === 1 ? 'photo' : 'photos', 'message' => $caption, 'urls' => $urls] : null,
-            'fb_video', 'fb_reel' => ($items[0] ?? null)?->kind === MediaAsset::VIDEO ? ['type' => 'video', 'message' => $caption, 'urls' => []] : null,
+            'fb_video' => ($items[0] ?? null)?->kind === MediaAsset::VIDEO ? ['type' => 'video', 'message' => $caption, 'urls' => []] : null,
             default => false,
         };
         if ($payload === false) {
@@ -324,8 +328,10 @@ class AutoPublisher
 
     private static function notYet(string $format): string
     {
-        return str_ends_with($format, '_story')
-            ? 'As Stories ainda não saem sozinhas: publique à mão e marque como publicada.'
-            : 'Este formato ainda não sai sozinho: publique à mão e marque como publicada.';
+        return match (true) {
+            str_ends_with($format, '_story') => 'As Stories ainda não saem sozinhas: publique à mão e marque como publicada.',
+            $format === 'fb_reel' => 'Os Reels do Facebook ainda não saem sozinhos: publique à mão e marque como publicada.',
+            default => 'Este formato ainda não sai sozinho: publique à mão e marque como publicada.',
+        };
     }
 }
