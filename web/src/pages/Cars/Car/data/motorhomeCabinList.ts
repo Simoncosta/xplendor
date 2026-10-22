@@ -106,13 +106,6 @@ export const MOTORHOME_CABIN_LIST: CabinListItem[] = [
         variants: [extra(I, "Carregador de smartphone wireless"), extra(C, "Carregamento Wireless")],
     },
     {
-        id: "daytime_lights",
-        label: "Faróis diurnos",
-        target: extra(E, "Faróis Diurnos"),
-        variants: [extra(E, "Faróis Diurnos Em Led")],
-    },
-    { id: "tow_hook", label: "Gancho de reboque", target: extra(E, "Gancho de Reboque") },
-    {
         id: "central_locking",
         label: "Fecho centralizado",
         target: extra(S, "Fecho Central"),
@@ -124,10 +117,24 @@ export const MOTORHOME_CABIN_LIST: CabinListItem[] = [
         target: extra(E, "Retrovisor Anti-Encadeamento"),
         variants: [extra(E, "Retrovisores c/ Anti Encadeamento")],
     },
-    { id: "fog_lights", label: "Faróis de nevoeiro", target: extra(E, "Faróis de Nevoeiro") },
-    { id: "height_adjustable_lights", label: "Faróis reguláveis em altura", target: extra(E, "Faróis Reguláveis em Altura") },
     { id: "bluetooth", label: "Bluetooth", target: extra(C, "Bluetooth") },
     { id: "usb", label: "Entrada USB", target: extra(C, "Entrada USB") },
+];
+
+/**
+ * Faróis e gancho de reboque: na secção Exterior das autocaravanas (decisão de 22/10, como na
+ * ficha e na API pública). Gravam nos mesmos extras de sempre e funcionam como os da lista.
+ */
+export const MOTORHOME_EXTERIOR_LIST: CabinListItem[] = [
+    {
+        id: "daytime_lights",
+        label: "Faróis diurnos",
+        target: extra(E, "Faróis Diurnos"),
+        variants: [extra(E, "Faróis Diurnos Em Led")],
+    },
+    { id: "fog_lights", label: "Faróis de nevoeiro", target: extra(E, "Faróis de Nevoeiro") },
+    { id: "height_adjustable_lights", label: "Faróis reguláveis em altura", target: extra(E, "Faróis Reguláveis em Altura") },
+    { id: "tow_hook", label: "Gancho de reboque", target: extra(E, "Gancho de Reboque") },
 ];
 
 /** Jantes de liga leve: o extra de sempre, mostrado na secção Exterior das autocaravanas. */
@@ -219,7 +226,7 @@ export const toggleCabinItem = (
 /** Todos os textos de extras que a lista (ou outra secção) já mostra. */
 export const coveredExtraTexts = (): Set<string> => {
     const out = new Set<string>();
-    for (const item of MOTORHOME_CABIN_LIST) {
+    for (const item of [...MOTORHOME_CABIN_LIST, ...MOTORHOME_EXTERIOR_LIST]) {
         for (const t of itemTargets(item)) if (t.kind === "extra") out.add(t.text);
     }
     for (const t of MOTORHOME_EXTRAS_SHOWN_ELSEWHERE) if (t.kind === "extra") out.add(t.text);

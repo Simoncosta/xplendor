@@ -4,8 +4,8 @@ import { useFormikContext } from "formik";
 import XInput from "Components/Common/XInput";
 import XInputCheckboxArray from "Components/Common/XInputCheckboxArray";
 import type { ICarUpdatePayload } from "common/models/car.model";
-import { MOTORHOME_CABIN_LIST, MOTORHOME_JANTES, type ExtrasByGroup } from "../../data/motorhomeCabinList";
-import MotorhomeCabinEquipment, { countCheckedCabinItems } from "../MotorhomeCabinEquipment";
+import { MOTORHOME_CABIN_LIST, MOTORHOME_EXTERIOR_LIST, MOTORHOME_JANTES, type ExtrasByGroup } from "../../data/motorhomeCabinList";
+import MotorhomeCabinEquipment, { CabinItemChecklist, countCheckedCabinItems } from "../MotorhomeCabinEquipment";
 import { EnergyClimateFields } from "./EnergyClimateAccordion";
 import { LivingRoomFields } from "./LivingRoomAccordion";
 import { CabinBlackoutFields, InfiltrationFields, InteriorFields, TableUpholsteryFields, WindowFields } from "./InteriorFurnitureAccordion";
@@ -141,6 +141,8 @@ export default function MotorhomeSections({ othersOpen, onToggleOthers }: Motorh
                             />
                         </Col>
                     </Row>
+                    {/* Faróis e gancho de reboque: os extras de sempre, nesta secção (decisão de 22/10). */}
+                    <CabinItemChecklist items={MOTORHOME_EXTERIOR_LIST} idPrefix="exterior-item" />
                     <ExteriorFields />
                 </AccordionBody>
             </AccordionItem>

@@ -113,6 +113,29 @@ final class EquipmentCatalog
         'Faróis Diurnos' => ['x_daytime_lights', 'Faróis diurnos', 'exterior'],
         'Faróis Diurnos Em Led' => ['x_daytime_lights_led', 'Faróis diurnos LED', 'exterior'],
         'Gancho de Reboque' => ['x_tow_hook', 'Gancho de reboque', 'exterior'],
+        // Os 17 itens da lista única da cabine das autocaravanas que caíam em "Outros" com o texto
+        // antigo (decisão de 22/10): rótulos de web/.../motorhomeCabinList.ts, todos na cabine.
+        'ASR' => ['x_asr', 'ASR', 'cabine'],
+        'EBD' => ['x_ebd', 'EBD', 'cabine'],
+        'Travão de Mão Eléctrico' => ['x_electric_handbrake', 'Travão de mão elétrico', 'cabine'],
+        'Retrovisores Aquecidos' => ['x_heated_mirrors', 'Retrovisores aquecidos', 'cabine'],
+        'Hill Descent Control' => ['x_hill_descent', 'Controlo de descida (Hill Descent Control)', 'cabine'],
+        'Sensores de Chuva' => ['x_rain_sensors', 'Sensores de chuva', 'cabine'],
+        'Traction+' => ['x_traction_plus', 'Traction+', 'cabine'],
+        'Perfil De Condutores' => ['x_driver_profiles', 'Perfis de condutor', 'cabine'],
+        'Deteção Cansaço e Fadiga' => ['x_fatigue_detection', 'Deteção de cansaço e fadiga', 'cabine'],
+        'Camara de Frente' => ['x_front_camera', 'Câmara frontal', 'cabine'],
+        'Aviso de velocidade' => ['x_speed_warning', 'Aviso de velocidade', 'cabine'],
+        'Bancos Dianteiros c/ Memória' => ['x_memory_seats', 'Bancos com memória', 'cabine'],
+        'Bancos Dianteiros c/ Regulação Eléctrica' => ['x_electric_seats', 'Bancos com regulação elétrica', 'cabine'],
+        'Bancos Dianteiros Aquecidos' => ['x_heated_seats', 'Bancos aquecidos', 'cabine'],
+        'Bancos Desportivos' => ['x_sport_seats', 'Bancos desportivos', 'cabine'],
+        'Patilhas de Velocidade no Volante' => ['x_paddle_shifters', 'Patilhas de velocidade no volante', 'cabine'],
+        'Retrovisor Anti-Encadeamento' => ['x_anti_glare_mirror', 'Retrovisor antiencandeamento', 'cabine'],
+        'Retrovisores c/ Anti Encadeamento' => ['x_anti_glare_mirror', 'Retrovisor antiencandeamento', 'cabine'],
+        // O carregador sem fios tem chave própria (decisão de 22/10); os dois textos do catálogo.
+        'Carregador de smartphone wireless' => ['x_phone_charger_wireless', 'Carregador de smartphone sem fios', 'cabine'],
+        'Carregamento Wireless' => ['x_phone_charger_wireless', 'Carregador de smartphone sem fios', 'cabine'],
     ];
 
     /** Pares que, quando a viatura tem os dois, se mostram num só rótulo. */

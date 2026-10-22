@@ -81,10 +81,11 @@ class MotorhomeCabinListTest extends TestCase
             ->getJson("/api/v1/companies/{$this->company->id}/cars/{$car->id}")->assertStatus(200)->json('data.extras');
         $this->assertSame($extras, $read);
 
-        // A API pública devolve os extras em bruto, com os mesmos textos.
+        // A API pública devolve os extras em bruto, com os mesmos textos (e, à parte, items_detail).
         DB::table('cars')->where('id', $car->id)->update(['status' => 'active']);
         $public = $this->getJson("/api/public/cars/{$car->id}?token={$this->company->public_api_token}")->assertStatus(200)->json('data.extras');
-        $this->assertSame($extras, $public);
+        $this->assertSame($extras, array_map(fn ($g) => array_intersect_key($g, array_flip(['group', 'items'])), $public));
+        $this->assertSame(array_map(fn ($g) => count($g['items']), $extras), array_map(fn ($g) => count($g['items_detail']), $public));
     }
 
     public function test_saving_again_with_the_same_payload_changes_nothing(): void

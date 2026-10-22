@@ -32,7 +32,7 @@
 // ═════════════════════════════════════════════════════════════════════════
 
 import { EXTRA_GROUPS } from "./extraGroups";
-import { MOTORHOME_CABIN_LIST, otherCatalogExtras } from "./motorhomeCabinList";
+import { MOTORHOME_CABIN_LIST, MOTORHOME_EXTERIOR_LIST, otherCatalogExtras } from "./motorhomeCabinList";
 
 /** Tipos de viatura suportados (espelha `cars.vehicle_type`). */
 export type FormSearchVehicleType = "car" | "motorcycle" | "motorhome" | "caravan";
@@ -513,6 +513,7 @@ const buildExtrasEntries = (): FormSearchEntry[] => {
     out.push(motorhome("Outros equipamentos", M_OTHERS));
     for (const other of otherCatalogExtras()) out.push(motorhome(other.text, M_OTHERS));
     out.push(motorhome("Jantes de liga leve", M_EXTERIOR));
+    for (const item of MOTORHOME_EXTERIOR_LIST) out.push(motorhome(item.label, M_EXTERIOR));
     return out;
 };
 

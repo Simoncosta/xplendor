@@ -205,11 +205,21 @@ This version returns a curated, stable payload.
   "youtube_url": null,
 
   "extras": [
-    { "group": "comfort_multimedia", "items": ["Cruise Control", "Câmara de Marcha Atrás"] },
-    { "group": "exterior_equipment", "items": [] },
-    { "group": "interior_equipment", "items": [] },
-    { "group": "safety_performance", "items": [] }
+    {
+      "group": "comfort_multimedia",
+      "items": ["Cruise Control", "Câmara de Marcha Atrás"],
+      "items_detail": [
+        { "text": "Cruise Control", "key": "x_cruise", "label": "Cruise control", "section": "cabine", "section_title": "Cabine de condução e segurança" },
+        { "text": "Câmara de Marcha Atrás", "key": "x_rear_camera", "label": "Câmara de marcha atrás", "section": "cabine", "section_title": "Cabine de condução e segurança" }
+      ]
+    },
+    { "group": "exterior_equipment", "items": [], "items_detail": [] },
+    { "group": "interior_equipment", "items": [], "items_detail": [] },
+    { "group": "safety_performance", "items": [], "items_detail": [] }
   ],
+  // items_detail (aditivo, 22/10): o mesmo item de "items" com a chave, o rótulo e o bloco da
+  // apresentação (energia, sala, cabine, exterior ou outros). Um texto que não está no catálogo
+  // sai com key "x:<texto>", o próprio texto como rótulo e o bloco "outros". "items" não muda.
 
   "images": [
     { "url": "https://...", "is_primary": true, "order": 1 }

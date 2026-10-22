@@ -112,7 +112,7 @@ class CarPublicResource extends JsonResource
             'youtube_url'    => $this->youtube_url,
 
             // --- Extras (equipamento) ---
-            'extras' => $this->extras ?? [],
+            'extras' => $this->buildExtras(),
 
             // --- Imagens ---
             'images'          => $this->buildImages(),
@@ -319,6 +319,30 @@ class CarPublicResource extends JsonResource
         }
 
         return $result;
+    }
+
+    /**
+     * Os extras como estão gravados (group e items, sem mudar nada) e, em cada grupo, items_detail:
+     * o texto, a chave, o rótulo e o bloco de cada item, os mesmos da apresentação. Só acrescenta.
+     */
+    private function buildExtras(): array
+    {
+        $extras = $this->extras ?? [];
+        if (! is_array($extras)) {
+            return $extras;
+        }
+        foreach ($extras as $i => $group) {
+            if (! is_array($group) || ! is_array($group['items'] ?? null)) {
+                continue;
+            }
+            $texts = array_filter($group['items'], fn ($t) => is_string($t) && trim($t) !== '');
+            $extras[$i]['items_detail'] = array_values(array_map(
+                fn (string $t) => \App\Services\Cars\Presentation\CarPresentation::extraDetail($t, $this->vehicle_type),
+                $texts,
+            ));
+        }
+
+        return $extras;
     }
 
     /** Beds with slug + pt-PT label — motorhome/caravan only. */

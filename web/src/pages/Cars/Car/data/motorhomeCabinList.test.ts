@@ -1,6 +1,7 @@
 import { EXTRA_GROUPS } from "./extraGroups";
 import {
     MOTORHOME_CABIN_LIST,
+    MOTORHOME_EXTERIOR_LIST,
     MOTORHOME_NEW_EXTRA_TEXTS,
     isCabinItemChecked,
     otherCatalogExtras,
@@ -38,10 +39,24 @@ describe("lista única: o mapa", () => {
             "Câmara frontal", "Aviso de velocidade", "Alerta de cinto de segurança", "Bancos com memória",
             "Volante multifunções", "Apoio de braço", "Bancos com regulação elétrica", "Bancos rebatíveis",
             "Bancos aquecidos", "Patilhas de velocidade no volante", "Bancos desportivos", "Carregador de smartphone",
-            "Faróis diurnos", "Gancho de reboque", "Fecho centralizado", "Retrovisor antiencandeamento",
-            "Faróis de nevoeiro", "Faróis reguláveis em altura", "Bluetooth", "Entrada USB",
+            "Fecho centralizado", "Retrovisor antiencandeamento", "Bluetooth", "Entrada USB",
         ]);
         expect(new Set(MOTORHOME_CABIN_LIST.map((i) => i.id)).size).toBe(MOTORHOME_CABIN_LIST.length);
+    });
+
+    it("faróis e gancho de reboque estão no Exterior, com os extras de sempre, e não na lista da cabine", () => {
+        expect(MOTORHOME_EXTERIOR_LIST.map((i) => i.label)).toEqual([
+            "Faróis diurnos", "Faróis de nevoeiro", "Faróis reguláveis em altura", "Gancho de reboque",
+        ]);
+        const cabinIds = new Set(MOTORHOME_CABIN_LIST.map((i) => i.id));
+        for (const i of MOTORHOME_EXTERIOR_LIST) {
+            expect(cabinIds.has(i.id)).toBe(false);
+            for (const t of [i.target, ...(i.variants ?? [])]) {
+                expect(t.kind === "extra" && EXTRA_GROUPS.find((g) => g.key === t.group)?.items.includes(t.text)).toBe(true);
+            }
+        }
+        const r = toggleCabinItem(MOTORHOME_EXTERIOR_LIST[0], true, empty());
+        expect(r.extrasByGroup.exterior_equipment).toEqual(["Faróis Diurnos"]);
     });
 
     it("grava nos textos de hoje: cada extra existe tal e qual no catálogo, no mesmo grupo (exceto os 3 textos novos)", () => {
@@ -91,9 +106,10 @@ describe("lista única: marcar e desmarcar", () => {
     });
 
     it("Faróis diurnos: os de LED contam como marcado e saem ao desmarcar", () => {
+        const daytime = MOTORHOME_EXTERIOR_LIST.find((i) => i.id === "daytime_lights")!;
         const extras = { ...empty(), exterior_equipment: ["Faróis Diurnos Em Led", "Jantes de Liga Leve"] };
-        expect(isCabinItemChecked(item("daytime_lights"), extras, {})).toBe(true);
-        const r = toggleCabinItem(item("daytime_lights"), false, extras);
+        expect(isCabinItemChecked(daytime, extras, {})).toBe(true);
+        const r = toggleCabinItem(daytime, false, extras);
         expect(r.extrasByGroup.exterior_equipment).toEqual(["Jantes de Liga Leve"]);
     });
 
@@ -236,6 +252,9 @@ describe("pesquisa do formulário", () => {
             expect([label, at(caravan, label)]).toEqual([label, [inCaravan]]);
         }
         expect(at(motorhome, "Jantes de liga leve")).toEqual(["Exterior"]);
+        for (const label of ["Faróis diurnos", "Faróis de nevoeiro", "Faróis reguláveis em altura", "Gancho de reboque"]) {
+            expect([label, at(motorhome, label)]).toEqual([label, ["Exterior"]]);
+        }
         expect(at(motorhome, "Outros equipamentos")).toEqual(["Outros equipamentos"]);
 
         // O campo "pai" leva à secção do tipo de viatura atual.

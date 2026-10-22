@@ -18,6 +18,8 @@ use Normalizer;
  *  · carros e motos: o bloco "Motor e condução" e os quilómetros aparecem (o site só tem
  *    autocaravanas e caravanas); os blocos da habitação nunca; o equipamento de habitação que
  *    venha nos extras vai para "Outros"; o bloco da cabine chama-se "Condução e segurança".
+ * Diferenças decididas a 22/10 (o site da Quebom muda na sessão própria): o bloco WC chama-se
+ * "Duche e WC" e os 17 itens da lista única da cabine saem na cabine com o rótulo da plataforma.
  * Nada de JSX nem HTML: só dados prontos a desenhar.
  */
 final class CarPresentation
@@ -57,6 +59,11 @@ final class CarPresentation
         'beliche' => 'Camas sobrepostas', 'cama_popup_panoramica' => 'No teto elevatório, com vista panorâmica',
     ];
     public const BED_FALLBACK_LABELS = ['cama_popup_panoramica' => 'Cama pop-up panorâmica'];
+    /** Os títulos dos blocos (o da cabine depende do tipo: ver sectionTitle). "Duche e WC": decisão de 22/10. */
+    public const SECTION_TITLES = [
+        'motor' => 'Motor e condução', 'dimensoes' => 'Dimensões e peso', 'camas' => 'Camas', 'energia' => 'Energia e autonomia',
+        'sala' => 'Sala e cozinha', 'wc' => 'Duche e WC', 'exterior' => 'Exterior', 'condicao' => 'Condição', 'outros' => 'Outros',
+    ];
 
     /** @param array<string, mixed> $v a viatura no formato da API pública */
     public static function fromPublic(array $v): array
@@ -210,6 +217,35 @@ final class CarPresentation
         }
 
         return $by;
+    }
+
+    public static function sectionTitle(string $id, ?string $vehicleType): string
+    {
+        if ($id === 'cabine') {
+            return match ($vehicleType) {
+                'caravan' => 'Segurança', 'motorhome' => 'Cabine de condução e segurança', default => 'Condução e segurança',
+            };
+        }
+
+        return self::SECTION_TITLES[$id] ?? self::SECTION_TITLES['outros'];
+    }
+
+    /**
+     * Um extra (texto gravado) como aparece na apresentação: a chave, o rótulo e o bloco, com as
+     * mesmas regras de equipmentByTheme. Para a API pública (items_detail), sem mudar o texto.
+     *
+     * @return array{text: string, key: string, label: string, section: string, section_title: string}
+     */
+    public static function extraDetail(string $text, ?string $vehicleType): array
+    {
+        $text = trim($text);
+        [$key, $label, $theme] = EquipmentCatalog::EXTRAS[$text] ?? ["x:{$text}", $text, 'outros'];
+        $habitation = in_array($vehicleType, ['motorhome', 'caravan'], true);
+        if (! in_array($theme, ['energia', 'sala', 'cabine', 'exterior'], true) || (! $habitation && in_array($theme, ['energia', 'sala'], true))) {
+            $theme = 'outros';
+        }
+
+        return ['text' => $text, 'key' => $key, 'label' => $label, 'section' => $theme, 'section_title' => self::sectionTitle($theme, $vehicleType)];
     }
 
     // ── Cabeçalho ───────────────────────────────────────────────────────────
@@ -437,7 +473,7 @@ final class CarPresentation
         $redundant = array_filter([$solar !== '' ? 'Painel solar' : null, $inverter !== '' ? 'Inversor' : null, $gpl ? 'GPL' : null]);
         $items = array_values(array_filter($themed['energia'], fn ($l) => ! in_array($l, $redundant, true)));
 
-        return ['id' => 'energia', 'title' => 'Energia e autonomia', 'details' => $d, 'items' => $items];
+        return ['id' => 'energia', 'title' => self::SECTION_TITLES['energia'], 'details' => $d, 'items' => $items];
     }
 
     private static function living(array $v, array $themed): array
@@ -486,7 +522,7 @@ final class CarPresentation
             self::truthy($extending) ? 'Mesa telescópica' : null,
         ]));
 
-        return ['id' => 'sala', 'title' => 'Sala e cozinha', 'details' => $d, 'items' => array_merge($items, $themed['sala'])];
+        return ['id' => 'sala', 'title' => self::SECTION_TITLES['sala'], 'details' => $d, 'items' => array_merge($items, $themed['sala'])];
     }
 
     private static function wc(array $v): array
@@ -494,7 +530,7 @@ final class CarPresentation
         $h = is_array($v['habitation'] ?? null) ? $v['habitation'] : [];
         $shower = ! empty($h['shower_type']) ? (self::SHOWER[$h['shower_type']] ?? $h['shower_type']) : null;
 
-        return ['id' => 'wc', 'title' => 'WC', 'details' => self::rows([
+        return ['id' => 'wc', 'title' => self::sectionTitle('wc', $v['vehicle_type'] ?? null), 'details' => self::rows([
             self::pair('Duche', $shower),
             self::pair('Água limpa', self::has($h['clean_water_litres'] ?? null) ? "{$h['clean_water_litres']} L" : null),
             self::pair('Águas residuais', self::has($h['waste_water_litres'] ?? null) ? "{$h['waste_water_litres']} L" : null),
@@ -514,11 +550,7 @@ final class CarPresentation
         if (! empty($f['chassis_notes']) && trim((string) $f['chassis_notes']) !== '') {
             $d[] = ['label' => 'Notas do chassis', 'value' => trim((string) $f['chassis_notes'])];
         }
-        $title = match ($v['vehicle_type'] ?? null) {
-            'caravan' => 'Segurança', 'motorhome' => 'Cabine de condução e segurança', default => 'Condução e segurança',
-        };
-
-        return ['id' => 'cabine', 'title' => $title, 'details' => $d, 'items' => $themed['cabine']];
+        return ['id' => 'cabine', 'title' => self::sectionTitle('cabine', $v['vehicle_type'] ?? null), 'details' => $d, 'items' => $themed['cabine']];
     }
 
     private static function exterior(array $v, array $themed): array
@@ -544,7 +576,7 @@ final class CarPresentation
         }
         $items = array_values(array_filter($themed['exterior'], fn ($l) => ! ($l === 'Toldo' && ! empty($f['awning_brand']))));
 
-        return ['id' => 'exterior', 'title' => 'Exterior', 'details' => $d, 'items' => array_merge($items, $extra)];
+        return ['id' => 'exterior', 'title' => self::SECTION_TITLES['exterior'], 'details' => $d, 'items' => array_merge($items, $extra)];
     }
 
     private static function condition(array $v): array
@@ -562,6 +594,6 @@ final class CarPresentation
 
     private static function others(array $themed): array
     {
-        return ['id' => 'outros', 'title' => 'Outros', 'details' => [], 'items' => $themed['outros']];
+        return ['id' => 'outros', 'title' => self::SECTION_TITLES['outros'], 'details' => [], 'items' => $themed['outros']];
     }
 }

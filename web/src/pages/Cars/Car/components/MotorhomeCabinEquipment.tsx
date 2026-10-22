@@ -24,6 +24,46 @@ const otherKey = (o: OtherExtra) => `${o.group}::${o.text}`;
 export const countCheckedCabinItems = (extrasByGroup: ExtrasByGroup | undefined, vehicleAttributes: unknown): number =>
     MOTORHOME_CABIN_LIST.filter((item) => isCabinItemChecked(item, extrasByGroup, vehicleAttributes)).length;
 
+/**
+ * Caixas de visto de uma lista de itens (a da cabine ou a do Exterior): marcar e desmarcar
+ * gravam nos extras e atributos de cada item (ver toggleCabinItem).
+ */
+export function CabinItemChecklist({ items, idPrefix }: { items: CabinListItem[]; idPrefix: string }) {
+    const { values, setFieldValue } = useFormikContext<FormValues>();
+    const extrasByGroup = values.extrasByGroup;
+    const vehicleAttributes = values.vehicle_attributes;
+
+    const onToggleItem = (item: CabinListItem, checked: boolean) => {
+        const result = toggleCabinItem(item, checked, extrasByGroup);
+        setFieldValue("extrasByGroup", result.extrasByGroup);
+        Object.entries(result.attributes).forEach(([path, value]) => {
+            setFieldValue(`vehicle_attributes.${path}`, value);
+        });
+    };
+
+    return (
+        <div className="row">
+            {items.map((item) => {
+                const inputId = `${idPrefix}-${item.id}`;
+                return (
+                    <div key={item.id} className="col-12 col-md-6 col-lg-4 col-xl-3 mb-2">
+                        <div className="form-check">
+                            <Input
+                                id={inputId}
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={isCabinItemChecked(item, extrasByGroup, vehicleAttributes)}
+                                onChange={(e) => onToggleItem(item, e.target.checked)}
+                            />
+                            <Label className="form-check-label" htmlFor={inputId}>{item.label}</Label>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 export interface MotorhomeCabinEquipmentProps {
     /** "Outros equipamentos" aberto (controlado pelo pai, para a pesquisa o poder abrir). */
     othersOpen: boolean;
@@ -41,15 +81,6 @@ export interface MotorhomeCabinEquipmentProps {
 export default function MotorhomeCabinEquipment({ othersOpen, onToggleOthers, othersDomId }: MotorhomeCabinEquipmentProps) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<FormValues>();
     const extrasByGroup = values.extrasByGroup;
-    const vehicleAttributes = values.vehicle_attributes;
-
-    const onToggleItem = (item: CabinListItem, checked: boolean) => {
-        const result = toggleCabinItem(item, checked, extrasByGroup);
-        setFieldValue("extrasByGroup", result.extrasByGroup);
-        Object.entries(result.attributes).forEach(([path, value]) => {
-            setFieldValue(`vehicle_attributes.${path}`, value);
-        });
-    };
 
     // "Outros equipamentos": os marcados fora da lista. Um item desmarcado fica à vista
     // (desmarcado) até sair da página, para se poder voltar a marcar.
@@ -115,25 +146,7 @@ export default function MotorhomeCabinEquipment({ othersOpen, onToggleOthers, ot
                 </Row>
             </div>
 
-            <div className="row">
-                {MOTORHOME_CABIN_LIST.map((item) => {
-                    const inputId = `cabin-item-${item.id}`;
-                    return (
-                        <div key={item.id} className="col-12 col-md-6 col-lg-4 col-xl-3 mb-2">
-                            <div className="form-check">
-                                <Input
-                                    id={inputId}
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    checked={isCabinItemChecked(item, extrasByGroup, vehicleAttributes)}
-                                    onChange={(e) => onToggleItem(item, e.target.checked)}
-                                />
-                                <Label className="form-check-label" htmlFor={inputId}>{item.label}</Label>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+            <CabinItemChecklist items={MOTORHOME_CABIN_LIST} idPrefix="cabin-item" />
 
             <Accordion flush open={othersOpen ? "others" : ""} toggle={() => onToggleOthers()} className="mt-2 border rounded">
                 <AccordionItem id={othersDomId}>
