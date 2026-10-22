@@ -199,6 +199,12 @@ class EditorialPost extends Model
             $post->pendingFormat = null;
             $post->unsetRelation('networks');
         });
+        // F2.2: a publicação automática segue a etapa, a data, a hora e a caixa (agenda, reprograma ou cancela).
+        static::saved(function (EditorialPost $post) {
+            if ($post->wasRecentlyCreated || $post->wasChanged(['stage', 'publish_date', 'publish_time', 'auto_publish', 'channel'])) {
+                \App\Services\Social\Publishing\AutoPublishingScheduler::safely(fn ($s) => $s->sync($post));
+            }
+        });
     }
 
     public function currentVersion(): BelongsTo

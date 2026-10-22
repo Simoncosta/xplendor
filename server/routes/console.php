@@ -525,6 +525,16 @@ Schedule::call(fn () => app(\App\Audit\AuditRunService::class)->expireStale())
     ->name('audit-expire-stale-runs')
     ->withoutOverlapping();
 
+// De minuto a minuto: F2.2, publica as publicações automáticas cuja hora chegou (Instagram e Facebook). Com o
+// cliente simulado é interna; em produção está desligada (driver "disabled") até ao cliente real da F2.4.
+Schedule::job(new \App\Jobs\PublishDueSocialPublicationsJob())
+    ->everyMinute()
+    ->name('social-publish-due')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Publicação automática] O publicador falhou no scheduler');
+    });
+
 // De minuto a minuto — Monitorização: sinal de vida do scheduler (bate já) e do worker (um job na fila,
 // que só bate quando o worker o corre). Interna.
 Schedule::call(fn () => \App\Services\Health\SystemHealth::beat('scheduler'))

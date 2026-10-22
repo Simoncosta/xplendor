@@ -152,8 +152,30 @@ class EditorialPublishingService
         });
     }
 
+    /**
+     * F2.2: a publicação automática saiu nesta rede. Fica como "marcada como publicada", sem
+     * pessoa (foi a XPLENDOR), com o link que a Meta devolveu e a hora real; e, como à mão,
+     * Programado passa a Publicado quando já não falta nenhuma rede.
+     */
+    public function markPublishedAutomatically(EditorialPostNetwork $network, ?string $permalink, CarbonImmutable $at): EditorialPost
+    {
+        return DB::transaction(function () use ($network, $permalink, $at) {
+            $post = EditorialPost::lockForUpdate()->findOrFail($network->editorial_post_id);
+            $row = EditorialPostNetwork::lockForUpdate()->findOrFail($network->id);
+            $row->forceFill([
+                'published_url' => $permalink ? mb_substr($permalink, 0, 500) : null, 'published_at' => $at->utc(),
+                'published_by_user_id' => null, 'published_by_impersonator_id' => null,
+            ])->save();
+            $label = NetworkFormats::NETWORK_LABELS[$row->network];
+            $this->workflow->event($post, null, 'published', null, null, null,
+                "{$label}: publicada automaticamente a " . $at->setTimezone(EditorialPost::TIMEZONE)->format('d/m/Y H:i') . ($permalink ? ", {$permalink}" : ''));
+
+            return $this->settle($post, null);
+        });
+    }
+
     /** Quando nenhuma rede está por publicar e há pelo menos uma publicada: Programado → Publicado. */
-    private function settle(EditorialPost $post, User $user): EditorialPost
+    private function settle(EditorialPost $post, ?User $user): EditorialPost
     {
         $rows = EditorialPostNetwork::where('editorial_post_id', $post->id)->get();
         $pending = $rows->contains(fn ($n) => $n->state() === EditorialPostNetwork::STATE_PENDING);

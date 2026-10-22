@@ -26,6 +26,16 @@ class EditorialPostNetwork extends Model
 
     protected $casts = ['published_at' => 'datetime', 'skipped_at' => 'datetime', 'position' => 'integer'];
 
+    /** F2.2: "Não publicar nesta rede" ou marcada à mão como publicada cancela a publicação automática agendada. */
+    protected static function booted(): void
+    {
+        static::saved(function (EditorialPostNetwork $network) {
+            if ($network->wasChanged(['skipped_at', 'published_at'])) {
+                \App\Services\Social\Publishing\AutoPublishingScheduler::safely(fn ($s) => $s->sync((int) $network->editorial_post_id));
+            }
+        });
+    }
+
     public function state(): string
     {
         return $this->skipped_at ? self::STATE_SKIPPED : ($this->published_at ? self::STATE_PUBLISHED : self::STATE_PENDING);

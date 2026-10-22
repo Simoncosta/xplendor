@@ -3,7 +3,7 @@ import { Badge, Button, Col, Input, Label, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { savePostResults, skipPostNetwork } from "helpers/laravel_helper";
 import { Network, POST_CHANNEL_META, mediaFormatLabel } from "common/models/editorialPost.model";
-import { METRICS, METRIC_SOURCE_LABEL, PostNetworkDetail, PostResults, PostWorkflow, fmtRate } from "common/models/editorialWorkflow.model";
+import { METRICS, METRIC_SOURCE_LABEL, PostNetworkDetail, PostResults, PostWorkflow, SocialPublicationInfo, fmtRate } from "common/models/editorialWorkflow.model";
 import MarkPublishedModal from "../MarkPublishedModal";
 import ReasonButton from "Components/Common/ReasonButton";
 
@@ -17,6 +17,27 @@ import ReasonButton from "Components/Common/ReasonButton";
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
 const todayIso = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Lisbon" });
 const errorsOf = (e: any) => (e?.errors ? Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, String((v as string[])[0])])) : null);
+
+/** F2.2: o estado da publicação automática desta rede (agendada, a publicar, publicada sozinha, falhou). */
+export function AutoPublicationLine({ info, published }: { info: SocialPublicationInfo | null; published: boolean }) {
+    if (!info || info.status === "cancelled") return null;
+    if (info.status === "scheduled") {
+        return <div className="fs-13 mt-2 text-success"><i className="ri-time-line me-1" />Publicação automática agendada para {when(info.scheduled_for)}.</div>;
+    }
+    if (info.status === "publishing") {
+        return <div className="fs-13 mt-2 text-primary"><i className="ri-loader-4-line me-1" />A publicar automaticamente…</div>;
+    }
+    if (info.status === "failed") {
+        return (
+            <div className="fs-13 mt-2 text-danger">
+                <i className="ri-error-warning-line me-1" />A publicação automática falhou: {info.error_message ?? "sem motivo indicado."}
+                {!published && <div className="text-muted fs-12">Pode publicar à mão e marcar como publicada, ou mudar a hora para tentar de novo.</div>}
+            </div>
+        );
+    }
+
+    return published ? <div className="text-muted fs-12 mt-1"><i className="ri-robot-2-line me-1" />Publicada automaticamente pela XPLENDOR.</div> : null;
+}
 
 function NetworkResults({ companyId, postId, network, r, canRecord, onChanged }: { companyId: number; postId: number; network: Network; r: PostResults | undefined; canRecord: boolean; onChanged: (d: PostWorkflow) => void }) {
     const [values, setValues] = useState<Record<string, string>>({});
@@ -177,6 +198,8 @@ export default function PublishSection({ companyId, data, onChanged }: Props) {
                         </div>
                     )}
                     {n.state === "skipped" && <div className="fs-13 mt-2 text-muted">Motivo: {n.skip_reason}{n.skipped_by ? ` (${n.skipped_by}, ${when(n.skipped_at)})` : ""}</div>}
+                    <AutoPublicationLine info={n.publication ?? null} published={n.state === "published"} />
+
                     {skipping === n.network && (
                         <div className="border rounded p-2 mt-2">
                             <Label className="fs-13 mb-1" for={`skip-${n.network}`}>Porque não vai sair no {POST_CHANNEL_META[n.network].label}?</Label>

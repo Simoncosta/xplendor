@@ -16,6 +16,16 @@ class Company extends Model
     public const SUBSCRIPTION_STATUS_EXPIRED = 'expired';
     public const SUBSCRIPTION_STATUS_CANCELLED = 'cancelled';
 
+    /** F2.2: ligar ou desligar a "Publicação automática" agenda ou cancela as publicações Programadas. */
+    protected static function booted(): void
+    {
+        static::saved(function (Company $company) {
+            if ($company->wasChanged('auto_publishing_enabled')) {
+                \App\Services\Social\Publishing\AutoPublishingScheduler::safely(fn ($s) => $s->syncCompany((int) $company->id));
+            }
+        });
+    }
+
     protected $fillable = [
         'nipc',
         'fiscal_name',
