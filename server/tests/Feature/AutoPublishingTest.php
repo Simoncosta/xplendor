@@ -136,11 +136,11 @@ class AutoPublishingTest extends TestCase
     public function test_at_the_time_each_network_goes_out_once_and_the_post_becomes_published(): void
     {
         $post = $this->scheduledPost();
-        $this->assertSame(['published' => 0, 'failed' => 0, 'cancelled' => 0], app(AutoPublisher::class)->runDue(), 'ainda não é hora');
+        $this->assertSame(['published' => 0, 'failed' => 0, 'cancelled' => 0, 'waiting' => 0], app(AutoPublisher::class)->runDue(), 'ainda não é hora');
 
         $this->travelTo(CarbonImmutable::parse('2026-11-12 12:00:30', 'Europe/Lisbon'));
-        $this->assertSame(['published' => 2, 'failed' => 0, 'cancelled' => 0], app(AutoPublisher::class)->runDue());
-        $this->assertSame(['published' => 0, 'failed' => 0, 'cancelled' => 0], app(AutoPublisher::class)->runDue(), 'nunca duas vezes');
+        $this->assertSame(['published' => 2, 'failed' => 0, 'cancelled' => 0, 'waiting' => 0], app(AutoPublisher::class)->runDue());
+        $this->assertSame(['published' => 0, 'failed' => 0, 'cancelled' => 0, 'waiting' => 0], app(AutoPublisher::class)->runDue(), 'nunca duas vezes');
 
         // Instagram: quota, contentor da imagem com a legenda e as hashtags, estado, publicar.
         $container = $this->meta->callsTo('createInstagramContainer')[0];
@@ -170,7 +170,7 @@ class AutoPublishingTest extends TestCase
         $this->meta->quotaUsed = 100;
         $this->travelTo(CarbonImmutable::parse('2026-11-12 12:01', 'Europe/Lisbon'));
 
-        $this->assertSame(['published' => 0, 'failed' => 2, 'cancelled' => 0], app(AutoPublisher::class)->runDue());
+        $this->assertSame(['published' => 0, 'failed' => 2, 'cancelled' => 0, 'waiting' => 0], app(AutoPublisher::class)->runDue());
         $fb = SocialPublication::where('network', 'facebook')->sole();
         $ig = SocialPublication::where('network', 'instagram')->sole();
         $this->assertSame(['failed', '100', 'A Página não aceitou a publicação.'], [$fb->status, $fb->error_code, $fb->error_message]);
@@ -193,7 +193,7 @@ class AutoPublishingTest extends TestCase
         $this->travelTo(CarbonImmutable::parse('2026-11-12 12:00', 'Europe/Lisbon'));
         DB::table('companies')->where('id', $this->a->id)->update(['auto_publishing_enabled' => false]); // sem eventos: como se mudasse a meio
 
-        $this->assertSame(['published' => 0, 'failed' => 0, 'cancelled' => 2], app(AutoPublisher::class)->runDue());
+        $this->assertSame(['published' => 0, 'failed' => 0, 'cancelled' => 2, 'waiting' => 0], app(AutoPublisher::class)->runDue());
         DB::table('companies')->where('id', $this->a->id)->update(['auto_publishing_enabled' => true]);
         SocialPublication::query()->update(['status' => 'scheduled']);
         app(AutoPublisher::class)->runDue();

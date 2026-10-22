@@ -29,7 +29,7 @@ interface MetaPublishingClient
     /**
      * Cria um contentor no Instagram: ['container_id' => string].
      *
-     * @param array{media_type: string, image_url?: string, video_url?: string, cover_url?: string, caption?: string, children?: string[], is_carousel_item?: bool} $payload
+     * @param array{media_type: string, image_url?: string, video_url?: string, cover_url?: string, thumb_offset?: int, share_to_feed?: bool, caption?: string, children?: string[], is_carousel_item?: bool} $payload
      */
     public function createInstagramContainer(string $igUserId, string $token, array $payload): array;
 

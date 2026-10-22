@@ -64,7 +64,8 @@ class AutoPublishingScheduler
                 // Uma que falhou só volta a agendar quando a hora muda (nunca sozinha, ao gravar outra coisa).
                 || ($publication->status === SocialPublication::STATUS_FAILED && ! $sameTime);
             if ($publication->isPending() && ! $sameTime) {
-                $publication->forceFill(['scheduled_for' => $dueAt])->save();
+                // Nova hora: começa do zero (sem verificação marcada nem contentor de antes).
+                $publication->forceFill(['scheduled_for' => $dueAt, 'next_attempt_at' => null, 'container_id' => null])->save();
             } elseif ($revive) {
                 $publication->forceFill([
                     'status' => SocialPublication::STATUS_SCHEDULED, 'scheduled_for' => $dueAt, 'attempts' => 0, 'next_attempt_at' => null,

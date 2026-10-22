@@ -25,7 +25,14 @@ use Illuminate\Support\Facades\Log;
  */
 class AutoPublisher
 {
-    public const RESULTS = ['published' => 0, 'failed' => 0, 'cancelled' => 0];
+    public const RESULTS = ['published' => 0, 'failed' => 0, 'cancelled' => 0, 'waiting' => 0];
+
+    /** Contentor ainda a processar: volta a ver daqui a WAIT_SECONDS, até WAIT_LIMIT_MINUTES depois da hora. */
+    private const WAIT = 'wait';
+
+    public const WAIT_SECONDS = 60;
+
+    public const WAIT_LIMIT_MINUTES = 30;
 
     public function __construct(private readonly MetaPublishingClient $meta, private readonly EditorialPublishingService $publishing,
         private readonly MetaMediaPreparer $files) {}
@@ -34,7 +41,10 @@ class AutoPublisher
     public function runDue(int $limit = 20): array
     {
         $out = self::RESULTS;
-        $ids = SocialPublication::where('status', SocialPublication::STATUS_SCHEDULED)->where('scheduled_for', '<=', now())
+        // A hora chegou; ou, numa que espera (vídeo a processar, F2.5), a próxima verificação.
+        $ids = SocialPublication::where('status', SocialPublication::STATUS_SCHEDULED)
+            ->where(fn ($q) => $q->where(fn ($q) => $q->whereNull('next_attempt_at')->where('scheduled_for', '<=', now()))
+                ->orWhere('next_attempt_at', '<=', now()))
             ->orderBy('scheduled_for')->orderBy('id')->limit($limit)->pluck('id');
         foreach ($ids as $id) {
             // Reserva: só quem passar de agendado a "a publicar" publica (nunca duas vezes).
@@ -55,7 +65,7 @@ class AutoPublisher
         return $out;
     }
 
-    /** @return 'published'|'failed'|'cancelled' */
+    /** @return 'published'|'failed'|'cancelled'|'waiting' */
     private function publish(SocialPublication $publication): string
     {
         $post = EditorialPost::find($publication->editorial_post_id);
@@ -79,6 +89,9 @@ class AutoPublisher
         $result = $network->network === 'instagram'
             ? $this->instagram($publication, (string) $account->external_id, $token, (string) $network->media_format, $caption, $items, $cover)
             : $this->facebook((string) ($account->page_id ?: $account->external_id), $token, (string) $network->media_format, $caption, $items);
+        if (! $result['ok'] && ($result['kind'] ?? null) === self::WAIT) {
+            return $this->wait($publication);
+        }
         if (! $result['ok']) {
             return $this->fail($publication, $result);
         }
@@ -131,8 +144,7 @@ class AutoPublisher
             'ig_carousel' => $this->carousel($igId, $token, $caption, $items),
             'ig_reel' => ($problem = $this->videoProblem($items[0] ?? null, $format))
                 ? self::permanent($problem)
-                : $this->meta->createInstagramContainer($igId, $token, array_filter(['media_type' => 'REELS', 'video_url' => $items[0]->externalUrl('original'),
-                    'caption' => $caption, 'cover_url' => $this->imageUrl($cover)])),
+                : $this->meta->createInstagramContainer($igId, $token, $this->reel($items[0], $cover, $caption)),
             default => self::permanent(self::notYet($format)),
         };
         if (! $container['ok']) {
@@ -150,10 +162,11 @@ class AutoPublisher
 
     private function publishContainer(SocialPublication $publication, string $igId, string $token, string $containerId, string $status): array
     {
+        if (in_array($status, ['ERROR', 'EXPIRED'], true)) {
+            return self::permanent('O Instagram não conseguiu processar o ficheiro. Verifique o formato e programe de novo.');
+        }
         if ($status !== 'FINISHED') {
-            return in_array($status, ['ERROR', 'EXPIRED'], true)
-                ? self::permanent('O Instagram não conseguiu processar o ficheiro. Verifique o formato e programe de novo.')
-                : self::failure(MetaPublishingClient::KIND_TRANSIENT, "O Instagram ainda não tem o ficheiro pronto ({$status}).", 'container');
+            return ['ok' => false, 'kind' => self::WAIT]; // ainda a processar (o vídeo de um Reel): verifica-se de novo daqui a pouco
         }
         $published = $this->meta->publishInstagram($igId, $token, $containerId);
         if (! $published['ok']) {
@@ -162,6 +175,23 @@ class AutoPublisher
         $publication->forceFill(['media_id' => (string) $published['media_id']])->save();
 
         return ['ok' => true, 'id' => (string) $published['media_id']];
+    }
+
+    /**
+     * F2.5 · O Reel: o vídeo, a legenda, também no feed, e a capa escolhida (em JPEG). Sem capa, o
+     * mesmo instante da imagem que a XPLENDOR mostra do vídeo (até 1 segundo, como a capa gerada).
+     */
+    private function reel(MediaAsset $video, ?MediaAsset $cover, string $caption): array
+    {
+        $payload = ['media_type' => 'REELS', 'video_url' => $video->externalUrl('original'), 'caption' => $caption, 'share_to_feed' => true];
+        $coverUrl = $cover ? $this->imageUrl($cover) : null;
+        if ($coverUrl) {
+            $payload['cover_url'] = $coverUrl;
+        } else {
+            $payload['thumb_offset'] = (int) min(1000, intdiv((int) $video->duration_ms, 2));
+        }
+
+        return $payload;
     }
 
     private function carousel(string $igId, string $token, string $caption, array $items): array
@@ -215,6 +245,24 @@ class AutoPublisher
         $published = $this->meta->publishFacebook($pageId, $token, $payload);
 
         return $published['ok'] ? ['ok' => true, 'id' => (string) $published['post_id']] : $published;
+    }
+
+    /**
+     * F2.5 · O contentor ainda está a processar: não prende o worker. Volta a "agendado" com a próxima
+     * verificação daqui a um minuto (sem contar como tentativa), até WAIT_LIMIT_MINUTES depois da hora.
+     *
+     * @return 'failed'|'waiting'
+     */
+    private function wait(SocialPublication $publication): string
+    {
+        if ($publication->scheduled_for && now()->greaterThan($publication->scheduled_for->copy()->addMinutes(self::WAIT_LIMIT_MINUTES))) {
+            return $this->fail($publication, self::failure(MetaPublishingClient::KIND_TRANSIENT,
+                'O Instagram não acabou de processar o vídeo em ' . self::WAIT_LIMIT_MINUTES . ' minutos.', 'container'));
+        }
+        $publication->forceFill(['status' => SocialPublication::STATUS_SCHEDULED, 'next_attempt_at' => now()->addSeconds(self::WAIT_SECONDS),
+            'attempts' => max(0, (int) $publication->attempts - 1)])->save();
+
+        return 'waiting';
     }
 
     /** @return 'failed' */
