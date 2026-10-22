@@ -77,13 +77,14 @@ class AutoPublisher
         $token = (string) $account->page_access_token;
 
         $result = $network->network === 'instagram'
-            ? $this->instagram((string) $account->external_id, $token, (string) $network->media_format, $caption, $items, $cover)
+            ? $this->instagram($publication, (string) $account->external_id, $token, (string) $network->media_format, $caption, $items, $cover)
             : $this->facebook((string) ($account->page_id ?: $account->external_id), $token, (string) $network->media_format, $caption, $items);
         if (! $result['ok']) {
             return $this->fail($publication, $result);
         }
 
-        $link = $this->meta->permalink($network->network, $result['id'], $token);
+        // Sem o identificador (o contentor já tinha saído numa tentativa anterior), fica publicada sem o link.
+        $link = $result['id'] !== null ? $this->meta->permalink($network->network, $result['id'], $token) : ['ok' => false];
         $permalink = $link['ok'] ? (string) $link['permalink'] : null;
         $at = CarbonImmutable::now();
         $publication->forceFill(['status' => SocialPublication::STATUS_PUBLISHED, 'media_id' => $result['id'], 'permalink' => $permalink,
@@ -93,9 +94,27 @@ class AutoPublisher
         return 'published';
     }
 
-    /** Instagram: quota, contentor (imagem, carrossel ou Reel), estado do contentor e publicação. */
-    private function instagram(string $igId, string $token, string $format, string $caption, array $items, ?MediaAsset $cover): array
+    /**
+     * Instagram: quota, contentor (imagem, carrossel ou Reel), estado do contentor e publicação. O
+     * contentor fica guardado logo que é criado: numa tentativa seguinte, consulta-se primeiro o estado
+     * dele (PUBLISHED: já saiu, não se publica outra vez; FINISHED: publica esse; ERROR ou EXPIRED: novo).
+     */
+    private function instagram(SocialPublication $publication, string $igId, string $token, string $format, string $caption, array $items, ?MediaAsset $cover): array
     {
+        if ($publication->container_id) {
+            $previous = $this->meta->containerStatus((string) $publication->container_id, $token);
+            if (! $previous['ok']) {
+                return $previous;
+            }
+            if ($previous['status'] === 'PUBLISHED') {
+                return ['ok' => true, 'id' => $publication->media_id ? (string) $publication->media_id : null];
+            }
+            if (in_array($previous['status'], ['FINISHED', 'IN_PROGRESS'], true)) {
+                return $this->publishContainer($publication, $igId, $token, (string) $publication->container_id, $previous['status']);
+            }
+            $publication->forceFill(['container_id' => null])->save(); // ERROR ou EXPIRED: cria-se um novo
+        }
+
         $quota = $this->meta->instagramQuota($igId, $token);
         if (! $quota['ok']) {
             return $quota;
@@ -119,17 +138,30 @@ class AutoPublisher
         if (! $container['ok']) {
             return $container;
         }
+        $publication->forceFill(['container_id' => (string) $container['container_id']])->save();
         // Antes de publicar, o estado do contentor (nunca publicar duas vezes nem um vídeo ainda a processar).
         $status = $this->meta->containerStatus($container['container_id'], $token);
         if (! $status['ok']) {
             return $status;
         }
-        if ($status['status'] !== 'FINISHED') {
-            return self::failure(MetaPublishingClient::KIND_TRANSIENT, "O Instagram ainda não tem o ficheiro pronto ({$status['status']}).", 'container');
-        }
-        $published = $this->meta->publishInstagram($igId, $token, $container['container_id']);
 
-        return $published['ok'] ? ['ok' => true, 'id' => (string) $published['media_id']] : $published;
+        return $this->publishContainer($publication, $igId, $token, (string) $container['container_id'], $status['status']);
+    }
+
+    private function publishContainer(SocialPublication $publication, string $igId, string $token, string $containerId, string $status): array
+    {
+        if ($status !== 'FINISHED') {
+            return in_array($status, ['ERROR', 'EXPIRED'], true)
+                ? self::permanent('O Instagram não conseguiu processar o ficheiro. Verifique o formato e programe de novo.')
+                : self::failure(MetaPublishingClient::KIND_TRANSIENT, "O Instagram ainda não tem o ficheiro pronto ({$status}).", 'container');
+        }
+        $published = $this->meta->publishInstagram($igId, $token, $containerId);
+        if (! $published['ok']) {
+            return $published;
+        }
+        $publication->forceFill(['media_id' => (string) $published['media_id']])->save();
+
+        return ['ok' => true, 'id' => (string) $published['media_id']];
     }
 
     private function carousel(string $igId, string $token, string $caption, array $items): array
