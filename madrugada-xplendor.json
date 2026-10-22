@@ -9,6 +9,7 @@
             "Write",
             "Bash(docker exec *)",
             "Bash(docker compose exec *)",
+            "Bash(docker ps *)",
             "Bash(docker compose ps *)",
             "Bash(docker compose logs *)",
             "Bash(git status *)",
@@ -18,8 +19,17 @@
             "Bash(git add *)",
             "Bash(git commit *)",
             "Bash(git revert *)",
+            "Bash(git restore *)",
+            "Bash(git stash *)",
             "Bash(npm run *)",
-            "Bash(npm test *)"
+            "Bash(npm test *)",
+            "Bash(mkdir *)",
+            "Bash(ls *)",
+            "Bash(cat *)",
+            "Bash(head *)",
+            "Bash(tail *)",
+            "Bash(grep *)",
+            "Bash(wc *)"
         ],
         "deny": [
             "Bash(git push *)",
@@ -34,7 +44,8 @@
             "Bash(git reset --hard *)",
             "Bash(rm -rf *)",
             "Read(./.env)",
-            "Read(./.env.*)"
+            "Read(./.env.*)",
+            "Edit(./madrugada-xplendor.json)"
         ]
     }
 }
