@@ -12,6 +12,7 @@ use App\Models\EditorialPostReview;
 use App\Models\EditorialPostVersion;
 use App\Models\ImpersonationSession;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,9 @@ class EditorialWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Uma quarta-feira a meio do mês, longe de fins de mês e de fins de semana. */
+    private const NOW = '2026-10-14 10:00:00';
+
     private Company $a;
     private Company $b;
     private User $adminA;
@@ -40,6 +44,8 @@ class EditorialWorkflowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Relógio fixo: o resultado não pode depender do dia em que a suite corre.
+        $this->travelTo(CarbonImmutable::parse(self::NOW));
         $planId = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 99, 'created_at' => now(), 'updated_at' => now()]);
         $this->a = Company::create(['nipc' => '500070001', 'fiscal_name' => 'Quebom Lda', 'plan_id' => $planId, 'subscription_status' => 'active']);
         $this->b = Company::create(['nipc' => '500070002', 'fiscal_name' => 'Outra Lda', 'plan_id' => $planId, 'subscription_status' => 'active']);
@@ -410,9 +416,11 @@ class EditorialWorkflowTest extends TestCase
         $this->as($this->adminA)->getJson($this->url($this->b, '/board?month=2026-12'))->assertStatus(403);
         $this->assertSame('client_review', $theirs->fresh()->stage);
 
-        // Quadro: só as publicações da empresa, com o que cada um pode fazer.
-        $mine = $this->makePost($this->a, ['publish_date' => now()->addDays(3)->toDateString()]);
-        $board = $this->as($this->userA)->getJson($this->url($this->a, '/board?month=' . now()->addDays(3)->format('Y-m')))->assertOk()->json('data');
+        // Quadro: só as publicações da empresa, com o que cada um pode fazer. A meio do mês seguinte,
+        // pela mesma razão do teste do modo de produção (no SQLite o último dia do mês fica fora do filtro).
+        $publishDate = now()->addMonthNoOverflow()->day(15);
+        $mine = $this->makePost($this->a, ['publish_date' => $publishDate->toDateString()]);
+        $board = $this->as($this->userA)->getJson($this->url($this->a, '/board?month=' . $publishDate->format('Y-m')))->assertOk()->json('data');
         $this->assertContains($mine->id, array_column($board['posts'], 'id'));
         $this->assertNotContains($theirs->id, array_column($board['posts'], 'id'));
 
