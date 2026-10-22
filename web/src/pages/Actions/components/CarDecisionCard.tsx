@@ -8,6 +8,7 @@ import DecisionBadge, { getDecisionAccent } from "./DecisionBadge";
 import { ActionCenterCarItem, ActionExecutionResponse, DecisionType, SmartAdsRecommendation } from "../types";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import ReasonButton from "Components/Common/ReasonButton";
+import { isActionHidden } from "../hiddenActions";
 
 interface CarDecisionCardProps {
     item: ActionCenterCarItem;
@@ -48,7 +49,8 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
     const primaryRecommendation = orderedRecommendations[0] ?? null;
     const actionableRecommendation = resolveActionableRecommendation(primaryRecommendedAction ?? undefined, primaryAction, primaryRecommendation?.recommendation);
     const normalizedActionKey = actionableRecommendation?.action_key ? actionKeyMap[actionableRecommendation.action_key] ?? actionableRecommendation.action_key : null;
-    const canExecute = Boolean(actionableRecommendation && normalizedActionKey && actionableRecommendation.type !== "no_action_needed");
+    const hiddenAction = isActionHidden(normalizedActionKey);
+    const canExecute = Boolean(actionableRecommendation && normalizedActionKey && actionableRecommendation.type !== "no_action_needed") && !hiddenAction;
     const hasMappedCampaign = item.decision !== "NO_ACTIVE_CAMPAIGN" && Boolean(actionableRecommendation?.target_id || primaryRecommendation?.recommendation?.target_id);
     const shouldMapCampaign = item.decision === "NO_ACTIVE_CAMPAIGN" || Boolean(actionableRecommendation?.type.startsWith("pause_") && !hasMappedCampaign);
     const actionLabel = actionableRecommendation ? getRecommendationActionLabel({ type: actionableRecommendation.type }) : "Executar ação";
@@ -148,7 +150,7 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
                             <Button color="outline-primary" size="sm" className="px-4" style={actionButtonStyle} onClick={() => navigate(`/cars/${item.id}/ads`)}>
                                 Mapear campanha
                             </Button>
-                        ) : (
+                        ) : hiddenAction ? null : (
                             <ReasonButton
                                 color="outline-primary"
                                 size="sm"

@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { executeCarActionApi } from "../../../helpers/laravel_helper";
 import { ActionCenterCarItem, SmartAdsRecommendation } from "../types";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import { isActionHidden } from "../hiddenActions";
 
 interface ActionRecommendationCardProps {
     item: ActionCenterCarItem;
@@ -62,7 +63,7 @@ export default function ActionRecommendationCard({
     const [isExecuting, setIsExecuting] = useState(false);
     const config = badgeConfig[bucket];
     const normalizedActionKey = recommendation.action_key ? actionKeyMap[recommendation.action_key] ?? recommendation.action_key : null;
-    const canExecute = Boolean(normalizedActionKey);
+    const canExecute = Boolean(normalizedActionKey) && !isActionHidden(normalizedActionKey);
     const actionLabel = getRecommendationActionLabel(recommendation);
     const actionHelper = getRecommendationActionHelper(recommendation);
     const impactLabel = useMemo(() => {

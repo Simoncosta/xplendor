@@ -284,22 +284,21 @@ function RatingWidget({ token, companyName, googleReviewUrl, initial }: {
                 </div>
 
                 {high ? (
-                    <>
-                        <p className="xsr-rate-thanks">Que bom que gostou! 💚</p>
-                        {finalMessage && (
-                            <div className="xsr-review-quote">
-                                <p>“{finalMessage}”</p>
-                                <button type="button" className="xsr-btn-ghost" onClick={copy}>
-                                    <span className="xsr-drop-ico xsr-ico-inline"><Icon name="spec" /></span>
-                                    {copied ? "Copiado!" : "Copiar mensagem"}
-                                </button>
-                            </div>
-                        )}
-                    </>
+                    <p className="xsr-rate-thanks">Que bom que gostou! 💚</p>
                 ) : (
                     <p className="xsr-rate-thanks">Obrigado pelo seu feedback. Vamos usá-lo para melhorar{companyName ? ` na ${companyName}` : ""}. 🙏</p>
                 )}
-                {/* A frase e o botão são os mesmos para qualquer nota: a Google proíbe pedir avaliações só a quem está satisfeito. */}
+                {/* A mensagem, o "Copiar mensagem", a frase e o botão do Google são os mesmos para qualquer nota:
+                    a Google proíbe pedir avaliações só a quem está satisfeito. */}
+                {finalMessage && (
+                    <div className="xsr-review-quote">
+                        <p>“{finalMessage}”</p>
+                        <button type="button" className="xsr-btn-ghost" onClick={copy}>
+                            <span className="xsr-drop-ico xsr-ico-inline"><Icon name="spec" /></span>
+                            {copied ? "Copiado!" : "Copiar mensagem"}
+                        </button>
+                    </div>
+                )}
                 {googleReviewUrl && (
                     <>
                         <p className="xsr-rate-thanks">Se quiser, também pode partilhar a sua opinião no Google.</p>

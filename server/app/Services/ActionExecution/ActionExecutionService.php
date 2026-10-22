@@ -50,12 +50,22 @@ class ActionExecutionService
         ],
     ];
 
+    /**
+     * Ações escondidas até haver suporte (decisão de 22/10/2026): o "Pausar campanha" falha porque
+     * a ligação só tem ads_read; volta com a gestão de anúncios (ads_management). O código fica.
+     */
+    public const HIDDEN = ['pause_campaign'];
+
     public function execute(Car $car, string $action, array $context = []): array
     {
         $definition = self::ACTIONS[$action] ?? null;
 
         if (!$definition) {
             throw new \DomainException('Ação inválida ou não suportada.');
+        }
+
+        if (in_array($action, self::HIDDEN, true)) {
+            throw new \DomainException('Esta ação ainda não está disponível: a ligação à Meta só permite ler os anúncios.');
         }
 
         if (!($definition['implemented'] ?? false)) {

@@ -24,6 +24,7 @@ import {
     PauseTargetOption,
 } from "../types";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import { isActionHidden } from "../hiddenActions";
 
 const actionOptions: ActionExecutionOption[] = [
     {
@@ -92,6 +93,12 @@ const readCompanyId = () => {
 };
 
 const getDefaultAction = (decision: DecisionType | "INSUFFICIENT_DATA") => {
+    const preferred = getPreferredAction(decision);
+
+    return isActionHidden(preferred) ? "notify_client_whatsapp" : preferred;
+};
+
+const getPreferredAction = (decision: DecisionType | "INSUFFICIENT_DATA") => {
     switch (decision) {
         case "NO_ACTIVE_CAMPAIGN":
             return "notify_client_whatsapp";
@@ -168,11 +175,12 @@ export default function ActionExecutionModal({
         [selectedAction]
     );
     const visibleActionOptions = useMemo(() => {
+        const available = actionOptions.filter((option) => !isActionHidden(option.key));
         if (item.decision === "NO_ACTIVE_CAMPAIGN") {
-            return actionOptions.filter((option) => !["pause_campaign", "swap_creative"].includes(option.key));
+            return available.filter((option) => !["pause_campaign", "swap_creative"].includes(option.key));
         }
 
-        return actionOptions;
+        return available;
     }, [item.decision]);
 
     const performExecuteAction = async () => {
