@@ -65,11 +65,12 @@ class AutoPublishingScheduler
                 || ($publication->status === SocialPublication::STATUS_FAILED && ! $sameTime);
             if ($publication->isPending() && ! $sameTime) {
                 // Nova hora: começa do zero (sem verificação marcada nem contentor de antes).
-                $publication->forceFill(['scheduled_for' => $dueAt, 'next_attempt_at' => null, 'container_id' => null])->save();
+                $publication->forceFill(['scheduled_for' => $dueAt, 'next_attempt_at' => null, 'container_id' => null,
+                    'attempts' => 0, 'error_code' => null, 'error_message' => null])->save();
             } elseif ($revive) {
                 $publication->forceFill([
                     'status' => SocialPublication::STATUS_SCHEDULED, 'scheduled_for' => $dueAt, 'attempts' => 0, 'next_attempt_at' => null,
-                    'container_id' => null, 'error_code' => null, 'error_message' => null, 'cancelled_at' => null,
+                    'container_id' => null, 'error_code' => null, 'error_message' => null, 'cancelled_at' => null, 'alerted_at' => null,
                 ])->save();
                 self::prepareMedia($publication);
             }

@@ -146,7 +146,7 @@ class InstagramReelPublishingTest extends TestCase
         $this->assertSame(['failed', 'permanent'], [$pub->status, $pub->error_code]);
 
         // A processar há mais de 30 minutos depois da hora: falha, com o motivo.
-        $pub->forceFill(['status' => 'scheduled', 'error_code' => null, 'error_message' => null, 'next_attempt_at' => null])->save();
+        $pub->forceFill(['status' => 'scheduled', 'attempts' => 0, 'error_code' => null, 'error_message' => null, 'next_attempt_at' => null])->save();
         $fake->containerState = 'IN_PROGRESS';
         $this->travelTo(CarbonImmutable::parse('2026-11-12 12:31', 'Europe/Lisbon'));
         app(AutoPublisher::class)->runDue();

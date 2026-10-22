@@ -35,7 +35,7 @@ class SocialPublication extends Model
     protected $fillable = [
         'company_id', 'editorial_post_id', 'editorial_post_network_id', 'network', 'status', 'scheduled_for',
         'attempts', 'next_attempt_at', 'container_id', 'media_id', 'permalink', 'error_code', 'error_message',
-        'published_at', 'cancelled_at',
+        'published_at', 'cancelled_at', 'alerted_at',
     ];
 
     protected $casts = [
@@ -43,6 +43,7 @@ class SocialPublication extends Model
         'next_attempt_at' => 'datetime',
         'published_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'alerted_at' => 'datetime',
         'attempts' => 'integer',
     ];
 
@@ -72,7 +73,10 @@ class SocialPublication extends Model
             'published_at' => $this->published_at?->toIso8601String(),
             'permalink' => $this->permalink,
             'error_message' => $this->error_message,
+            'error_code' => $this->error_code,
             'attempts' => $this->attempts,
+            // F2.7: a próxima tentativa (ou verificação) marcada, quando a publicação espera.
+            'next_attempt_at' => $this->next_attempt_at?->toIso8601String(),
         ];
     }
 }

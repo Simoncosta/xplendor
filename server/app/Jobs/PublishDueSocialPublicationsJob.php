@@ -31,7 +31,7 @@ class PublishDueSocialPublicationsJob implements ShouldQueue
             return ['skipped' => true];
         }
 
-        $result = $publisher->runDue();
+        $result = $publisher->runDue() + ['stuck_alerts' => $publisher->alertStuck()];
         if (array_sum($result) > 0) {
             Log::info('[Publicação automática] Publicador', $result + ['driver' => $driver]);
         }

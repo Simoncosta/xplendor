@@ -173,20 +173,21 @@ class AutoPublishingTest extends TestCase
         $this->meta->quotaUsed = 100;
         $this->travelTo(CarbonImmutable::parse('2026-11-12 12:01', 'Europe/Lisbon'));
 
-        $this->assertSame(['published' => 0, 'failed' => 2, 'cancelled' => 0, 'waiting' => 0], app(AutoPublisher::class)->runDue());
+        // F2.7: o erro definitivo falha logo; a quota esgotada adia (não falha).
+        $this->assertSame(['published' => 0, 'failed' => 1, 'cancelled' => 0, 'waiting' => 1], app(AutoPublisher::class)->runDue());
         $fb = SocialPublication::where('network', 'facebook')->sole();
         $ig = SocialPublication::where('network', 'instagram')->sole();
         $this->assertSame(['failed', '100', 'A Página não aceitou a publicação.'], [$fb->status, $fb->error_code, $fb->error_message]);
-        $this->assertSame(['failed', 'quota'], [$ig->status, $ig->error_code]);
+        $this->assertSame(['scheduled', 'quota'], [$ig->status, $ig->error_code]);
         $this->assertSame([], $this->meta->callsTo('createInstagramContainer'), 'sem quota, nem cria o contentor');
         $this->assertSame(EditorialPost::STAGE_SCHEDULED, $post->fresh()->stage);
-        $this->assertSame(EditorialPostNetwork::STATE_PENDING, $post->networks()->where('network', 'instagram')->sole()->state(), 'continua por publicar à mão');
+        $this->assertSame(EditorialPostNetwork::STATE_PENDING, $post->networks()->where('network', 'facebook')->sole()->state(), 'continua por publicar à mão');
 
         // Uma que falhou só volta a agendar quando a hora muda.
         $post->update(['title' => 'Outro título']);
-        $this->assertSame('failed', $ig->fresh()->status);
+        $this->assertSame('failed', $fb->fresh()->status);
         $post->update(['publish_date' => '2026-11-13']);
-        $this->assertSame('scheduled', $ig->fresh()->status);
+        $this->assertSame('scheduled', $fb->fresh()->status);
     }
 
     public function test_a_post_changed_after_the_claim_is_cancelled_and_stories_stay_manual(): void

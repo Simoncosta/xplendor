@@ -10,6 +10,7 @@ use App\Models\EditorialPostVersion;
 use App\Models\MediaAsset;
 use App\Models\SocialConnectionAccount;
 use App\Models\SocialPublication;
+use App\Services\ContentReview\ContentReviewNotifier;
 use App\Services\Editorial\EditorialPublishingService;
 use App\Services\Editorial\NetworkFormats;
 use Carbon\CarbonImmutable;
@@ -20,12 +21,29 @@ use Illuminate\Support\Facades\Log;
  * F2.2 · O publicador: as publicações agendadas cuja hora chegou saem, uma a uma, pelo cliente da
  * Meta (nesta fatia, o simulado; as chamadas reais são da F2.4 em diante). Cada uma é reservada
  * antes (agendado → a publicar, numa só atualização), por isso nunca sai duas vezes. Correu bem:
- * "publicado", com o link, e a rede fica marcada como publicada. Correu mal: "falhou", com o
- * motivo (as tentativas, a quota esgotada e os alertas são da F2.7).
+ * "publicado", com o link, e a rede fica marcada como publicada. Correu mal (F2.7):
+ *  · erro passageiro (limite, erro da Meta, contentor a processar): volta a tentar aos 2, 10 e 30
+ *    minutos e só depois falha;
+ *  · erro definitivo (permissão, formato, token): falha logo, com o motivo em linguagem simples;
+ *  · quota do Instagram esgotada: adia (verifica de hora a hora, sem gastar tentativas) e avisa.
+ * Falhar de vez avisa quem produz (sino logo e resumo por email, que segue a guarda ExternalCalls);
+ * "a publicar" há mais de 15 minutos também (alertStuck).
  */
 class AutoPublisher
 {
+    /** waiting: volta a tentar mais tarde (tentativa seguinte, vídeo a processar ou quota esgotada). */
     public const RESULTS = ['published' => 0, 'failed' => 0, 'cancelled' => 0, 'waiting' => 0];
+
+    /** Minutos até cada nova tentativa depois de um erro passageiro (3 tentativas). */
+    public const RETRY_MINUTES = [2, 10, 30];
+
+    /** Quota esgotada: volta a ver de QUOTA_RECHECK_MINUTES em QUOTA_RECHECK_MINUTES, até QUOTA_LIMIT_HOURS depois da hora. */
+    public const QUOTA_RECHECK_MINUTES = 60;
+
+    public const QUOTA_LIMIT_HOURS = 24;
+
+    /** "A publicar" há mais do que isto: aviso urgente. */
+    public const STUCK_MINUTES = 15;
 
     /** Contentor ainda a processar: volta a ver daqui a WAIT_SECONDS, até WAIT_LIMIT_MINUTES depois da hora. */
     private const WAIT = 'wait';
@@ -35,9 +53,31 @@ class AutoPublisher
     public const WAIT_LIMIT_MINUTES = 30;
 
     public function __construct(private readonly MetaPublishingClient $meta, private readonly EditorialPublishingService $publishing,
-        private readonly MetaMediaPreparer $files) {}
+        private readonly MetaMediaPreparer $files, private readonly ContentReviewNotifier $notifier) {}
 
-    /** @return array{published: int, failed: int, cancelled: int} */
+    /**
+     * "A publicar" há mais de STUCK_MINUTES (o worker caiu a meio, ou a Meta não respondeu): um aviso
+     * urgente por publicação. Não volta a tentar sozinha: pode ter saído (ver na rede antes de repetir).
+     */
+    public function alertStuck(): int
+    {
+        $alerted = 0;
+        SocialPublication::where('status', SocialPublication::STATUS_PUBLISHING)->whereNull('alerted_at')
+            ->where('updated_at', '<', now()->subMinutes(self::STUCK_MINUTES))->orderBy('id')->limit(50)->get()
+            ->each(function (SocialPublication $publication) use (&$alerted) {
+                if (! SocialPublication::whereKey($publication->id)->whereNull('alerted_at')->update(['alerted_at' => now()])) {
+                    return; // outro já avisou
+                }
+                $label = NetworkFormats::NETWORK_LABELS[$publication->network] ?? $publication->network;
+                $this->alert($publication, 'urgent', 'Publicação automática presa', "{$label}: está a publicar há mais de " . self::STUCK_MINUTES
+                    . ' minutos. Veja na rede se já saiu antes de publicar à mão.');
+                $alerted++;
+            });
+
+        return $alerted;
+    }
+
+    /** @return array{published: int, failed: int, cancelled: int, waiting: int} */
     public function runDue(int $limit = 20): array
     {
         $out = self::RESULTS;
@@ -259,8 +299,10 @@ class AutoPublisher
      */
     private function wait(SocialPublication $publication): string
     {
-        if ($publication->scheduled_for && now()->greaterThan($publication->scheduled_for->copy()->addMinutes(self::WAIT_LIMIT_MINUTES))) {
-            return $this->fail($publication, self::failure(MetaPublishingClient::KIND_TRANSIENT,
+        // O limite conta a partir da hora, mais o tempo das novas tentativas já gastas (F2.7).
+        $retried = array_sum(array_slice(self::RETRY_MINUTES, 0, max(0, (int) $publication->attempts - 1)));
+        if ($publication->scheduled_for && now()->greaterThan($publication->scheduled_for->copy()->addMinutes(self::WAIT_LIMIT_MINUTES + $retried))) {
+            return $this->fail($publication, self::failure(MetaPublishingClient::KIND_PERMANENT,
                 'O Instagram não acabou de processar o vídeo em ' . self::WAIT_LIMIT_MINUTES . ' minutos.', 'container'));
         }
         $publication->forceFill(['status' => SocialPublication::STATUS_SCHEDULED, 'next_attempt_at' => now()->addSeconds(self::WAIT_SECONDS),
@@ -269,18 +311,72 @@ class AutoPublisher
         return 'waiting';
     }
 
-    /** @return 'failed' */
+    /**
+     * F2.7 · Uma falha: passageira com tentativas por gastar volta a "agendado" (aos 2, 10 e 30 minutos);
+     * quota esgotada adia; o resto falha de vez, com o aviso urgente a quem produz.
+     *
+     * @return 'failed'|'waiting'
+     */
     private function fail(SocialPublication $publication, array $failure): string
     {
-        $publication->forceFill([
-            'status' => SocialPublication::STATUS_FAILED,
-            'error_code' => isset($failure['code']) ? mb_substr((string) $failure['code'], 0, 50) : ($failure['kind'] ?? null),
-            'error_message' => mb_substr((string) ($failure['message'] ?? 'Falha ao publicar.'), 0, 500),
-        ])->save();
+        $kind = (string) ($failure['kind'] ?? MetaPublishingClient::KIND_PERMANENT);
+        $code = isset($failure['code']) ? mb_substr((string) $failure['code'], 0, 50) : $kind;
+        $message = (string) ($failure['message'] ?? 'Falha ao publicar.');
+        $attempts = (int) $publication->attempts;
+
+        if ($code === 'quota') {
+            return $this->deferForQuota($publication, $message);
+        }
+        if ($kind === MetaPublishingClient::KIND_TRANSIENT && $attempts >= 1 && $attempts <= count(self::RETRY_MINUTES)) {
+            $at = now()->addMinutes(self::RETRY_MINUTES[$attempts - 1]);
+            $publication->forceFill(['status' => SocialPublication::STATUS_SCHEDULED, 'next_attempt_at' => $at, 'error_code' => $code,
+                'error_message' => mb_substr($message . ' Nova tentativa às ' . $at->copy()->setTimezone(EditorialPost::TIMEZONE)->format('H:i') . '.', 0, 500)])->save();
+            Log::info('[Publicação automática] Nova tentativa marcada', ['publication_id' => $publication->id, 'attempt' => $attempts, 'at' => $at->toIso8601String()]);
+
+            return 'waiting';
+        }
+
+        $publication->forceFill(['status' => SocialPublication::STATUS_FAILED, 'next_attempt_at' => null, 'error_code' => $code,
+            'error_message' => mb_substr($message, 0, 500)])->save();
         Log::warning('[Publicação automática] Falhou', ['publication_id' => $publication->id, 'network' => $publication->network,
-            'kind' => $failure['kind'] ?? null, 'message' => $publication->error_message]);
+            'kind' => $kind, 'message' => $publication->error_message]);
+        if (SocialPublication::whereKey($publication->id)->whereNull('alerted_at')->update(['alerted_at' => now()])) {
+            $label = NetworkFormats::NETWORK_LABELS[$publication->network] ?? $publication->network;
+            $this->alert($publication, 'urgent', 'A publicação automática falhou', "{$label}: {$publication->error_message} Pode publicar à mão e marcar como publicada.");
+        }
 
         return 'failed';
+    }
+
+    /**
+     * Quota diária do Instagram esgotada: adia (volta a ver de hora a hora, sem gastar tentativas) e
+     * avisa uma vez. Ao fim de QUOTA_LIMIT_HOURS depois da hora, falha de vez.
+     *
+     * @return 'failed'|'waiting'
+     */
+    private function deferForQuota(SocialPublication $publication, string $message): string
+    {
+        if ($publication->scheduled_for && now()->greaterThan($publication->scheduled_for->copy()->addHours(self::QUOTA_LIMIT_HOURS))) {
+            return $this->fail($publication, self::permanent($message . ' Ficou adiada mais de ' . self::QUOTA_LIMIT_HOURS . ' horas.'));
+        }
+        $first = $publication->error_code !== 'quota';
+        $publication->forceFill(['status' => SocialPublication::STATUS_SCHEDULED, 'next_attempt_at' => now()->addMinutes(self::QUOTA_RECHECK_MINUTES),
+            'attempts' => max(0, (int) $publication->attempts - 1), 'error_code' => 'quota',
+            'error_message' => mb_substr($message . ' Fica adiada e sai assim que o Instagram aceitar.', 0, 500)])->save();
+        if ($first) {
+            $this->alert($publication, 'warning', 'Quota do Instagram esgotada', 'Instagram: a quota diária de publicações da conta está esgotada. '
+                . 'A publicação fica adiada e sai assim que houver quota (verificamos de hora a hora).', 'medium');
+        }
+
+        return 'waiting';
+    }
+
+    /** Aviso a quem produz (sino logo e resumo por email), com a ligação que abre a publicação. */
+    private function alert(SocialPublication $publication, string $type, string $title, string $message, string $severity = 'high'): void
+    {
+        $postTitle = (string) EditorialPost::whereKey($publication->editorial_post_id)->value('title');
+        $this->notifier->notifyCompany((int) $publication->company_id, $type, $title . ($postTitle !== '' ? ": {$postTitle}" : ''), $message, $severity,
+            '/editorial?publicacao=' . $publication->editorial_post_id);
     }
 
     /** Ainda é para sair sozinha? (a publicação pode ter mudado entre a reserva e agora) */

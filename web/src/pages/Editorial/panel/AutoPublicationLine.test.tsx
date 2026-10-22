@@ -26,6 +26,15 @@ describe("AutoPublicationLine (F2.2)", () => {
         expect(container).toBeEmptyDOMElement();
     });
 
+    it("mostra a nova tentativa e a quota adiada (F2.7)", () => {
+        const { rerender } = render(<AutoPublicationLine info={info({ next_attempt_at: "2026-11-12T12:02:00Z", error_code: "2", error_message: "A Meta está ocupada. Nova tentativa às 12:02." })} published={false} />);
+        expect(screen.getByText(/A publicação automática vai tentar de novo: A Meta está ocupada\. Nova tentativa às 12:02\./)).toBeInTheDocument();
+        rerender(<AutoPublicationLine info={info({ next_attempt_at: "2026-11-12T13:00:00Z", error_code: "quota", error_message: "A quota está esgotada." })} published={false} />);
+        expect(screen.getByText(/Publicação automática adiada: A quota está esgotada\./)).toBeInTheDocument();
+        rerender(<AutoPublicationLine info={info({ next_attempt_at: "2026-11-12T12:01:00Z" })} published={false} />);
+        expect(screen.getByText(/À espera de que o Instagram acabe de processar o vídeo/)).toBeInTheDocument();
+    });
+
     it("diz que saiu sozinha", () => {
         render(<AutoPublicationLine info={info({ status: "published" })} published />);
         expect(screen.getByText("Publicada automaticamente pela XPLENDOR.")).toBeInTheDocument();

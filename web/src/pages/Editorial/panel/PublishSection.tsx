@@ -21,6 +21,17 @@ const errorsOf = (e: any) => (e?.errors ? Object.fromEntries(Object.entries(e.er
 /** F2.2: o estado da publicação automática desta rede (agendada, a publicar, publicada sozinha, falhou). */
 export function AutoPublicationLine({ info, published }: { info: SocialPublicationInfo | null; published: boolean }) {
     if (!info || info.status === "cancelled") return null;
+    if (info.status === "scheduled" && info.next_attempt_at && info.error_message) {
+        // F2.7: um erro passageiro (nova tentativa marcada) ou a quota do Instagram esgotada (adiada).
+        return (
+            <div className="fs-13 mt-2 text-warning">
+                <i className="ri-time-line me-1" />{info.error_code === "quota" ? "Publicação automática adiada: " : "A publicação automática vai tentar de novo: "}{info.error_message}
+            </div>
+        );
+    }
+    if (info.status === "scheduled" && info.next_attempt_at) {
+        return <div className="fs-13 mt-2 text-primary"><i className="ri-loader-4-line me-1" />À espera de que o Instagram acabe de processar o vídeo.</div>;
+    }
     if (info.status === "scheduled") {
         return <div className="fs-13 mt-2 text-success"><i className="ri-time-line me-1" />Publicação automática agendada para {when(info.scheduled_for)}.</div>;
     }

@@ -210,6 +210,8 @@ export type SocialPublicationStatus = "scheduled" | "publishing" | "published" |
 export interface SocialPublicationInfo {
     status: SocialPublicationStatus; label: string; scheduled_for: string | null; published_at: string | null;
     permalink: string | null; error_message: string | null; attempts: number;
+    /** F2.7: o código do erro ("quota" quando a quota do Instagram está esgotada) e a próxima tentativa marcada. */
+    error_code?: string | null; next_attempt_at?: string | null;
 }
 
 export interface TodayPost { id: number; title: string; channel: PostChannel; networks: import("./editorialPost.model").PostNetwork[]; publish_date: string; publish_time: string | null; overdue: boolean; can_mark: boolean }
