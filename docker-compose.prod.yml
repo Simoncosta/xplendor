@@ -55,8 +55,9 @@ services:
       MYSQL_PASSWORD: 83a3dYSt7MbmeJ2l
     volumes:
       - db_data_xplendor:/var/lib/mysql
+    # Só no próprio servidor (127.0.0.1): de fora, por túnel SSH. Os contentores usam "db:3306".
     ports:
-      - "3310:3306"
+      - "127.0.0.1:3310:3306"
     restart: always
     networks:
       - xplendor
@@ -72,16 +73,21 @@ services:
     networks:
       - xplendor
 
+  # phpMyAdmin: não arranca por omissão (profile "admin") nem volta sozinho depois de reiniciar o
+  # servidor; quando arranca, só em 127.0.0.1 (acesso por túnel SSH). Arrancar e parar:
+  #   docker compose -f docker-compose.prod.yml --profile admin up -d phpmyadmin
+  #   docker compose -f docker-compose.prod.yml --profile admin stop phpmyadmin
   phpmyadmin:
-    image: phpmyadmin:latest
+    image: phpmyadmin:5.2.3-apache
     container_name: xplendor-phpadmin
-    restart: always
+    profiles: ["admin"]
+    restart: "no"
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: 83a3dYSt7MbmeJ2l
     ports:
-      - "8081:80"
+      - "127.0.0.1:8081:80"
     depends_on:
       - db
     networks:

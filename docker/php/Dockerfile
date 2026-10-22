@@ -1,4 +1,6 @@
-FROM php:8.2-fpm
+# PHP 8.2 fixado na versão corrigida (PHP2Shell: CVE-2026-109618 e CVE-2026-109619), no mesmo
+# ramo e na mesma variante de antes (Debian 13, trixie). Ao atualizar, mudar só o número.
+FROM php:8.2.35-fpm-trixie
 
 # Copy docker CLI binary so the worker can call `docker exec` on the scraper container
 COPY --from=docker:27 /usr/local/bin/docker /usr/local/bin/docker
