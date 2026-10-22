@@ -12,6 +12,7 @@ use App\Models\ExpenseCategory;
 use App\Models\ExpenseCharge;
 use App\Models\User;
 use App\Services\AlertService;
+use App\Support\ExternalCalls;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -166,6 +167,10 @@ class ChargeService
             ->whereHas('company', fn ($q) => $q->where('billing_reminders_enabled', true))
             ->orderBy('id')
             ->each(function (ExpenseCharge $charge) use ($today, &$sent) {
+                // Lembrete automático: só com o interruptor das chamadas externas ligado ("Enviar agora" não passa por aqui).
+                if (! ExternalCalls::allowed($charge->company)) {
+                    return;
+                }
                 if (self::isReminderDay($charge->due_date, $today) && $this->sendToClient($charge, 'reminder', $today)) {
                     $sent++;
                 }

@@ -528,6 +528,6 @@ Schedule::call(fn () => app(\App\Audit\AuditRunService::class)->expireStale())
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {
-        $event->when(fn () => (bool) config('scheduler.external_jobs'));
+        $event->when(fn () => \App\Support\ExternalCalls::allowed());
     }
 }

@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Mail\DailyAlertsSummaryMail;
 use App\Models\Company;
 use App\Services\AlertService;
+use App\Support\ExternalCalls;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -48,7 +49,8 @@ class GenerateDailyAlertsEmailJob implements ShouldQueue
 
             $alerts = $alertService->getAlertsForDailySummary($company);
 
-            if ($alerts->isEmpty()) {
+            // Os alertas geram-se sempre; o email só sai com o interruptor das chamadas externas ligado.
+            if ($alerts->isEmpty() || ! ExternalCalls::allowed($company)) {
                 continue;
             }
 

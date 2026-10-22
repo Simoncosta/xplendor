@@ -191,6 +191,7 @@ class ConsultantSiteProfileTest extends TestCase
     public function test_changes_ask_the_site_to_revalidate_with_a_signed_request(): void
     {
         config(['consultor_site.revalidate_url' => 'http://xplendor-consultor:3000/api/revalidate', 'consultor_site.revalidate_secret' => 'segredo-de-teste']);
+        config(['scheduler.external_jobs' => true]); // a revalidação segue o interruptor das chamadas externas
         Http::fake(['xplendor-consultor:3000/*' => Http::response(['ok' => true])]);
         $p = $this->publishedProperty(['slug' => 'apartamento-revalidar']);
         Http::assertSent(function (HttpRequest $r) {
@@ -208,6 +209,15 @@ class ConsultantSiteProfileTest extends TestCase
         // Um artigo do blog também revalida.
         \App\Models\Blog::create(['company_id' => $this->company->id, 'user_id' => $this->admin->id, 'title' => 'Artigo', 'slug' => 'artigo-x', 'content' => '<p>x</p>', 'status' => 'draft']);
         Http::assertSent(fn (HttpRequest $r) => in_array('blog:artigo-x', json_decode($r->body(), true)['tags'] ?? [], true));
+    }
+
+    public function test_with_external_calls_off_nothing_is_sent_even_with_a_url(): void
+    {
+        config(['consultor_site.revalidate_url' => 'http://xplendor-consultor:3000/api/revalidate', 'consultor_site.revalidate_secret' => 'segredo-de-teste']);
+        config(['scheduler.external_jobs' => false]);
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->publishedProperty();
+        \Illuminate\Support\Facades\Queue::assertNotPushed(RevalidateConsultantSiteJob::class);
     }
 
     public function test_without_a_revalidation_url_nothing_is_sent(): void

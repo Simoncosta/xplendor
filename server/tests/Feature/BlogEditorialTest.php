@@ -246,6 +246,7 @@ class BlogEditorialTest extends TestCase
 
     public function test_xplendor_team_writes_and_submits_and_admins_are_notified(): void
     {
+        config(['scheduler.external_jobs' => true]); // o email segue o interruptor das chamadas externas
         $deactivated = User::factory()->create(['company_id' => $this->a->id, 'role' => 'admin', 'email' => 'saiu@quebom.pt', 'deactivated_at' => now()]);
 
         $byRoot = $this->create($this->root, $this->a, ['title' => 'Escrito pela equipa']);
@@ -260,6 +261,17 @@ class BlogEditorialTest extends TestCase
         Mail::assertQueued(BlogReviewRequestedMail::class, 2);
         Mail::assertQueued(BlogReviewRequestedMail::class, fn ($m) => $m->hasTo('admin@quebom.pt') && $m->title === 'Escrito pela equipa' && str_ends_with($m->url, "/blogs/{$byRoot['id']}"));
         Mail::assertNotQueued(BlogReviewRequestedMail::class, fn ($m) => $m->hasTo('user@quebom.pt') || $m->hasTo('admin@outra.pt') || $m->hasTo($deactivated->email));
+    }
+
+    public function test_with_external_calls_off_the_bell_rings_but_no_email_is_sent(): void
+    {
+        config(['scheduler.external_jobs' => false]);
+
+        $blog = $this->create($this->root, $this->a, ['title' => 'Sem email']);
+        $this->as($this->root)->postJson($this->url($this->a, "/{$blog['id']}/submit"))->assertOk()->assertJsonPath('data.status', 'in_review');
+
+        $this->assertSame(1, Alert::where('company_id', $this->a->id)->where('title', 'Artigo para rever')->count());
+        Mail::assertNothingQueued();
     }
 
     public function test_verify_marker_blocks_only_the_approval(): void

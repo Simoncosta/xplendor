@@ -48,8 +48,10 @@ class XplendorChargesTest extends TestCase
         Storage::fake('local');
         Carbon::setTestNow(Carbon::parse('2026-10-14 08:30:00', 'UTC')); // quarta-feira, 09:30 em Lisboa
         config(['app.frontend_url' => 'https://app.exemplo.pt/app']);
+        // Os lembretes automáticos seguem o interruptor das chamadas externas (ligado em produção).
+        config(['scheduler.external_jobs' => true]);
 
-        $this->plan = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 99, 'created_at' => now(), 'updated_at' => now()]);
+        $this->plan =DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 99, 'created_at' => now(), 'updated_at' => now()]);
         $this->xplendor = $this->company('XPLENDOR');
         $this->client = $this->company('Domiway', ['invoice_email' => 'faturas@domiway.pt']);
         $this->root = User::factory()->create(['company_id' => $this->xplendor->id, 'role' => 'root', 'email' => 'simon@xplendor.tech']);
@@ -207,6 +209,22 @@ class XplendorChargesTest extends TestCase
 
         // O job agendado corre o mesmo cálculo.
         $this->assertSame(['sent' => 0, 'pruned_opens' => 0], app(ChargeRemindersJob::class)->handle($svc));
+    }
+
+    public function test_with_external_calls_off_no_reminder_is_sent_but_the_root_can_still_send_now(): void
+    {
+        $this->client->forceFill(['billing_reminders_enabled' => true])->save();
+        $charge = $this->createCharge(); // vence a 2026-10-20
+        $before = [$charge->fresh()->last_reminder_on?->toDateString(), $charge->fresh()->reminders_sent];
+        Mail::fake();
+        config(['scheduler.external_jobs' => false]);
+
+        $this->assertSame(0, app(ChargeService::class)->runReminders(Carbon::parse('2026-10-20', ChargeService::TIMEZONE)));
+        Mail::assertNothingQueued();
+        $this->assertSame($before, [$charge->fresh()->last_reminder_on?->toDateString(), $charge->fresh()->reminders_sent]);
+
+        $this->as($this->root)->postJson("/api/v1/admin/charges/{$charge->id}/send")->assertOk();
+        Mail::assertQueued(ChargeClientMail::class, 1);
     }
 
     public function test_the_switch_is_off_by_default_and_the_root_can_always_send_now(): void

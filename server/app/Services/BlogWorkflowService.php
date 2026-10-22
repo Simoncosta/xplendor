@@ -11,6 +11,7 @@ use App\Models\ImpersonationSession;
 use App\Models\User;
 use App\Services\Tenancy\CompanyAccess;
 use App\Support\BlogHtml;
+use App\Support\ExternalCalls;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -256,6 +257,11 @@ class BlogWorkflowService
             severity: 'medium',
             detailPath: "/blogs/{$blog->id}",
         );
+
+        // O sino fica sempre; o email só sai com o interruptor das chamadas externas ligado.
+        if (! ExternalCalls::allowed((int) $blog->company_id)) {
+            return;
+        }
 
         $company = Company::find($blog->company_id);
         $admins = User::where('company_id', $blog->company_id)->where('role', 'admin')

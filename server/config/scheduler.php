@@ -5,6 +5,8 @@
  * Standvirtual, IA, os feeds públicos do Radar). Em produção correm sempre (nada muda); fora de
  * produção ficam desligadas por omissão, para o dev nunca fazer chamadas reais sozinho.
  * SCHEDULE_EXTERNAL_JOBS=true liga-as (por exemplo, para testar uma sincronização no dev de propósito).
+ * O mesmo interruptor vale fora do agendador (observadores, revalidação dos sites e emails
+ * automáticos), sempre pela guarda única App\Support\ExternalCalls::allowed().
  */
 return [
     'external_jobs' => (bool) env('SCHEDULE_EXTERNAL_JOBS', env('APP_ENV', 'production') === 'production'),
@@ -28,6 +30,9 @@ return [
         'pingwin-pos-documents-nightly',
         // Fatia 6a: as reservas futuras lidas no CoverManager (de manhã e ao fim da tarde).
         'restaurant-reservations-morning', 'restaurant-reservations-evening',
+        // Projeção das despesas do gasto Meta: só lê as tabelas locais, mas trabalha sobre dados da
+        // Meta e fica com o resto da Meta (decisão do spike de 22/10).
+        'project-meta-expenses',
     ],
 
     // As tarefas agendadas que chegam à IA (pelos trabalhos que põem na fila). Todas têm de estar

@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Jobs\CalculateCarSalePotentialScoreJob;
 use App\Models\Car;
 use App\Services\MarketSnapshotService;
+use App\Support\ExternalCalls;
 
 class CarObserver
 {
@@ -12,6 +13,10 @@ class CarObserver
     {
         // Guard: skip in testing — Queue::fake() is sufficient when tests exercise this path.
         if (app()->environment('testing')) {
+            return;
+        }
+        // A recolha no Standvirtual é uma chamada externa: no dev só com o interruptor ligado.
+        if (! ExternalCalls::allowed($car->company_id)) {
             return;
         }
 

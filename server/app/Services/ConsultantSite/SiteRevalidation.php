@@ -10,6 +10,7 @@ use App\Models\ConsultantSite;
 use App\Models\Development;
 use App\Models\ListingImage;
 use App\Models\Property;
+use App\Support\ExternalCalls;
 
 /**
  * Site do consultor: quando um imóvel, um empreendimento, uma fotografia, o perfil ou um artigo
@@ -82,6 +83,9 @@ final class SiteRevalidation
     {
         if ((string) config('consultor_site.revalidate_url') === '') {
             return; // desligada (dev e testes por omissão)
+        }
+        if (! ExternalCalls::allowed($companyId)) {
+            return; // interruptor das chamadas externas desligado (dev)
         }
         $siteId = ConsultantSite::where('company_id', $companyId)->value('id');
         if ($siteId) {
