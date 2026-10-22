@@ -3948,8 +3948,13 @@ class MyCloudPieClient(StockDocsMixin):
     #   8. fiscalrules.verifydoc (só registo: diz OK mesmo sem fornecedor nem linhas).
     #   9. SAVE → CLOSE SEMPRE (finally). Fechar sem SAVE não gasta número.
     # MUDAR DE ESTADO: POST /service/document/{id}/header OPEN,EDIT,SAVE,CLOSE [{"docstatus_id": …}].
+    # NOTA DE CRÉDITO DE FORNECEDOR ({dc}=1205, V/NC, série VNC, stksignal −1; HAR de 21/10): o MESMO
+    # protocolo. Por defeito nasce Fechada (8002): o passo 7 põe-na em rascunho como a fatura. A lista
+    # de tipos de referência da 1205 vem só com o vazio (docreference_id ""). A data do documento vai
+    # no passo 7 (doc_date), senão fica a do dia. Antes do SAVE confirma-se que a referência e a data ficaram.
     DOCW_DRAFT = "8001"
     DOCW_ALLOWED_STATUS = ("8001", "8002", "8003")  # NUNCA 8004 (Edição): mexe no stock logo no SAVE
+    DOCW_TYPES = ("1209", "1205")  # Fatura de fornecedor e Nota de crédito de fornecedor
     DOCW_TAX_RATES = {"normal": 23, "intermedia": 13, "reduzida": 6, "isenta": 0}
 
     def _docw(self, path: str, action: str, oid: str | None = None, body: Any = None) -> requests.Response:
@@ -3983,6 +3988,8 @@ class MyCloudPieClient(StockDocsMixin):
         """⚠️ ESCRITA: cria UMA fatura de fornecedor em RASCUNHO (8001). Devolve sempre um dicionário
         com saved (True / False / "unknown"); erros depois do SAVE nunca apagam saved=True."""
         dc = str(doc.get("docconfig_id") or "1209")
+        if dc not in self.DOCW_TYPES:
+            return {"ok": False, "saved": False, "error": f"Tipo de documento não permitido ({dc})."}
         status = str(doc.get("docstatus_id") or self.DOCW_DRAFT)
         if status != self.DOCW_DRAFT:
             return {"ok": False, "saved": False, "error": "Só se lança em rascunho (8001)."}
@@ -4077,11 +4084,20 @@ class MyCloudPieClient(StockDocsMixin):
                     "docreference_number": str(doc.get("docreference_number") or "")[:25],
                     "docreference_date": str(doc.get("docreference_date") or ""),
                     "adjustment": str(adjustment), "docstatus_id": self.DOCW_DRAFT}
+            if doc.get("doc_date"):
+                edit["doc_date"] = str(doc["doc_date"])  # a data do documento (senão fica a do dia)
             r = self._docw(f"{dc}/header", "EDIT", oid, [edit])
             header = self._docw_block(r, dc, "header")[0]
             final_total = self._money(header.get("total"))
             if final_total != target or str(header.get("docstatus_id")) != self.DOCW_DRAFT:
                 out["error"] = f"Antes de gravar: total {final_total} (esperado {target}), estado {header.get('docstatus_id')}. Nada foi gravado."
+                return out
+            kept_ref = str(header.get("docreference_number") or "")
+            if kept_ref != edit["docreference_number"]:
+                out["error"] = f"Antes de gravar: o Documento de referência não ficou ({kept_ref!r} em vez de {edit['docreference_number']!r}). Nada foi gravado."
+                return out
+            if "doc_date" in edit and str(header.get("doc_date") or "")[:8] != edit["doc_date"][:8]:
+                out["error"] = f"Antes de gravar: a data do documento não ficou ({header.get('doc_date')} em vez de {edit['doc_date']}). Nada foi gravado."
                 return out
             step("EDIT header (referência, acerto, rascunho)", total=str(final_total))
             # 8. verifydoc (só registo)
@@ -4091,7 +4107,8 @@ class MyCloudPieClient(StockDocsMixin):
             except Exception:  # noqa: BLE001
                 out["verifydoc"] = None
             out["header_before_save"] = {k: header.get(k) for k in ("id", "doc_prefix", "doc_number", "store_id", "store_code", "entity_id",
-                                                                   "total", "docreference_number", "docstatus_id", "adjustment")}
+                                                                   "total", "docreference_number", "docstatus_id", "adjustment",
+                                                                   "doc_date", "docconfig_id")}
             # 9. SAVE
             try:
                 sv = self._docw(dc, "SAVE", oid)

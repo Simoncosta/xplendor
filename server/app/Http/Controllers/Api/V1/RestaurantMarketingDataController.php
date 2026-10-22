@@ -102,11 +102,11 @@ class RestaurantMarketingDataController extends Controller
         } catch (AiProviderException $e) {
             Log::warning('[Categorias das famílias] IA falhou', ['company_id' => $companyId, 'error' => $e->getMessage()]);
 
-            return ApiResponse::error('A IA não respondeu. Tente novamente dentro de alguns minutos.', 502);
+            return ApiResponse::error('O serviço de sugestões não respondeu. Tente novamente dentro de alguns minutos.', 502);
         }
 
         return ApiResponse::success($this->categories->list($companyId) + ['can_manage' => true, 'suggested' => $count],
-            $count > 0 ? "A IA sugeriu {$count} categoria(s). Confirme-as antes de contarem." : 'Não há famílias sem sugestão.');
+            $count > 0 ? "Foram sugeridas {$count} categoria(s). Confirme-as antes de contarem." : 'Não há famílias sem sugestão.');
     }
 
     // POST /companies/{id}/integrations/pingwin/excluded-items/{itemId}/include   ("Voltar a incluir" um artigo excluído das sugestões)

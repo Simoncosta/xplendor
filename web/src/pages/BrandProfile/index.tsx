@@ -135,7 +135,7 @@ export default function BrandProfilePage() {
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Perfil da Marca" breadcrumbs={[{ label: "Marketing" }]}
-                    info="Como a marca fala e para quem. Entra nos rascunhos e nas sugestões feitas com IA." />
+                    info="Como a marca fala e para quem. Entra nos rascunhos e nas sugestões automáticas." />
 
                 {/* As ações do perfil (sugerir e guardar) ficam no cabeçalho deste cartão (design-system §1 e §2). */}
                 <PageCard

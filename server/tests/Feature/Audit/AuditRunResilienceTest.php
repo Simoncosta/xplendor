@@ -164,7 +164,7 @@ class AuditRunResilienceTest extends TestCase
         $before = AiRequest::count();
         $run = $this->drive($this->startRun());
         $this->assertSame(['failed', 'failed', 'ok'], array_column($run->steps, 'status'));
-        $this->assertSame('A auditoria não chama a IA durante a corrida: usa só o que estiver guardado.', $run->steps[0]['error']);
+        $this->assertSame('A auditoria não chama o serviço de sugestões durante a corrida: usa só o que estiver guardado.', $run->steps[0]['error']);
         $this->assertSame('A auditoria não chama o PingWin durante a corrida: usa só o que estiver guardado.', $run->steps[1]['error']);
         $this->assertSame($before, AiRequest::count());
         Http::assertNothingSent();

@@ -67,7 +67,7 @@ class AnthropicInvoiceReader
         }
         if (! $response->successful()) {
             $status = $response->status();
-            $message = mb_substr((string) ($response->json('error.message') ?? 'Erro do fornecedor de IA.'), 0, 300);
+            $message = mb_substr((string) ($response->json('error.message') ?? 'Erro do serviço de leitura.'), 0, 300);
             if (OcrTemporaryFailure::isTemporary($status, (string) $response->body())) {
                 throw new OcrTemporaryFailure("Anthropic HTTP {$status}: {$message}", $status, 'anthropic');
             }
@@ -83,7 +83,7 @@ class AnthropicInvoiceReader
         }
         $text = collect((array) $response->json('content', []))->where('type', 'text')->pluck('text')->implode('');
         if (trim($text) === '') {
-            throw new AiProviderException('A resposta da IA veio vazia.', $response->status(), 'anthropic');
+            throw new AiProviderException('A leitura veio vazia.', $response->status(), 'anthropic');
         }
 
         return ['content' => $text, 'tokens_in' => $in, 'tokens_out' => $out, 'input' => $isPdf ? 'pdf' : 'imagem'];

@@ -10,11 +10,14 @@ Modos (STDIN JSON → STDOUT JSON):
   analyze  {"mode": "analyze", "file_base64": "...", "mime": "application/pdf",
             "max_pages": 10, "text_min_chars": 200, "images": "auto"|"always"|"never"}
      → {"ok": true, "kind": "pdf"|"image", "pages": N, "qr": {"raw", "page", "dpi"}|null,
-        "text": "...", "text_chars": n, "copies_dropped": [páginas], "kept_pages": [...],
+        "qrs": [{"raw", "page", "dpi"}, ...], "text": "...", "text_chars": n, "copies_dropped": [páginas], "kept_pages": [...],
         "images": [{"page", "mime", "base64"}], "truncated": bool}
 
      • QR: zxing-cpp em TODAS as páginas (até max_pages) a 200 DPI; se nenhuma tiver
        QR da AT, repete a 300 DPI. Imagens são lidas diretamente (e ampliadas 1,5× se falhar).
+       "qrs" tem TODOS os QR da AT diferentes do ficheiro (as vias repetidas têm o mesmo QR e
+       contam uma vez), pela ordem das páginas; "qr" é o primeiro. Mais de um = vários
+       documentos no mesmo ficheiro (o PHP para antes da leitura).
      • Texto: pdftotext -layout por página; as vias repetidas (DUPLICADO/TRIPLICADO…)
        depois da 1.ª via são descartadas. text_chars = nº de carateres alfanuméricos úteis.
      • Imagens p/ a IA (só PDF): todas as páginas mantidas a 200 DPI (JPEG), até max_pages.
@@ -109,41 +112,67 @@ def drop_copies(pages: list) -> tuple:
 
 # ─────────────────────────────────────────────────────────────── QR (zxing-cpp)
 
-def read_at_qr(img):
-    """Texto do 1.º QR da AT na imagem, ou None."""
+def read_at_qrs(img) -> list:
+    """Os textos de TODOS os QR da AT na imagem (pode haver mais de um), pela ordem do zxing."""
     import zxingcpp
 
+    out = []
     for b in zxingcpp.read_barcodes(img, formats=zxingcpp.BarcodeFormat.QRCode):
         text = (b.text or "").strip()
-        if AT_QR_RE.match(text):
-            return text
-    return None
+        if AT_QR_RE.match(text) and text not in out:
+            out.append(text)
+    return out
 
 
-def find_qr_in_pdf(pdf_bytes: bytes, last_page: int, first_render=None):
-    """Procura o QR página a página a 200 DPI; se nenhuma tiver, repete a 300 DPI."""
+def read_at_qr(img):
+    """Texto do 1.º QR da AT na imagem, ou None."""
+    found = read_at_qrs(img)
+    return found[0] if found else None
+
+
+def distinct(found: list) -> list:
+    """Os QR diferentes (o mesmo texto noutra página é a mesma fatura: uma via repetida)."""
+    seen, out = set(), []
+    for q in found:
+        if q["raw"] not in seen:
+            seen.add(q["raw"])
+            out.append(q)
+    return out
+
+
+def find_qrs_in_pdf(pdf_bytes: bytes, last_page: int, first_render=None) -> list:
+    """Todos os QR da AT, página a página, a 200 DPI; se nenhuma página tiver, repete a 300 DPI."""
     for dpi, imgs in ((QR_DPI, first_render), (QR_FALLBACK_DPI, None)):
         if imgs is None:
             imgs = render_pages(pdf_bytes, dpi, last_page)
-        for i, img in enumerate(imgs):
-            raw = read_at_qr(img)
-            if raw:
-                return {"raw": raw, "page": i + 1, "dpi": dpi}
-    return None
+        found = [{"raw": raw, "page": i + 1, "dpi": dpi} for i, img in enumerate(imgs) for raw in read_at_qrs(img)]
+        if found:
+            return distinct(found)
+    return []
 
 
-def find_qr_in_image(img_bytes: bytes):
+def find_qr_in_pdf(pdf_bytes: bytes, last_page: int, first_render=None):
+    """O 1.º QR da AT do PDF (compatibilidade), ou None."""
+    found = find_qrs_in_pdf(pdf_bytes, last_page, first_render)
+    return found[0] if found else None
+
+
+def find_qrs_in_image(img_bytes: bytes) -> list:
     from PIL import Image
 
     img = Image.open(io.BytesIO(img_bytes))
     img.load()
-    raw = read_at_qr(img)
-    if raw:
-        return {"raw": raw, "page": 1, "dpi": None}
+    found = read_at_qrs(img)
+    if found:
+        return [{"raw": raw, "page": 1, "dpi": None} for raw in found]
     # Fotografia pequena/desfocada: tenta ampliada (equivalente ao fallback de 300 DPI).
     big = img.resize((int(img.width * 1.5), int(img.height * 1.5)))
-    raw = read_at_qr(big)
-    return {"raw": raw, "page": 1, "dpi": None, "upscaled": True} if raw else None
+    return [{"raw": raw, "page": 1, "dpi": None, "upscaled": True} for raw in read_at_qrs(big)]
+
+
+def find_qr_in_image(img_bytes: bytes):
+    found = find_qrs_in_image(img_bytes)
+    return found[0] if found else None
 
 
 def to_jpeg_b64(img) -> str:
@@ -165,8 +194,9 @@ def analyze(cfg: dict) -> dict:
 
     is_pdf = "pdf" in mime or data[:5] == b"%PDF-"
     if not is_pdf:
+        qrs = find_qrs_in_image(data)
         return {
-            "ok": True, "kind": "image", "pages": 1, "qr": find_qr_in_image(data),
+            "ok": True, "kind": "image", "pages": 1, "qr": qrs[0] if qrs else None, "qrs": qrs,
             "text": "", "text_chars": 0, "copies_dropped": [], "kept_pages": [1],
             "images": [], "truncated": False,
         }
@@ -182,7 +212,7 @@ def analyze(cfg: dict) -> dict:
     chars = useful_chars(text)
 
     renders = render_pages(data, IMAGE_DPI, last)
-    qr = find_qr_in_pdf(data, last, first_render=renders)
+    qrs = find_qrs_in_pdf(data, last, first_render=renders)
 
     images = []
     if want_images == "always" or (want_images == "auto" and chars < text_min):
@@ -190,7 +220,7 @@ def analyze(cfg: dict) -> dict:
                   for i in kept if i < len(renders)]
 
     return {
-        "ok": True, "kind": "pdf", "pages": pages, "qr": qr,
+        "ok": True, "kind": "pdf", "pages": pages, "qr": qrs[0] if qrs else None, "qrs": qrs,
         "text": text, "text_chars": chars, "copies_dropped": dropped,
         "kept_pages": [i + 1 for i in kept], "images": images, "truncated": pages > max_pages,
     }

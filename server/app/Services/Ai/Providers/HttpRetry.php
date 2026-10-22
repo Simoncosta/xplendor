@@ -24,7 +24,7 @@ trait HttpRetry
             try {
                 $response = $call();
             } catch (ConnectionException $e) {
-                $last = new AiProviderException('O fornecedor de IA não respondeu a tempo.', null, $provider, $e);
+                $last = new AiProviderException('O serviço não respondeu a tempo.', null, $provider, $e);
                 if ($i < $attempts) {
                     usleep((int) $backoff[$i - 1] * 1000);
                     continue;
@@ -41,10 +41,10 @@ trait HttpRetry
                 usleep(max((int) $backoff[$i - 1], min($wait, 5) * 1000) * 1000);
                 continue;
             }
-            $message = (string) ($response->json('error.message') ?? 'Erro do fornecedor de IA.');
+            $message = (string) ($response->json('error.message') ?? 'Erro do serviço.');
             throw new AiProviderException(mb_substr($message, 0, 300), $status, $provider);
         }
 
-        throw $last ?? new AiProviderException('O fornecedor de IA não respondeu.', null, $provider);
+        throw $last ?? new AiProviderException('O serviço não respondeu.', null, $provider);
     }
 }

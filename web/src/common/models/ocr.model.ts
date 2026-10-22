@@ -23,7 +23,18 @@ export interface OcrInvoiceLine {
     discount_code?: string | null;
     discount_label?: string | null;
     net_total?: number | null;   // euros: valor − desconto (o custo do artigo)
+    iec?: number | null;         // euros: o IEC de uma coluna à parte, já incluído no valor da linha
 }
+
+/** Os tipos de documento (campo D do QR, ou lido sem QR), com o nome que o ecrã mostra. */
+export const OCR_DOC_TYPES: Record<string, string> = {
+    FT: "Fatura", FS: "Fatura simplificada", FR: "Fatura-recibo", NC: "Nota de crédito", ND: "Nota de débito",
+    VD: "Venda a dinheiro", GT: "Guia de transporte", GR: "Guia de remessa", RC: "Recibo",
+};
+/** Notas de débito: leem-se e revêem-se como uma fatura, mas ainda não se lançam no PingWin (as notas de crédito já). */
+export const NOTE_BLOCKED: Record<string, string> = {
+    ND: "As notas de débito ainda se lançam à mão no PingWin. Disponível em breve.",
+};
 
 export interface OcrInvoiceDiscount {
     id: number;
@@ -387,6 +398,23 @@ export interface OcrLaunchPreview {
     close?: { mode: "launch" | "draft" | null; can_close: boolean; blockers: { key: string; label: string; message: string | null }[];
         closed_at: string | null; closed_by_name: string | null };
     discount_warnings?: string[];
+    /** O que iria para o PingWin (sem escrever nada): as linhas e, com IEC numa coluna à parte, a linha do IEC. */
+    planned?: { lines: OcrPlannedLine[]; total_cents: number; target_cents: number | null; iec_from: string | null };
+}
+
+export interface OcrPlannedLine {
+    kind: "linha" | "iec";
+    line_id: number | null;
+    item: string | null;
+    article: { id: number; code: string | null; description: string | null; pingwin_id: string } | null;
+    qnt: number;
+    price: number;
+    discount_pct: number;
+    promo_cents: number;
+    vat_rate: number;
+    net_cents: number;
+    tax_cents: number;
+    total_cents: number;
 }
 
 // ── F2c: apagar várias ───────────────────────────────────────────────────────

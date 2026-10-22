@@ -64,7 +64,7 @@ export const VERTENTES: Vertente[] = [
             { icon: 'ri-store-2-line', title: 'POS PingWin', desc: 'Integração GrupoPIE com as vendas e a operação.' },
             { icon: 'ri-calendar-check-line', title: 'Faturação por loja', desc: 'Calendário de faturação dia a dia, por restaurante.' },
             { icon: 'ri-file-list-3-line', title: 'Artigos e famílias', desc: 'Catálogo, famílias e unidades sincronizados.' },
-            { icon: 'ri-scan-2-line', title: 'OCR de faturas', desc: 'Leitura automática de faturas de fornecedor por IA.' },
+            { icon: 'ri-scan-2-line', title: 'OCR de faturas', desc: 'Leitura automática de faturas de fornecedor.' },
             { icon: 'ri-truck-line', title: 'Fornecedores e cadastros', desc: 'Documentos, fornecedores e registos base.' },
             { icon: 'ri-reserved-line', title: 'CoverManager', desc: 'Reservas, lotação da sala e ticket médio.' },
         ],

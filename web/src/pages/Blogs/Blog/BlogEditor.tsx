@@ -240,7 +240,7 @@ const BlogEditor = () => {
 
     const applyAi = async (res: IBlogAiResult) => {
         const hasText = v.content.replace(/<[^>]+>/g, "").trim().length > 0;
-        if (hasText && !(await confirmAction({ title: "Substituir o texto atual pelo rascunho da IA?", confirmText: "Substituir", icon: "question" }))) return;
+        if (hasText && !(await confirmAction({ title: "Substituir o texto atual pelo rascunho gerado?", confirmText: "Substituir", icon: "question" }))) return;
         formik.setValues({
             ...v,
             title: res.title || v.title,
@@ -253,7 +253,7 @@ const BlogEditor = () => {
         });
         setSlugTouched(true);
         setAiOpen(false);
-        toast.info("Rascunho da IA aplicado. Reveja o texto e guarde.");
+        toast.info("Rascunho aplicado. Reveja o texto e guarde.");
     };
 
     const markers = [v.title, v.subtitle, v.excerpt, v.content, v.meta_title, v.meta_description].some(hasMarker);

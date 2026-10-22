@@ -238,7 +238,7 @@ class CarController extends Controller
         } catch (\RuntimeException $exception) {
             return ApiResponse::error($exception->getMessage(), 503);
         } catch (Throwable $exception) {
-            return ApiResponse::error('Não foi possível gerar a análise IA desta viatura.', 500);
+            return ApiResponse::error('Não foi possível gerar a análise desta viatura.', 500);
         }
     }
 

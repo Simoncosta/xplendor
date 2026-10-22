@@ -54,7 +54,7 @@ class OpenAiProvider implements AiProvider
         }
         $text = $parts->where('type', 'output_text')->pluck('text')->implode('');
         if ($response->json('status') === 'incomplete' || trim($text) === '') {
-            throw new AiProviderException('A resposta da IA veio incompleta (vazia ou cortada).', $response->status(), 'openai');
+            throw new AiProviderException('A resposta veio incompleta (vazia ou cortada).', $response->status(), 'openai');
         }
         $usage = (array) $response->json('usage', []);
 

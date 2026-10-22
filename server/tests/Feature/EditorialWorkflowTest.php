@@ -313,7 +313,9 @@ class EditorialWorkflowTest extends TestCase
     public function test_client_managed_by_the_team_comments_and_approves_but_does_not_produce(): void
     {
         $this->a->forceFill(['content_production_mode' => 'team'])->save();
-        $p = $this->makePost($this->a, ['stage' => EditorialPost::STAGE_PRODUCTION]);
+        // A meio do mês seguinte: no SQLite a data guarda-se com hora e o último dia do mês ficava fora
+        // do filtro do quadro ("até 31/10"), o que fazia o teste falhar conforme a data.
+        $p = $this->makePost($this->a, ['stage' => EditorialPost::STAGE_PRODUCTION, 'publish_date' => now()->addMonthNoOverflow()->day(15)->toDateString()]);
 
         foreach ([$this->userA, $this->adminA, $this->approverA] as $client) {
             $this->write($client, $p)->assertStatus(403)->assertJsonPath('message', 'Nesta empresa a produção é feita pela equipa XPLENDOR: pode comentar, aprovar ou pedir alterações.');

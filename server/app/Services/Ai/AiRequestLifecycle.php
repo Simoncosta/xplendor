@@ -61,15 +61,15 @@ class AiRequestLifecycle
         $text = $e->getMessage();
 
         return match (true) {
-            str_contains($text, 'recusou') => 'O modelo de IA recusou este pedido. Reveja o pedido e tente de novo.',
+            str_contains($text, 'recusou') => 'O serviço recusou este pedido. Reveja o pedido e tente novamente.',
             str_contains($text, 'OPENAI_KEY'), str_contains($text, 'ANTHROPIC_API_KEY'), str_contains($text, 'não configurada'), $status === 401, $status === 403
-                => 'O serviço de IA não está configurado corretamente. Contacte o suporte da XPLENDOR.',
+                => 'O serviço não está configurado corretamente. Contacte o suporte da XPLENDOR.',
             $status === 429
-                => 'O serviço de IA recebeu demasiados pedidos. Tente novamente dentro de alguns minutos.',
+                => 'O serviço recebeu demasiados pedidos. Tente novamente dentro de alguns minutos.',
             $status !== null && $status >= 500, $e instanceof ConnectionException, str_contains($text, 'indisponível'), str_contains($text, 'não respondeu')
-                => 'O serviço de IA não respondeu a tempo. Tente novamente dentro de alguns minutos.',
+                => 'O serviço não respondeu a tempo. Tente novamente dentro de alguns minutos.',
             str_contains($text, 'JSON'), str_contains($text, 'não devolveu'), str_contains($text, 'vazio'), str_contains($text, 'incompleta')
-                => 'A resposta da IA veio incompleta. Tente novamente.',
+                => 'A resposta veio incompleta. Tente novamente.',
             default => 'Não foi possível concluir o pedido. Tente novamente dentro de alguns minutos.',
         };
     }

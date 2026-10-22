@@ -168,7 +168,7 @@ class InvoiceDiscountsTest extends TestCase
     {
         $inv = $this->readMakro();
 
-        $this->assertSame(['por_validar', InvoiceOcrService::CHECK_OK, 'linhas-v3'], [$inv->status, $inv->check_status, $inv->prompt_version]);
+        $this->assertSame(['por_validar', InvoiceOcrService::CHECK_OK, 'linhas-v5'], [$inv->status, $inv->check_status, $inv->prompt_version]);
         // As duas linhas "+ … INCL." são informativas: ficam de fora (e registadas).
         $this->assertCount(12, $inv->lines);
         $this->assertSame(['+ 0,13 TAXA IEC INCL. PREÇO U.V.', '+ 0,61 IEC BEB AÇÚCAR INCL. PUV'], $inv->ignored_lines);

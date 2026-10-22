@@ -1,0 +1,199 @@
+{
+ "_origem": "HAR de 21/10/2026 (criação à mão de uma nota de crédito 1205), só os campos usados; sem sessão nem nomes.",
+ "docconfig": [
+  {
+   "key": "0000000100000001000000010000000000000001",
+   "docconfigid": "1205",
+   "code": "V/NC",
+   "fiscal_code": "",
+   "fiscaltype": "",
+   "fiscaltype_id": "0",
+   "shortname": "V/NC",
+   "stksignal": -1,
+   "enttype": 2,
+   "enttypeid": "2002",
+   "entity_table": "SUPPLIER",
+   "doctype": 1,
+   "movtaxes": true,
+   "taxscenario": "3101",
+   "pending_qnt": false,
+   "docdescription": "Nota de crédito de fornecedor",
+   "default_paycond": "",
+   "default_movreason": "",
+   "default_docstatus0": "8002",
+   "set_mov_type": 2,
+   "report_id": "830198338261",
+   "productgroup_id": "",
+   "access_id": "1205",
+   "tax_round_mode": 1,
+   "settled": false,
+   "set_qnt": true,
+   "set_price": true,
+   "contacttype_id": "6001",
+   "global_discount_mode": 1,
+   "hash": false,
+   "move_product": true,
+   "move_document": false,
+   "doctype_id": "17001",
+   "account_use_totalpayed": false,
+   "islocal": 0,
+   "default_detailstatus_id": "",
+   "ordered_dates": false,
+   "req_docreference": false,
+   "req_docmovreason": false,
+   "number_copies": 1,
+   "assign_number_on_close": false,
+   "entity_required": true,
+   "req_docsource": false,
+   "only_pending_prods": false,
+   "default_mask": "[STORE][DOCUMENT]"
+  }
+ ],
+ "docreference": [
+  {
+   "key": "0000000100000001000000010000000000000001",
+   "id": "",
+   "document": ""
+  }
+ ],
+ "taxgroups": [
+  {
+   "key": "0000000100000004000000010000000000000001",
+   "id": "1003001",
+   "description": "Normal"
+  },
+  {
+   "key": "0000000100000004000000020000000000000002",
+   "id": "1003002",
+   "description": "Intermédia"
+  },
+  {
+   "key": "0000000100000004000000030000000000000003",
+   "id": "1003003",
+   "description": "Reduzida"
+  },
+  {
+   "key": "0000000100000004000000040000000000000004",
+   "id": "1003004",
+   "description": "Isenta"
+  }
+ ],
+ "model_header": {
+  "key": "0000000100000002000000010000000000000001",
+  "id": "584955579139810660",
+  "store_code": "BO",
+  "store_id": "1099511639284",
+  "docconfig_id": "1205",
+  "doc_prefix": "VNC BOVNC",
+  "doc_number": 89,
+  "entity_id": "",
+  "doc_date": "20261021T00:00:00",
+  "due_date": "20261021T00:00:00",
+  "paycond_id": "584955579139752255",
+  "docreference_id": "",
+  "docreference_number": "",
+  "docreference_date": "",
+  "adjustment": "",
+  "total_tax": 0.0,
+  "total_products": 0.0,
+  "docstatus_id": "8002",
+  "taxscenario_id": "3101",
+  "subtotal": 0.0,
+  "gross_total": 0.0,
+  "total": 0.0
+ },
+ "header_after_entity": {
+  "key": "0000000100000002000000020000000000000001",
+  "id": "584955579139810660",
+  "store_code": "BO",
+  "store_id": "1099511639284",
+  "docconfig_id": "1205",
+  "doc_prefix": "VNC BOVNC",
+  "doc_number": 89,
+  "entity_id": "584955579139628247",
+  "doc_date": "20261021T00:00:00",
+  "due_date": "20261021T00:00:00",
+  "paycond_id": "584955579139752255",
+  "docreference_id": "",
+  "docreference_number": "",
+  "docreference_date": "",
+  "adjustment": "",
+  "total_tax": 0.0,
+  "total_products": 0.0,
+  "docstatus_id": "8002",
+  "taxscenario_id": "3101",
+  "subtotal": 0.0,
+  "gross_total": 0.0,
+  "total": 0.0
+ },
+ "line_new": {
+  "key": "0000000100000002000000010000000000000001",
+  "id": "584955579139810669",
+  "product_id": "584955579139688314",
+  "product_code": "100876",
+  "price": 5.0,
+  "stk_signal": -1,
+  "unit_value": 1.0,
+  "line_number": 1,
+  "unit_id": "11001",
+  "tax_description": "Isenta",
+  "taxgroup_id": "1003004",
+  "qnt": 1.0,
+  "description": "Vasilhames",
+  "unit_desc": "Unidade",
+  "unit_code": "UN",
+  "total": 5.0,
+  "tax_value": 0.0,
+  "total_w_tax": 5.0,
+  "discount1": 0.0,
+  "stk_qnt": -42.0
+ },
+ "line_after_edit": {
+  "key": "0000000100000002000000020000000000000001",
+  "id": "584955579139810669",
+  "product_id": "584955579139688314",
+  "product_code": "100876",
+  "price": 5.0,
+  "stk_signal": -1,
+  "unit_value": 1.0,
+  "line_number": 1,
+  "unit_id": "11001",
+  "tax_description": "Isenta",
+  "taxgroup_id": "1003004",
+  "qnt": 6.0,
+  "description": "Vasilhames",
+  "unit_desc": "Unidade",
+  "unit_code": "UN",
+  "total": 30.0,
+  "tax_value": 0.0,
+  "total_w_tax": 30.0,
+  "discount1": 0.0,
+  "stk_qnt": -42.0
+ },
+ "verifydoc": [
+  {
+   "key": "0000000100000006000000010000000000000001",
+   "code": 0,
+   "msg": "OK"
+  }
+ ],
+ "request_entity": [
+  {
+   "key": "0000000100000002000000010000000000000001",
+   "entity_id": "584955579139628247"
+  }
+ ],
+ "request_line_new": [
+  {
+   "product_id": "584955579139688314",
+   "unit_id": "11001"
+  }
+ ],
+ "request_line_edit": [
+  {
+   "key": "0000000100000002000000010000000000000001",
+   "price": "5.00",
+   "qnt": "6.000"
+  }
+ ]
+}

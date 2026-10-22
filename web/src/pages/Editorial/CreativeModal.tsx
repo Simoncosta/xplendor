@@ -143,8 +143,8 @@ export default function CreativeModal({ isOpen, toggle, companyId, postId, postT
                         {!result && (!busy || stalled) && (!data || data.status === "error" || stalled) && (
                             <>
                                 <p className="text-muted fs-13">
-                                    A IA propõe o formato, o gancho, a legenda, as hashtags e a chamada à ação para esta publicação, a partir da data, da âncora,
-                                    do tema e do perfil da marca. Escolhe depois, campo a campo, o que guardar.
+                                    São propostos o formato, o gancho, a legenda, as hashtags e a chamada à ação para esta publicação, a partir da data, da âncora,
+                                    do tema e do perfil da marca. Escolha depois, campo a campo, o que guardar.
                                 </p>
                                 <Button color="primary" onClick={ask}><i className="ri-magic-line me-1" />Sugerir criativo</Button>
                             </>

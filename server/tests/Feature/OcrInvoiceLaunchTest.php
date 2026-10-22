@@ -21,6 +21,7 @@ use App\Models\OcrInvoiceDiscount;
 use App\Models\User;
 use App\Services\CompanyModuleService;
 use App\Services\OcrInvoiceLaunchService;
+use App\Services\OcrPingwinLinkService;
 use App\Services\PingwinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -100,7 +101,7 @@ class OcrInvoiceLaunchTest extends TestCase
             }
             public function documentStatus(int $companyId, string $docheaderId, string $status, string $docconfigId = '1209'): array
             {
-                $this->test->calls[] = ['status', $docheaderId, $status];
+                $this->test->calls[] = ['status', $docheaderId, $status, $docconfigId];
 
                 return ['result' => ['ok' => true, 'docstatus_id' => $status], 'reread' => $this->test->statusReread ?? ['ok' => true, 'header' => ['docstatus_id' => $status], 'details' => []]];
             }
@@ -180,10 +181,85 @@ class OcrInvoiceLaunchTest extends TestCase
         $this->assertSame(0, $p['estimate']['adjustment_cents']);
     }
 
+    /**
+     * Fatura com IEC numa coluna à parte (os números de uma fatura real de bebidas, sem nomes): 4 bebidas
+     * a 23 % com o IEC somado e 4 caixas de vasilhame a 0 %; total 153,66 €.
+     */
+    private function iecInvoice(): OcrInvoice
+    {
+        $inv = $this->invoice(['qr_data' => ['fields' => ['O' => '153.66'], 'by_rate' => [['rate' => 0, 'base_cents' => 3500, 'vat_cents' => 0], ['rate' => 23, 'base_cents' => 9647, 'vat_cents' => 2219]]]]);
+        $inv->lines()->delete();
+        $rows = [['Bebida A 24', 1, '20.880000', 35.01, 1412, 55, 23], ['Caixa A', 1, '5.000000', 0, 500, null, 0], ['Bebida B 24', 1, '20.160000', 35.02, 1360, 50, 23],
+            ['Caixa B', 1, '5.000000', 0, 500, null, 0], ['Bebida C 24', 3, '20.880000', 34.99, 4237, 165, 23], ['Caixa C', 3, '5.000000', 0, 1500, null, 0],
+            ['Bebida D 24', 2, '20.160000', 35.0, 2638, 17, 23], ['Caixa D', 2, '5.000000', 0, 1000, null, 0]];
+        foreach ($rows as $i => [$item, $q, $price, $disc, $total, $iec, $rate]) {
+            OcrInvoiceLine::create(['ocr_invoice_id' => $inv->id, 'company_id' => $this->yuko->id, 'position' => $i, 'item' => $item, 'quantity' => $q, 'unit' => 'UN',
+                'unit_price' => $price, 'discount_pct' => $disc, 'line_total_cents' => $total, 'gross_total_cents' => $total, 'iec_cents' => $iec, 'vat_rate' => $rate,
+                'article_id' => $this->b->id, 'link_state' => 'ligada', 'link_method' => 'mapa']);
+        }
+
+        return $inv->fresh();
+    }
+
+    /** Uma fatura anterior do fornecedor, já no PingWin, com o IEC numa linha à parte (artigo próprio). */
+    private function previousInvoiceWithIec(): PingwinCatalogItem
+    {
+        $iec = PingwinCatalogItem::create(['company_id' => $this->yuko->id, 'pingwin_id' => 'PIEC', 'code' => '999', 'description' => 'IEC',
+            'is_active' => true, 'product_status' => 'Ativo', 'base_unit_id' => '11001', 'default_purchase_unit_id' => null, 'purchaseunit' => 'Unidade']);
+        DB::table('pingwin_supplier_documents')->insert(['company_id' => $this->yuko->id, 'docheader_id' => 'OLD1', 'docconfig_id' => '1209', 'doctype' => 'Fatura de fornecedor',
+            'document' => 'VFT BOVFT/1', 'entity_pingwin_id' => 'SUPX', 'doc_date' => '2026-10-01', 'total_cents' => 1000, 'created_at' => now(), 'updated_at' => now()]);
+        foreach ([[1, 'PB', 'BEBIDA', '11001', 0.87, 1357], [2, 'PIEC', 'IEC', '11001', 4.77, 477]] as [$n, $prod, $desc, $unit, $price, $total]) {
+            DB::table('pingwin_supplier_document_lines')->insert(['company_id' => $this->yuko->id, 'docheader_id' => 'OLD1', 'line_number' => $n, 'product_pingwin_id' => $prod,
+                'description' => $desc, 'qnt' => 1, 'unit_id' => $unit, 'price' => $price, 'total_cents' => $total, 'tax_description' => 'Normal', 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        return $iec;
+    }
+
+    public function test_iec_goes_in_its_own_line_like_the_previous_invoices_of_the_supplier_and_the_total_matches(): void
+    {
+        $this->previousInvoiceWithIec();
+        $inv = $this->iecInvoice();
+        $p = $this->svc()->preview($inv);
+        $this->assertTrue($p['can_launch'], json_encode(collect($p['guards'])->where('ok', false)->values()));
+        $planned = $p['planned']['lines'];
+        $this->assertCount(9, $planned);
+        $last = end($planned);
+        $this->assertSame(['iec', 'IEC', 1.0, 2.87, 0.0, 23, 287, 66], [$last['kind'], $last['article']['description'], $last['qnt'], $last['price'], $last['discount_pct'], $last['vat_rate'], $last['net_cents'], $last['tax_cents']]);
+        // As bebidas vão sem o IEC (quantidade × preço × (1 − desconto)).
+        $this->assertSame([1357, 1310, 4072, 2621], array_values(array_map(fn ($l) => $l['net_cents'], array_filter($planned, fn ($l) => $l['kind'] === 'linha' && $l['vat_rate'] === 23))));
+        $this->assertSame([15366, 15366, 0], [$p['planned']['total_cents'], $p['planned']['target_cents'], $p['estimate']['adjustment_cents']]);
+        $this->assertSame('VFT BOVFT/1', $p['planned']['iec_from']);
+
+        // O que segue para o PingWin: as 8 linhas e a do IEC (artigo e unidade da fatura anterior).
+        $details = [];
+        foreach ($planned as $i => $l) {
+            $details[] = ['line_number' => $i + 1, 'product_id' => $l['kind'] === 'iec' ? 'PIEC' : 'PB', 'total' => $l['net_cents'] / 100, 'tax_value' => $l['tax_cents'] / 100];
+        }
+        $this->okLaunch('153.66', ['details' => $details]);
+        $this->assertSame('ok', $this->launchNow($inv)->status);
+        $doc = collect($this->calls)->firstWhere(0, 'launch')[1];
+        $this->assertCount(9, $doc['lines']);
+        $this->assertSame(['PIEC', '11001', '1.000000', '2.870000', '0', 23], [$doc['lines'][8]['product_id'], $doc['lines'][8]['unit_id'], $doc['lines'][8]['qnt'],
+            $doc['lines'][8]['price'], $doc['lines'][8]['discount1'], $doc['lines'][8]['vat_rate']]);
+        $this->assertSame(['20.880000', '35.01', 23], [$doc['lines'][0]['price'], $doc['lines'][0]['discount1'], $doc['lines'][0]['vat_rate']]);
+        $this->assertSame('153.66', $doc['target_total']);
+    }
+
+    public function test_iec_without_a_previous_iec_line_of_the_supplier_does_not_launch(): void
+    {
+        $inv = $this->iecInvoice();
+        $g = collect($this->svc()->preview($inv)['guards'])->firstWhere('key', 'iec');
+        $this->assertFalse($g['ok']);
+        $this->assertSame('As linhas têm IEC numa coluna à parte, mas nenhuma fatura deste fornecedor no PingWin tem a linha do IEC para seguir. Lance esta fatura à mão.', $g['message']);
+        // Sem IEC nas linhas, a guarda nem aparece.
+        $this->assertNull(collect($this->svc()->preview($this->invoice())['guards'])->firstWhere('key', 'iec'));
+    }
+
     public function test_guard_matrix_each_one_blocks(): void
     {
         $cases = [
-            'tipo'        => [['doc_type' => 'NC'], []],
+            'tipo'        => [['doc_type' => 'ND'], []],
             'qr'          => [['buyer_nif' => '500000001'], []],
             'conferencia' => [['check_status' => 'nao_confere'], []],
             'nao_lancada' => [['link_status' => 'lancada'], []],
@@ -202,11 +278,114 @@ class OcrInvoiceLaunchTest extends TestCase
 
     public function test_out_of_scope_types_are_disabled_with_message(): void
     {
-        foreach (['FR', 'FS', 'NC', 'ND'] as $t) {
+        $expected = ['FR' => 'Por agora, lançar à mão no PingWin.', 'FS' => 'Por agora, lançar à mão no PingWin.',
+            'ND' => 'As notas de débito ainda se lançam à mão no PingWin. Disponível em breve.'];
+        foreach ($expected as $t => $message) {
             $g = collect($this->svc()->preview($this->invoice(['doc_type' => $t]))['guards'])->firstWhere('key', 'tipo');
             $this->assertFalse($g['ok']);
-            $this->assertSame('Por agora, lançar à mão no PingWin.', $g['message']);
+            $this->assertSame($message, $g['message']);
         }
+    }
+
+    public function test_a_debit_note_is_never_launched_and_nothing_is_written_to_pingwin(): void
+    {
+        Bus::fake([LaunchPingwinDocumentJob::class]);
+        foreach (['ND'] as $t) {
+            $inv = $this->invoice(['doc_type' => $t]);
+            $p = $this->svc()->preview($inv);
+            $this->assertFalse($p['can_launch']);
+            $this->assertFalse($p['close']['can_close']);
+            $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch", ['accept_check_diff' => true])
+                ->assertStatus(422)->assertJsonPath('errors.code', 'guardas')->assertJsonPath('errors.failed.0.key', 'tipo');
+        }
+        $this->assertSame(0, PingwinDocumentWrite::count());
+        Bus::assertNotDispatched(LaunchPingwinDocumentJob::class);
+    }
+
+    // ───────────────────────────────────────────────────────────── notas de crédito (1205)
+
+    /** Uma nota de crédito pronta a lançar: o mesmo que a fatura de teste, com o tipo NC. */
+    private function creditNote(array $o = []): OcrInvoice
+    {
+        return $this->invoice(array_merge(['doc_type' => 'NC', 'number' => 'NC CX/0196'], $o));
+    }
+
+    public function test_a_credit_note_launches_as_1205_in_draft_with_the_note_date_and_reference(): void
+    {
+        $inv = $this->creditNote();
+        $p = $this->svc()->preview($inv);
+        $this->assertTrue($p['can_launch'], json_encode(collect($p['guards'])->where('ok', false)->values()));
+        $this->assertSame('Nota de crédito (NC)', collect($p['guards'])->firstWhere('key', 'tipo')['label']);
+        $this->assertSame('Total das linhas igual ao total da nota', collect($p['guards'])->firstWhere('key', 'acerto')['label']);
+
+        $this->okLaunch('10.38', ['header' => ['docconfig_id' => '1205', 'doc_prefix' => 'VNC BOVNC', 'doc_number' => 89, 'doc_date' => '20261005T00:00:00',
+            'docreference_number' => 'NC CX/0196']]);
+        $this->launchResult['result'] = array_replace($this->launchResult['result'], ['docconfig_id' => '1205', 'document' => 'VNC BOVNC/89',
+            'header_before_save' => ['id' => 'DOC1', 'doc_prefix' => 'VNC BOVNC', 'doc_number' => 89, 'store_code' => 'BO']]);
+        $this->launchResult['reread']['header']['doc_prefix'] = 'VNC BOVNC';
+        $this->launchResult['reread']['header']['doc_number'] = 89;
+        $w = $this->launchNow($inv);
+        $this->assertSame('ok', $w->status, (string) $w->error);
+
+        $doc = collect($this->calls)->firstWhere(0, 'launch')[1];
+        $this->assertSame(['1205', '8001', '', 'NC CX/0196', '20261005T00:00:00', '20261005T00:00:00', '0.00', '10.38'],
+            [$doc['docconfig_id'], $doc['docstatus_id'], $doc['docreference_id'], $doc['docreference_number'], $doc['docreference_date'], $doc['doc_date'],
+                $doc['max_adjustment'], $doc['target_total']]);
+        // Valores positivos, como na nota (o sinal vem do tipo).
+        $this->assertSame(['1.415000', '2.000000'], array_column($doc['lines'], 'price'));
+        $this->assertSame(['2.000000', '3.000000'], array_column($doc['lines'], 'qnt'));
+        // O espelho fica com a nota de crédito em rascunho (Aberto): não mexe no stock.
+        $mirror = PingwinSupplierDocument::where('docheader_id', 'DOC1')->first();
+        $this->assertSame(['1205', 'Nota de crédito de fornecedor', '8001', 'VNC BOVNC/89'], [$mirror->docconfig_id, $mirror->doctype, $mirror->docstatus_id, $mirror->document]);
+
+        // O fecho é o botão de sempre (com as unidades confirmadas no Guião), com a releitura da 1205.
+        $this->confirmUnits();
+        $close = $this->svc()->requestStatus($inv->fresh(), PingwinDocumentWrite::CLOSE, $this->user->id);
+        $this->assertSame('ok', $this->svc()->execute($close->id)->status);
+        $this->assertSame(['status', 'DOC1', '8002', '1205'], collect($this->calls)->firstWhere(0, 'status'));
+    }
+
+    public function test_a_credit_note_with_the_wrong_date_after_save_is_not_confirmed(): void
+    {
+        $this->okLaunch('10.38', ['header' => ['docconfig_id' => '1205', 'doc_date' => '20261021T00:00:00', 'docreference_number' => 'NC CX/0196']]);
+        $w = $this->launchNow($this->creditNote());
+        $this->assertSame('erro_confirmacao', $w->status);
+        $this->assertStringContainsString('a data do documento não é a da nota (2026-10-21)', (string) $w->error);
+    }
+
+    public function test_a_credit_note_needs_the_exact_total_without_adjustment(): void
+    {
+        // Uma fatura aceita até 0,05 € de acerto; uma nota de crédito não.
+        $o = ['qr_data' => ['fields' => ['O' => '10.40'], 'by_rate' => [['rate' => 6, 'base_cents' => 283, 'vat_cents' => 17], ['rate' => 23, 'base_cents' => 600, 'vat_cents' => 138]]]];
+        $this->assertNotContains('acerto', $this->failedGuards($this->invoice($o)));
+        $this->assertContains('acerto', $this->failedGuards($this->creditNote($o)));
+    }
+
+    public function test_a_credit_note_already_launched_by_hand_is_found_linked_and_not_created(): void
+    {
+        // À mão: sem referência e com a data do dia; a de 45 € anulada não conta, nem uma fatura com o mesmo total.
+        $this->liveDocs = [
+            ['id' => 'NC88', 'docconfig_id' => '1205', 'document' => 'VNC BOVNC/88', 'entity_id' => 'SUPX', 'total' => 10.38, 'doc_date' => '20261007T00:00:00', 'docstatus_id' => '8002', 'docreference_number' => ''],
+            ['id' => 'NC89', 'docconfig_id' => '1205', 'document' => 'VNC BOVNC/89', 'entity_id' => 'SUPX', 'total' => 10.38, 'doc_date' => '20261005T00:00:00', 'docstatus_id' => '8003', 'docreference_number' => ''],
+            ['id' => 'FT1', 'docconfig_id' => '1209', 'document' => 'VFT BOVFT/1', 'entity_id' => 'SUPX', 'total' => 10.38, 'doc_date' => '20261005T00:00:00', 'docstatus_id' => '8002', 'docreference_number' => ''],
+        ];
+        $inv = $this->creditNote();
+        $w = $this->launchNow($inv);
+        $this->assertSame('erro', $w->status);
+        $this->assertSame('Já está lançada no PingWin (VNC BOVNC/88). Ficou ligada à nota; nada foi criado.', $w->error);
+        $this->assertNull(collect($this->calls)->firstWhere(0, 'launch'), 'nada foi criado no PingWin');
+        $inv->refresh();
+        $this->assertSame([OcrPingwinLinkService::LAUNCHED, ['NC88']], [$inv->link_status, $inv->pingwinLinks()->pluck('docheader_id')->all()]);
+        $g = collect($this->svc()->preview($inv)['guards'])->firstWhere('key', 'nao_lancada');
+        $this->assertSame([false, 'Já está lançada no PingWin (VNC BOVNC/88).'], [$g['ok'], $g['message']]);
+    }
+
+    public function test_a_credit_note_with_the_same_reference_is_found_whatever_the_total(): void
+    {
+        $this->liveDocs = [['id' => 'NC90', 'docconfig_id' => '1205', 'document' => 'VNC BOVNC/90', 'entity_id' => 'SUPX', 'total' => 99.0,
+            'doc_date' => '20261020T00:00:00', 'docstatus_id' => '8001', 'docreference_number' => 'NC CX/0196']];
+        $w = $this->launchNow($this->creditNote());
+        $this->assertSame('Já está lançada no PingWin (VNC BOVNC/90). Ficou ligada à nota; nada foi criado.', $w->error);
     }
 
     public function test_check_difference_can_be_accepted_and_is_recorded(): void

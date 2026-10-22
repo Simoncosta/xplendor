@@ -57,7 +57,7 @@ export function Questions({ questions, answers, onAnswer, disabled, unknown }: {
     questions: UnitQuestion[]; answers: Record<string, string | null>; onAnswer: (id: string, value: string | null) => void; disabled?: boolean; unknown?: boolean;
 }) {
     if (!questions.length) {
-        return <p className="text-muted mb-0">{unknown ? "Não há perguntas a fazer com estes dados: dê mais informação, pergunte à IA ou envie ao administrador." : "Não há perguntas: as evidências chegam."}</p>;
+        return <p className="text-muted mb-0">{unknown ? "Não há perguntas a fazer com estes dados: dê mais informação, peça uma sugestão ou envie ao administrador." : "Não há perguntas: as evidências chegam."}</p>;
     }
     return (
         <div className="d-flex flex-column gap-3">
@@ -152,7 +152,7 @@ export default function UnitGuideArticle({ companyId, view, answers, setAnswers,
         const r = await run("info", () => infoUnitGuide(companyId, pid, fd), "Informação guardada: o artigo foi reavaliado.");
         if (r) { setInfoText(""); setPhoto(null); }
     };
-    const askAi = () => run("ai", () => askAiUnitGuide(companyId, pid), "Sugestão da IA, a confirmar.");
+    const askAi = () => run("ai", () => askAiUnitGuide(companyId, pid), "Sugestão automática, a confirmar.");
     const sendAdmin = () => run("admin", () => sendAdminUnitGuide(companyId, pid, adminNote || undefined), "Enviado ao administrador.");
 
     const apply = async (index: number) => {
@@ -350,10 +350,10 @@ export default function UnitGuideArticle({ companyId, view, answers, setAnswers,
                             {view.profile?.photo_url && <div className="mt-2"><a href={view.profile.photo_url} target="_blank" rel="noreferrer" className="fs-13">Ver a foto enviada</a></div>}
                         </Col>
                         <Col xs={12} lg={4}>
-                            <div className="fw-semibold mb-1">Perguntar à IA</div>
+                            <div className="fw-semibold mb-1">Pedir sugestão</div>
                             <p className="text-muted fs-13 mb-2">Envia só os dados do artigo (descrições, unidades, preços, fichas), nunca dados pessoais. A resposta aparece como sugestão, a confirmar.</p>
                             <ReasonButton type="button" size="sm" color="outline-primary" reason={editReason ?? (view.ai.available ? null : view.ai.reason)} onClick={askAi} disabled={busy !== null} data-testid="guide-ai">
-                                {busy === "ai" ? <Spinner size="sm" className="me-1" /> : <i className="ri-sparkling-line me-1" aria-hidden />}Perguntar à IA
+                                {busy === "ai" ? <Spinner size="sm" className="me-1" /> : <i className="ri-sparkling-line me-1" aria-hidden />}Pedir sugestão
                             </ReasonButton>
                         </Col>
                         <Col xs={12} lg={4}>

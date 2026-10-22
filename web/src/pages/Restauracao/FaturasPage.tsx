@@ -11,12 +11,12 @@ import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import { uploadOcrInvoice, getOcrInvoicesList, deleteOcrInvoice, restoreOcrInvoice, bulkDeleteOcrInvoices } from "helpers/laravel_helper";
-import { OcrInvoiceListRow, OcrInvoiceStatus, OcrLinkStatus, OCR_LINK_STATUS as LINK_STATUS } from "common/models/ocr.model";
+import { OcrInvoiceListRow, OcrInvoiceStatus, OcrLinkStatus, OCR_LINK_STATUS as LINK_STATUS, OCR_DOC_TYPES } from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PingwinSupplierDocumentsTab from "./PingwinSupplierDocumentsTab";
 
 /**
- * XPLENDOR — Restauração › Faturas (OCR). Carrega uma fatura de fornecedor (imagem/PDF) → a IA
+ * XPLENDOR — Restauração › Faturas (OCR). Carrega uma fatura de fornecedor (imagem/PDF) → a leitura
  * lê (fila) → o utilizador VALIDA no ecrã de detalhe. ⚠️ NÃO escreve no PingWin. Só módulo
  * pingwin. Enquanto houver faturas "a processar", a lista faz polling leve.
  *
@@ -44,11 +44,8 @@ const STATUS: Record<OcrInvoiceStatus, { label: string; cls: string }> = {
     nao_desta_empresa: { label: "Não é desta empresa", cls: "bg-secondary-subtle text-secondary" },
 };
 
-/** Tipos de documento do QR da AT (campo D). */
-const DOC_TYPES: Record<string, string> = {
-    FT: "Fatura", FS: "Fatura simplificada", FR: "Fatura-recibo", NC: "Nota de crédito", ND: "Nota de débito",
-    VD: "Venda a dinheiro", GT: "Guia de transporte", GR: "Guia de remessa", RC: "Recibo",
-};
+/** Tipos de documento (campo D do QR, ou lido sem QR). */
+const DOC_TYPES = OCR_DOC_TYPES;
 
 type InvoiceRow = OcrInvoiceListRow;
 
@@ -61,7 +58,7 @@ function LinkBadge({ s, docStatus }: { s: OcrLinkStatus | null; docStatus?: stri
     return <span className={`badge ${st.cls}`} title={st.title}>{st.label}</span>;
 }
 
-const SOURCE: Record<string, string> = { "qr+texto": "QR e texto do PDF", "qr+imagem": "QR e imagem", sem_qr: "Sem QR (só IA)", qr: "QR" };
+const SOURCE: Record<string, string> = { "qr+texto": "QR e texto do PDF", "qr+imagem": "QR e imagem", sem_qr: "Sem QR (lido do documento)", qr: "QR" };
 
 
 function StatusBadge({ s }: { s: OcrInvoiceStatus }) {
@@ -77,7 +74,7 @@ function StatusBadge({ s }: { s: OcrInvoiceStatus }) {
 function QrCheck({ r }: { r: InvoiceRow }) {
     if (r.check_status === "confere") return <span className="badge bg-success-subtle text-success" title="As linhas batem com o QR da fatura"><i className="ri-check-line me-1" />Confere</span>;
     if (r.check_status === "nao_confere") return <span className="badge bg-warning-subtle text-warning" title="As linhas não batem com o QR da fatura: veja no detalhe"><i className="ri-error-warning-line me-1" />Diferença</span>;
-    if (r.check_status === "sem_qr") return <span className="text-muted" title="A fatura não tem QR legível">Sem QR</span>;
+    if (r.check_status === "sem_qr") return <span className="badge bg-warning-subtle text-warning" title="O QR não se conseguiu ler: o cabeçalho foi lido do documento">QR ilegível</span>;
     return <span className="text-muted">—</span>;
 }
 
@@ -230,7 +227,9 @@ export default function FaturasPage() {
         { id: "type", header: "Tipo", value: (r) => (r.doc_type ? DOC_TYPES[r.doc_type] ?? r.doc_type : null) },
         { id: "supplier", header: "Fornecedor", value: (r) => r.supplier_name, cell: (r) => r.supplier_name || <span className="text-muted">Por identificar</span>, mobile: "title" },
         { id: "nif", header: "NIF", value: (r) => r.supplier_nif, nowrap: true },
-        { id: "total", header: "Total", value: (r) => r.total, cell: (r) => euro(r.total), align: "end", nowrap: true },
+        // Nota de crédito: o total é um crédito (negativo).
+        { id: "total", header: "Total", value: (r) => (r.doc_type === "NC" && r.total !== null ? -r.total : r.total),
+            cell: (r) => (r.doc_type === "NC" && r.total !== null ? <span title="Crédito" data-testid={`credit-${r.id}`}>{euro(-r.total)}</span> : euro(r.total)), align: "end", nowrap: true },
         { id: "status", header: "Estado", value: (r) => STATUS[r.status]?.label ?? r.status, cell: (r) => <StatusBadge s={r.status} />, align: "center" },
         { id: "qr", header: "QR", value: (r) => r.check_status, cell: (r) => <QrCheck r={r} />, align: "center" },
         { id: "pingwin", header: "PingWin", value: (r) => (r.pingwin_doc_status === "8001" ? "Rascunho" : r.pingwin_doc_status === "8002" ? "Lançada" : r.link_status ? LINK_STATUS[r.link_status]?.label : null), cell: (r) => <LinkBadge s={r.link_status} docStatus={r.pingwin_doc_status} />, align: "center" },
@@ -257,7 +256,7 @@ export default function FaturasPage() {
                 <PageHeader
                     title="Faturas"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    info="As faturas de fornecedor: as que carrega para a IA ler e validar, e as que já estão lançadas no PingWin."
+                    info="As faturas de fornecedor: as que carrega para ler e validar, e as que já estão lançadas no PingWin."
                 />
 
                 <Nav tabs className="nav-tabs-custom mb-3">
@@ -273,7 +272,7 @@ export default function FaturasPage() {
                     <Col xs={12}>
                         <PageCard
                             title="Faturas carregadas"
-                            info="Faturas de fornecedor lidas com IA, para validar aqui. Não são enviadas ao PingWin."
+                            info="Faturas de fornecedor lidas automaticamente, para validar aqui. Não são enviadas ao PingWin."
                             status={cap && cap.cap > 0 ? <>{cap.used} de {cap.cap} leituras este mês</> : undefined}
                             loading={loading && rows.length > 0}
                             actions={<>

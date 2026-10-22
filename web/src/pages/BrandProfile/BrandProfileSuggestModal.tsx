@@ -103,7 +103,7 @@ export default function BrandProfileSuggestModal({ isOpen, toggle, companyId, cu
             <ModalHeader toggle={toggle}>Sugerir perfil</ModalHeader>
             <ModalBody>
                 <p className="text-muted fs-13">
-                    A IA propõe cada campo a partir do modelo do seu ramo, dos dados da empresa e do público medido (só quando há volume suficiente).
+                    Cada campo é proposto a partir do modelo do seu ramo, dos dados da empresa e do público medido (só quando há volume suficiente).
                     Escolha campo a campo o que quer usar: nada é gravado até carregar em Guardar na página.
                 </p>
 
@@ -116,7 +116,7 @@ export default function BrandProfileSuggestModal({ isOpen, toggle, companyId, cu
                 )}
 
                 {data?.status === "done" && (fields.length === 0 ? (
-                    <p className="text-muted mb-0">A IA não teve nada de novo a propor. O perfil atual mantém-se.</p>
+                    <p className="text-muted mb-0">Não há nada de novo a propor. O perfil atual mantém-se.</p>
                 ) : (
                     <div className="table-responsive">
                         <Table className="align-middle fs-13 mb-0">

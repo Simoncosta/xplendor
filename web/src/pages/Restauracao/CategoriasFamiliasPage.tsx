@@ -117,7 +117,7 @@ export default function CategoriasFamiliasPage() {
             apply(res?.data);
             toast.info(res?.message ?? "Sugestões recebidas.");
         } catch (e: any) {
-            toast.error(e?.message ?? "Não foi possível pedir sugestões à IA.");
+            toast.error(e?.message ?? "Não foi possível pedir sugestões. Tente novamente.");
         } finally {
             setSuggesting(false);
         }
@@ -133,7 +133,7 @@ export default function CategoriasFamiliasPage() {
     const suggestionCell = (f: FamilyCategoryRow) => f.suggested_category ? (
         <span className="d-inline-flex align-items-center gap-1 flex-wrap">
             <span>{labelOf[f.suggested_category] ?? f.suggested_category}</span>
-            <span className={`badge ${f.suggested_by === "ai" ? "bg-info-subtle text-info" : "bg-light text-muted"}`}>{f.suggested_by === "ai" ? "IA" : "Regras"}</span>
+            <span className={`badge ${f.suggested_by === "ai" ? "bg-info-subtle text-info" : "bg-light text-muted"}`}>{f.suggested_by === "ai" ? "Automática" : "Regras"}</span>
         </span>
     ) : <span className="text-muted">Sem sugestão</span>;
 
@@ -228,7 +228,7 @@ export default function CategoriasFamiliasPage() {
                 <PageHeader
                     title="Categorias das famílias"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    info="Categoria de marketing de cada família do PingWin com vendas. As regras e a IA só sugerem: uma categoria só conta depois de confirmada pela equipa."
+                    info="Categoria de marketing de cada família do PingWin com vendas. As sugestões (por regras ou automáticas) não decidem nada: uma categoria só conta depois de confirmada pela equipa."
                 />
 
                 {/* As ações (pedir sugestões e confirmar) no cabeçalho do cartão (design-system §1 e §2). */}
@@ -246,7 +246,7 @@ export default function CategoriasFamiliasPage() {
                     ) : undefined}
                     actions={<>
                         <ReasonButton size="sm" color="outline-primary" onClick={askAi} reason={suggesting ? null : aiReason} disabled={suggesting}>
-                            {suggesting ? <><Spinner size="sm" className="me-1" /> A pedir sugestões</> : <><i className="ri-sparkling-line me-1" /> Pedir sugestões à IA</>}
+                            {suggesting ? <><Spinner size="sm" className="me-1" /> A pedir sugestões</> : <><i className="ri-sparkling-line me-1" /> Pedir sugestões</>}
                         </ReasonButton>
                         <ReasonButton size="sm" color="primary" onClick={confirm} reason={saving ? null : confirmReason} disabled={saving}>
                             {saving ? <><Spinner size="sm" className="me-1" /> A confirmar</> : <><i className="ri-check-line me-1" /> {changed.length === 1 ? "Confirmar 1 categoria" : `Confirmar ${changed.length} categorias`}</>}

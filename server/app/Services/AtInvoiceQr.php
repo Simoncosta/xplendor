@@ -16,10 +16,15 @@ namespace App\Services;
  *   P retenção na fonte · Q 4 carateres do hash · R nº certificado · S outras informações
  *
  * As taxas de cada espaço fiscal vêm de config('services.openai.ocr.vat_rates') — as
- * linhas lidas pela IA são conferidas contra estas bases POR TAXA.
+ * linhas lidas são conferidas contra estas bases POR TAXA. O valor não sujeito ou não
+ * tributável (L, por exemplo o vasilhame devolvido numa nota de crédito) não paga IVA: conta
+ * na base a 0 %, com as bases isentas, para as linhas a 0 % conferirem e o total (O) bater.
  */
 class AtInvoiceQr
 {
+    /** Os tipos de documento (campo D) que a leitura reconhece, com o nome que o ecrã mostra. */
+    public const DOC_TYPES = ['FT' => 'Fatura', 'FS' => 'Fatura simplificada', 'FR' => 'Fatura-recibo', 'NC' => 'Nota de crédito', 'ND' => 'Nota de débito'];
+
     private const AMOUNT_KEYS = ['I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'J2', 'J3', 'J4', 'J5', 'J6', 'J7', 'J8',
         'K2', 'K3', 'K4', 'K5', 'K6', 'K7', 'K8', 'L', 'M', 'N', 'O', 'P'];
     private const REQUIRED = ['A', 'B', 'D', 'F', 'G', 'H', 'O'];
@@ -106,6 +111,12 @@ class AtInvoiceQr
                 $byRate[$s['rate']]['vat_cents'] += $s['vat_cents'];
             }
         }
+        // L (não sujeito ou não tributável): sem IVA, conta na base a 0 %.
+        $notSubject = $amount('L');
+        if ($notSubject !== null && $notSubject !== 0) {
+            $byRate[0] ??= ['rate' => 0, 'base_cents' => 0, 'vat_cents' => 0];
+            $byRate[0]['base_cents'] += $notSubject;
+        }
         ksort($byRate);
 
         $nif = fn (?string $v) => $v === null ? null : (preg_replace('/\s+/', '', $v) ?: null);
@@ -135,6 +146,34 @@ class AtInvoiceQr
             'certificate'       => $fields['R'] ?? null,
             'other'             => $fields['S'] ?? null,
         ];
+    }
+
+    /** O nome do tipo de documento ("NC" → "Nota de crédito"), ou null se não for um dos reconhecidos. */
+    public static function docTypeLabel(?string $code): ?string
+    {
+        return self::DOC_TYPES[strtoupper(trim((string) $code))] ?? null;
+    }
+
+    /** Nota de crédito ou de débito (lê-se e revê-se como uma fatura, mas ainda não se lança no PingWin). */
+    public static function isCreditOrDebitNote(?string $code): bool
+    {
+        return in_array(strtoupper(trim((string) $code)), ['NC', 'ND'], true);
+    }
+
+    /** NIF português válido (9 dígitos e o dígito de controlo certo). */
+    public static function validNif(?string $nif): bool
+    {
+        $d = preg_replace('/\D+/', '', (string) $nif);
+        if (strlen($d) !== 9) {
+            return false;
+        }
+        $sum = 0;
+        for ($i = 0; $i < 8; $i++) {
+            $sum += (int) $d[$i] * (9 - $i);
+        }
+        $check = 11 - ($sum % 11);
+
+        return ($check >= 10 ? 0 : $check) === (int) $d[8];
     }
 
     /** Soma das bases (todas as taxas, incluindo isenta). */

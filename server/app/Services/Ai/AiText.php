@@ -49,7 +49,7 @@ final class AiText
             }
         }
         if (! is_array($decoded)) {
-            throw new \RuntimeException('A IA devolveu um JSON inválido.');
+            throw new \RuntimeException('A resposta não veio no formato esperado (JSON inválido).');
         }
 
         return $decoded;

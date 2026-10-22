@@ -19,7 +19,7 @@ class AiGateway
 {
     public function generate(string $function, AiPrompt $prompt): AiResult
     {
-        \App\Audit\AuditGuard::assertOutside('a IA');
+        \App\Audit\AuditGuard::assertOutside('o serviço de sugestões');
         $s = AiFunctionSettings::for($function);
 
         return $this->generateWith($function, $prompt, $s['model'], $s['effort']);
@@ -42,7 +42,7 @@ class AiGateway
     /** Com um modelo e esforço explícitos (o teste às cegas). */
     public function generateWith(string $function, AiPrompt $prompt, string $model, string $effort): AiResult
     {
-        \App\Audit\AuditGuard::assertOutside('a IA');
+        \App\Audit\AuditGuard::assertOutside('o serviço de sugestões');
         $provider = AiFunctionSettings::providerOf($model);
         if (self::fake()) {
             return FakeAiResponses::result($function, $prompt, $provider, $model, $effort);
@@ -104,7 +104,7 @@ class AiGateway
         return match ($provider) {
             'anthropic' => app(AnthropicProvider::class),
             'openai' => app(OpenAiProvider::class),
-            default => throw new AiProviderException("Fornecedor de IA desconhecido: {$provider}."),
+            default => throw new AiProviderException("Fornecedor desconhecido: {$provider}."),
         };
     }
 }

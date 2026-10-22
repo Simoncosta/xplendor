@@ -125,7 +125,7 @@ export default function IdeasModal({ isOpen, toggle, companyId, year, month, mon
             <ModalHeader toggle={toggle}><i className="ri-lightbulb-flash-line me-1" />Ideias para {monthLabel}</ModalHeader>
             <ModalBody>
                 <p className="text-muted fs-13">
-                    A IA propõe ideias a partir das âncoras do mês, dos pilares e do perfil da marca, sem repetir as publicações que já existem.
+                    São propostas ideias a partir das âncoras do mês, dos pilares e do perfil da marca, sem repetir as publicações que já existem.
                     Nada é criado sozinho: aceite as que quiser, uma a uma.
                 </p>
 

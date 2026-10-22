@@ -61,7 +61,7 @@ class AnthropicProvider implements AiProvider
         }
         $text = collect((array) $response->json('content', []))->where('type', 'text')->pluck('text')->implode('');
         if ($stop === 'max_tokens' || trim($text) === '') {
-            throw new AiProviderException('A resposta da IA veio incompleta (vazia ou cortada).', $response->status(), 'anthropic');
+            throw new AiProviderException('A resposta veio incompleta (vazia ou cortada).', $response->status(), 'anthropic');
         }
         $usage = (array) $response->json('usage', []);
 

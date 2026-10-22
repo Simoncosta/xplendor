@@ -49,7 +49,7 @@ final class PorIdentificarRule extends UnitRule
                 seen: sprintf('Não há evidências que cheguem para dizer como %s se compra, conta e usa (confiança %s de 1).%s', $e['description'], Fmt::qty($score, 2),
                     $reasons ? ' ' . implode(' ', array_unique($reasons)) : ''),
                 why: 'Sem saber a unidade, a XPLENDOR não calcula o custo nas fichas nem confere o stock deste artigo.',
-                todo: 'Abra o Guião: responda' . ($question ? ' a «' . $question . '»' : ' às perguntas') . ', dê mais informação, pergunte à IA ou envie ao administrador.',
+                todo: 'Abra o Guião: responda' . ($question ? ' a «' . $question . '»' : ' às perguntas') . ', dê mais informação, peça uma sugestão ou envie ao administrador.',
                 stake: $e['spend_90d_eur'] > 0 ? sprintf('A confirmar: %s comprados em 90 dias.', Fmt::eur($e['spend_90d_eur'])) : 'Sem compras em 90 dias: a relevância são as fichas.',
                 evidence: ['facts' => self::facts($e, [['label' => 'Confiança', 'value' => Fmt::qty($score, 2)]]), 'table' => self::purchasesTable($e['purchases']),
                     'note' => $reasons ? implode(' ', array_unique($reasons)) : null],

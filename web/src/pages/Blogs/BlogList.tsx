@@ -124,7 +124,7 @@ const BlogList = () => {
                         <div className="alert alert-info d-flex flex-wrap align-items-center gap-2" role="alert">
                             <i className="ri-user-voice-line fs-5" />
                             <div className="flex-grow-1">
-                                O perfil da marca ainda não está preenchido. Com ele, os rascunhos feitos com IA seguem o tom e o público da marca.
+                                O perfil da marca ainda não está preenchido. Com ele, os rascunhos automáticos seguem o tom e o público da marca.
                             </div>
                             <Link to="/brand-profile" className="btn btn-sm btn-outline-primary">Preencher o Perfil da Marca</Link>
                         </div>

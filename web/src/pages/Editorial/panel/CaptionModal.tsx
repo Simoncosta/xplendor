@@ -63,7 +63,7 @@ export default function CaptionModal({ isOpen, toggle, companyId, postId, networ
                 {!result && (
                     <>
                         <p className="fs-13 mb-2">
-                            A IA propõe várias legendas a partir do tema, do Perfil da Marca e {imageCount > 0 ? `das imagens carregadas (vê ${Math.min(imageCount, 4)} ${Math.min(imageCount, 4) === 1 ? "imagem" : "imagens"})` : "do tema (ainda não há imagens carregadas)"}, com uma variação por rede.
+                            São propostas várias legendas a partir do tema, do Perfil da Marca e {imageCount > 0 ? `das imagens carregadas (${Math.min(imageCount, 4)} ${Math.min(imageCount, 4) === 1 ? "imagem analisada" : "imagens analisadas"})` : "do tema (ainda não há imagens carregadas)"}, com uma variação por rede.
                             A proposta que escolher passa para o rascunho e só fica gravada quando a gravar.
                         </p>
                         {networks.length > 1 && (

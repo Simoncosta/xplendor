@@ -59,7 +59,7 @@ const view = (pid: string, over: any = {}) => ({ data: {
     impact: { recipes: pid === "100" ? [{ product_id: "D1", label: "Café expresso", bom_id: "B1", before: "0,007 Unidade", after: "7 g", after_qnt: 0.007, cost_before_eur: 0.105, cost_after_eur: 0.105, sold_qty_90d: 30 }] : [],
         stock: [], invoices: ["Faturas de Fornecedor A em «Unidade»: lançar como Embalagem 1 kg (1 = 1 kg)."], count: "Contar em embalagem 1 kg.", price_before_eur: 15, price_after_eur: 15,
         recipes_monthly_delta_eur: 0, monthly_eur: 10, recipes_note: null },
-    findings: [], ai: { available: false, reason: "Indisponível: falta a chave do fornecedor de IA (Anthropic). Configure-a em Admin › Modelos de IA.", suggestion: null },
+    findings: [], ai: { available: false, reason: "Indisponível: o serviço de sugestões não está configurado. Contacte o suporte da XPLENDOR.", suggestion: null },
     apply: { proven: false, guard: { mode: "por_provar", reason: "Disponível em breve." }, steps: [], manual: ["No PingWin, em Unidades, crie «Embalagem 1 kg»."], can_apply: false },
     recipes_conversion: { ready: false, needs_base_change: false, items: [] }, history: [], financial: { visible: true }, ...over,
 } });
@@ -117,7 +117,7 @@ describe("UnitGuidePage", () => {
         expect(await screen.findByTestId("guide-unknown")).toBeInTheDocument();
         expect(screen.getByTestId("guide-proposal")).toHaveTextContent("Ainda por identificar: Há fornecedores que o descrevem em saquetas");
         expect(screen.getByTestId("guide-ai")).toBeDisabled();
-        expect(screen.getByLabelText(/indisponível: Indisponível: falta a chave/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/indisponível: Indisponível: o serviço de sugestões não está configurado/)).toBeInTheDocument();
         expect(screen.getByTestId("guide-confirm")).toBeDisabled();
         fireEvent.click(screen.getByTestId("guide-admin-send"));
         await waitFor(() => expect(mockAdmin).toHaveBeenCalledWith(5, "200", undefined));

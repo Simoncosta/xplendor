@@ -233,7 +233,7 @@ class CreativeAiService
 
         return [
             'media_format'      => $media,
-            'media_format_note' => $fromRule ? 'Formato da regra de referência (a IA não propôs um formato válido).' : null,
+            'media_format_note' => $fromRule ? 'Formato da regra de referência (a proposta não trazia um formato válido).' : null,
             'hook'              => AiText::plain($raw['hook'] ?? '', 200),
             'caption'           => AiText::plain($raw['caption'] ?? '', 2200, true),
             'hashtags'          => AiText::hashtags($raw['hashtags'] ?? [], 30),

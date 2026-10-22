@@ -216,3 +216,108 @@ test("Ocultar imagem: a tabela ocupa a largura toda e a escolha fica no navegado
     expect(await screen.findByTestId("toggle-image")).toHaveTextContent("Mostrar imagem");
     expect(screen.getByTestId("image-col")).toHaveClass("d-none");
 });
+
+// ───────────────────────────────────── notas de crédito, leitura sem QR, IEC e vários documentos (sintéticos)
+
+const creditNote = (o: any = {}) => invoice({
+    doc_type: "NC", number: "NC CX/0196", supplier_name: "Cervejas Teste, SA", supplier_nif: "508888883", buyer_nif: "509999999", atcud: "0",
+    lines: [line({ id: 21, item: "Barril 50 L devolvido", quantity: 3, unit_price: 75, line_total: 225, vat_rate: 0, vat_code: null, net_total: 225 })],
+    discounts: [], ignored_lines: [],
+    summary: { goods_total: 225, commercial_discount: 0, taxable_base: 225, vat_total: 0, withholding: 0, financial_discount: 0, total: 225, vat_breakdown: [{ rate: 0, base: 225, vat: 0 }] },
+    vat_by_rate: { source: "qr", ok: true, lines_without_rate: [], rows: [
+        { rate: 0, codes: [], read_base: 225, read_vat: 0, calc_base: 225, calc_vat: 0, diff_base: 0, diff_vat: 0, ok: true, explained_by: [], explained_by_discounts: [] }] },
+    ...o,
+});
+const ND_BLOCKED = "As notas de débito ainda se lançam à mão no PingWin. Disponível em breve.";
+
+test("nota de crédito: diz-se como tal, os totais são um crédito e o Lançar no PingWin fica ativo", async () => {
+    mockApi.get.mockResolvedValue({ data: { invoice: creditNote(), pingwin: null, suppliers: [] } });
+    mockApi.update.mockResolvedValue({ data: { invoice: creditNote({ status: "validada" }) } });
+    render(<FaturaValidacaoPage />);
+    expect(await screen.findByTestId("doc-type")).toHaveTextContent("Nota de crédito");
+    expect(screen.getByTestId("credit-note")).toHaveTextContent("lança-se no PingWin como Nota de crédito de fornecedor, em rascunho, com a data da nota e o número dela como Documento de referência");
+    expect(screen.getByText("Total do crédito")).toBeInTheDocument();
+    expect(screen.getByText(/Soma das linhas \(Xplendor\), crédito/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Validar e guardar/));
+    const panel = await screen.findByTestId("saved-panel");
+    expect(within(panel).getByTestId("saved-launch-draft")).not.toBeDisabled();
+    expect(within(panel).getByTestId("saved-launch-closed")).not.toBeDisabled();
+});
+
+test("nota de débito: o Lançar no PingWin continua desativado, com o motivo", async () => {
+    mockApi.get.mockResolvedValue({ data: { invoice: creditNote({ doc_type: "ND", number: "ND 2026/3" }), pingwin: null, suppliers: [] } });
+    mockApi.launchGet.mockResolvedValue({ data: preview({ can_launch: false, guards: [{ key: "tipo", ok: false, label: "Fatura (FT)", message: ND_BLOCKED }],
+        close: { mode: "launch", can_close: false, blockers: [], closed_at: null, closed_by_name: null } }) });
+    mockApi.update.mockResolvedValue({ data: { invoice: creditNote({ doc_type: "ND", number: "ND 2026/3", status: "validada" }) } });
+    render(<FaturaValidacaoPage />);
+    expect(await screen.findByTestId("doc-type")).toHaveTextContent("Nota de débito");
+    expect(await screen.findByTestId("launch-guards")).toHaveTextContent(ND_BLOCKED);
+    fireEvent.click(screen.getByText(/Validar e guardar/));
+    const panel = await screen.findByTestId("saved-panel");
+    expect(within(panel).getByTestId("saved-launch-draft")).toBeDisabled();
+    expect(within(panel).getAllByLabelText(new RegExp(ND_BLOCKED.replace(/\./g, "\\.")))).toHaveLength(2);
+    expect(mockApi.launch).not.toHaveBeenCalled();
+});
+
+test("uma fatura (FT) continua a poder gravar no PingWin a partir do painel", async () => {
+    mockApi.update.mockResolvedValue({ data: { invoice: invoice({ status: "validada" }) } });
+    render(<FaturaValidacaoPage />);
+    fireEvent.click(await screen.findByText(/Validar e guardar/));
+    const panel = await screen.findByTestId("saved-panel");
+    expect(within(panel).getByTestId("saved-launch-draft")).not.toBeDisabled();
+    expect(screen.queryByTestId("credit-note")).toBeNull();
+});
+
+test("sem QR: QR ilegível, o adquirente verificado pelo texto e o IEC somado na linha", async () => {
+    mockApi.get.mockResolvedValue({ data: { invoice: invoice({
+        qr_ok: false, source: "sem_qr", check_status: "sem_qr", supplier_nif: "508888883", buyer_nif: "509999999", atcud: "ABCD1234-55", discounts: [], ignored_lines: [],
+        lines: [line({ id: 31, item: "Refrigerante lata 33 cl", quantity: 48, unit_price: 1.25, line_total: 61.84, vat_rate: 23, vat_code: null, net_total: 61.84, iec: 1.84 }),
+            line({ id: 32, item: "Caixa de vasilhame", quantity: 7, unit_price: 5, line_total: 35, vat_rate: 0, vat_code: null, net_total: 35, iec: null })],
+    }), pingwin: null, suppliers: [] } });
+    render(<FaturaValidacaoPage />);
+    expect(await screen.findByTestId("no-qr")).toHaveTextContent("QR ilegível: o cabeçalho foi lido do documento");
+    expect(screen.getByTestId("buyer-text-check")).toHaveTextContent("Adquirente 509999999: verificado pelo texto; o QR não se conseguiu ler.");
+    expect(screen.getByText("QR ilegível")).toBeInTheDocument();
+    expect(screen.getByTestId("line-iec-0")).toHaveTextContent(/Inclui IEC de 1,84\s€/);
+    expect(screen.queryByTestId("line-iec-1")).toBeNull();
+    expect(screen.queryByText(/IA\b/)).toBeNull();
+});
+
+test("vários documentos no mesmo ficheiro: a mensagem com a lista de cada um", async () => {
+    const msg = "Este ficheiro tem 2 documentos. Carregue um documento por ficheiro.\n· Fatura FT A/77, emitente 508888883 (página 1)\n· Nota de crédito NC CX/0196, emitente 508888883 (página 2)";
+    mockApi.get.mockResolvedValue({ data: { invoice: invoice({ status: "erro", error_message: msg, lines: [] }), pingwin: null, suppliers: [] } });
+    render(<FaturaValidacaoPage />);
+    const p = await screen.findByTestId("ocr-error");
+    expect(p).toHaveTextContent("Este ficheiro tem 2 documentos. Carregue um documento por ficheiro.");
+    expect(p).toHaveTextContent("· Nota de crédito NC CX/0196, emitente 508888883 (página 2)");
+    expect(p).toHaveStyle({ whiteSpace: "pre-line" });
+});
+
+test("não é desta empresa, verificado pelo texto: diz que foi lido da fatura (não do QR)", async () => {
+    mockApi.get.mockResolvedValue({ data: { invoice: invoice({ status: "nao_desta_empresa", qr_ok: false, doc_type: "FT", supplier_nif: "508888883", buyer_nif: "511111118",
+        error_message: "Esta fatura não é desta empresa: o NIF do adquirente lido na fatura é 511111118, o da empresa é 509999999. Verificado pelo texto; o QR não se conseguiu ler." }), pingwin: null, suppliers: [] } });
+    render(<FaturaValidacaoPage />);
+    expect(await screen.findByText(/o NIF do adquirente lido na fatura é 511111118, o da empresa é 509999999/)).toBeInTheDocument();
+    expect(screen.getByTestId("not-ours-read")).toHaveTextContent("Lido da fatura: emitente 508888883 · adquirente 511111118 · Fatura");
+});
+
+test("Lançar no PingWin com IEC numa coluna à parte: mostra as linhas que vão, com a do IEC e o total", async () => {
+    const pl = (kind: string, item: string, qnt: number, price: number, disc: number, rate: number, net: number, tax: number) =>
+        ({ kind, line_id: null, item, article: kind === "iec" ? { id: 9, code: "999", description: "IEC", pingwin_id: "PIEC" } : null, qnt, price, discount_pct: disc, promo_cents: 0, vat_rate: rate,
+            net_cents: net, tax_cents: tax, total_cents: net + tax });
+    mockApi.launchGet.mockResolvedValue({ data: preview({ planned: { iec_from: "VFT BOVFT/1", target_cents: 15366, total_cents: 15366, lines: [
+        pl("linha", "Bebida A 24", 1, 20.88, 35.01, 23, 1357, 312), pl("linha", "Caixa A", 1, 5, 0, 0, 500, 0), pl("iec", "IEC", 1, 2.87, 0, 23, 287, 66),
+    ] } }) });
+    render(<FaturaValidacaoPage />);
+    const t = await screen.findByTestId("launch-planned");
+    expect(t).toHaveTextContent("O IEC vai numa linha à parte, como na VFT BOVFT/1");
+    expect(within(t).getByTestId("planned-iec-2")).toHaveTextContent(/999 IEC\s*1\s*2,87\s*—\s*23 %\s*2,87\s€\s*3,53\s€/);
+    expect(within(t).getByTestId("planned-linha-0")).toHaveTextContent("35,01 %");
+    expect(within(t).getByTestId("planned-total")).toHaveTextContent(/153,66\s€/);
+});
+
+test("sem IEC nas linhas, o cartão do lançamento não mostra a lista", async () => {
+    render(<FaturaValidacaoPage />);
+    await screen.findByTestId("launch-guards");
+    expect(screen.queryByTestId("launch-planned")).toBeNull();
+});

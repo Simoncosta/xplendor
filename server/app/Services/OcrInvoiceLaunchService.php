@@ -26,7 +26,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * XPLENDOR — FB-1: "Lançar no PingWin". Cria a Fatura de fornecedor (1209) em RASCUNHO (8001)
+ * XPLENDOR — FB-1: "Lançar no PingWin". Cria a Fatura de fornecedor (1209), ou a Nota de crédito de
+ * fornecedor (1205) quando o documento é uma nota de crédito, em RASCUNHO (8001)
  * a partir da fatura OCR; depois a pessoa fecha-a (8002) ou anula-a (8003). Cada ação é uma escrita
  * (pingwin_document_writes) feita por um job no worker e confirmada por RELEITURA.
  *
@@ -36,10 +37,22 @@ use Illuminate\Support\Str;
  *   · F3 "não lançada" (e a lista viva não a tem) · linhas ligadas a artigos ativos · unidade de cada
  *   linha entre as do artigo · IVA conhecido · quantidade > 0 e preço ≥ 0 · acerto ≤ 0,05 € (estimado
  *   aqui, real no PingWin antes do SAVE) · uma escrita de cada vez.
+ *
+ * Nota de crédito (1205): o mesmo protocolo e as mesmas guardas da fatura (HAR de 21/10); muda o tipo,
+ * a data do documento é a da nota (não a do dia), o Documento de referência é o número da nota do
+ * fornecedor com a data dela (a 1205 não tem tipo de referência: docreference_id vazio), os valores são
+ * os da nota, positivos (o sinal vem do tipo), e o total das linhas tem de ser igual ao da nota (sem acerto).
+ * As notas de débito continuam à mão.
+ *
+ * IEC numa coluna à parte (somado ao valor da linha, ex.: bebidas): lança-se como as faturas anteriores
+ * do mesmo fornecedor no PingWin, numa linha à parte com o artigo do IEC (o da linha de IEC mais
+ * recente desse fornecedor), quantidade 1 e o IEC total como preço, por taxa de IVA; a linha do
+ * artigo leva o preço e o desconto lidos, sem o IEC. Sem essa linha no histórico, não se lança.
  */
 class OcrInvoiceLaunchService
 {
     public const DOCCONFIG = '1209';
+    public const CREDIT_DOCCONFIG = '1205';      // Nota de crédito de fornecedor (V/NC, série VNC)
     public const DRAFT = '8001';
     public const CLOSED = '8002';
     public const VOIDED = '8003';
@@ -47,6 +60,8 @@ class OcrInvoiceLaunchService
     public const DOCREF_MAX = 25;               // tamanho do docreference_number (datasetinfo)
     public const MAX_ADJUSTMENT_CENTS = 5;
     public const OUT_OF_SCOPE = 'Por agora, lançar à mão no PingWin.';
+    /** Notas de débito: ainda à mão. */
+    public const DEBIT_NOTE_BLOCKED = 'As notas de débito ainda se lançam à mão no PingWin. Disponível em breve.';
 
     private const UNIT_SYNONYMS = [
         'UN' => ['UN', 'UND', 'UNID', 'UNIDADE', 'U', 'UNI', 'UNIDADES', 'PC', 'PCS', 'PECA'],
@@ -64,6 +79,27 @@ class OcrInvoiceLaunchService
     // Guardas
     // ─────────────────────────────────────────────────────────────────────────
 
+    /** Porque é que este tipo de documento não se lança (só a Fatura, FT, se lança). */
+    public static function typeBlockedMessage(?string $docType): string
+    {
+        return match (strtoupper(trim((string) $docType))) {
+            'ND' => self::DEBIT_NOTE_BLOCKED,
+            default => self::OUT_OF_SCOPE,
+        };
+    }
+
+    /** Nota de crédito (lança-se como 1205). */
+    public static function isCreditNote(OcrInvoice $inv): bool
+    {
+        return strtoupper(trim((string) $inv->doc_type)) === 'NC';
+    }
+
+    /** O tipo de documento do PingWin: 1205 nas notas de crédito, 1209 nas faturas. */
+    public static function docconfigFor(OcrInvoice $inv): string
+    {
+        return self::isCreditNote($inv) ? self::CREDIT_DOCCONFIG : self::DOCCONFIG;
+    }
+
     /**
      * As guardas e o que a UI precisa: lista {key, ok, label, message}, a unidade de cada linha (com
      * as opções do artigo), o acerto estimado e o estado das escritas.
@@ -78,7 +114,8 @@ class OcrInvoiceLaunchService
         $usable = OcrLineArticleService::usable(PingwinCatalogItem::whereIn('id', $lines->pluck('article_id')->filter()))->pluck('id')->flip();
 
         $lineInfo = $lines->map(fn (OcrInvoiceLine $l) => $this->lineInfo($l, $articles[$l->article_id] ?? null))->values();
-        $estimate = $this->estimate($inv, $lines);
+        $iec = $lines->contains(fn ($l) => (int) $l->iec_cents !== 0) ? $this->iecArticle($inv) : null;
+        $estimate = $this->estimate($inv, $lines, $iec);
         $writes = PingwinDocumentWrite::where('ocr_invoice_id', $inv->id)->orderByDesc('id')->get();
         $busy = $this->blockingWrite($inv, $writes);
 
@@ -86,7 +123,8 @@ class OcrInvoiceLaunchService
         $add = function (string $key, bool $ok, string $label, ?string $msg = null) use (&$g): void {
             $g[] = ['key' => $key, 'ok' => $ok, 'label' => $label, 'message' => $ok ? null : $msg];
         };
-        $add('tipo', strtoupper((string) $inv->doc_type) === 'FT', 'Fatura (FT)', self::OUT_OF_SCOPE);
+        $credit = self::isCreditNote($inv);
+        $add('tipo', $credit || strtoupper((string) $inv->doc_type) === 'FT', $credit ? 'Nota de crédito (NC)' : 'Fatura (FT)', self::typeBlockedMessage($inv->doc_type));
         $add('qr', (bool) $inv->qr_ok && $ownNif !== '' && OcrPingwinLinkService::digits($inv->buyer_nif) === $ownNif,
             'QR lido e da empresa', 'A fatura tem de ter o QR lido, com o NIF desta empresa como adquirente.');
         $add('conferencia', $inv->check_status === InvoiceOcrService::CHECK_OK || $inv->check_accepted_at !== null,
@@ -98,6 +136,10 @@ class OcrInvoiceLaunchService
         $add('artigos', $lines->isNotEmpty() && $lines->every(fn ($l) => $l->link_state === OcrInvoiceLine::LINKED && isset($usable[$l->article_id])),
             'Todas as linhas ligadas a artigos ativos', 'Há linhas por ligar a um artigo ativo.');
         $add('unidades', $lineInfo->every(fn ($l) => $l['unit_ok']), 'Unidade de cada linha', 'Escolha a unidade das linhas assinaladas.');
+        if ($lines->contains(fn ($l) => (int) $l->iec_cents !== 0)) {
+            $add('iec', $iec !== null, 'IEC numa linha à parte, como nas faturas anteriores',
+                'As linhas têm IEC numa coluna à parte, mas nenhuma fatura deste fornecedor no PingWin tem a linha do IEC para seguir. Lance esta fatura à mão.');
+        }
         $add('iva', $lines->every(fn ($l) => $l->vat_rate !== null && isset(OcrLineArticleService::TAXGROUPS[$l->vat_rate])),
             'IVA de cada linha', 'Há linhas sem taxa de IVA.');
         // Os descontos de promoção ficam no artigo (não são linhas): aqui conta só o artigo.
@@ -107,8 +149,10 @@ class OcrInvoiceLaunchService
         $add('descontos', $unassigned->isEmpty(), 'Descontos no seu artigo',
             'Desconto por atribuir: ' . $unassigned->map(fn ($d) => trim(($d->label ?? 'Desconto') . ' ' . $d->code) . ' (' . self::eur($d->amount_cents) . ')')->implode('; ')
             . '. Corrija o código da promoção na linha do artigo e carregue em "Revalidar".');
-        $add('acerto', $estimate['adjustment_cents'] !== null && abs($estimate['adjustment_cents']) <= self::MAX_ADJUSTMENT_CENTS,
-            'Total da fatura (acerto até 0,05 €)', $estimate['adjustment_cents'] === null
+        // Nota de crédito: o total das linhas tem de ser igual ao da nota (sem acerto).
+        $maxAdj = $credit ? 0 : self::MAX_ADJUSTMENT_CENTS;
+        $add('acerto', $estimate['adjustment_cents'] !== null && abs($estimate['adjustment_cents']) <= $maxAdj,
+            $credit ? 'Total das linhas igual ao total da nota' : 'Total da fatura (acerto até 0,05 €)', $estimate['adjustment_cents'] === null
                 ? 'Falta o total da fatura (QR).'
                 : sprintf('As linhas dão %s € e a fatura %s € (diferença %s €).', number_format($estimate['computed_cents'] / 100, 2, ',', ' '),
                     number_format($estimate['target_cents'] / 100, 2, ',', ' '), number_format($estimate['adjustment_cents'] / 100, 2, ',', ' ')));
@@ -124,6 +168,9 @@ class OcrInvoiceLaunchService
             'discount_warnings' => $inv->discounts->pluck('warning')->filter()->values(),
             'lines'       => $lineInfo,
             'estimate'    => $estimate,
+            // O que iria para o PingWin: cada linha (e a do IEC) com o preço, o desconto, o IVA e o total.
+            'planned'     => ['lines' => $estimate['planned'], 'total_cents' => $estimate['computed_cents'], 'target_cents' => $estimate['target_cents'],
+                'iec_from' => $iec['document'] ?? null],
             'supplier'    => $supplier ? ['id' => $supplier->id, 'name' => $supplier->name, 'pingwin_id' => $supplier->pingwin_id] : null,
             'docreference' => ['number' => mb_substr((string) $inv->number, 0, self::DOCREF_MAX), 'truncated' => mb_strlen((string) $inv->number) > self::DOCREF_MAX,
                 'date' => $inv->issue_date?->toDateString()],
@@ -182,6 +229,12 @@ class OcrInvoiceLaunchService
 
     private function launchedMessage(OcrInvoice $inv): string
     {
+        if (self::isCreditNote($inv) && in_array($inv->link_status, [OcrPingwinLinkService::LAUNCHED, OcrPingwinLinkService::LAUNCHED_GUIDES], true)) {
+            $docs = PingwinSupplierDocument::where('company_id', $inv->company_id)->whereIn('docheader_id', $inv->pingwinLinks()->pluck('docheader_id'))->pluck('document')->filter()->implode(', ');
+
+            return 'Já está lançada no PingWin' . ($docs !== '' ? " ({$docs})" : '') . '.';
+        }
+
         return match ($inv->link_status) {
             OcrPingwinLinkService::LAUNCHED, OcrPingwinLinkService::LAUNCHED_GUIDES => 'A fatura já está lançada no PingWin.',
             OcrPingwinLinkService::POSSIBLE => 'Há documentos no PingWin que podem ser esta fatura: veja "No PingWin" primeiro.',
@@ -292,21 +345,86 @@ class OcrInvoiceLaunchService
     // Acerto estimado
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Σ linhas + IVA por linha (arredondado à linha, como o PingWin) vs O do QR. */
-    public function estimate(OcrInvoice $inv, Collection $lines): array
+    /** Σ linhas + IVA por linha (arredondado à linha, como o PingWin) vs O do QR. As linhas são as que vão (com a do IEC). */
+    public function estimate(OcrInvoice $inv, Collection $lines, ?array $iec = null): array
     {
         $target = $this->links->invoiceTotalCents($inv);
-        $net = 0;
-        $tax = 0;
-        foreach ($lines as $l) {
-            $t = (int) $l->line_total_cents;
-            $net += $t;
-            $tax += (int) round($t * ((int) $l->vat_rate) / 100);
-        }
+        $planned = $this->plannedLines($lines, $iec);
+        $net = array_sum(array_column($planned, 'net_cents'));
+        $tax = array_sum(array_column($planned, 'tax_cents'));
         $computed = $net + $tax;
 
         return ['target_cents' => $target, 'computed_cents' => $computed, 'net_cents' => $net, 'tax_cents' => $tax,
-            'adjustment_cents' => $target === null ? null : $target - $computed];
+            'adjustment_cents' => $target === null ? null : $target - $computed, 'planned' => $planned];
+    }
+
+    /**
+     * As linhas que iriam para o PingWin, sem escrever nada: as da fatura (preço e desconto lidos; o
+     * valor sem o IEC) e, se houver IEC numa coluna à parte, uma linha do IEC por taxa de IVA
+     * (quantidade 1, preço = o IEC dessas linhas), como nas faturas anteriores do fornecedor.
+     *
+     * @return list<array{kind: string, line_id: ?int, item: ?string, article: ?array, qnt: float, price: float, discount_pct: float, promo_cents: int, vat_rate: int, net_cents: int, tax_cents: int, total_cents: int}>
+     */
+    public function plannedLines(Collection $lines, ?array $iec): array
+    {
+        $out = [];
+        $iecByRate = [];
+        $articles = PingwinCatalogItem::whereIn('id', $lines->pluck('article_id')->filter())->get()->keyBy('id');
+        foreach ($lines->sortBy('position') as $l) {
+            $iecCents = (int) $l->iec_cents;
+            if ($iecCents !== 0) {
+                $iecByRate[(int) $l->vat_rate] = ($iecByRate[(int) $l->vat_rate] ?? 0) + $iecCents;
+            }
+            $a = $articles[$l->article_id] ?? null;
+            $out[] = $this->plannedRow('linha', $l->id, $l->item, $a, (float) $l->quantity, (float) $l->unit_price, (float) ($l->discount_pct ?? 0),
+                (int) $l->discount_cents, (int) $l->vat_rate, (int) $l->line_total_cents - $iecCents);
+        }
+        foreach ($iecByRate as $rate => $cents) {
+            $out[] = $this->plannedRow('iec', null, 'IEC', $iec['article'] ?? null, 1.0, $cents / 100, 0.0, 0, $rate, $cents);
+        }
+
+        return $out;
+    }
+
+    private function plannedRow(string $kind, ?int $lineId, ?string $item, ?PingwinCatalogItem $a, float $qnt, float $price, float $disc, int $promo, int $rate, int $net): array
+    {
+        $tax = (int) round($net * $rate / 100);
+
+        return ['kind' => $kind, 'line_id' => $lineId, 'item' => $item,
+            'article' => $a ? ['id' => $a->id, 'code' => $a->code, 'description' => $a->description, 'pingwin_id' => (string) $a->pingwin_id] : null,
+            'qnt' => $qnt, 'price' => $price, 'discount_pct' => $disc, 'promo_cents' => $promo, 'vat_rate' => $rate,
+            'net_cents' => $net, 'tax_cents' => $tax, 'total_cents' => $net + $tax];
+    }
+
+    /**
+     * O artigo do IEC deste fornecedor: o da linha de IEC mais recente das faturas dele já no PingWin
+     * (com a unidade dessa linha). Null se não houver nenhuma, ou se o artigo já não estiver ativo.
+     *
+     * @return array{article: PingwinCatalogItem, unit_id: string, document: ?string}|null
+     */
+    public function iecArticle(OcrInvoice $inv): ?array
+    {
+        $supplier = $this->lines->supplier($inv);
+        if (! $supplier || ! $supplier->pingwin_id) {
+            return null;
+        }
+        $rows = DB::table('pingwin_supplier_document_lines as l')
+            ->join('pingwin_supplier_documents as d', fn ($j) => $j->on('d.docheader_id', '=', 'l.docheader_id')->on('d.company_id', '=', 'l.company_id'))
+            ->where('l.company_id', $inv->company_id)->where('d.entity_pingwin_id', (string) $supplier->pingwin_id)
+            ->where('d.docconfig_id', self::DOCCONFIG)->whereNotNull('l.product_pingwin_id')->where('l.description', 'like', '%IEC%')
+            ->orderByDesc('d.doc_date')->orderByDesc('d.id')->limit(20)
+            ->get(['l.product_pingwin_id', 'l.unit_id', 'l.description', 'd.document']);
+        $row = $rows->first(fn ($r) => preg_match('/\bIEC\b/iu', (string) $r->description) === 1);
+        if (! $row) {
+            return null;
+        }
+        $a = OcrLineArticleService::usable(PingwinCatalogItem::where('company_id', $inv->company_id)->where('pingwin_id', (string) $row->product_pingwin_id))->first();
+        if (! $a) {
+            return null;
+        }
+        $unit = (string) ($row->unit_id ?: ($a->default_purchase_unit_id ?: ($this->articleUnits($a)->first()['id'] ?? '')));
+
+        return $unit === '' ? null : ['article' => $a, 'unit_id' => $unit, 'document' => $row->document];
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -394,18 +512,41 @@ class OcrInvoiceLaunchService
                 'vat_rate'   => (int) $l->vat_rate,
             ];
         }
+        // O IEC numa linha à parte (como nas faturas anteriores do fornecedor): uma por taxa de IVA.
+        $iec = $this->iecArticle($inv);
+        foreach (collect($p['planned']['lines'] ?? [])->where('kind', 'iec') as $row) {
+            $lines[] = [
+                'line_id'    => null,
+                'product_id' => (string) $iec['article']->pingwin_id,
+                'unit_id'    => $iec['unit_id'],
+                'qnt'        => '1.000000',
+                'price'      => number_format($row['net_cents'] / 100, 6, '.', ''),
+                'discount1'  => '0',
+                'adjustment' => null,
+                'vat_rate'   => (int) $row['vat_rate'],
+            ];
+        }
 
-        return [
-            'docconfig_id'        => self::DOCCONFIG,
+        $credit = self::isCreditNote($inv);
+        $doc = [
+            'docconfig_id'        => self::docconfigFor($inv),
             'docstatus_id'        => self::DRAFT,
             'entity_id'           => (string) $supplier->pingwin_id,
             'lines'               => $lines,
             'target_total'        => number_format($p['estimate']['target_cents'] / 100, 2, '.', ''),
-            'max_adjustment'      => number_format(self::MAX_ADJUSTMENT_CENTS / 100, 2, '.', ''),
-            'docreference_id'     => self::DOCREF_ID,
+            // Nota de crédito: sem acerto (o total das linhas tem de ser o da nota).
+            'max_adjustment'      => number_format(($credit ? 0 : self::MAX_ADJUSTMENT_CENTS) / 100, 2, '.', ''),
+            // A 1205 não tem tipo de referência (a lista vem só com o vazio); o número e a data ficam.
+            'docreference_id'     => $credit ? '' : self::DOCREF_ID,
             'docreference_number' => mb_substr((string) $inv->number, 0, self::DOCREF_MAX),
             'docreference_date'   => $inv->issue_date ? $inv->issue_date->format('Ymd') . 'T00:00:00' : '',
         ];
+        // A data do documento é a da nota (à mão ficava a do dia do lançamento).
+        if ($credit && $inv->issue_date) {
+            $doc['doc_date'] = $inv->issue_date->format('Ymd') . 'T00:00:00';
+        }
+
+        return $doc;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -448,7 +589,9 @@ class OcrInvoiceLaunchService
             if ($found = $this->liveAlreadyLaunched($inv, (string) $supplier->pingwin_id)) {
                 $this->links->link($inv->fresh(), false);
 
-                return $this->finish($w, PingwinDocumentWrite::ERROR, "Já lançada no PingWin: {$found} (ligada à fatura).");
+                return $this->finish($w, PingwinDocumentWrite::ERROR, self::isCreditNote($inv)
+                    ? "Já está lançada no PingWin ({$found}). Ficou ligada à nota; nada foi criado."
+                    : "Já lançada no PingWin: {$found} (ligada à fatura).");
             }
             // 4. Lançar (o Python relê no fim).
             $res = $this->pingwin->launchSupplierInvoice($inv->company_id, $doc);
@@ -520,6 +663,12 @@ class OcrInvoiceLaunchService
         if ((string) ($h['docreference_number'] ?? '') !== (string) $doc['docreference_number']) {
             $p[] = 'o nº da fatura do fornecedor não ficou';
         }
+        if (isset($h['docconfig_id']) && (string) $h['docconfig_id'] !== (string) ($doc['docconfig_id'] ?? self::DOCCONFIG)) {
+            $p[] = "o tipo do documento não é o esperado ({$h['docconfig_id']})";
+        }
+        if (isset($doc['doc_date']) && substr((string) ($h['doc_date'] ?? ''), 0, 8) !== substr((string) $doc['doc_date'], 0, 8)) {
+            $p[] = 'a data do documento não é a da nota (' . (self::date($h['doc_date'] ?? null) ?? '?') . ')';
+        }
         if (count($details) !== count($doc['lines'])) {
             $p[] = 'o número de linhas não bate (' . count($details) . ' ≠ ' . count($doc['lines']) . ')';
         }
@@ -539,7 +688,7 @@ class OcrInvoiceLaunchService
         $doc = PingwinSupplierDocument::updateOrCreate(
             ['company_id' => $inv->company_id, 'docheader_id' => (string) $r['docheader_id']],
             [
-                'docconfig_id' => self::DOCCONFIG, 'doctype' => 'Fatura de fornecedor', 'document' => $r['document'],
+                'docconfig_id' => self::docconfigFor($inv), 'doctype' => self::isCreditNote($inv) ? 'Nota de crédito de fornecedor' : 'Fatura de fornecedor', 'document' => $r['document'],
                 'entity_pingwin_id' => (string) $supplier->pingwin_id, 'entity_name' => $supplier->name, 'fiscalname' => $supplier->fiscal_name,
                 'tax_number' => $supplier->tax_number, 'supplier_id' => $supplier->id,
                 'store_pingwin_id' => $h['store_id'] ?? null, 'store_name' => $this->storeName($inv->company_id, $h['store_id'] ?? null),
@@ -567,7 +716,7 @@ class OcrInvoiceLaunchService
     {
         $target = (string) ($w->payload['docstatus_id'] ?? '');
         try {
-            $res = $this->pingwin->documentStatus($inv->company_id, (string) $w->docheader_id, $target);
+            $res = $this->pingwin->documentStatus($inv->company_id, (string) $w->docheader_id, $target, self::docconfigFor($inv));
         } catch (\Throwable $e) {
             // Pedido único OPEN,EDIT,SAVE,CLOSE: sem resposta não se sabe se mudou → rever.
             return $this->finish($w, PingwinDocumentWrite::CONFIRM_ERROR, $e->getMessage() . ' Reveja o estado no PingWin.');

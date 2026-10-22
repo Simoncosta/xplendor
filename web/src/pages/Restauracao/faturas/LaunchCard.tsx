@@ -28,6 +28,46 @@ const eur = (cents?: number | null) => ((cents ?? 0) / 100).toLocaleString("pt-P
 const fmtDay = (d?: string | null) => (d ? d.split("-").reverse().join("/") : "—");
 const ACTION_LABEL = { launch: "lançar", close: "fechar", void: "anular" } as const;
 
+const eurC = (c: number) => (c / 100).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
+
+/**
+ * O que vai para o PingWin, quando há IEC numa coluna à parte: as linhas da fatura (preço e desconto
+ * lidos, sem o IEC) e a linha do IEC, como nas faturas anteriores do fornecedor. Só leitura.
+ */
+function PlannedLines({ planned }: { planned: NonNullable<OcrLaunchPreview["planned"]> }) {
+    return (
+        <div className="mb-2" data-testid="launch-planned">
+            <div className="fs-13 mb-1">
+                <i className="ri-information-line me-1" />O IEC vai numa linha à parte{planned.iec_from ? `, como na ${planned.iec_from}` : ""}. O que vai para o PingWin:
+            </div>
+            <div className="table-responsive">
+                <table className="table table-sm table-bordered align-middle mb-0 fs-13">
+                    <caption className="visually-hidden">Linhas que vão para o PingWin</caption>
+                    <thead className="table-light text-muted">
+                        <tr><th>Linha</th><th className="text-end">Qtd</th><th className="text-end">Preço</th><th className="text-end">Desc.</th><th className="text-end">IVA</th><th className="text-end">Sem IVA</th><th className="text-end">Total</th></tr>
+                    </thead>
+                    <tbody>
+                        {planned.lines.map((l, i) => (
+                            <tr key={i} className={l.kind === "iec" ? "fw-semibold" : undefined} data-testid={`planned-${l.kind}-${i}`}>
+                                <td>{l.article ? `${l.article.code ?? ""} ${l.article.description ?? ""}`.trim() : l.item}</td>
+                                <td className="text-end">{l.qnt.toLocaleString("pt-PT")}</td>
+                                <td className="text-end">{l.price.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</td>
+                                <td className="text-end">{l.discount_pct ? `${l.discount_pct.toLocaleString("pt-PT")} %` : "—"}</td>
+                                <td className="text-end">{l.vat_rate} %</td>
+                                <td className="text-end text-nowrap">{eurC(l.net_cents)}</td>
+                                <td className="text-end text-nowrap">{eurC(l.total_cents)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot>
+                        <tr className="fw-semibold"><td colSpan={6} className="text-end">Total do documento</td><td className="text-end text-nowrap" data-testid="planned-total">{eurC(planned.total_cents)}</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = null, refreshKey = 0 }: Props) {
     const [p, setP] = useState<OcrLaunchPreview | null>(null);
     const [busy, setBusy] = useState(false);
@@ -160,7 +200,7 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
     return (
         <PageCard
             title="Lançar no PingWin"
-            info="Cria a fatura de fornecedor no PingWin em RASCUNHO (Aberto): não mexe no stock nem na conta corrente até ser fechada."
+            info="Cria no PingWin a fatura de fornecedor (ou, numa nota de crédito, a nota de crédito de fornecedor) em RASCUNHO (Aberto): não mexe no stock nem na conta corrente até ser fechada."
             status={draftActive
                 ? <span className={`badge ${p.draft!.docstatus_id === "8001" ? "bg-info-subtle text-info" : "bg-success-subtle text-success"}`}>{p.draft!.document} · {p.draft!.docstatus_label}</span>
                 : p.can_launch ? <span className="badge bg-success-subtle text-success">Pronta para lançar</span> : <span className="text-muted">{failed.length} {failed.length === 1 ? "coisa por resolver" : "coisas por resolver"}</span>}
@@ -207,6 +247,7 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
                     {(p.discount_warnings ?? []).map((w, i) => (
                         <div key={i} className="fs-13 text-warning mb-1" data-testid="launch-discount-warning"><i className="ri-error-warning-line me-1" />{w}</div>
                     ))}
+                    {p.planned && p.planned.lines.some((l) => l.kind === "iec") && <PlannedLines planned={p.planned} />}
                     {needsUnit.length > 0 && (
                         <div className="table-responsive">
                             <table className="table table-sm table-bordered align-middle mb-0 fs-13" data-testid="launch-units">

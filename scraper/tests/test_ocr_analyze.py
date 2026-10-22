@@ -6,7 +6,9 @@ ficheiros sintéticos (QR gerado pelo próprio zxing-cpp, PDF montado à mão):
   · PDF digitalizado (sem camada de texto): QR lido, imagens de TODAS as páginas;
   · imagem (PNG): QR lido diretamente;
   · fallback 300 DPI: sem QR a 200 → lido a 300;
-  · máximo de páginas para a IA (truncated) e modo desconhecido.
+  · máximo de páginas para a IA (truncated) e modo desconhecido;
+  · vários documentos no mesmo ficheiro: todos os QR da AT diferentes em "qrs" (a mesma
+    fatura repetida noutra via conta uma vez).
 Requer poppler-utils + zxing-cpp (contentor do scraper).
 """
 import base64
@@ -172,6 +174,45 @@ def test_non_at_qr_is_ignored():
     buf = io.BytesIO()
     page.save(buf, format="PNG")
     assert run_analyze(buf.getvalue(), "image/png")["qr"] is None
+
+
+QR_NC = ("A:505266202*B:514148497*C:PT*D:NC*E:N*F:20261016*G:NC X/1*H:ABCD1234-1*I1:PT*L:291.59"
+         "*N:0.00*O:291.59*Q:KN8F*R:2177")
+
+
+def scanned_pdf_qrs(per_page: list) -> bytes:
+    """PDF digitalizado com uma lista de QR por página (cada texto num sítio diferente)."""
+    pages = []
+    for raws in per_page:
+        page = Image.new("L", (827, 1169), 255)
+        for k, raw in enumerate(raws):
+            page.paste(qr_image(raw, scale=3), (80 + k * 380, 820))
+        pages.append(page.convert("RGB"))
+    buf = io.BytesIO()
+    pages[0].save(buf, format="PDF", resolution=100, save_all=True, append_images=pages[1:])
+    return buf.getvalue()
+
+
+def test_two_documents_in_one_pdf_return_both_qrs():
+    res = run_analyze(scanned_pdf_qrs([[QR_RAW], [QR_NC]]), "application/pdf")
+    assert [(q["raw"], q["page"]) for q in res["qrs"]] == [(QR_RAW, 1), (QR_NC, 2)]
+    assert res["qr"]["raw"] == QR_RAW  # o 1.º continua em "qr"
+
+
+def test_same_invoice_in_two_copies_counts_once():
+    res = run_analyze(scanned_pdf_qrs([[QR_RAW], [QR_RAW]]), "application/pdf")
+    assert [q["raw"] for q in res["qrs"]] == [QR_RAW]
+
+
+def test_two_qrs_on_the_same_page():
+    res = run_analyze(scanned_pdf_qrs([[QR_RAW, QR_NC]]), "application/pdf")
+    assert sorted(q["raw"] for q in res["qrs"]) == sorted([QR_RAW, QR_NC])
+    assert {q["page"] for q in res["qrs"]} == {1}
+
+
+def test_no_qr_gives_an_empty_list():
+    res = run_analyze(text_pdf([invoice_lines()]), "application/pdf")
+    assert res["qr"] is None and res["qrs"] == []
 
 
 def test_main_unknown_mode(monkeypatch, capsys):

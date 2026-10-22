@@ -117,14 +117,14 @@ export default function CarDescriptionDataFields({
     const fieldName = "description_website_pt" as const;
     const isSettingFromQuill = useRef(false);
 
+    const fieldHtml = values[fieldName] ?? "";
     useEffect(() => {
         if (!quill) return;
-        const html = values[fieldName] ?? "";
         const current = quill.root.innerHTML;
-        if (current !== html && !isSettingFromQuill.current) {
-            quill.clipboard.dangerouslyPasteHTML(html);
+        if (current !== fieldHtml && !isSettingFromQuill.current) {
+            quill.clipboard.dangerouslyPasteHTML(fieldHtml);
         }
-    }, [quill, values[fieldName]]);
+    }, [quill, fieldHtml]);
 
     useEffect(() => {
         if (!quill) return;
@@ -199,7 +199,7 @@ export default function CarDescriptionDataFields({
             if (description) {
                 setSuggestion(description.trim());   // fica em pré-visualização, à espera de validação
             } else {
-                toast.error("A IA não devolveu texto. Tente novamente.", { position: "top-right", hideProgressBar: true });
+                toast.error("Não foi gerado nenhum texto. Tente novamente.", { position: "top-right", hideProgressBar: true });
             }
         } catch (error: unknown) {
             console.error(error);
@@ -253,7 +253,7 @@ export default function CarDescriptionDataFields({
                         onClick={requestSuggestion}
                     >
                         {isGenerating ? <Spinner size="sm" className="me-1" /> : <i className="ri-magic-line me-1" />}
-                        {isGenerating ? "A gerar…" : "Gerar com IA"}
+                        {isGenerating ? "A gerar…" : "Gerar"}
                     </ReasonButton>
                 </div>
             </div>
@@ -306,7 +306,7 @@ export default function CarDescriptionDataFields({
                 <div className="border border-info rounded p-3 mb-3" style={{ background: "var(--vz-info-bg-subtle)" }}>
                     <div className="d-flex align-items-center gap-2 mb-2">
                         <i className="ri-magic-line text-info" />
-                        <span className="fw-semibold">Sugestão da IA</span>
+                        <span className="fw-semibold">Sugestão automática</span>
                         <span className="badge bg-info-subtle text-info">Pré-visualização, ainda não preenchida</span>
                     </div>
                     <p className="mb-3" style={{ whiteSpace: "pre-wrap" }}>{suggestion}</p>

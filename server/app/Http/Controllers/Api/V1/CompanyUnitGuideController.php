@@ -143,10 +143,10 @@ class CompanyUnitGuideController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            return ApiResponse::error('A IA não respondeu: ' . mb_substr($e->getMessage(), 0, 200), 502);
+            return ApiResponse::error('Não foi possível obter a sugestão: ' . mb_substr($e->getMessage(), 0, 200), 502);
         }
 
-        return $this->viewResponse($request, $companyId, $view, 'Sugestão da IA, a confirmar.');
+        return $this->viewResponse($request, $companyId, $view, 'Sugestão automática, a confirmar.');
     }
 
     public function sendAdmin(Request $request, int $companyId, string $productId)

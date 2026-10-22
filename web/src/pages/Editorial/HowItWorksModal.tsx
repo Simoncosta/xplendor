@@ -114,7 +114,7 @@ export default function HowItWorksModal({ isOpen, toggle, profileReady, blockedR
         };
         const data: Record<Key, Omit<StepData, "status" | "vertical">> = {
             profile: { title: "Perfil da Marca", icon: "ri-user-star-line", hex: "#405189", subtitle: profileReady ? "Preenchido" : blocked ? "À espera do preenchimento" : "Tom, público e pilares" },
-            ideas: { title: "Gerar ideias", icon: "ri-lightbulb-flash-line", hex: "#405189", subtitle: canProduce ? "A IA propõe; aceita as que quiser" : `Feito ${byProducer(producer)}` },
+            ideas: { title: "Gerar ideias", icon: "ri-lightbulb-flash-line", hex: "#405189", subtitle: canProduce ? "Ideias propostas; aceite as que quiser" : `Feito ${byProducer(producer)}` },
             creative: { title: "Criativo", icon: "ri-magic-line", hex: "#f06548", subtitle: "Sugestão para as redes" },
             article: { title: "Escrever artigo", icon: "ri-article-line", hex: "#0ab39c", subtitle: "Site, pelo fluxo do Blog" },
         } as Record<Key, Omit<StepData, "status" | "vertical">>;

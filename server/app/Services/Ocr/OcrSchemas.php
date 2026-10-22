@@ -22,12 +22,15 @@ final class OcrSchemas
     private const STR = ['type' => 'string'];
     private const NUM = ['type' => 'number'];
 
-    /** Uma linha de artigo (os dois caminhos): 8 opcionais (+ código da promoção e código de IVA). */
+    /**
+     * Uma linha de artigo (os dois caminhos): 9 opcionais (+ código da promoção, código de IVA e o
+     * IEC numa coluna à parte, que se soma ao valor da linha).
+     */
     private static function line(): array
     {
         return self::object(['codigo' => self::STR, 'item' => self::STR, 'quantidade' => self::NUM, 'unidade' => self::STR,
             'precoUnitario' => self::NUM, 'descontoPct' => self::NUM, 'totalLinha' => self::NUM, 'taxaIva' => self::NUM,
-            'codigoPromocao' => self::STR, 'codigoIva' => self::STR], ['item', 'totalLinha']);
+            'codigoPromocao' => self::STR, 'codigoIva' => self::STR, 'valorIec' => self::NUM], ['item', 'totalLinha']);
     }
 
     /** O quadro do IVA da fatura, com os códigos de IVA dela (0 opcionais). */
@@ -44,11 +47,19 @@ final class OcrSchemas
             ['codigo', 'valor'])];
     }
 
-    /** Sem QR: a fatura completa (cabeçalho, linhas e sumário). */
+    /**
+     * Sem QR: a fatura completa (cabeçalho, linhas e sumário), com o tipo de documento, o NIF do
+     * adquirente (para a verificação "não é desta empresa") e o ATCUD. Estes três são obrigatórios
+     * (texto vazio quando não houver): com eles opcionais, a API recusa o esquema ("Schema is too
+     * complex"). 21 opcionais.
+     */
     public static function full(): array
     {
         return self::object([
             'fornecedor' => self::object(['nome' => self::STR, 'nif' => self::STR], ['nome']),
+            'tipoDocumento' => self::STR,
+            'nifAdquirente' => self::STR,
+            'atcud' => self::STR,
             'numeroFatura' => self::STR,
             'dataEmissao' => self::STR,
             'linhas' => ['type' => 'array', 'items' => self::line()],
@@ -59,7 +70,7 @@ final class OcrSchemas
             ], ['ivaPorTaxa']),
             'quadroIva' => self::vatTable(),
             'descontos' => self::discounts(),
-        ], ['fornecedor', 'linhas', 'sumario', 'quadroIva', 'descontos']);
+        ], ['fornecedor', 'tipoDocumento', 'nifAdquirente', 'atcud', 'linhas', 'sumario', 'quadroIva', 'descontos']);
     }
 
     /** Com QR: só as linhas, o nome do fornecedor e as guias (o cabeçalho e os totais vêm do QR). */

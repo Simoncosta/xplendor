@@ -42,7 +42,13 @@ use Symfony\Component\Process\Process;
  *     já foi ocr_image ou se ficaria igual à 1.ª). Fica sempre a melhor ('por_validar').
  *  Erros temporários da Anthropic (OcrTemporaryFailure): a fatura continua a ler e a fila
  *  repete com espera crescente. Só a recusa e a resposta cortada vão para revisão manual.
- *  Sem QR legível → como antes (cabeçalho + linhas pela IA), marcado 'sem_qr'.
+ *  Sem QR legível → como antes (cabeçalho + linhas pela IA), marcado 'sem_qr'. A leitura devolve
+ *  também o tipo de documento, o NIF do adquirente, o ATCUD e o número; com o adquirente lido,
+ *  a mesma verificação "não é desta empresa" corre depois da leitura ("Verificado pelo texto").
+ *  Vários QR da AT diferentes no mesmo ficheiro = vários documentos: para antes da leitura e
+ *  pede um documento por ficheiro.
+ *  Notas de crédito e de débito (D = NC/ND) leem-se e revêem-se como uma fatura; ainda não se
+ *  lançam no PingWin (OcrInvoiceLaunchService).
  *
  * ⚠️ SÓ LÊ/EXTRAI. NÃO escreve no PingWin. A gravação final só acontece quando o
  * utilizador VALIDA no ecrã (controller::update).
@@ -51,16 +57,22 @@ class InvoiceOcrService
 {
     // b2b-v3: + código do artigo do fornecedor nas linhas (caminho sem QR).
     // b2b-v4: + código da promoção e código de IVA por linha, quadro do IVA e bloco de descontos.
-    public const PROMPT_VERSION = 'b2b-v4';
+    // b2b-v5: + tipo de documento, NIF do adquirente, ATCUD, IVA a 0 % e a coluna IEC somada.
+    // b2b-v6: o ATCUD só junto da palavra "ATCUD" e o desconto da coluna "%Desc" na linha.
+    public const PROMPT_VERSION = 'b2b-v6';
     // Caminho com QR: a IA só lê as linhas (o cabeçalho vem do QR).
     // linhas-v2 (F3): + guias referidas na fatura (para a ligação de faturas de guias ao PingWin).
     // linhas-v3: + código da promoção e código de IVA por linha, quadro do IVA e bloco de descontos.
-    public const LINES_PROMPT_VERSION = 'linhas-v3';
+    // linhas-v4: + a coluna IEC somada ao valor da linha.
+    // linhas-v5: o desconto da coluna "%Desc" na linha.
+    public const LINES_PROMPT_VERSION = 'linhas-v5';
 
     public const STATUS_NOT_OURS = 'nao_desta_empresa';
     public const CHECK_OK = 'confere';
     public const CHECK_MISMATCH = 'nao_confere';
     public const CHECK_NO_QR = 'sem_qr';
+    /** Acrescentado à mensagem quando o adquirente foi verificado pelo texto da fatura. */
+    public const TEXT_CHECK_NOTE = 'Verificado pelo texto; o QR não se conseguiu ler.';
 
     private const OPENAI_CONNECT_TIMEOUT = 15;
     private const OPENAI_MAX_ATTEMPTS = 3;
@@ -96,13 +108,20 @@ class InvoiceOcrService
             // 1) Leitura local (sem IA): QR + texto. A Anthropic lê o PDF diretamente, por isso
             //    não é preciso rasterizar as páginas.
             $an = $this->analyzeFile($bytes, $mime, 'never');
+            // Vários QR da AT diferentes = vários documentos no mesmo ficheiro: para antes da leitura.
+            $documents = $this->qrDocuments($an);
+            if (count($documents) > 1) {
+                $this->persistManyDocuments($invoice, $documents, (int) ($an['pages'] ?? 1), $this->elapsedMs($started));
+
+                return;
+            }
             $qr = AtInvoiceQr::parse($an['qr']['raw'] ?? null);
             $qrOk = $qr !== null && $qr['valid'];
             $pages = (int) ($an['pages'] ?? 1);
 
             // 2) Validações do QR contra a empresa — antes de gastar IA.
             if ($qrOk && ($problem = $this->notOursProblem($qr, (int) $invoice->company_id))) {
-                $this->persistNotOurs($invoice, $qr, $pages, $problem, $this->elapsedMs($started));
+                $this->persistNotOurs($invoice, $qr, $pages, $problem, $this->elapsedMs($started), $an);
 
                 return;
             }
@@ -153,11 +172,19 @@ class InvoiceOcrService
             );
 
             $this->persist($invoice, $best, $attempts, $qrOk ? $qr : null, $an, $this->elapsedMs($started));
+
+            // Sem QR, com o adquirente lido: a mesma verificação "não é desta empresa", depois da leitura.
+            if (! $qrOk && ($problem = $this->textBuyerProblem((string) ($best['clean']['buyer_nif'] ?? ''), (int) $invoice->company_id))) {
+                OcrInvoice::whereKey($invoiceId)->update(['status' => self::STATUS_NOT_OURS, 'error_message' => $problem]);
+                Log::info('[OCR Fatura] Não é desta empresa (adquirente lido no texto)', ['invoice_id' => $invoiceId]);
+
+                return;
+            }
         } catch (OcrTemporaryFailure $e) {
             // Sobrecarga, erro do lado da Anthropic ou limite de pedidos: a fatura continua "a ler"
             // e a fila repete mais tarde (ProcessInvoiceOcrJob). Não é um erro da fatura.
             Log::info('[OCR Fatura] Erro temporário da IA; nova tentativa pela fila', ['invoice_id' => $invoiceId, 'status' => $e->status, 'error' => $e->getMessage()]);
-            OcrInvoice::whereKey($invoiceId)->update(['error_message' => 'A IA está temporariamente indisponível; a leitura vai ser repetida automaticamente.']);
+            OcrInvoice::whereKey($invoiceId)->update(['error_message' => 'O serviço de leitura está temporariamente indisponível; a leitura vai ser repetida automaticamente.']);
             throw $e;
         } catch (\Throwable $e) {
             Log::warning('[OCR Fatura] Falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
@@ -214,11 +241,11 @@ class InvoiceOcrService
     private function attempt(array $plan, ?array $qr, int $companyId): array
     {
         if ($plan['model'] === null || $plan['model'] === '') {
-            throw new \RuntimeException('Modelo de OCR não configurado: escolha-o em Modelos de IA.');
+            throw new \RuntimeException('A leitura de faturas não está configurada (falta escolher o modelo). Contacte o suporte.');
         }
         // Só a Anthropic: nunca se envia uma fatura à OpenAI, nem que uma escolha antiga o peça.
         if ($plan['provider'] !== 'anthropic') {
-            throw new \RuntimeException("O OCR só lê faturas com a Anthropic (escolhido: {$plan['provider']} · {$plan['model']}). Escolha um modelo da Anthropic em Modelos de IA.");
+            throw new \RuntimeException("A leitura de faturas está configurada com um serviço que não lê faturas ({$plan['provider']} · {$plan['model']}). Contacte o suporte.");
         }
 
         $t0 = hrtime(true);
@@ -364,7 +391,7 @@ class InvoiceOcrService
     {
         $rows = array_map(fn ($r) => sprintf('  · IVA %s%%: base %s €', $r['rate'], number_format($r['base_cents'] / 100, 2, '.', '')), $qr['by_rate']);
 
-        return "AUTO-CONFERÊNCIA — o QR oficial desta fatura (AT) diz que a soma das linhas (totalLinha, sem IVA, menos os descontos do bloco de descontos, se houver) por taxa de IVA é:\n"
+        return "AUTO-CONFERÊNCIA — o QR oficial desta fatura (AT) diz que a soma das linhas (totalLinha + valorIec, sem IVA, menos os descontos do bloco de descontos, se houver) por taxa de IVA é:\n"
             . implode("\n", $rows)
             . "\nUsa isto para confirmares que não te faltou nem sobrou nenhuma linha. NÃO alteres valores lidos para forçar a soma: se não fechar, devolve o que está escrito na fatura.";
     }
@@ -422,6 +449,52 @@ class InvoiceOcrService
         }
 
         return null;
+    }
+
+    /**
+     * Sem QR: o adquirente lido no texto tem de ser a empresa. Só com um NIF válido lido (sem ele,
+     * não há com que comparar). Devolve a mensagem, com a nota de que foi verificado pelo texto, ou null.
+     */
+    private function textBuyerProblem(string $buyerNif, int $companyId): ?string
+    {
+        $ownNif = preg_replace('/\D+/', '', (string) Company::where('id', $companyId)->value('nipc'));
+        $buyer = preg_replace('/\D+/', '', $buyerNif);
+        if ($ownNif === '' || ! AtInvoiceQr::validNif($buyer) || $buyer === $ownNif) {
+            return null;
+        }
+
+        return "Esta fatura não é desta empresa: o NIF do adquirente lido na fatura é {$buyer}, o da empresa é {$ownNif}. " . self::TEXT_CHECK_NOTE;
+    }
+
+    /**
+     * Os documentos do ficheiro pelos QR da AT (o scraper devolve-os todos, sem repetir as vias).
+     * Cada um: tipo, número, emitente, adquirente e página.
+     *
+     * @return list<array{raw: string, doc_type: ?string, label: ?string, number: ?string, issuer_nif: ?string, buyer_nif: ?string, page: ?int}>
+     */
+    private function qrDocuments(array $an): array
+    {
+        $found = (array) ($an['qrs'] ?? (isset($an['qr']['raw']) ? [$an['qr']] : []));
+        $out = [];
+        foreach ($found as $q) {
+            $qr = AtInvoiceQr::parse($q['raw'] ?? null);
+            if ($qr === null || isset($out[$qr['raw']])) {
+                continue;
+            }
+            $out[$qr['raw']] = ['raw' => $qr['raw'], 'doc_type' => $qr['doc_type'], 'label' => AtInvoiceQr::docTypeLabel($qr['doc_type']),
+                'number' => $qr['number'], 'issuer_nif' => $qr['issuer_nif'], 'buyer_nif' => $qr['buyer_nif'], 'page' => isset($q['page']) ? (int) $q['page'] : null];
+        }
+
+        return array_values($out);
+    }
+
+    /** "Este ficheiro tem N documentos. Carregue um documento por ficheiro." e uma linha por documento. */
+    public static function manyDocumentsMessage(array $documents): string
+    {
+        $items = array_map(fn ($d) => sprintf('· %s %s, emitente %s%s', $d['label'] ?? ($d['doc_type'] ?? 'Documento'), $d['number'] ?? '(sem número)',
+            $d['issuer_nif'] ?? '(sem NIF)', $d['page'] ? " (página {$d['page']})" : ''), $documents);
+
+        return sprintf('Este ficheiro tem %d documentos. Carregue um documento por ficheiro.', count($documents)) . "\n" . implode("\n", $items);
     }
 
     /**
@@ -621,7 +694,7 @@ class InvoiceOcrService
             }
         }
         if (! is_array($decoded)) {
-            throw new \RuntimeException('A IA devolveu um JSON inválido.');
+            throw new \RuntimeException('A leitura devolveu uma resposta inválida. Reprocesse a fatura.');
         }
 
         return $decoded;
@@ -665,6 +738,13 @@ class InvoiceOcrService
                 continue;
             }
             $vatCode = $this->vatCode($l['codigoIva'] ?? null);
+            // Coluna IEC à parte, que se SOMA ao valor da linha (o total da fatura = líquido + IEC + IVA):
+            // entra no custo da linha e na base da taxa dela. (O "+ … INCL." da Makro já vem no preço.)
+            $iec = $this->cents($l['valorIec'] ?? null);
+            $iec = $iec !== null && $iec !== 0 ? $iec : null;
+            if ($iec !== null && $lineTotal !== null) {
+                $lineTotal += $iec;
+            }
             $lines[] = [
                 'supplier_code'    => $this->code($l['codigo'] ?? null),
                 'item'             => $item,
@@ -674,6 +754,7 @@ class InvoiceOcrService
                 'discount_pct'     => $this->pct($l['descontoPct'] ?? null),
                 'line_total_cents' => $lineTotal,
                 'gross_total_cents' => $lineTotal,
+                'iec_cents'        => $iec,
                 'vat_rate'         => $vatCode !== null && isset($rateByCode[$vatCode]) ? $rateByCode[$vatCode] : $this->vat($l['taxaIva'] ?? null),
                 'promo_code'       => $this->code($l['codigoPromocao'] ?? null),
                 'vat_code'         => $vatCode,
@@ -730,6 +811,10 @@ class InvoiceOcrService
         return [
             'supplier_name' => $this->str($forn['nome'] ?? ($raw['fornecedorNome'] ?? null)),
             'supplier_nif'  => $this->nif($forn['nif'] ?? null),
+            // Sem QR: o tipo, o adquirente e o ATCUD lidos (com QR vêm do QR).
+            'doc_type'      => AtInvoiceQr::docTypeLabel($this->str($raw['tipoDocumento'] ?? null)) !== null ? strtoupper(trim((string) $raw['tipoDocumento'])) : null,
+            'buyer_nif'     => $this->nif($raw['nifAdquirente'] ?? null),
+            'atcud'         => self::atcudFor($this->str($raw['atcud'] ?? null), $this->str($raw['numeroFatura'] ?? null)),
             'number'        => $this->str($raw['numeroFatura'] ?? null),
             'issue_date'    => $this->date($raw['dataEmissao'] ?? null),
             'lines'         => $lines,
@@ -806,10 +891,10 @@ class InvoiceOcrService
                 'supplier_id'    => $supplierId,
                 'supplier_name'  => $clean['supplier_name'],
                 'supplier_nif'   => $clean['supplier_nif'],
-                'buyer_nif'      => $qr['buyer_nif'] ?? null,
+                'buyer_nif'      => $qr['buyer_nif'] ?? ($clean['buyer_nif'] ?? null),
                 'number'         => $clean['number'],
-                'atcud'          => $qr['atcud'] ?? null,
-                'doc_type'       => $qr['doc_type'] ?? null,
+                'atcud'          => $qr['atcud'] ?? ($clean['atcud'] ?? null),
+                'doc_type'       => $qr['doc_type'] ?? ($clean['doc_type'] ?? null),
                 'issue_date'     => $clean['issue_date'],
                 'model'          => $best['model'],
                 'ai_provider'    => $best['provider'] ?? null,
@@ -894,10 +979,32 @@ class InvoiceOcrService
         Log::warning('[OCR Fatura] A IA parou sem leitura: fica para revisão manual', ['invoice_id' => $invoice->id, 'motivo' => $stop->reason, 'modelo' => $plan['model']]);
     }
 
-    /** QR de outra empresa (ou emitido pela própria): cabeçalho do QR, sem linhas, sem IA. */
-    private function persistNotOurs(OcrInvoice $invoice, array $qr, int $pages, string $message, int $ms): void
+    /**
+     * Vários documentos no mesmo ficheiro (QR da AT diferentes): para antes da leitura, sem linhas,
+     * com a lista de cada um (tipo, número, emitente) na mensagem e em qr_data.documents.
+     */
+    private function persistManyDocuments(OcrInvoice $invoice, array $documents, int $pages, int $ms): void
     {
-        DB::transaction(function () use ($invoice, $qr, $pages, $message, $ms) {
+        DB::transaction(function () use ($invoice, $documents, $pages, $ms) {
+            $invoice->lines()->delete();
+            $invoice->discounts()->delete();
+            $invoice->summary()->delete();
+            $invoice->update([
+                'status' => 'erro', 'error_message' => self::manyDocumentsMessage($documents),
+                'qr_raw' => null, 'qr_ok' => false, 'source' => 'qr', 'lines_source' => null, 'pages' => $pages,
+                'qr_data' => ['documents' => array_map(fn ($d) => array_diff_key($d, ['raw' => true]), $documents)],
+                'model' => null, 'ai_provider' => null, 'ai_effort' => null, 'confidence' => 0,
+                'tokens_in' => 0, 'tokens_out' => 0, 'cost_usd' => 0, 'duration_ms' => $ms, 'attempts' => 0, 'attempts_log' => [],
+                'check_status' => null, 'check_diff' => null,
+            ]);
+        });
+        Log::info('[OCR Fatura] Vários documentos no mesmo ficheiro: parado antes da leitura', ['invoice_id' => $invoice->id, 'documentos' => count($documents)]);
+    }
+
+    /** QR de outra empresa (ou emitido pela própria): cabeçalho do QR, sem linhas, sem IA. */
+    private function persistNotOurs(OcrInvoice $invoice, array $qr, int $pages, string $message, int $ms, array $an = []): void
+    {
+        DB::transaction(function () use ($invoice, $qr, $pages, $message, $ms, $an) {
             $invoice->lines()->delete();
             $invoice->discounts()->delete();
             $invoice->summary()->delete();
@@ -917,7 +1024,7 @@ class InvoiceOcrService
                 'error_message' => $message,
                 'qr_raw'        => $qr['raw'],
                 'qr_ok'         => true,
-                'qr_data'       => $this->qrData($qr, []),
+                'qr_data'       => $this->qrData($qr, $an),
                 'source'        => 'qr',
                 'lines_source'  => null,
                 'pages'         => $pages,
@@ -1011,6 +1118,15 @@ class InvoiceOcrService
         $ownNif = preg_replace('/\D+/', '', (string) $company->nipc);
         $supNif = $clean['supplier_nif'] ?? null;
 
+        $buyer = $clean['buyer_nif'] ?? null;
+        // Emitente e adquirente trocados na leitura (o "fornecedor" é a empresa e o "adquirente" é outro): destroca.
+        if ($ownNif !== '' && $supNif === $ownNif && $buyer !== null && $buyer !== $ownNif && AtInvoiceQr::validNif($buyer)) {
+            Log::info('[OCR Fatura] Emitente e adquirente trocados na leitura: destrocados.', ['company_id' => $companyId]);
+            $clean['supplier_nif'] = $buyer;
+            $clean['buyer_nif'] = $ownNif;
+
+            return $clean;
+        }
         if ($ownNif !== '' && $supNif !== null && $supNif === $ownNif) {
             Log::info('[OCR Fatura] NIF do fornecedor = NIF da própria empresa → descartado (era o cliente).', ['company_id' => $companyId]);
             $clean['supplier_nif'] = null;
@@ -1158,6 +1274,24 @@ class InvoiceOcrService
         return $out;
     }
 
+    /**
+     * O ATCUD lido sem QR, só se for de facto o deste documento: "<código de validação>-<nº sequencial>",
+     * e o nº sequencial é o fim do número do documento (ex.: "FT A/1681" ↔ "J6TBYMGN-1681"). Um código
+     * parecido que não bate com o número (ex.: uma referência no topo de um talão) fica vazio.
+     */
+    public static function atcudFor(?string $atcud, ?string $number): ?string
+    {
+        $atcud = $atcud !== null ? preg_replace('/^ATCUD\s*:?\s*/i', '', trim($atcud)) : null;
+        if ($atcud === null || $atcud === '' || ! preg_match('/^[A-Z0-9]{8,}-(\d+)$/i', $atcud, $m)) {
+            return null;
+        }
+        if ($number !== null && preg_match('/(\d+)\D*$/', $number, $n) && ltrim($n[1], '0') !== ltrim($m[1], '0')) {
+            return null;
+        }
+
+        return mb_substr($atcud, 0, 70);
+    }
+
     /** "+ 0,52 TAXA IEC INCL. PREÇO U.V.", "IEC BEB AÇÚCAR INCL. PUV": informativa (já no preço). */
     public static function isInformativeLine(?string $item): bool
     {
@@ -1219,16 +1353,19 @@ class InvoiceOcrService
 
 {
   "fornecedor": {"nome": "string", "nif": "string (9 dígitos)"},
+  "tipoDocumento": "FT|FS|FR|NC|ND",
+  "nifAdquirente": "string (9 dígitos, o NIF do CLIENTE)",
+  "atcud": "string",
   "numeroFatura": "string",
   "dataEmissao": "YYYY-MM-DD",
   "linhas": [
-    {"codigo": "string (código do artigo do fornecedor)", "item": "string", "quantidade": number, "unidade": "string (un/kg/cx/L...)", "precoUnitario": number, "descontoPct": number, "totalLinha": number, "taxaIva": 6|13|23, "codigoPromocao": "string", "codigoIva": "string"}
+    {"codigo": "string (código do artigo do fornecedor)", "item": "string", "quantidade": number, "unidade": "string (un/kg/cx/L...)", "precoUnitario": number, "descontoPct": number, "totalLinha": number, "taxaIva": 0|6|13|23, "codigoPromocao": "string", "codigoIva": "string", "valorIec": number}
   ],
   "quadroIva": [{"codigo": "string", "taxa": number, "base": number, "iva": number}],
   "descontos": [{"codigo": "string", "descricao": "string", "valor": number, "codigoIva": "string"}],
   "sumario": {
     "totalMercadorias": number, "descontoComercial": number, "baseTributavel": number,
-    "ivaPorTaxa": [{"taxa": 6|13|23, "base": number, "iva": number}],
+    "ivaPorTaxa": [{"taxa": 0|6|13|23, "base": number, "iva": number}],
     "valorIvaTotal": number, "retencaoFonte": number, "descontoFinanceiro": number, "total": number
   }
 }
@@ -1238,6 +1375,13 @@ class InvoiceOcrService
 - O EMISSOR está no TOPO/cabeçalho, junto ao logótipo/nome da empresa que emite e à menção "Contribuinte nº"/"NIF"/"NIPC" do emitente.
 - O CLIENTE aparece como DESTINATÁRIO, muitas vezes após "Exmo(s). Sr(s)", "Cliente", "Adquirente", "Faturar a", "Nome/Morada do cliente". NÃO uses o NIF nem o nome que aparecem aí.
 - Se tiveres dúvida entre os dois NIFs, escolhe o do topo/cabeçalho (emissor). Se mesmo assim não tiveres a certeza, OMITE o nif (não adivinhes).
+- O NIF do CLIENTE/adquirente vai para "nifAdquirente" (é usado para confirmar que a fatura é desta empresa). Se não estiver escrito ou não for legível, devolve "".
+
+TIPO, NÚMERO E ATCUD:
+- "tipoDocumento" pelo título do documento: FT = Fatura, FS = Fatura simplificada, FR = Fatura-recibo, NC = Nota de crédito, ND = Nota de débito. Se não tiveres a certeza, devolve "" (texto vazio). O mesmo em "nifAdquirente" e "atcud": "" quando não estiverem escritos.
+- Numa nota de crédito (ex.: devolução de vasilhame), lê as linhas e os valores como estão escritos (positivos); o tipo NC já diz que é um crédito.
+- "numeroFatura" é o número do documento (ex.: "FT A/123", "NC 2026/45").
+- "atcud": só o código escrito junto da palavra "ATCUD" (ex.: "ATCUD: J6TBYMGN-1681" → "J6TBYMGN-1681"). Um código parecido sem a palavra "ATCUD" ao lado (ex.: uma referência no topo do talão) NÃO é o ATCUD: devolve "". O número depois do hífen é o número sequencial do próprio documento.
 
 REGRAS:
 - Extrai a fatura COMPLETA: TODAS as linhas de artigos (uma entrada por linha) e a cadeia de valores toda. NÃO é o "total pago" — é o detalhe B2B. As LINHAS são o mais importante — extrai-as sempre, com atenção.
@@ -1247,7 +1391,7 @@ REGRAS:
 - ⚠️ SUMÁRIO: só o preenches se conseguires LÊ-LO com confiança na fatura. Se os valores do sumário não forem legíveis ou não fecharem com as linhas, OMITE os campos do sumário (deixa-os fora/null) em vez de pôres valores errados — a Xplendor calcula a soma das linhas do seu lado.
 - Valores como NÚMEROS (ponto decimal, sem símbolo €, sem separador de milhares). Ex.: 1234.56.
 - Datas em ISO YYYY-MM-DD. NIF com 9 dígitos.
-- taxaIva só pode ser 6, 13 ou 23 (taxas de IVA de Portugal continental). Se vier outra, escolhe a mais próxima só se for óbvio; senão omite.
+- taxaIva só pode ser 0 (isento, por exemplo vasilhame, caixas e taras), 6, 13 ou 23 (taxas de IVA de Portugal continental). O mesmo no quadro do IVA e em ivaPorTaxa: uma linha a 0 % também entra, com IVA 0. Se vier outra taxa, escolhe a mais próxima só se for óbvio; senão omite.
 - COERÊNCIA ARITMÉTICA (usa-a para te corrigires, margem 0.05):
   · a soma dos totalLinha ≈ totalMercadorias ≈ baseTributavel (antes de IVA) — se não fechar, revê o sumário (as linhas mandam)
   · totalMercadorias − descontoComercial ≈ baseTributavel
@@ -1261,8 +1405,9 @@ DESCONTOS DE PROMOÇÃO E CÓDIGOS (ex.: Makro):
 - totalLinha é o valor da coluna do total da linha (ex.: "Val.total") ANTES dos descontos do bloco de descontos: NÃO subtraias tu esses descontos à linha.
 - As linhas começadas por "+" que dizem "INCL." (ex.: "+ 0,52 TAXA IEC INCL. PREÇO U.V.", "+ … IEC BEB AÇÚCAR INCL. PUV") são informativas: NÃO são linhas.
 - Mas "+ 164846 DEPOSITO 1 X 0.10 EUR" (caução de vasilhame) É uma linha: quantidade, preço unitário 0.10, total e código de IVA.
+- COLUNA IEC SOMADA (ex.: bebidas com uma coluna "IEC" à parte): se a fatura tiver o IEC (imposto especial de consumo) numa coluna própria que SE SOMA ao valor da linha (o total da fatura = valor líquido + IEC + IVA), põe o IEC da linha em "valorIec" e o valor líquido (sem o IEC) em "totalLinha". A Xplendor soma os dois. Se o IEC já vier incluído no preço (linhas "+ … INCL."), NÃO preenchas "valorIec".
 - Artigos ao peso: quantidade em kg tal como está (ex.: 0.909) e unidade "KG".
-- descontoPct só se a linha tiver uma percentagem escrita; nunca a calcules a partir de um desconto em €.
+- descontoPct: a percentagem de desconto da linha, da coluna de desconto em percentagem ("%Desc", "Desc. %", "Desc"), tal como está escrita (ex.: 35,01 → 35.01). Confirma: quantidade × precoUnitario × (1 − descontoPct/100) ≈ totalLinha (sem o IEC). Nunca a calcules a partir de um desconto em €.
 
 EXEMPLO (fatura de fornecedor PT, ilustrativo — repara: "Forno Tradicional" é o EMISSOR/fornecedor no topo; um eventual "Exmo. Sr. Restaurante Central" seria o CLIENTE, a ignorar):
 {
@@ -1296,7 +1441,7 @@ PROMPT;
 {
   "fornecedorNome": "string (nome do EMISSOR, no topo — nunca o cliente/adquirente)",
   "linhas": [
-    {"codigo": "string", "item": "string", "quantidade": number, "unidade": "string", "precoUnitario": number, "descontoPct": number, "taxaIva": number, "totalLinha": number, "codigoPromocao": "string", "codigoIva": "string"}
+    {"codigo": "string", "item": "string", "quantidade": number, "unidade": "string", "precoUnitario": number, "descontoPct": number, "taxaIva": number, "totalLinha": number, "codigoPromocao": "string", "codigoIva": "string", "valorIec": number}
   ],
   "guias": [{"numero": "string (ex.: GT 3105/2026)", "data": "YYYY-MM-DD"}],
   "quadroIva": [{"codigo": "string", "taxa": number, "base": number, "iva": number}],
@@ -1317,8 +1462,9 @@ DESCONTOS DE PROMOÇÃO E CÓDIGOS (ex.: Makro):
 - totalLinha é o valor da coluna do total da linha (ex.: "Val.total") ANTES dos descontos do bloco de descontos: NÃO subtraias tu esses descontos à linha.
 - As linhas começadas por "+" que dizem "INCL." (ex.: "+ 0,52 TAXA IEC INCL. PREÇO U.V.", "+ … IEC BEB AÇÚCAR INCL. PUV") são informativas: NÃO são linhas.
 - Mas "+ 164846 DEPOSITO 1 X 0.10 EUR" (caução de vasilhame) É uma linha: quantidade, preço unitário 0.10, total e código de IVA.
+- COLUNA IEC SOMADA (ex.: bebidas com uma coluna "IEC" à parte): se a fatura tiver o IEC (imposto especial de consumo) numa coluna própria que SE SOMA ao valor da linha (o total da fatura = valor líquido + IEC + IVA), põe o IEC da linha em "valorIec" e o valor líquido (sem o IEC) em "totalLinha". A Xplendor soma os dois. Se o IEC já vier incluído no preço (linhas "+ … INCL."), NÃO preenchas "valorIec".
 - Artigos ao peso: quantidade em kg tal como está (ex.: 0.909) e unidade "KG".
-- descontoPct só se a linha tiver uma percentagem escrita; nunca a calcules a partir de um desconto em €.
+- descontoPct: a percentagem de desconto da linha, da coluna de desconto em percentagem ("%Desc", "Desc. %", "Desc"), tal como está escrita (ex.: 35,01 → 35.01). Confirma: quantidade × precoUnitario × (1 − descontoPct/100) ≈ totalLinha (sem o IEC). Nunca a calcules a partir de um desconto em €.
 
 REGRAS:
 - TODAS as linhas de artigos, de TODAS as páginas, uma entrada por linha, pela ordem da fatura. Inclui portes, taras, ecovalor e outras linhas com valor se aparecerem como linhas.

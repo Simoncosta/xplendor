@@ -187,7 +187,7 @@ const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection(
                         {status === "saving" ? <><Spinner size="sm" className="me-1" />A gravar…</>
                             : status === "saved" ? <><i className="ri-check-line me-1" />Gravado</>
                                 : status === "error" ? <><i className="ri-error-warning-line me-1" />Não gravado</>
-                                    : dirty ? (aiPending ? "Proposta da IA por gravar" : frozen ? "Alterações por gravar" : "Por gravar") : null}
+                                    : dirty ? (aiPending ? "Proposta por gravar" : frozen ? "Alterações por gravar" : "Por gravar") : null}
                     </span>
                 </span>
             </div>

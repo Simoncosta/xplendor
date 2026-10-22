@@ -162,7 +162,7 @@ class InvoiceOcrAnthropicTest extends TestCase
         Http::assertSentCount(1);
         $inv->refresh();
         $this->assertSame(['por_validar', 0], [$inv->status, $inv->lines()->count()]);
-        $this->assertStringContainsString('revisão manual: a IA recusou ler esta fatura', (string) $inv->error_message);
+        $this->assertStringContainsString('revisão manual: o serviço de leitura recusou ler esta fatura', (string) $inv->error_message);
         $this->assertSame(['FT 2026/1234', 2500, 5], [$inv->number, $inv->tokens_in, $inv->tokens_out], 'o cabeçalho do QR e os tokens gastos ficam');
         $this->assertSame('refusal', $inv->attempts_log[0]['error']);
     }
@@ -241,7 +241,7 @@ class InvoiceOcrAnthropicTest extends TestCase
         }
         Http::assertNothingSent();
         $this->assertSame('erro', $inv->fresh()->status);
-        $this->assertStringContainsString('só lê faturas com a Anthropic', (string) $inv->fresh()->error_message);
+        $this->assertStringContainsString('serviço que não lê faturas', (string) $inv->fresh()->error_message);
     }
 
     public function test_the_migration_moves_a_saved_ocr_choice_to_opus_medium_with_history(): void

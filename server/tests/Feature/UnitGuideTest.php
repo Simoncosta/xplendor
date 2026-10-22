@@ -141,7 +141,7 @@ class UnitGuideTest extends TestCase
         config(['ai.providers.anthropic.key' => '', 'ai.providers.openai.key' => '']);
         $v = $this->actingAs($this->admin, 'sanctum')->getJson($this->url('/9002'))->json('data');
         $this->assertFalse($v['ai']['available']);
-        $this->assertStringContainsString('falta a chave', $v['ai']['reason']);
+        $this->assertStringContainsString('não está configurado', $v['ai']['reason']);
         $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/9002/ai'))->assertStatus(422);
 
         $this->configureAi();
@@ -151,7 +151,7 @@ class UnitGuideTest extends TestCase
         $this->assertSame(200, $r->status(), (string) $r->getContent());
         $v = $r->json('data');
         $s = $v['ai']['suggestion'];
-        $this->assertSame(['contavel', 'Saqueta', 'Sugestão da IA, a confirmar'], [$s['type'], $s['base_name'], $s['label']]);
+        $this->assertSame(['contavel', 'Saqueta', 'Sugestão automática, a confirmar'], [$s['type'], $s['base_name'], $s['label']]);
         $this->assertNotSame('confirmado', ProductUnitProfile::where('product_pingwin_id', '9002')->value('state')); // nada passa a confirmado
         // Só dados do artigo: nem o nome nem o NIF do fornecedor.
         $prompt = $this->sentAiPrompt();

@@ -172,7 +172,7 @@ export function PlayCaptionModal({ companyId, locationId, play, onClose, onUse, 
         <Modal isOpen={!!play} toggle={onClose} size="lg" centered scrollable data-testid="play-caption-modal">
             <ModalHeader toggle={onClose}>Sugerir texto{play ? `: ${play.title}` : ""}</ModalHeader>
             <ModalBody>
-                {play && <p className="text-muted fs-13">A IA escreve propostas a partir da jogada ({play.what.text}) e do Perfil da Marca. A que escolher abre o "Criar publicação"; nada fica gravado antes disso.</p>}
+                {play && <p className="text-muted fs-13">São escritas propostas a partir da jogada ({play.what.text}) e do Perfil da Marca. A que escolher abre o "Criar publicação"; nada fica gravado antes disso.</p>}
                 {failed && <div className="alert alert-warning fs-13">{failed}</div>}
                 <AiRequestState data={data} what="as propostas" />
                 {busy && !data?.stalled && <div className="text-center py-3"><Spinner color="primary" /></div>}
@@ -243,7 +243,7 @@ export function PlayDetailModal({ play, onClose, itemsHeading = "Veículos" }: {
                                 </Badge>
                             ))}
                         </div>
-                        <p className="text-muted fs-13 mb-0">Os números descrevem o que aconteceu; não dizem porquê.{play.what.source === "ai" ? " A frase \"O quê\" foi escrita pela IA a partir destes dados." : ""}</p>
+                        <p className="text-muted fs-13 mb-0">Os números descrevem o que aconteceu; não dizem porquê.{play.what.source === "ai" ? " A frase \"O quê\" foi gerada automaticamente a partir destes dados." : ""}</p>
                     </>
                 )}
             </ModalBody>

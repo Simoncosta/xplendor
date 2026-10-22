@@ -594,6 +594,7 @@ class CompanyInvoiceOcrController extends Controller
                 'discount_code' => $l->discount_code,
                 'discount_label' => $l->discount_label,
                 'net_total'    => $l->line_total_cents !== null ? $l->line_total_cents / 100 : null,
+                'iec'          => $l->iec_cents !== null ? $l->iec_cents / 100 : null, // já incluído no valor da linha
                 'promo_code'   => $l->promo_code,
                 'vat_code'     => $l->vat_code,
                 'vat_rate'     => $l->vat_rate,

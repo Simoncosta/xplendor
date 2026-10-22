@@ -84,7 +84,7 @@ class BlogAiService
         $draft = DB::transaction(function () use ($company, $actor, $variant, $input, $blogId) {
             Company::whereKey($company->id)->lockForUpdate()->first(); // serializa a contagem por empresa
             if (self::usedThisMonth($company->id) >= self::monthlyCap()) {
-                throw new HttpException(429, 'Limite mensal de rascunhos com IA atingido (' . self::monthlyCap() . '). Volta a estar disponível no início do próximo mês.');
+                throw new HttpException(429, 'Limite mensal de rascunhos automáticos atingido (' . self::monthlyCap() . '). Volta a estar disponível no início do próximo mês.');
             }
 
             return AiRequest::create([

@@ -49,12 +49,12 @@ class ProcessInvoiceOcrJob implements ShouldQueue
                 return;
             }
             OcrInvoice::whereKey($this->invoiceId)->update(['status' => 'erro',
-                'error_message' => mb_substr('A IA esteve indisponível em todas as tentativas: ' . $e->getMessage(), 0, 500)]);
+                'error_message' => mb_substr('O serviço de leitura esteve indisponível em todas as tentativas: ' . $e->getMessage(), 0, 500)]);
             $alerts->createSystemAlert(
                 companyId: $this->companyId,
                 type: 'warning',
                 title: 'Falha ao ler a fatura',
-                message: 'A IA esteve indisponível em todas as tentativas. Volte a pedir a leitura mais tarde.',
+                message: 'O serviço de leitura esteve indisponível em todas as tentativas. Volte a pedir a leitura mais tarde.',
                 severity: 'high',
                 detailPath: '/restauracao/faturas',
             );
@@ -65,7 +65,7 @@ class ProcessInvoiceOcrJob implements ShouldQueue
                 companyId: $this->companyId,
                 type: 'warning',
                 title: 'Falha ao ler a fatura',
-                message: 'Não foi possível ler a fatura com a IA. Tenta novamente ou envia uma imagem mais nítida.',
+                message: 'Não foi possível ler a fatura. Tente novamente ou envie uma imagem mais nítida.',
                 severity: 'high',
                 detailPath: '/restauracao/faturas',
             );
@@ -73,12 +73,27 @@ class ProcessInvoiceOcrJob implements ShouldQueue
             return; // o estado 'erro' já foi gravado no serviço
         }
 
-        if (OcrInvoice::where('id', $this->invoiceId)->value('status') === InvoiceOcrService::STATUS_NOT_OURS) {
+        $after = OcrInvoice::whereKey($this->invoiceId)->first(['status', 'error_message', 'qr_ok']);
+        if ($after?->status === InvoiceOcrService::STATUS_NOT_OURS) {
+            // Os dois NIF (o lido e o da empresa), como na mensagem guardada. Pelo QR, nem se leram as linhas.
             $alerts->createSystemAlert(
                 companyId: $this->companyId,
                 type: 'warning',
                 title: 'Fatura não é desta empresa',
-                message: 'O QR da fatura indica outro adquirente (ou a própria empresa como emitente). Não foi lida pela IA.',
+                message: trim(($after->error_message ?: 'O adquirente da fatura não é esta empresa.') . ($after->qr_ok ? ' Não foi lida.' : '')),
+                severity: 'medium',
+                detailPath: "/restauracao/faturas/{$this->invoiceId}",
+            );
+
+            return;
+        }
+        // Parada antes da leitura (por exemplo, vários documentos no mesmo ficheiro).
+        if ($after?->status === 'erro') {
+            $alerts->createSystemAlert(
+                companyId: $this->companyId,
+                type: 'warning',
+                title: 'Fatura não lida',
+                message: (string) $after->error_message,
                 severity: 'medium',
                 detailPath: "/restauracao/faturas/{$this->invoiceId}",
             );
@@ -89,8 +104,8 @@ class ProcessInvoiceOcrJob implements ShouldQueue
         $alerts->createSystemAlert(
             companyId: $this->companyId,
             type: 'opportunity',
-            title: 'Fatura lida pela IA',
-            message: 'A fatura foi lida — verifica e valida os dados.',
+            title: 'Fatura lida',
+            message: 'A fatura foi lida: verifique e valide os dados.',
             severity: 'low',
             detailPath: "/restauracao/faturas/{$this->invoiceId}",
         );

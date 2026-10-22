@@ -28,6 +28,8 @@ class OcrInvoiceLine extends Model
         'launch_unit_id', // FB-1
         // Descontos de promoção ligados ao artigo: line_total_cents é o líquido (bruto − desconto).
         'promo_code', 'vat_code', 'gross_total_cents', 'discount_cents', 'discount_code', 'discount_label',
+        // O IEC de uma coluna à parte, já somado ao valor da linha (só para o mostrar).
+        'iec_cents',
     ];
 
     protected $casts = [
@@ -38,6 +40,7 @@ class OcrInvoiceLine extends Model
         'line_total_cents' => 'integer',
         'gross_total_cents' => 'integer',
         'discount_cents'   => 'integer',
+        'iec_cents'        => 'integer',
         'vat_rate'         => 'integer',
         'article_id'       => 'integer',
         'link_confidence'  => 'float',

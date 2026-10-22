@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Restaurant\Units;
 
-use App\Services\Ai\AiFunctionSettings;
 use App\Services\Ai\AiGateway;
 use App\Services\Ai\AiPrompt;
 use App\Services\Ai\AiSyncRequest;
@@ -27,9 +26,7 @@ final class UnitAdvisor
         if (AiGateway::available(self::FUNCTION)) {
             return ['available' => true, 'reason' => null];
         }
-        $provider = AiFunctionSettings::for(self::FUNCTION)['provider'] ?? 'anthropic';
-
-        return ['available' => false, 'reason' => sprintf('Indisponível: falta a chave do fornecedor de IA (%s). Configure-a em Admin › Modelos de IA.', $provider === 'openai' ? 'OpenAI' : 'Anthropic')];
+        return ['available' => false, 'reason' => 'Indisponível: o serviço de sugestões não está configurado. Contacte o suporte da XPLENDOR.'];
     }
 
     /** Os dados que vão para a IA (e a assinatura, para a cache). */
@@ -90,7 +87,7 @@ final class UnitAdvisor
         $type = (string) ($j['tipo'] ?? '');
         $base = (string) ($j['base'] ?? '');
         if (! in_array($type, self::TYPES, true) || ! in_array($base, ['kg', 'L', 'un'], true)) {
-            throw new \RuntimeException('A IA devolveu uma sugestão incompleta: tente outra vez ou dê mais informação.');
+            throw new \RuntimeException('A sugestão veio incompleta: tente novamente ou dê mais informação.');
         }
         $units = [];
         foreach ((array) ($j['unidades_compra'] ?? []) as $u) {
@@ -107,7 +104,7 @@ final class UnitAdvisor
             'purchase_units' => array_slice($units, 0, 6),
             'confidence' => round(max(0.0, min(1.0, (float) ($j['confianca'] ?? 0))), 2),
             'reason' => mb_substr(trim((string) ($j['justificacao'] ?? '')), 0, 400),
-            'label' => 'Sugestão da IA, a confirmar',
+            'label' => 'Sugestão automática, a confirmar',
         ];
     }
 }

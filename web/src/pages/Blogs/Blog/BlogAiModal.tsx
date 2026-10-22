@@ -116,7 +116,7 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
                 {context && !context.audience.has_data && (
                     <div className="alert alert-warning small py-2">
                         <i className="ri-information-line me-1" />
-                        <strong>Sem dados de público suficientes.</strong> A IA não vai presumir a idade nem o género dos leitores.
+                        <strong>Sem dados de público suficientes.</strong> O rascunho não vai presumir a idade nem o género dos leitores.
                         <div className="mt-1 text-muted">
                             {(["ga4", "meta", "sales"] as const).map((k) => {
                                 const s = context.audience.sources[k];
@@ -150,7 +150,7 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
                                 <Label>Texto da publicação</Label>
                                 <textarea className="form-control" rows={7} maxLength={5000} value={sourceText} onChange={(e) => setSourceText(e.target.value)}
                                     placeholder="Cole aqui o texto da publicação do Instagram ou do Facebook." />
-                                <div className="form-text">A IA desenvolve o texto sem acrescentar factos que não estejam na publicação.</div>
+                                <div className="form-text">O texto é desenvolvido sem acrescentar factos que não estejam na publicação.</div>
                             </div>
                         )}
                         <div className="mb-3">
@@ -169,7 +169,7 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
                         <button type="button" className="btn btn-primary w-100" disabled={!canGenerate} onClick={generate}>
                             {busy ? <><Spinner size="sm" className="me-1" />A escrever o rascunho…</> : <><i className="ri-magic-line me-1" />{result ? "Gerar outra vez" : "Gerar rascunho"}</>}
                         </button>
-                        {limitReached && <div className="text-danger small mt-2">Atingiu o limite mensal de rascunhos com IA.</div>}
+                        {limitReached && <div className="text-danger small mt-2">Atingiu o limite mensal de rascunhos automáticos.</div>}
                         {!canGenerate && !limitReached && !busy && (
                             <div className="text-muted small mt-2">{mode === "topic" ? "Indique o tema ou a pergunta para gerar o rascunho." : "Cole o texto da publicação (mais de 20 caracteres) para gerar o rascunho."}</div>
                         )}
