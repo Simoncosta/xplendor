@@ -97,30 +97,47 @@ class FinancingPublicController extends Controller
         return $link;
     }
 
-    /** A partir de um browser (com Origin): a página da XPLENDOR ou um site da empresa do código. */
+    /**
+     * A partir de um browser (com Origin): a página da XPLENDOR (com o esquema e a porta dela) ou
+     * um site da empresa do código, só em https e na porta normal, com ou sem "www": o domínio do
+     * endereço do site (companies.website) ou do modelo de endereço das viaturas
+     * (companies.vehicle_url_template).
+     */
     private function assertOrigin(Request $request, Company $company): void
     {
         $origin = (string) $request->headers->get('Origin', '');
         if ($origin === '') {
             return;
         }
-        $host = self::host($origin);
-        $allowed = array_filter([self::host((string) config('app.frontend_url')), self::host((string) config('app.url')),
-            self::host((string) $company->website), self::host((string) $company->vehicle_url_template)]);
-        if (! $host || ! in_array($host, $allowed, true)) {
-            FinancingPublicService::fail(403, 'origin_not_allowed', 'Este site não pode usar este pedido.');
+        $o = self::origin($origin);
+        $platform = array_filter([self::origin((string) config('app.frontend_url')), self::origin((string) config('app.url'))]);
+        foreach ($platform as $p) {
+            if ($o && $o === $p) {
+                return;
+            }
         }
+        $companyHosts = array_filter([self::origin((string) $company->website, true)['host'] ?? null, self::origin((string) $company->vehicle_url_template, true)['host'] ?? null]);
+        if ($o && $o['scheme'] === 'https' && $o['port'] === 443 && in_array($o['host'], $companyHosts, true)) {
+            return;
+        }
+        FinancingPublicService::fail(403, 'origin_not_allowed', 'Este site não pode usar este pedido.');
     }
 
-    private static function host(string $url): ?string
+    /** Esquema, domínio (sem "www.") e porta de um endereço; $assumeHttps para endereços sem esquema ("quebom.pt"). @return array{scheme: string, host: string, port: int}|null */
+    private static function origin(string $url, bool $assumeHttps = false): ?array
     {
         $url = trim($url);
         if ($url === '') {
             return null;
         }
-        $host = parse_url(str_contains($url, '://') ? $url : "https://{$url}", PHP_URL_HOST);
+        $parts = parse_url(str_contains($url, '://') ? $url : ($assumeHttps ? "https://{$url}" : $url));
+        if (! is_array($parts) || empty($parts['host']) || empty($parts['scheme'])) {
+            return null;
+        }
+        $scheme = mb_strtolower($parts['scheme']);
 
-        return $host ? preg_replace('/^www\./', '', mb_strtolower($host)) : null;
+        return ['scheme' => $scheme, 'host' => preg_replace('/^www\./', '', mb_strtolower($parts['host'])),
+            'port' => (int) ($parts['port'] ?? ($scheme === 'https' ? 443 : 80))];
     }
 
     private function noindex(Response $response): JsonResponse
