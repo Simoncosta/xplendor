@@ -121,6 +121,7 @@ class EditorialPostService
             'channel'       => ['required', Rule::in([...EditorialPost::CHANNELS, ...EditorialPost::NETWORKS])],     // instagram | facebook: compatibilidade
             'keyword'       => ['nullable', 'string', 'max:255'],
             'publish_time'  => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],                      // hora prevista (Lisboa)
+            'auto_publish'  => ['sometimes', 'boolean'],                                               // F2: "Publicar automaticamente"
             'pillar'        => ['nullable', 'string', 'max:60'],                                          // pilar do Perfil da Marca
             'anchor_id'     => ['nullable', 'integer'],
             'own_anchor_id' => ['nullable', 'integer'],

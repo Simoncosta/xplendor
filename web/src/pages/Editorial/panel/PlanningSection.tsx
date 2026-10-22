@@ -19,11 +19,13 @@ export type PlanValues = {
     title: string; publish_date: string; publish_time: string;
     site: boolean; networks: Partial<Record<Network, string>>; order: Network[];
     format: string; pillar: string; link: string; keyword: string; blog_id: string;
+    /** F2: "Publicar automaticamente" (desmarcada por omissão). */
+    auto_publish: boolean;
 };
 
 export const emptyPlan = (date: string): PlanValues => ({
     title: "", publish_date: date, publish_time: "", site: false, networks: { instagram: "" }, order: ["instagram"],
-    format: POST_FORMATS[0], pillar: "", link: "", keyword: "", blog_id: "",
+    format: POST_FORMATS[0], pillar: "", link: "", keyword: "", blog_id: "", auto_publish: false,
 });
 
 /** O corpo do pedido (criar ou editar). */
@@ -35,6 +37,7 @@ export function planPayload(v: PlanValues): Record<string, unknown> {
         blog_id: v.site && v.blog_id ? Number(v.blog_id) : null,
     };
     if (!v.site) body.networks = Object.fromEntries(v.order.map((n) => [n, v.networks[n] || null]));
+    body.auto_publish = !v.site && v.auto_publish;
     if (v.link.startsWith("a:")) body.anchor_id = Number(v.link.slice(2));
     else if (v.link.startsWith("o:")) body.own_anchor_id = Number(v.link.slice(2));
     return body;
@@ -56,9 +59,11 @@ type Props = {
     onDelete?: () => void;
     writeArticleUrl?: string | null;
     errors?: string[];
+    /** F2: o interruptor "Publicação automática" da empresa (desconhecido ao criar). */
+    autoPublishingEnabled?: boolean;
 };
 
-export default function PlanningSection({ companyId, values: v, onChange, creating, disabled, lockedNetworks, formats, anchors, pillars, range, busy, onSubmit, onDelete, writeArticleUrl, errors }: Props) {
+export default function PlanningSection({ companyId, values: v, onChange, creating, disabled, lockedNetworks, formats, anchors, pillars, range, busy, onSubmit, onDelete, writeArticleUrl, errors, autoPublishingEnabled }: Props) {
     const [more, setMore] = useState(!creating);
     const [blogs, setBlogs] = useState<XOption[]>([]);
     const set = (patch: Partial<PlanValues>) => onChange({ ...v, ...patch });
@@ -116,6 +121,20 @@ export default function PlanningSection({ companyId, values: v, onChange, creati
                     </Col>
                 )}
             </Row>
+            {!v.site && (
+                <div className="form-check mb-3">
+                    <Input type="checkbox" className="form-check-input" id="pp-auto" checked={v.auto_publish} disabled={disabled}
+                        onChange={(e) => set({ auto_publish: e.target.checked })} />
+                    <Label className="form-check-label" for="pp-auto">Publicar automaticamente</Label>
+                    <div className="form-text">
+                        {autoPublishingEnabled === false
+                            ? "A publicação automática está desligada nas definições da Linha Editorial: esta publicação continua manual."
+                            : !v.publish_time
+                                ? "Sem hora, a publicação continua manual."
+                                : "Quando for programada, sai sozinha à hora marcada em cada rede."}
+                    </div>
+                </div>
+            )}
 
             <Label className="mb-1 d-block">Onde publicar</Label>
             <div className="d-flex flex-wrap gap-2 mb-2">

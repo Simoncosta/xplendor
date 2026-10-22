@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Uma rede escolhida numa publicação (Instagram ou Facebook): o formato nessa rede e,
  * depois de publicada, o link, a hora real e quem marcou; ou "Não publicar nesta rede",
- * com o motivo. Na F2, cada linha dá uma publicação na rede (social_publications).
+ * com o motivo. Na F2, cada linha dá uma publicação na rede (SocialPublication).
  */
 class EditorialPostNetwork extends Model
 {
@@ -34,5 +34,11 @@ class EditorialPostNetwork extends Model
     public function post(): BelongsTo
     {
         return $this->belongsTo(EditorialPost::class, 'editorial_post_id');
+    }
+
+    /** A publicação automática desta rede (F2), se houver. */
+    public function publication(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SocialPublication::class, 'editorial_post_network_id');
     }
 }

@@ -607,7 +607,7 @@ export const approvePost = (companyId: number, postId: number, message?: string)
 export const requestPostChanges = (companyId: number, postId: number, message: string) => api.create(ED(companyId) + `/posts/${postId}/request-changes`, { message }, ED_JSON);
 export const approveAllPosts = (companyId: number, postIds: number[]) => api.create(ED(companyId) + `/approvals/approve-all`, { post_ids: postIds }, ED_JSON);
 export const getWorkflowSettings = (companyId: number) => api.get(ED(companyId) + `/workflow-settings`);
-export const updateWorkflowSettings = (companyId: number, data: { content_approval_required: boolean; internal_review_required: boolean; production_mode?: "self" | "team" }) => api.put(ED(companyId) + `/workflow-settings`, data);
+export const updateWorkflowSettings = (companyId: number, data: { content_approval_required: boolean; internal_review_required: boolean; production_mode?: "self" | "team"; auto_publishing_enabled?: boolean }) => api.put(ED(companyId) + `/workflow-settings`, data);
 export const setContentApprover = (companyId: number, userId: number, value: boolean) => api.put(ED(companyId) + `/approvers/${userId}`, { can_approve_content: value });
 // F3b: media (envio em partes de 8 MB, retomável), media da versão e grelha do Instagram.
 export const startMediaUpload = (companyId: number, file: { name: string; size: number; mime: string }) =>

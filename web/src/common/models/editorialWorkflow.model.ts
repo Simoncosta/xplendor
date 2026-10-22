@@ -135,6 +135,8 @@ export interface PostWorkflow {
         media_format: string | null; keyword: string | null; changes_requested_at: string | null;
         current_version_id: number | null; approved_version_id: number | null; account_name: string | null;
         publish_time: string | null; pillar: string | null; overdue: boolean;
+        /** F2: a caixa "Publicar automaticamente" e o interruptor da empresa. */
+        auto_publish?: boolean; auto_publishing_enabled?: boolean;
         networks: PostNetworkDetail[];
         anchor_id: number | null; own_anchor_id: number | null; blog_id: number | null;
         blog: { id: number; title: string; status: string } | null;
@@ -166,6 +168,8 @@ export interface WorkflowSettings {
     content_approval_required: boolean;
     internal_review_required: boolean;
     production_mode: ProductionMode;
+    /** F2: interruptor "Publicação automática" (desligado por omissão). */
+    auto_publishing_enabled: boolean;
     can_change_mode: boolean;
     can_edit: boolean;
     can_manage_approvers: boolean;
@@ -198,6 +202,14 @@ export interface PostNetworkDetail {
     state: import("./editorialPost.model").NetworkState;
     published_url: string | null; published_at: string | null; published_by: string | null;
     skipped_at: string | null; skip_reason: string | null; skipped_by: string | null;
+    /** F2: a publicação automática desta rede, se houver. */
+    publication?: SocialPublicationInfo | null;
+}
+
+export type SocialPublicationStatus = "scheduled" | "publishing" | "published" | "failed" | "cancelled";
+export interface SocialPublicationInfo {
+    status: SocialPublicationStatus; label: string; scheduled_for: string | null; published_at: string | null;
+    permalink: string | null; error_message: string | null; attempts: number;
 }
 
 export interface TodayPost { id: number; title: string; channel: PostChannel; networks: import("./editorialPost.model").PostNetwork[]; publish_date: string; publish_time: string | null; overdue: boolean; can_mark: boolean }

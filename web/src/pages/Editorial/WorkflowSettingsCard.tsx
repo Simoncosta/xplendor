@@ -27,7 +27,7 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
         getWorkflowSettings(companyId).then((r: any) => setData(r.data)).catch(() => setData(null));
     }, [companyId]);
 
-    const save = async (patch: Partial<Pick<WorkflowSettings, "content_approval_required" | "internal_review_required" | "production_mode">>) => {
+    const save = async (patch: Partial<Pick<WorkflowSettings, "content_approval_required" | "internal_review_required" | "production_mode" | "auto_publishing_enabled">>) => {
         if (!data) return;
         setBusy(true);
         try {
@@ -35,6 +35,7 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
                 content_approval_required: patch.content_approval_required ?? data.content_approval_required,
                 internal_review_required: patch.internal_review_required ?? data.internal_review_required,
                 ...(patch.production_mode ? { production_mode: patch.production_mode } : {}),
+                ...(patch.auto_publishing_enabled !== undefined ? { auto_publishing_enabled: patch.auto_publishing_enabled } : {}),
             });
             setData(r.data);
             toast.success("Definições guardadas.");
@@ -87,6 +88,14 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
                     <Input type="checkbox" role="switch" className="form-check-input" id="wf-internal" disabled={!data.can_edit || busy}
                         checked={data.internal_review_required} onChange={(e) => save({ internal_review_required: e.target.checked })} />
                     <Label className="form-check-label" for="wf-internal">Revisão interna obrigatória, feita por outra pessoa</Label>
+                </div>
+                <div className="form-check form-switch mb-3">
+                    <Input type="checkbox" role="switch" className="form-check-input" id="wf-auto" disabled={!data.can_edit || busy}
+                        checked={data.auto_publishing_enabled} onChange={(e) => save({ auto_publishing_enabled: e.target.checked })} />
+                    <Label className="form-check-label" for="wf-auto">Publicação automática no Instagram e no Facebook</Label>
+                    <div className="form-text">
+                        Só publica sozinha a publicação com a caixa "Publicar automaticamente" marcada e com hora. Ainda em testes: por agora não chega às redes.
+                    </div>
                 </div>
 
                 <Label className="fw-semibold mb-1">Quem aprova os conteúdos</Label>

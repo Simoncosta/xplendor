@@ -48,6 +48,7 @@ function planFrom(d: PostWorkflow): PlanValues {
         site: p.channel === "site", networks: Object.fromEntries(p.networks.map((n) => [n.network, n.media_format ?? ""])) as Partial<Record<Network, string>>,
         order: nets.length ? nets : ["instagram"], format: p.format, pillar: p.pillar ?? "",
         link: p.anchor_id ? `a:${p.anchor_id}` : p.own_anchor_id ? `o:${p.own_anchor_id}` : "", keyword: p.keyword ?? "", blog_id: p.blog_id ? String(p.blog_id) : "",
+        auto_publish: !!p.auto_publish,
     };
 }
 
@@ -245,6 +246,7 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                             <PlanningSection companyId={companyId} values={plan} onChange={setPlan} creating={creating} disabled={!editable}
                                 lockedNetworks={!!p && ["published", "analysis"].includes(p.stage)} formats={formats} anchors={anchors} pillars={pillars} range={range}
                                 busy={busy} onSubmit={() => void savePlan()} onDelete={!creating && editable ? () => void remove() : undefined} errors={errors}
+                                autoPublishingEnabled={p?.auto_publishing_enabled}
                                 writeArticleUrl={p && p.channel === "site" ? `/blogs/create?${new URLSearchParams({ editorial_post_id: String(p.id), title: p.title, ...(p.keyword ? { keyword: p.keyword } : {}) }).toString()}` : null} />
                         )}
                         {tab === "planning" && p && (p.brief || (p.sources && p.sources.length > 0)) && <HookBox post={p} />}

@@ -155,6 +155,8 @@ class EditorialWorkflowController extends Controller
             'content_approval_required' => ['required', 'boolean'],
             'internal_review_required' => ['required', 'boolean'],
             'production_mode' => ['nullable', Rule::in(EditorialWorkflowService::MODES)],
+            // F2: interruptor "Publicação automática" (desligado por omissão); opcional para os ecrãs antigos.
+            'auto_publishing_enabled' => ['sometimes', 'boolean'],
         ]);
         $company = Company::findOrFail($companyId);
         $mode = $data['production_mode'] ?? null;
@@ -199,6 +201,7 @@ class EditorialWorkflowController extends Controller
             'content_approval_required' => (bool) $company->content_approval_required,
             'internal_review_required' => (bool) $company->internal_review_required,
             'production_mode' => EditorialWorkflowService::productionMode($company->id),
+            'auto_publishing_enabled' => (bool) $company->auto_publishing_enabled,
             'can_change_mode' => EditorialWorkflowService::isTeam($user, (int) $company->id),
             'can_edit' => $this->can($company->id, 'editorial.configurar'),
             'can_manage_approvers' => $this->can($company->id, 'utilizadores.configurar'),

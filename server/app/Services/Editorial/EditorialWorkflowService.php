@@ -763,6 +763,8 @@ class EditorialWorkflowService
                 'current_version_id' => $post->current_version_id, 'approved_version_id' => $post->approved_version_id,
                 'account_name' => $company->trade_name ?: $company->fiscal_name,
                 'publish_time' => $post->publish_time, 'pillar' => $post->pillar, 'overdue' => $post->isOverdue(),
+                // F2: a caixa da publicação e o interruptor da empresa (os dois são precisos para publicar sozinha).
+                'auto_publish' => (bool) $post->auto_publish, 'auto_publishing_enabled' => (bool) $company->auto_publishing_enabled,
                 // Radar (Bússola Master): o gancho, as fontes e até quando vale ("Gancho e fontes" no Planeamento).
                 'brief' => $post->brief, 'sources' => $post->sources, 'valid_until' => optional($post->valid_until)->toDateString(),
                 'origin' => $post->origin, 'origin_ref' => $post->origin_ref,
@@ -987,6 +989,8 @@ class EditorialWorkflowService
             'published_by' => $n->published_by_user_id ? $this->label($people, $n->published_by_user_id, $n->published_by_impersonator_id, null, (int) $post->company_id) : null,
             'skipped_at' => optional($n->skipped_at)->toIso8601String(), 'skip_reason' => $n->skip_reason,
             'skipped_by' => $n->skipped_by_user_id ? $this->label($people, $n->skipped_by_user_id, $n->skipped_by_impersonator_id, null, (int) $post->company_id) : null,
+            // F2: a publicação automática desta rede (agendado, a publicar, publicado, falhou, cancelado).
+            'publication' => $n->publication?->present(),
         ])->values()->all();
     }
 

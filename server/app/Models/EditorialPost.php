@@ -81,7 +81,7 @@ class EditorialPost extends Model
     ];
 
     protected $fillable = [
-        'company_id', 'publish_date', 'publish_time', 'title', 'format', 'media_format', 'status',
+        'company_id', 'publish_date', 'publish_time', 'auto_publish', 'title', 'format', 'media_format', 'status',
         'channel', 'keyword', 'pillar', 'anchor_id', 'own_anchor_id', 'blog_id',
         'stage', 'stage_changed_at', 'changes_requested_at', 'current_version_id', 'approved_version_id', 'assignee_user_id',
         // Radar (Bússola Master): o gancho, as fontes, até quando vale e de onde veio a ideia.
@@ -90,6 +90,8 @@ class EditorialPost extends Model
 
     protected $casts = [
         'publish_date'  => 'date',
+        // F2: a caixa "Publicar automaticamente" (só conta com o interruptor da empresa ligado).
+        'auto_publish'  => 'boolean',
         'anchor_id'     => 'integer',
         'own_anchor_id' => 'integer',
         'blog_id'       => 'integer',

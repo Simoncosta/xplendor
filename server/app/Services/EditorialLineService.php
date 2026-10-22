@@ -214,6 +214,7 @@ class EditorialLineService
                 'id'            => $p->id,
                 'publish_date'  => $p->publish_date->toDateString(),
                 'publish_time'  => $p->publish_time,
+                'auto_publish'  => (bool) $p->auto_publish,
                 'pillar'        => $p->pillar,
                 // F3d: Programada cuja data e hora passaram sem ser marcada como publicada.
                 'overdue'       => $p->isOverdue(),

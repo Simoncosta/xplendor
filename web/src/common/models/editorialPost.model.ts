@@ -38,6 +38,8 @@ export type EditorialPost = {
     networks: PostNetwork[];
     /** F3d: hora prevista (HH:MM, Lisboa), pilar e "Atrasada". */
     publish_time: string | null;
+    /** F2: "Publicar automaticamente". */
+    auto_publish?: boolean;
     pillar: string | null;
     overdue: boolean;
     blog_id: number | null;
