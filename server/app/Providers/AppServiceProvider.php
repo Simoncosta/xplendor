@@ -172,6 +172,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CompanyTaskRepositoryInterface::class, CompanyTaskRepository::class);
         // GA4 — o cliente REST da Data API por trás do contrato (testável via fake).
         $this->app->bind(\App\Services\Ga4\Ga4ClientInterface::class, \App\Services\Ga4\Ga4RestClient::class);
+        // Meta (redes sociais): a Graph API por trás do contrato (nos testes, FakeMetaSocialClient).
+        $this->app->bind(\App\Services\Social\MetaSocialClientInterface::class, \App\Services\Social\MetaSocialClient::class);
         $this->app->bind(CustomerRepositoryInterface::class, CustomerRepository::class);
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);

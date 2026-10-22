@@ -14,6 +14,7 @@ class CompanyIntegration extends Model
         'connected_by_user_id',
         'setup_link_id',
         'access_token',
+        'meta_user_id',
         'account_id',
         'page_id',
         'property_id',

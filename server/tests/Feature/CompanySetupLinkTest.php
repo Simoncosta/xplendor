@@ -330,6 +330,7 @@ class CompanySetupLinkTest extends TestCase
         $this->assertSame('https://dev.exemplo.pt/app/configurar?passo=meta_ads&resultado=escolher#' . $token, $location);
         $integration = CompanyIntegration::where('company_id', $this->client->id)->where('platform', 'meta')->firstOrFail();
         $this->assertSame([null, $link->id, 'active'], [$integration->connected_by_user_id, $integration->setup_link_id, $integration->status]);
+        $this->assertSame('9988', $integration->meta_user_id, 'o utilizador da Meta fica guardado (para não revogar ligações partilhadas)');
 
         $accounts = $this->pub($token)->getJson('/api/public/setup/ads/accounts')->assertOk()->json('data.accounts');
         $this->assertSame([['5551', 'Domiway Anúncios', true], ['5552', 'Conta antiga', false]], array_map(fn ($a) => [$a['id'], $a['name'], $a['active']], $accounts));

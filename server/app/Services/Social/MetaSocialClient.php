@@ -12,9 +12,10 @@ use Illuminate\Support\Facades\Http;
 /**
  * Chamadas à Graph API da ligação das redes sociais. Separado do MetaAdsService de
  * propósito: a ligação dos anúncios não muda. Cada leitura devolve ['ok' => bool, ...]
- * e, quando falha, o tipo de erro (ver classify()).
+ * e, quando falha, o tipo de erro (ver classify()). Contrato: MetaSocialClientInterface (nos testes,
+ * FakeMetaSocialClient).
  */
-class MetaSocialClient
+class MetaSocialClient implements MetaSocialClientInterface
 {
     public const GRAPH_URL = 'https://graph.facebook.com/v25.0';
     public const DIALOG_URL = 'https://www.facebook.com/v25.0/dialog/oauth';

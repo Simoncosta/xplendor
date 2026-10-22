@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Desligar os anúncios da Meta de uma empresa: retira a permissão ads_read à aplicação (sem
- * bloquear se a Meta falhar) e marca a integração como revogada; com $purge, apaga também os
+ * bloquear se a Meta falhar), só se nenhuma outra empresa usar o mesmo utilizador da Meta
+ * (SharedMetaUser), e marca a integração como revogada; com $purge, apaga também os
  * dados da Meta guardados. Usado pelo ecrã de Integrações e pelo fim da relação com a agência.
  */
 class MetaAdsDisconnector
@@ -29,7 +30,12 @@ class MetaAdsDisconnector
 
         $revoked = false;
         $token = (string) ($integration?->access_token ?? '');
-        if ($token !== '') {
+        // O mesmo utilizador da Meta ligado noutra empresa (ou desconhecido): desliga só cá, sem revogar.
+        $shared = $token !== '' && ! SharedMetaUser::canRevokeAds($integration);
+        if ($shared) {
+            Log::info('Meta: desligado só na XPLENDOR; o utilizador da Meta continua ligado noutra empresa (ou é desconhecido).', ['company_id' => $companyId]);
+        }
+        if ($token !== '' && ! $shared) {
             $result = $this->metaAds->revokePermissions($token);
             $revoked = $result['revoked'];
             if (! $revoked) {
@@ -45,13 +51,13 @@ class MetaAdsDisconnector
             $deleted = app(MetaDataPurger::class)->purge($companyId);
             Log::info('Meta: dados apagados a pedido do cliente.', ['company_id' => $companyId, 'deleted' => $deleted]);
 
-            return ['permissions_revoked' => $revoked, 'purged' => true, 'deleted' => $deleted];
+            return ['permissions_revoked' => $revoked, 'permission_kept_shared' => $shared, 'purged' => true, 'deleted' => $deleted];
         }
 
         if ($integration) {
             CompanyIntegration::whereKey($integration->id)->update(['status' => 'revoked', 'access_token' => '']);
         }
 
-        return ['permissions_revoked' => $revoked, 'purged' => false, 'deleted' => null];
+        return ['permissions_revoked' => $revoked, 'permission_kept_shared' => $shared, 'purged' => false, 'deleted' => null];
     }
 }

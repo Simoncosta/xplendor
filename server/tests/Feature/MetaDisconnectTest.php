@@ -56,8 +56,9 @@ class MetaDisconnectTest extends TestCase
         $this->carA = Car::factory()->create(['company_id' => $this->companyA->id, 'car_brand_id' => $brand->id, 'car_model_id' => $model->id, 'status' => 'sold']);
         $this->carB = Car::factory()->create(['company_id' => $this->companyB->id, 'car_brand_id' => $brand->id, 'car_model_id' => $model->id, 'status' => 'sold']);
 
-        $this->integration($this->companyA, 'tok-A');
-        $this->integration($this->companyB, 'tok-B');
+        // Cada empresa ligada com o seu utilizador da Meta (o caso normal: revogar uma não toca na outra).
+        $this->integration($this->companyA, 'tok-A', metaUserId: 'U-A');
+        $this->integration($this->companyB, 'tok-B', metaUserId: 'U-B');
         $this->seedMetaData($this->companyA, $this->carA);
         $this->seedMetaData($this->companyB, $this->carB);
     }
@@ -76,10 +77,10 @@ class MetaDisconnectTest extends TestCase
         return "/api/v1/companies/{$company->id}/integrations/meta";
     }
 
-    private function integration(Company $company, string $token, string $status = 'active'): CompanyIntegration
+    private function integration(Company $company, string $token, string $status = 'active', ?string $metaUserId = null): CompanyIntegration
     {
         return CompanyIntegration::create([
-            'company_id' => $company->id, 'platform' => 'meta', 'access_token' => $token,
+            'company_id' => $company->id, 'platform' => 'meta', 'access_token' => $token, 'meta_user_id' => $metaUserId,
             'account_id' => 'act_' . $company->id, 'token_expires_at' => now()->addDays(30), 'status' => $status,
         ]);
     }
@@ -180,6 +181,40 @@ class MetaDisconnectTest extends TestCase
             && $context['company_id'] === $this->companyA->id
             && str_contains($context['error'], 'Session has expired')
             && ! str_contains(json_encode($context), 'tok-A'))->once();
+    }
+
+    public function test_the_same_meta_user_in_another_company_is_disconnected_only_here(): void
+    {
+        // O Simon ligou as duas empresas com o mesmo login: revogar cortava também a B.
+        DB::table('company_integrations')->where('company_id', $this->companyB->id)->update(['meta_user_id' => 'U-A']);
+        Http::fake([self::PERMISSIONS_URL => Http::response(['success' => true])]);
+
+        $this->actingAs($this->adminA, 'sanctum')->deleteJson($this->url($this->companyA))
+            ->assertOk()
+            ->assertJsonPath('data.permissions_revoked', false)
+            ->assertJsonPath('data.permission_kept_shared', true);
+        Http::assertNothingSent();
+        $this->assertSame('revoked', CompanyIntegration::where('company_id', $this->companyA->id)->value('status'));
+        $this->assertSame('', CompanyIntegration::where('company_id', $this->companyA->id)->sole()->access_token);
+        $this->assertSame(['active', 'tok-B'], [CompanyIntegration::where('company_id', $this->companyB->id)->value('status'),
+            CompanyIntegration::where('company_id', $this->companyB->id)->sole()->access_token]);
+
+        // A última empresa desse utilizador já revoga.
+        $adminB = User::factory()->create(['company_id' => $this->companyB->id, 'role' => 'admin']);
+        $this->actingAs($adminB, 'sanctum')->deleteJson($this->url($this->companyB))
+            ->assertOk()->assertJsonPath('data.permissions_revoked', true)->assertJsonPath('data.permission_kept_shared', false);
+        Http::assertSent(fn (HttpRequest $r) => $r->method() === 'DELETE' && str_contains($r->url(), 'access_token=tok-B'));
+    }
+
+    public function test_an_unknown_meta_user_elsewhere_is_never_risked(): void
+    {
+        // Ligação antiga da B sem utilizador conhecido: pode ser o mesmo; desliga-se só cá.
+        DB::table('company_integrations')->where('company_id', $this->companyB->id)->update(['meta_user_id' => null]);
+        Http::fake([self::PERMISSIONS_URL => Http::response(['success' => true])]);
+
+        $this->actingAs($this->adminA, 'sanctum')->deleteJson($this->url($this->companyA))
+            ->assertOk()->assertJsonPath('data.permission_kept_shared', true);
+        Http::assertNothingSent();
     }
 
     // ── 2. Desligar e apagar ─────────────────────────────────────────────────

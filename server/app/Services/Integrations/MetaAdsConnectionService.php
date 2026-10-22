@@ -9,6 +9,7 @@ use App\Models\CompanyIntegration;
 use App\Services\MetaAccountInsightsService;
 use App\Services\MetaAdsService;
 use App\Services\Social\MetaSocialClient;
+use App\Services\Social\MetaSocialClientInterface;
 use App\Support\MetaTokenExpiry;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
@@ -37,7 +38,7 @@ class MetaAdsConnectionService
 
     public function __construct(
         private readonly MetaAdsService $metaAds,
-        private readonly MetaSocialClient $graph,
+        private readonly MetaSocialClientInterface $graph,
     ) {}
 
     public static function stateKey(string $nonce): string
@@ -108,6 +109,8 @@ class MetaAdsConnectionService
 
         $integration = CompanyIntegration::firstOrNew(['company_id' => $companyId, 'platform' => 'meta']);
         $integration->access_token = $longToken;
+        // O utilizador da Meta: ao desligar, só se revoga se nenhuma outra empresa o usar (SharedMetaUser).
+        $integration->meta_user_id = isset($tokenInfo['user_id']) ? (string) $tokenInfo['user_id'] : null;
         $integration->token_expires_at = MetaTokenExpiry::fromDebug($tokenInfo);
         $integration->status = 'active';
         $integration->error_message = null;

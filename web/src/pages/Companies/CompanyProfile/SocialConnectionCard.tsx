@@ -91,7 +91,9 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
         try {
             const r: any = await disconnectSocial(companyId, options);
             toast.success(options.purge ? "Histórico automático de seguidores apagado." : "Redes sociais desligadas. O histórico foi mantido.");
-            if (mode === "disconnect" && !r?.data?.permissions_revoked) {
+            if (mode === "disconnect" && r?.data?.permission_kept_shared) {
+                toast.info("As permissões na Meta foram mantidas: o mesmo utilizador do Facebook está (ou pode estar) ligado noutra empresa da XPLENDOR.");
+            } else if (mode === "disconnect" && !r?.data?.permissions_revoked) {
                 toast.warning("Não foi possível retirar as permissões na Meta (a sessão pode ter expirado). Pode removê-las no Facebook, em Definições, Integrações empresariais.");
             }
             setState(r?.data?.state ?? null);

@@ -54,7 +54,8 @@ class RootOwnCompanyAdminActionsTest extends TestCase
         $this->adminB = User::factory()->create(['company_id' => $this->b->id, 'role' => 'admin']);
 
         foreach ([$this->x, $this->b] as $c) {
-            CompanyIntegration::create(['company_id' => $c->id, 'platform' => 'meta', 'access_token' => 'EAAads-' . $c->id, 'account_id' => '123', 'status' => 'active']);
+            // Cada empresa com o seu utilizador da Meta (assim desligar uma revoga, como sempre).
+            CompanyIntegration::create(['company_id' => $c->id, 'platform' => 'meta', 'access_token' => 'EAAads-' . $c->id, 'meta_user_id' => 'U-' . $c->id, 'account_id' => '123', 'status' => 'active']);
             SocialConnection::create(['company_id' => $c->id, 'access_token' => 'EAAsocial-' . $c->id, 'granted_scopes' => SocialConnection::SCOPES, 'status' => SocialConnection::STATUS_ACTIVE]);
         }
     }

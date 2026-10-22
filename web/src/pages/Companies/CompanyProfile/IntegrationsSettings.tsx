@@ -293,7 +293,9 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
         try {
             const res: any = await dispatch(disconnectMetaAds({ companyId, platform: "meta", purge, confirmation })).unwrap();
             toast.success(purge ? "Dados da Meta apagados." : "Meta desligada. O histórico foi mantido.");
-            if (mode === "disconnect" && !res?.data?.permissions_revoked) {
+            if (mode === "disconnect" && res?.data?.permission_kept_shared) {
+                toast.info("A permissão dos anúncios na Meta foi mantida: o mesmo utilizador do Facebook está (ou pode estar) ligado noutra empresa da XPLENDOR.");
+            } else if (mode === "disconnect" && !res?.data?.permissions_revoked) {
                 toast.warning("Não foi possível retirar a permissão dos anúncios na Meta (a sessão pode ter expirado). Pode removê-la no Facebook, em Definições, Integrações empresariais.");
             }
             await fetchIntegrations(companyId);

@@ -9,6 +9,7 @@ use App\Models\SocialConnection;
 use App\Models\SocialConnectionAccount;
 use App\Models\SocialFollowerSnapshot;
 use App\Models\User;
+use App\Services\Integrations\SharedMetaUser;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,7 @@ class SocialConnectionService
     public const PURGE_CONFIRMATION = 'APAGAR';
 
     public function __construct(
-        private readonly MetaSocialClient $meta,
+        private readonly MetaSocialClientInterface $meta,
         private readonly FollowerSnapshotService $followers,
     ) {}
 
@@ -86,8 +87,11 @@ class SocialConnectionService
             // aprovação para contas fora da equipa); se recusou, pede-se de novo.
             $statuses = $this->meta->permissionStatuses($token['token']) ?? [];
             $declined = array_filter($missing, fn ($p) => ($statuses[$p] ?? null) === 'declined');
-            foreach ($token['scopes'] as $granted) {
-                $this->meta->revokePermission($token['token'], $granted);
+            // Só se revoga se este utilizador da Meta não tiver outra ligação das redes ativa (cortava-a).
+            if (SharedMetaUser::canRevokeNewSocialGrant($token['user_id'] ?? null)) {
+                foreach ($token['scopes'] as $granted) {
+                    $this->meta->revokePermission($token['token'], $granted);
+                }
             }
 
             return [$companyId, $declined === [] ? 'error:not_approved' : 'error:scopes', $linkId];
@@ -309,7 +313,8 @@ class SocialConnectionService
 
     /**
      * Retira as três permissões das redes, uma a uma, com o token do utilizador (a
-     * permissão dos anúncios fica intacta). Se a Meta não aceitar (token já expirado),
+     * permissão dos anúncios fica intacta), só se nenhuma outra empresa usar o mesmo
+     * utilizador da Meta (SharedMetaUser); senão desliga só na XPLENDOR. Se a Meta não aceitar (token já expirado),
      * desliga na mesma. Por omissão mantém o histórico de seguidores; com purge apaga
      * as leituras automáticas (as manuais são do cliente e ficam).
      */
@@ -323,7 +328,12 @@ class SocialConnectionService
 
         $revoked = [];
         $token = (string) ($connection?->access_token ?? '');
-        if ($token !== '') {
+        // O mesmo utilizador da Meta ligado noutra empresa (ou desconhecido): desliga só cá, sem revogar.
+        $shared = $token !== '' && ! SharedMetaUser::canRevokeSocial($connection);
+        if ($shared) {
+            Log::info('[Redes sociais] Desligado só na XPLENDOR; o utilizador da Meta continua ligado noutra empresa (ou é desconhecido).', ['company_id' => $companyId]);
+        }
+        if ($token !== '' && ! $shared) {
             foreach (SocialConnection::SCOPES as $permission) {
                 $r = $this->meta->revokePermission($token, $permission);
                 $revoked[$permission] = $r['revoked'];
@@ -355,6 +365,7 @@ class SocialConnectionService
 
         return [
             'permissions_revoked' => $revoked !== [] && ! in_array(false, $revoked, true),
+            'permission_kept_shared' => $shared,
             'permissions' => $revoked,
             'purged' => $purge,
             'deleted_snapshots' => $deleted,
