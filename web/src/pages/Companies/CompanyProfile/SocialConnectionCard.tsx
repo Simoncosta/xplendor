@@ -7,6 +7,7 @@ import { SOCIAL_NOT_APPROVED_TEXT, SocialConnectionState, socialStateView } from
 import SocialAccountsModal from "./SocialAccountsModal";
 import SocialDisconnectModal, { SocialDisconnectMode } from "./SocialDisconnectModal";
 import ActionsMenu from "Components/Common/ActionsMenu";
+import SocialPublishingBlock, { PUBLISH_RETURN_MESSAGES } from "./SocialPublishingBlock";
 
 /**
  * Redes sociais (Instagram e Facebook) nas Integrações: ligação separada da dos
@@ -63,6 +64,10 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
             // toastId fixo: o cartão pode montar duas vezes enquanto a página carrega.
             toast.success("Redes sociais autorizadas. Falta escolher as Páginas e as contas de Instagram.", { toastId: "social-return" });
             setChoosing(true);
+        } else if (social === "publish_ok") {
+            toast.success("Publicação ligada. As publicações programadas com a caixa \"Publicar automaticamente\" já podem sair sozinhas.", { toastId: "social-return" });
+        } else if (PUBLISH_RETURN_MESSAGES[searchParams.get("reason") ?? ""]) {
+            toast.error(PUBLISH_RETURN_MESSAGES[searchParams.get("reason") ?? ""], { autoClose: 10000, toastId: "social-return" });
         } else {
             const m = RETURN_MESSAGES[searchParams.get("reason") ?? ""] ?? { kind: "error", text: "Não foi possível ligar as redes sociais. Tente novamente." };
             m.kind === "info" ? toast.info(m.text, { autoClose: 10000, toastId: "social-return" }) : toast.error(m.text, { toastId: "social-return" });
@@ -151,7 +156,7 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
 
                     <p className="text-muted fs-13 mb-3">
                         Lê todas as madrugadas o número de seguidores da Página de Facebook e da conta de Instagram profissional.
-                        É uma ligação separada da dos anúncios e só lê: não publica nem altera nada.
+                        É uma ligação separada da dos anúncios e só lê: não publica nem altera nada (publicar é a ligação à parte, em baixo).
                     </p>
 
                     {loading ? (
@@ -188,6 +193,10 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
                                 </>
                             ) : (
                                 <p className="text-muted fs-12 mb-0">Só o administrador da empresa pode alterar ou desligar as redes sociais.</p>
+                            )}
+                            {state!.status === "active" && state!.accounts.length > 0 && (
+                                <SocialPublishingBlock companyId={companyId} state={state!.publishing} canManage={canManage}
+                                    onChanged={(p) => setState((s) => (s ? { ...s, publishing: p } : s))} />
                             )}
                         </div>
                     ) : canManage ? (

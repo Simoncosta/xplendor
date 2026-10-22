@@ -25,6 +25,14 @@ export interface SocialConnectionState {
     accounts: SocialAccount[];
     has_automatic_history: boolean;
     can_manage: boolean;
+    /** F2.8: a ligação de publicação, à parte da leitura. */
+    publishing?: SocialPublishingState;
+}
+
+export interface SocialPublishingState {
+    connected: boolean;
+    connected_at: string | null;
+    platforms: ("instagram" | "facebook")[];
 }
 
 export interface SocialCandidatePage {

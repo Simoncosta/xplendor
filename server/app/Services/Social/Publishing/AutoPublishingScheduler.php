@@ -10,6 +10,7 @@ use App\Models\EditorialPost;
 use App\Models\EditorialPostNetwork;
 use App\Models\SocialPublication;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 /**
  * F2.2 · Programar e cancelar as publicações automáticas. Uma publicação sai sozinha quando está
@@ -81,6 +82,30 @@ class AutoPublishingScheduler
     private static function prepareMedia(SocialPublication $publication): void
     {
         PrepareSocialPublicationMediaJob::dispatch($publication->id)->afterCommit();
+    }
+
+    /**
+     * F2.8 · "Tentar de novo": uma rede cuja publicação automática falhou volta a sair dentro de um
+     * minuto, mesmo depois da hora (é um pedido de uma pessoa). Mantém o contentor de antes: o
+     * publicador vê primeiro o estado dele (nunca publica duas vezes).
+     */
+    public function retry(EditorialPost $post, string $network): SocialPublication
+    {
+        $row = $post->networks()->where('network', $network)->first();
+        $publication = $row ? SocialPublication::where('editorial_post_network_id', $row->id)->first() : null;
+        if (! $row || ! $publication || $publication->status !== SocialPublication::STATUS_FAILED) {
+            throw ValidationException::withMessages(['network' => 'Só se tenta de novo uma publicação automática que falhou.']);
+        }
+        if (! self::wanted($post) || $row->state() !== EditorialPostNetwork::STATE_PENDING) {
+            throw ValidationException::withMessages(['network' => 'Esta rede já não está para sair sozinha (está publicada, dispensada, sem a caixa ou com o interruptor desligado).']);
+        }
+        // Com a hora ainda por chegar, volta a sair à hora; já passada, sai no minuto seguinte.
+        $dueAt = $post->dueAt()->utc();
+        $publication->forceFill(['status' => SocialPublication::STATUS_SCHEDULED, 'scheduled_for' => $dueAt, 'next_attempt_at' => $dueAt->isFuture() ? null : now(),
+            'attempts' => 0, 'error_code' => null, 'error_message' => null, 'alerted_at' => null])->save();
+        self::prepareMedia($publication); // os ficheiros podem ter mudado
+
+        return $publication;
     }
 
     /** O interruptor da empresa mudou: reavalia as publicações Programadas com a caixa marcada. */

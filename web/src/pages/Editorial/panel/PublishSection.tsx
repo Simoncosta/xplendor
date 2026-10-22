@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Col, Input, Label, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import { savePostResults, skipPostNetwork } from "helpers/laravel_helper";
+import { retryPostPublication, savePostResults, skipPostNetwork } from "helpers/laravel_helper";
 import { Network, POST_CHANNEL_META, mediaFormatLabel } from "common/models/editorialPost.model";
 import { METRICS, METRIC_SOURCE_LABEL, PostNetworkDetail, PostResults, PostWorkflow, SocialPublicationInfo, fmtRate } from "common/models/editorialWorkflow.model";
 import MarkPublishedModal from "../MarkPublishedModal";
@@ -17,6 +17,21 @@ import ReasonButton from "Components/Common/ReasonButton";
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
 const todayIso = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Lisbon" });
 const errorsOf = (e: any) => (e?.errors ? Object.fromEntries(Object.entries(e.errors).map(([k, v]) => [k, String((v as string[])[0])])) : null);
+
+const AUTO_BADGE: Record<string, { color: string; text: string }> = {
+    scheduled: { color: "info-subtle", text: "text-info" },
+    publishing: { color: "primary-subtle", text: "text-primary" },
+    published: { color: "success-subtle", text: "text-success" },
+    failed: { color: "danger-subtle", text: "text-danger" },
+};
+
+/** F2.8: o estado da publicação automática por rede (Agendado, A publicar, Publicado, Falhou), ao lado do da rede. */
+export function AutoPublicationBadge({ info }: { info: SocialPublicationInfo | null }) {
+    const style = info ? AUTO_BADGE[info.status] : undefined;
+    if (!info || !style) return null;
+
+    return <Badge color={style.color} className={style.text} title="Publicação automática"><i className="ri-robot-2-line me-1" />{info.label}</Badge>;
+}
 
 /** F2.2: o estado da publicação automática desta rede (agendada, a publicar, publicada sozinha, falhou). */
 export function AutoPublicationLine({ info, published }: { info: SocialPublicationInfo | null; published: boolean }) {
@@ -152,6 +167,21 @@ export default function PublishSection({ companyId, data, onChanged }: Props) {
         }
     };
 
+    // F2.8: "Tentar de novo" numa publicação automática que falhou (sai à hora, ou já, se passou).
+    const retry = async (network: Network) => {
+        setBusy(true);
+        try {
+            const r: any = await retryPostPublication(companyId, p.id, network);
+            toast.success("A publicação automática vai tentar de novo.");
+            onChanged(r.data);
+        } catch (e: any) {
+            const first = e?.errors ? Object.values(e.errors).flat()[0] : null;
+            toast.error((first as string) || e?.message || "Não foi possível tentar de novo.");
+        } finally {
+            setBusy(false);
+        }
+    };
+
     const saveNotes = async () => {
         const first = p.networks.find((n) => n.state === "published");
         if (!first) return;
@@ -193,8 +223,12 @@ export default function PublishSection({ companyId, data, onChanged }: Props) {
                         {n.state === "published" && <Badge color="success-subtle" className="text-success">Publicada</Badge>}
                         {n.state === "skipped" && <Badge color="secondary-subtle" className="text-secondary">Não publicar</Badge>}
                         {n.state === "pending" && <Badge color={p.overdue ? "danger" : "warning-subtle"} className={p.overdue ? "" : "text-warning"}>{p.overdue ? "Atrasada" : "Por publicar"}</Badge>}
+                        <AutoPublicationBadge info={n.publication ?? null} />
                         {canMark && (
                             <div className="ms-auto d-flex flex-wrap gap-1">
+                                {n.state === "pending" && n.publication?.status === "failed" && (
+                                    <Button size="sm" color="outline-danger" disabled={busy} onClick={() => void retry(n.network)}><i className="ri-restart-line me-1" />Tentar de novo</Button>
+                                )}
                                 {n.state !== "published" && <Button size="sm" color="success" onClick={() => setMarking(n)}><i className="ri-checkbox-circle-line me-1" />Marcar como publicada</Button>}
                                 {n.state === "published" && <Button size="sm" color="link" className="p-0" onClick={() => setMarking(n)}>Corrigir o link ou a hora</Button>}
                                 {n.state === "pending" && p.networks.length > 1 && <Button size="sm" color="outline-primary" onClick={() => { setSkipping(n.network); setReason(""); }}>Não publicar nesta rede</Button>}

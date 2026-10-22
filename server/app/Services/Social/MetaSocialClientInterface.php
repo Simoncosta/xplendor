@@ -11,8 +11,8 @@ namespace App\Services\Social;
  */
 interface MetaSocialClientInterface
 {
-    /** URL de autorização com as permissões das redes. */
-    public function authUrl(string $state): string;
+    /** URL de autorização com as permissões das redes (e, em "Ligar publicação", as de publicar). */
+    public function authUrl(string $state, array $extraScopes = []): string;
 
     /** Troca o code pelo token de longa duração: token, expires_at, user_id, scopes; null se falhar. */
     public function exchangeCode(string $code): ?array;

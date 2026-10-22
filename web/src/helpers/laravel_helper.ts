@@ -162,6 +162,9 @@ export const saveSocialAccounts = (companyId: number, data: { facebook: string[]
     api.put(url.GET_COMPANIES + `/${companyId}/integrations/social/accounts`, data);
 export const disconnectSocial = (companyId: number, options?: { purge: boolean; confirmation?: string }) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/integrations/social`, options ? { data: options } : undefined);
+// F2.8: "Ligar publicação" (autorização à parte; a leitura não muda).
+export const getSocialPublishAuthUrl = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/social/publish-auth-url`);
+export const disconnectSocialPublishing = (companyId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/integrations/social/publishing`);
 export const recordFollowers = (companyId: number, data: { platform: "instagram" | "facebook"; followers_count: number }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/followers`, data);
 // "Sugerir perfil" (IA): pedir e consultar. Nunca grava o perfil.
@@ -634,6 +637,9 @@ export const getEditorialToday = (companyId: number) => api.get(ED(companyId) + 
 export const getEditorialFormats = (companyId: number) => api.get(ED(companyId) + `/formats`);
 export const skipPostNetwork = (companyId: number, postId: number, data: { network: string; reason: string }) =>
     api.create(ED(companyId) + `/posts/${postId}/skip-network`, data, { headers: { "Content-Type": "application/json" } });
+// F2.8: "Tentar de novo" numa publicação automática que falhou.
+export const retryPostPublication = (companyId: number, postId: number, network: string) =>
+    api.create(ED(companyId) + `/posts/${postId}/retry-publication`, { network }, { headers: { "Content-Type": "application/json" } });
 export const markPostPublished = (companyId: number, postId: number, data: { network: string; url: string; published_at: string }) =>
     api.create(ED(companyId) + `/posts/${postId}/published`, data, { headers: { "Content-Type": "application/json" } });
 export const savePostResults = (companyId: number, postId: number, data: Record<string, unknown>) => api.put(ED(companyId) + `/posts/${postId}/results`, data);

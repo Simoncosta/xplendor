@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Services\CollaboratorService;
 use App\Services\Social\MetaSocialClient;
 use App\Services\Social\SocialConnectionService;
+use App\Services\Social\SocialPublishingConnectionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -21,15 +22,32 @@ use Illuminate\Support\Facades\Log;
  */
 class SocialConnectionController extends Controller
 {
-    public function __construct(private readonly SocialConnectionService $social) {}
+    public function __construct(private readonly SocialConnectionService $social, private readonly SocialPublishingConnectionService $publishing) {}
 
     // GET /companies/{id}/integrations/social
     public function show(Request $request, int $companyId)
     {
         return ApiResponse::success(
-            $this->social->status($companyId) + ['can_manage' => $this->can($companyId, 'integracoes.configurar', ['sensitive' => true])],
+            $this->social->status($companyId) + ['can_manage' => $this->can($companyId, 'integracoes.configurar', ['sensitive' => true]),
+                'publishing' => $this->publishing->status($companyId)],
             'Estado das redes sociais.'
         );
+    }
+
+    // GET /companies/{id}/integrations/social/publish-auth-url (F2.8: "Ligar publicação")
+    public function publishAuthUrl(Request $request, int $companyId)
+    {
+        return ApiResponse::success(['url' => $this->publishing->authUrl($companyId, $request->user())]);
+    }
+
+    // DELETE /companies/{id}/integrations/social/publishing (F2.8: só a publicação; a leitura continua)
+    public function disconnectPublishing(Request $request, int $companyId)
+    {
+        $result = $this->publishing->disconnect($companyId);
+        Log::info('[Ligar publicação] Desligada.', ['company_id' => $companyId] + $result);
+
+        return ApiResponse::success($result + ['publishing' => $this->publishing->status($companyId)],
+            'Publicação desligada. A leitura das redes sociais continua.');
     }
 
     // GET /companies/{id}/integrations/social/auth-url
@@ -112,7 +130,11 @@ class SocialConnectionController extends Controller
             return redirect()->away(app(\App\Services\Setup\SetupPublicService::class)->afterOAuth($linkId, \App\Models\CompanySetupLink::STEP_SOCIAL, $signal, $base));
         }
         [$kind, $reason] = array_pad(explode(':', $signal, 2), 2, null);
-        $query = $kind === 'choose' ? 'social=choose' : 'social=error&reason=' . $reason;
+        $query = match ($kind) {
+            'choose' => 'social=choose',
+            'publish_ok' => 'social=publish_ok', // F2.8: "Ligar publicação" concluída
+            default => 'social=error&reason=' . $reason,
+        };
 
         return redirect()->away($base . '/companies/' . $companyId . '?' . $query);
     }

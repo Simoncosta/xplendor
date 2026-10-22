@@ -95,6 +95,8 @@ final class RoutePermissions
         'PUT {id}/integrations/social/accounts' => 'integracoes.configurar',
         'GET {id}/integrations/social/auth-url' => 'integracoes.configurar',
         'GET {id}/integrations/social/candidates' => 'integracoes.configurar',
+        'GET {id}/integrations/social/publish-auth-url' => 'integracoes.configurar', // F2.8
+        'DELETE {id}/integrations/social/publishing' => 'integracoes.configurar', // F2.8
         'GET {id}/setup-link' => 'integracoes.configurar',
         'POST {id}/setup-links' => 'integracoes.configurar',
         'POST {id}/setup-links/{linkId}/extend' => 'integracoes.configurar',
@@ -144,6 +146,7 @@ final class RoutePermissions
         'POST {id}/editorial/posts/{postId}/request-changes' => 'editorial.aprovar',
         'PUT {id}/editorial/posts/{postId}/results' => 'editorial.editar',
         'POST {id}/editorial/posts/{postId}/skip-network' => 'editorial.editar',
+        'POST {id}/editorial/posts/{postId}/retry-publication' => 'editorial.editar', // F2.8
         'GET {id}/editorial/posts/{postId}/workflow' => 'editorial.ver',
         'GET {id}/editorial/results' => 'editorial.ver',
         'GET {id}/editorial/review-links' => 'editorial.ver',

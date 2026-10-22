@@ -27,11 +27,11 @@ class FakeMetaSocialClient implements MetaSocialClientInterface
 
     public bool $revokeSucceeds = true;
 
-    public function authUrl(string $state): string
+    public function authUrl(string $state, array $extraScopes = []): string
     {
-        $this->calls[] = ['authUrl', [$state]];
+        $this->calls[] = ['authUrl', [$state, $extraScopes]];
 
-        return 'https://meta.simulada/dialog?state=' . urlencode($state);
+        return 'https://meta.simulada/dialog?state=' . urlencode($state) . ($extraScopes ? '&scope=' . implode(',', $extraScopes) : '');
     }
 
     public function exchangeCode(string $code): ?array

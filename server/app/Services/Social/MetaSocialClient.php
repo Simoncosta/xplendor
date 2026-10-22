@@ -27,13 +27,16 @@ class MetaSocialClient implements MetaSocialClientInterface
 
     private const TIMEOUT = 15;
 
-    /** URL de autorização: só as três permissões das redes; rerequest volta a pedir as recusadas. */
-    public function authUrl(string $state): string
+    /**
+     * URL de autorização: as três permissões das redes (mais as de publicar, só em "Ligar publicação",
+     * F2.8); rerequest volta a pedir as recusadas.
+     */
+    public function authUrl(string $state, array $extraScopes = []): string
     {
         return self::DIALOG_URL . '?' . http_build_query([
             'client_id' => config('services.meta.app_id'),
             'redirect_uri' => self::redirectUri(),
-            'scope' => implode(',', SocialConnection::SCOPES),
+            'scope' => implode(',', array_values(array_unique([...SocialConnection::SCOPES, ...$extraScopes]))),
             'response_type' => 'code',
             'auth_type' => 'rerequest',
             'state' => $state,

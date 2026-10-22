@@ -71,6 +71,10 @@ class SocialConnectionService
         }
         $companyId = (int) $state['company_id'];
         $linkId = ! empty($state['setup_link_id']) ? (int) $state['setup_link_id'] : null;
+        // F2.8: "Ligar publicação" volta pelo mesmo endereço; a ligação de leitura não muda.
+        if (($state['purpose'] ?? null) === SocialPublishingConnectionService::PURPOSE) {
+            return [$companyId, app(SocialPublishingConnectionService::class)->handleCallback($companyId, $state, $code, $error), null];
+        }
 
         if ($error !== null || $code === null || $code === '') {
             return [$companyId, $error !== null ? 'error:denied' : 'error:params', $linkId];

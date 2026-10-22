@@ -187,6 +187,8 @@ class AgencyTenancySweepTest extends TestCase
         'GET api/v1/companies/{id}/integrations/social/candidates',
         'PUT api/v1/companies/{id}/integrations/social/accounts',
         'DELETE api/v1/companies/{id}/integrations/social',
+        'GET api/v1/companies/{id}/integrations/social/publish-auth-url', // F2.8
+        'DELETE api/v1/companies/{id}/integrations/social/publishing', // F2.8
         'GET api/v1/companies/{id}/integrations/meta/oauth-url',
         'POST api/v1/companies/{id}/integrations/meta/connect',
         'PATCH api/v1/companies/{id}/integrations/meta/account',

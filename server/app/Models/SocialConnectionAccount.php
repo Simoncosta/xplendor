@@ -15,13 +15,15 @@ class SocialConnectionAccount extends Model
 {
     protected $fillable = [
         'company_id', 'social_connection_id', 'platform', 'external_id', 'page_id', 'name', 'username', 'profile_picture_path', 'profile_picture_updated_at',
-        'page_access_token', 'is_primary', 'last_followers_count', 'last_read_at', 'last_error_at', 'last_error_kind',
+        'page_access_token', 'publish_access_token', 'is_primary', 'last_followers_count', 'last_read_at', 'last_error_at', 'last_error_kind',
     ];
 
-    protected $hidden = ['page_access_token'];
+    protected $hidden = ['page_access_token', 'publish_access_token'];
 
     protected $casts = [
         'page_access_token' => 'encrypted',
+        // F2.8: o token da Página dado por "Ligar publicação" (o que o publicador usa).
+        'publish_access_token' => 'encrypted',
         'is_primary' => 'boolean',
         'last_followers_count' => 'integer',
         'last_read_at' => 'datetime',

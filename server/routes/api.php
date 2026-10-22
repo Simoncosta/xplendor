@@ -278,6 +278,9 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/social/candidates', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'candidates']);
                     Route::put('/integrations/social/accounts', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'saveAccounts']);
                     Route::delete('/integrations/social', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'disconnect']);
+                    // F2.8: "Ligar publicação", autorização à parte (a leitura não muda).
+                    Route::get('/integrations/social/publish-auth-url', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'publishAuthUrl']);
+                    Route::delete('/integrations/social/publishing', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'disconnectPublishing']);
                 });
 
                 // F1c: link de configuração do cliente (gerar, renovar, revogar: admin da empresa,
@@ -829,6 +832,8 @@ Route::prefix('v1')->group(function () {
                     Route::get('/editorial/results', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'results']);
                     Route::post('/editorial/posts/{postId}/published', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'markPublished'])->whereNumber('postId');
                     Route::post('/editorial/posts/{postId}/skip-network', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'skipNetwork'])->whereNumber('postId');
+                    // F2.8: "Tentar de novo" numa publicação automática que falhou (uma rede).
+                    Route::post('/editorial/posts/{postId}/retry-publication', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'retryPublication'])->whereNumber('postId');
                     Route::get('/editorial/formats', fn () => \App\Helpers\ApiResponse::success(\App\Services\Editorial\NetworkFormats::table(), 'Formatos por rede.'));
                     Route::put('/editorial/posts/{postId}/results', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'saveResults'])->whereNumber('postId');
                     // F3c: links de aprovação por lote (rotas fixas antes de /{linkId}).

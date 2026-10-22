@@ -124,7 +124,8 @@ class AutoPublisher
         $version = EditorialPostVersion::find($post->approved_version_id ?? $post->current_version_id);
         $caption = self::caption($version, $network->network);
         [$items, $cover] = MetaMediaPreparer::media($version);
-        $token = (string) $account->page_access_token;
+        // F2.8: o token de "Ligar publicação" (com as permissões de publicar); sem ele, o da leitura.
+        $token = (string) ($account->publish_access_token ?: $account->page_access_token);
 
         $result = $network->network === 'instagram'
             ? $this->instagram($publication, (string) $account->external_id, $token, (string) $network->media_format, $caption, $items, $cover)

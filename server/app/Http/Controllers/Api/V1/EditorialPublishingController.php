@@ -44,6 +44,17 @@ class EditorialPublishingController extends Controller
         return ApiResponse::success($this->workflow->detail($post, $request->user()), 'Registado: não publicar nesta rede.');
     }
 
+    // POST { network } · F2.8: "Tentar de novo" na publicação automática que falhou nesta rede.
+    public function retryPublication(Request $request, int $companyId, int $postId)
+    {
+        $data = $request->validate(['network' => ['required', 'string', 'in:instagram,facebook']]);
+        $post = $this->post($companyId, $postId);
+        \App\Services\Editorial\EditorialWorkflowService::assertProducer($request->user(), $companyId); // como "marcar como publicada"
+        app(\App\Services\Social\Publishing\AutoPublishingScheduler::class)->retry($post, $data['network']);
+
+        return ApiResponse::success($this->workflow->detail($post->fresh(), $request->user()), 'A publicação automática vai tentar de novo.');
+    }
+
     // PUT { network, measured_on, reach, interactions, likes, comments, saves, shares, clicks, video_views, worked, change }
     public function saveResults(Request $request, int $companyId, int $postId)
     {

@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { AutoPublicationLine } from "./PublishSection";
+import { AutoPublicationBadge, AutoPublicationLine } from "./PublishSection";
 import type { SocialPublicationInfo } from "common/models/editorialWorkflow.model";
 
 jest.mock("helpers/laravel_helper", () => ({ savePostResults: jest.fn(), skipPostNetwork: jest.fn(), markPostPublished: jest.fn() }));
@@ -33,6 +33,15 @@ describe("AutoPublicationLine (F2.2)", () => {
         expect(screen.getByText(/Publicação automática adiada: A quota está esgotada\./)).toBeInTheDocument();
         rerender(<AutoPublicationLine info={info({ next_attempt_at: "2026-11-12T12:01:00Z" })} published={false} />);
         expect(screen.getByText(/À espera de que o Instagram acabe de processar o vídeo/)).toBeInTheDocument();
+    });
+
+    it("mostra o estado por rede ao lado da rede (F2.8)", () => {
+        const { rerender, container } = render(<AutoPublicationBadge info={info({ status: "failed", label: "Falhou" })} />);
+        expect(screen.getByText("Falhou")).toBeInTheDocument();
+        rerender(<AutoPublicationBadge info={info({ status: "published", label: "Publicado" })} />);
+        expect(screen.getByText("Publicado")).toBeInTheDocument();
+        rerender(<AutoPublicationBadge info={info({ status: "cancelled", label: "Cancelado" })} />);
+        expect(container).toBeEmptyDOMElement();
     });
 
     it("diz que saiu sozinha", () => {
