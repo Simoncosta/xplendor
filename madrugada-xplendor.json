@@ -1,0 +1,40 @@
+{
+    "permissions": {
+        "allow": [
+            "mcp__notion__notion-search",
+            "mcp__notion__notion-fetch",
+            "mcp__notion__notion-query-data-sources",
+            "mcp__notion__notion-update-page",
+            "Edit",
+            "Write",
+            "Bash(docker exec *)",
+            "Bash(docker compose exec *)",
+            "Bash(docker compose ps *)",
+            "Bash(docker compose logs *)",
+            "Bash(git status *)",
+            "Bash(git diff *)",
+            "Bash(git log *)",
+            "Bash(git show *)",
+            "Bash(git add *)",
+            "Bash(git commit *)",
+            "Bash(git revert *)",
+            "Bash(npm run *)",
+            "Bash(npm test *)"
+        ],
+        "deny": [
+            "Bash(git push *)",
+            "Bash(ssh *)",
+            "Bash(scp *)",
+            "Bash(rsync *)",
+            "Bash(curl *)",
+            "Bash(wget *)",
+            "Bash(docker compose down *)",
+            "Bash(docker volume rm *)",
+            "Bash(docker system prune *)",
+            "Bash(git reset --hard *)",
+            "Bash(rm -rf *)",
+            "Read(./.env)",
+            "Read(./.env.*)"
+        ]
+    }
+}
