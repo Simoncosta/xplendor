@@ -27,7 +27,8 @@ class AutoPublisher
 {
     public const RESULTS = ['published' => 0, 'failed' => 0, 'cancelled' => 0];
 
-    public function __construct(private readonly MetaPublishingClient $meta, private readonly EditorialPublishingService $publishing) {}
+    public function __construct(private readonly MetaPublishingClient $meta, private readonly EditorialPublishingService $publishing,
+        private readonly MetaMediaPreparer $files) {}
 
     /** @return array{published: int, failed: int, cancelled: int} */
     public function runDue(int $limit = 20): array
@@ -72,7 +73,7 @@ class AutoPublisher
         }
         $version = EditorialPostVersion::find($post->approved_version_id ?? $post->current_version_id);
         $caption = self::caption($version, $network->network);
-        [$items, $cover] = self::media($version);
+        [$items, $cover] = MetaMediaPreparer::media($version);
         $token = (string) $account->page_access_token;
 
         $result = $network->network === 'instagram'
@@ -103,15 +104,16 @@ class AutoPublisher
             return self::failure(MetaPublishingClient::KIND_TRANSIENT, 'A quota diária de publicações do Instagram está esgotada.', 'quota');
         }
 
+        // Os URLs assinados (1 hora) geram-se aqui, no momento de criar o contentor (F2.3).
         $container = match ($format) {
-            'ig_feed_image' => ($url = self::url($items[0] ?? null, 'image'))
+            'ig_feed_image' => ($url = $this->imageUrl($items[0] ?? null))
                 ? $this->meta->createInstagramContainer($igId, $token, ['media_type' => 'IMAGE', 'image_url' => $url, 'caption' => $caption])
                 : self::permanent('A versão aprovada não tem a imagem.'),
             'ig_carousel' => $this->carousel($igId, $token, $caption, $items),
-            'ig_reel' => ($url = self::url($items[0] ?? null, 'video'))
-                ? $this->meta->createInstagramContainer($igId, $token, array_filter(['media_type' => 'REELS', 'video_url' => $url, 'caption' => $caption,
-                    'cover_url' => $cover ? $cover->externalUrl('original') : null]))
-                : self::permanent('A versão aprovada não tem o vídeo.'),
+            'ig_reel' => ($problem = $this->videoProblem($items[0] ?? null, $format))
+                ? self::permanent($problem)
+                : $this->meta->createInstagramContainer($igId, $token, array_filter(['media_type' => 'REELS', 'video_url' => $items[0]->externalUrl('original'),
+                    'caption' => $caption, 'cover_url' => $this->imageUrl($cover)])),
             default => self::permanent(self::notYet($format)),
         };
         if (! $container['ok']) {
@@ -137,8 +139,11 @@ class AutoPublisher
         }
         $children = [];
         foreach ($items as $asset) {
-            $video = $asset->kind === 'video';
-            $url = $asset->externalUrl('original');
+            $video = $asset->kind === MediaAsset::VIDEO;
+            if ($video && ($problem = $this->videoProblem($asset, 'ig_carousel'))) {
+                return self::permanent($problem);
+            }
+            $url = $video ? $asset->externalUrl('original') : $this->imageUrl($asset);
             if (! $url) {
                 return self::permanent('Falta um dos ficheiros do carrossel.');
             }
@@ -158,13 +163,19 @@ class AutoPublisher
     {
         $payload = match ($format) {
             'fb_post' => ['type' => 'text', 'message' => $caption],
-            'fb_photos' => ($urls = array_values(array_filter(array_map(fn ($a) => self::url($a, 'image'), $items))))
+            'fb_photos' => ($urls = array_values(array_filter(array_map(fn ($a) => $this->imageUrl($a), $items))))
                 ? ['type' => count($urls) === 1 ? 'photo' : 'photos', 'message' => $caption, 'urls' => $urls] : null,
-            'fb_video', 'fb_reel' => ($url = self::url($items[0] ?? null, 'video')) ? ['type' => 'video', 'message' => $caption, 'urls' => [$url]] : null,
+            'fb_video', 'fb_reel' => ($items[0] ?? null)?->kind === MediaAsset::VIDEO ? ['type' => 'video', 'message' => $caption, 'urls' => []] : null,
             default => false,
         };
         if ($payload === false) {
             return self::permanent(self::notYet($format));
+        }
+        if (($payload['type'] ?? null) === 'video') {
+            if ($problem = $this->videoProblem($items[0], $format)) {
+                return self::permanent($problem);
+            }
+            $payload['urls'] = [$items[0]->externalUrl('original')];
         }
         if ($payload === null) {
             return self::permanent('A versão aprovada não tem os ficheiros deste formato.');
@@ -206,23 +217,19 @@ class AutoPublisher
         return trim(trim((string) $version->captionFor($network)) . ($tags !== '' ? "\n\n" . $tags : ''));
     }
 
-    /** @return array{0: MediaAsset[], 1: ?MediaAsset} os ficheiros pela ordem e a capa */
-    private static function media(?EditorialPostVersion $version): array
+    /** A imagem em JPEG para a Meta (F2.3), ou null se não for uma imagem. */
+    private function imageUrl(?MediaAsset $asset): ?string
     {
-        if (! $version) {
-            return [[], null];
-        }
-        $rows = DB::table('editorial_post_version_media')->where('version_id', $version->id)->orderBy('position')->get();
-        $assets = MediaAsset::whereIn('id', $rows->pluck('media_asset_id'))->get()->keyBy('id');
-        $items = $rows->where('role', 'item')->map(fn ($r) => $assets[$r->media_asset_id] ?? null)->filter()->values()->all();
-        $cover = ($c = $rows->firstWhere('role', 'cover')) ? ($assets[$c->media_asset_id] ?? null) : null;
-
-        return [$items, $cover];
+        return $asset ? $this->files->imageUrl($asset) : null;
     }
 
-    private static function url(?MediaAsset $asset, string $kind): ?string
+    private function videoProblem(?MediaAsset $asset, string $format): ?string
     {
-        return $asset && $asset->kind === $kind ? $asset->externalUrl('original') : null;
+        if (! $asset || $asset->kind !== MediaAsset::VIDEO) {
+            return 'A versão aprovada não tem o vídeo.';
+        }
+
+        return $this->files->videoProblem($asset, $format);
     }
 
     private static function permanent(string $message): array

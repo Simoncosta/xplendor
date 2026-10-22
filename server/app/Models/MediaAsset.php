@@ -20,11 +20,12 @@ class MediaAsset extends Model
     public const READY = 'ready';
     public const REJECTED = 'rejected';
 
-    public const VARIANTS = ['original', 'thumb', 'preview', 'poster'];
+    /** "meta": o JPEG para o Instagram (F2.3), gerado ao programar quando o original não é JPEG. */
+    public const VARIANTS = ['original', 'thumb', 'preview', 'poster', 'meta'];
 
     protected $fillable = [
         'company_id', 'uploaded_by_user_id', 'impersonator_user_id', 'kind', 'disk', 'dir', 'original_name',
-        'extension', 'mime', 'size_bytes', 'variants_bytes', 'width', 'height', 'duration_ms', 'codec', 'sha256', 'variants',
+        'extension', 'mime', 'size_bytes', 'variants_bytes', 'width', 'height', 'duration_ms', 'codec', 'audio_codec', 'sha256', 'variants',
         'status', 'error', 'original_deleted_at', 'original_disk', 'original_path',
     ];
 
@@ -78,7 +79,8 @@ class MediaAsset extends Model
      * pedido ao endereço no momento da publicação). Endereço ABSOLUTO e assinado, válido por
      * config storage_targets.external_fetch_ttl (1 hora por omissão):
      *  · no R2: um endereço assinado do próprio R2 (o bucket continua privado);
-     *  · no disco local: o URL assinado da aplicação, absoluto.
+     *  · no disco local: o URL da aplicação, absoluto, mas com a assinatura RELATIVA (a rota
+     *    media.file valida com signed:relative; uma assinatura absoluta seria sempre recusada).
      * Quem chama tem de ter verificado a empresa e a permissão (ACL) antes.
      */
     public function externalUrl(string $variant = 'original'): ?string
@@ -93,7 +95,7 @@ class MediaAsset extends Model
             return \App\Support\Storage\SignedFileUrl::for($disk, $path, $ttl);
         }
 
-        return URL::temporarySignedRoute('media.file', now()->addSeconds($ttl), ['asset' => $this->id, 'variant' => $variant]);
+        return url(URL::temporarySignedRoute('media.file', now()->addSeconds($ttl), ['asset' => $this->id, 'variant' => $variant], absolute: false));
     }
 
     public function ratio(): ?float

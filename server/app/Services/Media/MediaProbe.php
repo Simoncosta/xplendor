@@ -43,6 +43,30 @@ class MediaProbe
         ];
     }
 
+    /**
+     * F2.3 · Para a Meta: o codec da imagem, o do som ("none" sem som) e a duração.
+     *
+     * @return array{video_codec: ?string, audio_codec: string, duration_ms: int}
+     */
+    public function probeStreams(string $absolutePath): array
+    {
+        $p = new Process([(string) config('media.ffprobe', 'ffprobe'), '-v', 'error',
+            '-show_entries', 'stream=codec_type,codec_name:format=duration', '-of', 'json', $absolutePath]);
+        $p->setTimeout(60);
+        $p->run();
+        if (! $p->isSuccessful()) {
+            throw new \RuntimeException('Não foi possível ler o vídeo.');
+        }
+        $data = json_decode($p->getOutput(), true) ?: [];
+        $streams = collect($data['streams'] ?? []);
+
+        return [
+            'video_codec' => $streams->firstWhere('codec_type', 'video')['codec_name'] ?? null,
+            'audio_codec' => (string) ($streams->firstWhere('codec_type', 'audio')['codec_name'] ?? 'none'),
+            'duration_ms' => (int) round(((float) ($data['format']['duration'] ?? 0)) * 1000),
+        ];
+    }
+
     /** Grava a capa (JPEG) a partir de um instante do vídeo. */
     public function posterFrame(string $absoluteVideo, string $absoluteJpeg, float $atSeconds): void
     {

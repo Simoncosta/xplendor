@@ -1236,8 +1236,9 @@ Route::get('social-avatar/{account}', [\App\Http\Controllers\Api\MediaFileContro
     ->whereNumber('account')->middleware(['signed:relative', 'throttle:600,1'])->name('social.avatar');
 
 // Media da Linha Editorial (disco privado): só por URL assinado de curta duração e relativo.
+// "meta" é o JPEG para a Meta (F2.3), que só sai por MediaAsset::externalUrl().
 Route::get('media/{asset}/{variant}', [\App\Http\Controllers\Api\MediaFileController::class, 'show'])
-    ->whereNumber('asset')->where('variant', 'original|thumb|preview|poster')
+    ->whereNumber('asset')->where('variant', 'original|thumb|preview|poster|meta')
     ->middleware(['signed:relative', 'throttle:600,1'])->name('media.file');
 
 // Ficheiros privados (faturas dos pedidos de suporte e fotografias dos relatórios de

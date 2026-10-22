@@ -45,7 +45,7 @@ class MediaFileController extends Controller
         abort_if(! $media || ! $path || ! $disk->exists($path), 404);
 
         return self::file($disk, $media->diskNameFor($variant), $path,
-            $variant === 'original' ? $media->mime : ($variant === 'poster' ? 'image/jpeg' : 'image/webp'));
+            $variant === 'original' ? $media->mime : (in_array($variant, ['poster', 'meta'], true) ? 'image/jpeg' : 'image/webp'));
     }
 
     private static function file(Filesystem $disk, string $diskName, string $path, string $mime): Response

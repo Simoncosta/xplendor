@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Publishing;
 
+use App\Jobs\PrepareSocialPublicationMediaJob;
 use App\Models\Company;
 use App\Models\EditorialPost;
 use App\Models\EditorialPostNetwork;
@@ -49,10 +50,11 @@ class AutoPublishingScheduler
             }
 
             if (! $publication) {
-                SocialPublication::create([
+                $created = SocialPublication::create([
                     'company_id' => $post->company_id, 'editorial_post_id' => $post->id, 'editorial_post_network_id' => $network->id,
                     'network' => $network->network, 'status' => SocialPublication::STATUS_SCHEDULED, 'scheduled_for' => $dueAt,
                 ]);
+                self::prepareMedia($created);
 
                 continue;
             }
@@ -68,8 +70,15 @@ class AutoPublishingScheduler
                     'status' => SocialPublication::STATUS_SCHEDULED, 'scheduled_for' => $dueAt, 'attempts' => 0, 'next_attempt_at' => null,
                     'container_id' => null, 'error_code' => null, 'error_message' => null, 'cancelled_at' => null,
                 ])->save();
+                self::prepareMedia($publication);
             }
         }
+    }
+
+    /** F2.3 · Os ficheiros para a Meta preparam-se ao programar, na fila (depois de gravar). */
+    private static function prepareMedia(SocialPublication $publication): void
+    {
+        PrepareSocialPublicationMediaJob::dispatch($publication->id)->afterCommit();
     }
 
     /** O interruptor da empresa mudou: reavalia as publicações Programadas com a caixa marcada. */
