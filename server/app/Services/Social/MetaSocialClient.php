@@ -114,7 +114,8 @@ class MetaSocialClient implements MetaSocialClientInterface
         ];
 
         for ($i = 0; $i < 10 && $url; $i++) {
-            $r = $this->send(fn () => Http::timeout(self::TIMEOUT)->get($url, $query));
+            // O "next" já traz os parâmetros: sem query (um 'query' vazio apagava a do endereço e voltava à primeira página).
+            $r = $this->send(fn () => $query === [] ? Http::timeout(self::TIMEOUT)->get($url) : Http::timeout(self::TIMEOUT)->get($url, $query));
             if (! $r || ! $r->successful()) {
                 return $this->failure($r);
             }
