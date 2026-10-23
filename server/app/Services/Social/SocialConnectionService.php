@@ -75,6 +75,10 @@ class SocialConnectionService
         if (($state['purpose'] ?? null) === SocialPublishingConnectionService::PURPOSE) {
             return [$companyId, app(SocialPublishingConnectionService::class)->handleCallback($companyId, $state, $code, $error), null];
         }
+        // Parceiro 2: a ligação da Meta da agência volta também por aqui (company_id é a agência).
+        if (($state['purpose'] ?? null) === \App\Services\Agency\AgencyMetaConnectionService::PURPOSE) {
+            return [$companyId, app(\App\Services\Agency\AgencyMetaConnectionService::class)->handleCallback($companyId, $state, $code, $error), null];
+        }
 
         if ($error !== null || $code === null || $code === '') {
             return [$companyId, $error !== null ? 'error:denied' : 'error:params', $linkId];

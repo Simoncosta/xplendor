@@ -478,6 +478,14 @@ Schedule::job(new \App\Jobs\PurgeRadarItemsJob())
         \Illuminate\Support\Facades\Log::error('[Radar] Apagamento aos 30 dias falhou no scheduler');
     });
 
+// 09:10 (Lisboa): Parceiro 2, o aviso para renovar a ligação da Meta da agência (10 dias antes do fim)
+// e a marca de expirada. Interna: só lê a base de dados.
+Schedule::job(new \App\Jobs\WarnAgencyMetaRenewalJob())
+    ->dailyAt('09:10')
+    ->timezone('Europe/Lisbon')
+    ->name('agency-meta-renewal')
+    ->withoutOverlapping();
+
 // 03:30 (Lisboa): Radar, o histórico das reações guarda 12 meses; apaga o que é mais antigo (interna).
 Schedule::job(new \App\Jobs\PurgeRadarReactionHistoryJob())
     ->dailyAt('03:30')

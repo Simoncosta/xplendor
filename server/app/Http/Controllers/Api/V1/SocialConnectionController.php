@@ -141,6 +141,10 @@ class SocialConnectionController extends Controller
             return redirect()->away(app(\App\Services\Setup\SetupPublicService::class)->afterOAuth($linkId, \App\Models\CompanySetupLink::STEP_SOCIAL, $signal, $base));
         }
         [$kind, $reason] = array_pad(explode(':', $signal, 2), 2, null);
+        // Parceiro 2: a ligação da agência volta à área da agência.
+        if (in_array($kind, ['agency_ok', 'agency_error'], true)) {
+            return redirect()->away($base . '/agency?tab=meta&' . ($kind === 'agency_ok' ? 'meta=ok' : 'meta=error&reason=' . $reason));
+        }
         $query = match ($kind) {
             'choose' => 'social=choose',
             'publish_ok' => 'social=publish_ok', // F2.8: "Ligar publicação" concluída

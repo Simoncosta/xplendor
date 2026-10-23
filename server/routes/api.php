@@ -975,6 +975,13 @@ Route::prefix('v1')->group(function () {
                 // Pedir a gestão de uma empresa existente (F1d) e terminar a relação com um cliente.
                 Route::get('/management-requests', [$c, 'managementRequests']);
                 Route::get('/billing', [$c, 'billing']);
+                // Parceiro 2: a ligação da Meta da agência (ver: a agência; ligar e desligar: o administrador).
+                $meta = \App\Http\Controllers\Api\V1\Agency\AgencyMetaController::class;
+                Route::get('/meta', [$meta, 'show']);
+                Route::middleware('block_when_impersonating')->group(function () use ($meta) {
+                    Route::get('/meta/auth-url', [$meta, 'authUrl']);
+                    Route::delete('/meta', [$meta, 'disconnect']);
+                });
                 Route::middleware('block_when_impersonating')->group(function () use ($c) {
                     Route::post('/management-requests', [$c, 'storeManagementRequest'])->middleware('throttle:20,1');
                     Route::post('/management-requests/{requestId}/withdraw', [$c, 'withdrawManagementRequest'])->whereNumber('requestId');

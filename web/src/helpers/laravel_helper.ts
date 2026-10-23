@@ -444,6 +444,10 @@ export const createAgencyManagementRequest = (agencyId: number, data: { nipc?: s
     api.create(AG(agencyId) + `/management-requests`, data);
 export const withdrawAgencyManagementRequest = (agencyId: number, requestId: number) => api.create(AG(agencyId) + `/management-requests/${requestId}/withdraw`, {});
 export const endAgencyManagement = (agencyId: number, companyId: number, reason: string) => api.create(AG(agencyId) + `/managed/${companyId}/end`, { reason });
+// Parceiro 2: a ligação da Meta da agência (estado, autorizar e desligar).
+export const getAgencyMeta = (agencyId: number) => api.get(AG(agencyId) + `/meta`);
+export const getAgencyMetaAuthUrl = (agencyId: number) => api.get(AG(agencyId) + `/meta/auth-url`);
+export const disconnectAgencyMeta = (agencyId: number) => api.delete(AG(agencyId) + `/meta`);
 // F1d (root): pedidos de gestão com a situação de faturação, e terminar uma relação.
 export const getAdminManagementRequests = (status?: string) => api.get(url.GET_ADMIN + `/management-requests`, status ? { status } : undefined);
 export const endAdminCompanyManagement = (companyId: number, reason: string) => api.create(url.GET_ADMIN + `/companies/${companyId}/management/end`, { reason });

@@ -19,6 +19,7 @@ import SetupLinkModal from "pages/Companies/CompanyProfile/setupLink/SetupLinkMo
 import { isAdminRole } from "helpers/roles";
 import { useAccess } from "contexts/ModulesContext";
 import Skeleton from "Components/Common/Skeleton";
+import AgencyMetaTab from "./AgencyMetaTab";
 
 /**
  * Painel da agência (a equipa da agência e o root, no contexto da agência): por cliente, o
@@ -35,7 +36,7 @@ type Req = {
 };
 type Member = { id: number; name: string; role: string };
 type Assignment = { company: Client; team_scope: "all" | "assigned"; member_ids: number[] };
-type Tab = "clientes" | "gestao" | "pedidos" | "atribuicoes";
+type Tab = "clientes" | "gestao" | "pedidos" | "atribuicoes" | "meta";
 
 const STATUS: Record<Req["status"], { label: string; color: string }> = {
     pending: { label: "Por decidir", color: "warning" },
@@ -58,7 +59,7 @@ export default function AgencyPanelPage() {
     const isAgencyAdmin = !!wc?.isRoot || agencyAdmin; // do backend (/my-access): administra a agência
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get("tab") as Tab | null;
-    const tab: Tab = tabParam === "pedidos" || tabParam === "gestao" || (tabParam === "atribuicoes" && isAgencyAdmin) ? tabParam : "clientes";
+    const tab: Tab = tabParam === "pedidos" || tabParam === "gestao" || tabParam === "meta" || (tabParam === "atribuicoes" && isAgencyAdmin) ? tabParam : "clientes";
     const setTab = (t: Tab) => setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set("tab", t); return n; }, { replace: true });
 
     if (!agencyId) {
@@ -72,6 +73,7 @@ export default function AgencyPanelPage() {
 
     const tabs: [Tab, string, string][] = [["clientes", "Clientes", "ri-dashboard-line"], ["gestao", "Pedidos de gestão", "ri-links-line"], ["pedidos", "Pedidos de empresa nova", "ri-file-add-line"]];
     if (isAgencyAdmin) tabs.push(["atribuicoes", "Atribuições", "ri-team-line"]);
+    tabs.push(["meta", "Meta", "ri-facebook-circle-line"]);
 
     return (
         <div className="page-content">
@@ -88,6 +90,8 @@ export default function AgencyPanelPage() {
                 {tab === "gestao" && <ManagementTab agencyId={agencyId} />}
                 {tab === "pedidos" && <RequestsTab agencyId={agencyId} />}
                 {tab === "atribuicoes" && isAgencyAdmin && <AssignmentsTab agencyId={agencyId} asRoot={!!wc?.isRoot} />}
+                {tab === "meta" && <AgencyMetaTab agencyId={agencyId} canManage={agencyAdmin && !wc?.isRoot}
+                    manageReason={wc?.isRoot ? "A ligação da Meta é feita por um administrador da agência, com o seu login." : "Só o administrador da agência liga e desliga a Meta."} />}
             </Container>
         </div>
     );
