@@ -85,6 +85,12 @@ class SitePopupController extends Controller
             'priority' => ['nullable', 'integer', 'min:-100', 'max:100'],
             'is_active' => ['nullable', 'boolean'],
             'image_file_id' => ['nullable', 'integer'],
+            // O recorte 4:3 escolhido no editor, em frações (0 a 1) da imagem original.
+            'image_crop' => ['nullable', 'array:x,y,width,height', 'required_array_keys:x,y,width,height'],
+            'image_crop.x' => ['numeric', 'min:0', 'max:1'],
+            'image_crop.y' => ['numeric', 'min:0', 'max:1'],
+            'image_crop.width' => ['numeric', 'gt:0', 'max:1'],
+            'image_crop.height' => ['numeric', 'gt:0', 'max:1'],
             'remove_image' => ['nullable', 'boolean'],
         ], [
             'button_url.regex' => 'A ligação do botão tem de começar por https:// ou ser um caminho do site (por exemplo, /viaturas).',

@@ -18,15 +18,24 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Os avisos (pop-up) dos sites dos clientes.
- *  · A imagem escolhida nos Ficheiros (privados) é publicada como cópia reduzida (até 1200 px,
- *    WebP) no disco público; ao trocar a imagem ou apagar o aviso, a cópia antiga é apagada.
+ *  · A imagem escolhida nos Ficheiros (privados) é publicada no disco público com o recorte 4:3 do
+ *    editor, a 960 × 720 px, em WebP até 200 KB; ao trocar a imagem ou apagar o aviso, a cópia
+ *    antiga é apagada.
  *  · A API pública devolve numa só chamada os avisos ativos, por prioridade, cada um com as suas
  *    páginas: o site mostra o primeiro que se aplica à página.
  *  · As vistas, os cliques e os fechos contam-se por dia, só números (sem IP, sem cookies).
  */
 class SitePopupService
 {
-    public const IMAGE_MAX = 1200;
+    /**
+     * A imagem do aviso no site (medidas reais do site da Quebom, spike de 23/10): 4:3, publicada a
+     * 960 × 720 px, em WebP, até 200 KB (a qualidade desce de 10 em 10, desde 80, até caber).
+     */
+    public const IMAGE_WIDTH = 960;
+    public const IMAGE_HEIGHT = 720;
+    public const IMAGE_MAX_BYTES = 200 * 1024;
+    public const IMAGE_QUALITY = 80;
+    private const IMAGE_MIN_QUALITY = 20;
 
     public function __construct(private readonly FileAccess $files) {}
 
@@ -48,12 +57,13 @@ class SitePopupService
         }
         $oldImage = $popup?->image_path;
         $newImage = null;
-        if (! empty($data['image_file_id']) && (int) $data['image_file_id'] !== (int) $popup?->image_file_id) {
+        // Uma imagem nova, ou a mesma com um recorte novo, publica-se outra vez.
+        if (! empty($data['image_file_id']) && ((int) $data['image_file_id'] !== (int) $popup?->image_file_id || ! empty($data['image_crop']))) {
             $file = StoredFile::where('company_id', $companyId)->whereNull('deleted_at')->find((int) $data['image_file_id']);
             if (! $file || ! $this->files->canSeeFile($user, $file)) {
                 throw ValidationException::withMessages(['image_file_id' => ['A imagem não foi encontrada nos Ficheiros.']]);
             }
-            $newImage = $this->publishImage($companyId, $file);
+            $newImage = $this->publishImage($companyId, $file, $data['image_crop'] ?? null);
             $fields['image_path'] = $newImage;
             $fields['image_file_id'] = $file->id;
         } elseif (! empty($data['remove_image'])) {
@@ -86,8 +96,14 @@ class SitePopupService
         $popup->delete();
     }
 
-    /** A cópia pública da imagem (WebP, até 1200 px). Devolve o caminho no disco público. */
-    public function publishImage(int $companyId, StoredFile $file): string
+    /**
+     * A cópia pública da imagem: o recorte 4:3 (em frações da imagem original; sem recorte, o centro
+     * da imagem, como o site a mostraria), redimensionado para 960 × 720 e comprimido até 200 KB.
+     * Devolve o caminho no disco público.
+     *
+     * @param array{x: float, y: float, width: float, height: float}|null $crop
+     */
+    public function publishImage(int $companyId, StoredFile $file, ?array $crop = null): string
     {
         if (! in_array((string) $file->mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
             throw ValidationException::withMessages(['image_file_id' => ['Escolha uma imagem JPG, PNG ou WebP.']]);
@@ -98,7 +114,27 @@ class SitePopupService
         }
         try {
             $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-            $webp = $manager->read($disk->get($file->path))->scaleDown(width: self::IMAGE_MAX, height: self::IMAGE_MAX)->toWebp(85)->toString();
+            $source = $disk->get($file->path);
+            $image = $manager->read($source);
+            if ($crop !== null) {
+                [$w, $h] = [$image->width(), $image->height()];
+                $cw = max(1, (int) round((float) $crop['width'] * $w));
+                $ch = max(1, (int) round((float) $crop['height'] * $h));
+                $cx = min(max(0, (int) round((float) $crop['x'] * $w)), $w - $cw);
+                $cy = min(max(0, (int) round((float) $crop['y'] * $h)), $h - $ch);
+                $image->crop($cw, $ch, $cx, $cy);
+            }
+            // cover: preenche 960 × 720 (corta ao centro o que sobrar; sem recorte, é o que o site faria).
+            $image->cover(self::IMAGE_WIDTH, self::IMAGE_HEIGHT);
+            $quality = self::IMAGE_QUALITY;
+            $webp = $image->toWebp($quality)->toString();
+            while (strlen($webp) > self::IMAGE_MAX_BYTES && $quality > self::IMAGE_MIN_QUALITY) {
+                $quality -= 10;
+                $webp = $image->toWebp($quality)->toString();
+            }
+            if (strlen($webp) > self::IMAGE_MAX_BYTES) {
+                \Illuminate\Support\Facades\Log::warning('[Avisos do site] A imagem não coube em 200 KB mesmo na qualidade mínima', ['file_id' => $file->id, 'bytes' => strlen($webp)]);
+            }
         } catch (\Throwable) {
             throw ValidationException::withMessages(['image_file_id' => ['Não foi possível ler esta imagem.']]);
         }

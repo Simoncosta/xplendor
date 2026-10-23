@@ -4,7 +4,20 @@ import SitePopupsPage from "./index";
 jest.mock("react-toastify", () => ({ toast: { success: jest.fn(), error: jest.fn(), info: jest.fn() }, ToastContainer: () => null }));
 jest.mock("contexts/WorkingCompanyContext", () => ({ useWorkingCompanyId: () => 4 }));
 jest.mock("Components/Common/PageHeader", () => ({ __esModule: true, default: ({ title }: any) => <h1>{title}</h1> }));
-jest.mock("pages/Files/FilePickerModal", () => ({ __esModule: true, default: () => null }));
+// O seletor devolve logo uma imagem; o recortador simulado comunica as medidas e um recorte 4:3.
+jest.mock("pages/Files/FilePickerModal", () => ({
+    __esModule: true,
+    default: ({ isOpen, onPick }: any) => (isOpen ? <button onClick={() => onPick({ id: 55, kind: "imagem", mime: "image/jpeg", url: "/f/55.jpg", thumb_url: "/f/55-t.jpg" })}>escolher-55</button> : null),
+}));
+jest.mock("react-easy-crop", () => ({
+    __esModule: true,
+    default: ({ onMediaLoaded, onCropComplete }: any) => (
+        <div>
+            <button onClick={() => onMediaLoaded({ naturalWidth: 1600, naturalHeight: 1200 })}>carregar</button>
+            <button onClick={() => onCropComplete({ x: 10, y: 5, width: 50, height: 50 }, { x: 160, y: 60, width: 800, height: 600 })}>recortar</button>
+        </div>
+    ),
+}));
 const mockGet = jest.fn();
 const mockCreate = jest.fn();
 jest.mock("helpers/laravel_helper", () => ({
@@ -47,5 +60,29 @@ describe("Avisos do site", () => {
         fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
         await waitFor(() => expect(mockCreate).toHaveBeenCalled());
         expect(mockCreate).toHaveBeenCalledWith(4, expect.objectContaining({ title: "Feira de outono", pages: ["home"], frequency: "once_per_visitor" }));
+    });
+
+    it("imagem: a medida recomendada, o recorte 4:3 com a faixa do telemóvel, os píxeis e o envio do recorte", async () => {
+        mockGet.mockResolvedValue({ data: { popups: [], can: { create: true, edit: true, delete: true } } });
+        mockCreate.mockResolvedValue({ data: popup() });
+        render(<SitePopupsPage />);
+        await screen.findByTestId("popups-empty");
+        fireEvent.click(screen.getByRole("button", { name: /Novo aviso/ }));
+        expect(await screen.findByTestId("popup-recommended")).toHaveTextContent("Recomendado: 960 × 720 px (4:3), até 200 KB.");
+        fireEvent.click(screen.getByRole("button", { name: "Escolher nos Ficheiros" }));
+        fireEvent.click(screen.getByText("escolher-55"));
+        expect(screen.getByTestId("popup-cropper")).toBeInTheDocument();
+        expect(screen.getByTestId("popup-safe-overlay")).toBeInTheDocument();
+        fireEvent.click(screen.getByText("carregar"));
+        fireEvent.click(screen.getByText("recortar"));
+        expect(screen.getByTestId("popup-pixels")).toHaveTextContent("Imagem original: 1600 × 1200 px · recorte: 800 × 600 px");
+        expect(screen.getByTestId("popup-pixels-warning")).toHaveTextContent("menos de 960 × 720 px");
+        expect(screen.getByTestId("preview-desktop")).toBeInTheDocument();
+        expect(screen.getByTestId("preview-mobile-375")).toBeInTheDocument();
+        expect(screen.getByTestId("preview-mobile-430")).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Com imagem" } });
+        fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+        await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+        expect(mockCreate).toHaveBeenCalledWith(4, expect.objectContaining({ image_file_id: 55, image_crop: { x: 0.1, y: 0.05, width: 0.5, height: 0.5 } }));
     });
 });

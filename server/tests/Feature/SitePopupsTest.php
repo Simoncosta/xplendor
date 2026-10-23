@@ -103,8 +103,9 @@ class SitePopupsTest extends TestCase
         $popup = $this->create(['image_file_id' => $this->image()->id]);
         Storage::disk('public')->assertExists($popup->image_path);
         $this->assertStringStartsWith("company_{$this->stand->id}/popups/", $popup->image_path);
-        [$w] = getimagesizefromstring(Storage::disk('public')->get($popup->image_path));
-        $this->assertSame(1200, $w, 'reduzida a 1200 px');
+        // Sem recorte, o centro 4:3 da imagem (como o site a mostraria), a 960 × 720 (23/10).
+        [$w, $h] = getimagesizefromstring(Storage::disk('public')->get($popup->image_path));
+        $this->assertSame([960, 720], [$w, $h]);
         $first = $popup->image_path;
 
         $this->actingAs($this->standAdmin, 'sanctum')->putJson($this->base() . "/site-popups/{$popup->id}", $this->payload(['image_file_id' => $this->image(800, 600)->id]))->assertOk();
@@ -116,6 +117,58 @@ class SitePopupsTest extends TestCase
         $this->actingAs($this->standAdmin, 'sanctum')->deleteJson($this->base() . "/site-popups/{$popup->id}")->assertOk();
         Storage::disk('public')->assertMissing($second);
         $this->assertSame(0, SitePopup::count());
+    }
+
+    public function test_the_editor_crop_is_applied_and_the_copy_is_960_by_720_up_to_200_kb(): void
+    {
+        // Metade esquerda vermelha e metade direita azul: o recorte da metade direita fica todo azul.
+        $img = imagecreatetruecolor(1600, 1200);
+        imagefilledrectangle($img, 0, 0, 799, 1199, imagecolorallocate($img, 220, 20, 20));
+        imagefilledrectangle($img, 800, 0, 1599, 1199, imagecolorallocate($img, 20, 20, 220));
+        ob_start();
+        imagepng($img);
+        $path = 'files/company_' . $this->stand->id . '/' . Str::uuid() . '.png';
+        Storage::disk('local')->put($path, (string) ob_get_clean());
+        $file = StoredFile::create(['company_id' => $this->stand->id, 'name' => 'metades.png', 'extension' => 'png', 'mime' => 'image/png', 'size_bytes' => 1,
+            'disk' => 'local', 'path' => $path, 'source' => 'upload', 'source_ref' => 'upload:' . Str::uuid(), 'is_system' => false]);
+
+        $popup = $this->create(['image_file_id' => $file->id, 'image_crop' => ['x' => 0.5, 'y' => 0.25, 'width' => 0.5, 'height' => 0.5]]);
+        $copy = imagecreatefromstring(Storage::disk('public')->get($popup->image_path));
+        $this->assertSame([960, 720], [imagesx($copy), imagesy($copy)]);
+        foreach ([[10, 10], [950, 710], [480, 360]] as [$x, $y]) {
+            $rgb = imagecolorat($copy, $x, $y);
+            $this->assertGreaterThan(150, $rgb & 0xFF, 'azul');
+            $this->assertLessThan(80, ($rgb >> 16) & 0xFF, 'sem vermelho');
+        }
+
+        // Recortar de novo a mesma imagem publica outra vez (a cópia antiga sai).
+        $old = $popup->image_path;
+        $this->actingAs($this->standAdmin, 'sanctum')->putJson($this->base() . "/site-popups/{$popup->id}",
+            $this->payload(['image_file_id' => $file->id, 'image_crop' => ['x' => 0, 'y' => 0, 'width' => 0.5, 'height' => 0.5]]))->assertOk();
+        $this->assertNotSame($old, $popup->fresh()->image_path);
+        Storage::disk('public')->assertMissing($old);
+        $rgb = imagecolorat(imagecreatefromstring(Storage::disk('public')->get($popup->fresh()->image_path)), 480, 360);
+        $this->assertGreaterThan(150, ($rgb >> 16) & 0xFF, 'agora a metade vermelha');
+
+        // Uma imagem com muito pormenor (ruído em blocos de 6 px, mais do que uma fotografia) fica até 200 KB.
+        $noise = imagecreatetruecolor(1600, 1200);
+        for ($y = 0; $y < 1200; $y += 6) {
+            for ($x = 0; $x < 1600; $x += 6) {
+                imagefilledrectangle($noise, $x, $y, $x + 5, $y + 5, imagecolorallocate($noise, random_int(0, 255), random_int(0, 255), random_int(0, 255)));
+            }
+        }
+        ob_start();
+        imagepng($noise);
+        $noisePath = 'files/company_' . $this->stand->id . '/' . Str::uuid() . '.png';
+        Storage::disk('local')->put($noisePath, (string) ob_get_clean());
+        $noiseFile = StoredFile::create(['company_id' => $this->stand->id, 'name' => 'ruido.png', 'extension' => 'png', 'mime' => 'image/png', 'size_bytes' => 1,
+            'disk' => 'local', 'path' => $noisePath, 'source' => 'upload', 'source_ref' => 'upload:' . Str::uuid(), 'is_system' => false]);
+        $noisy = $this->create(['title' => 'Ruído', 'image_file_id' => $noiseFile->id]);
+        $this->assertLessThanOrEqual(200 * 1024, strlen(Storage::disk('public')->get($noisy->image_path)));
+
+        // Um recorte fora de 0 a 1 é recusado.
+        $this->actingAs($this->standAdmin, 'sanctum')->postJson($this->base() . '/site-popups',
+            $this->payload(['image_file_id' => $file->id, 'image_crop' => ['x' => 0.8, 'y' => 0, 'width' => 1.4, 'height' => 0.5]]))->assertStatus(422);
     }
 
     public function test_the_public_api_lists_only_the_live_popups_by_priority_with_their_pages(): void

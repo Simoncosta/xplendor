@@ -9,6 +9,7 @@ import FilePickerModal from "pages/Files/FilePickerModal";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { createSitePopup, deleteSitePopup, getSitePopup, getSitePopups, updateSitePopup } from "helpers/laravel_helper";
 import { fileSrc, StoredFileDto } from "common/models/files.model";
+import PopupImageCropper, { CropPixels, CropState, PopupDevicePreviews, RECOMMENDED } from "./PopupImageCropper";
 
 /**
  * "Avisos do site": os avisos (pop-up) que o site da empresa mostra aos visitantes (os stands e
@@ -141,7 +142,9 @@ function PopupEditor({ companyId, popup, canEdit, onClose, onSaved }: { companyI
     const [frequency, setFrequency] = useState<string>(popup?.frequency ?? "once_per_visitor");
     const [priority, setPriority] = useState(popup?.priority ?? 0);
     const [active, setActive] = useState(popup?.is_active ?? true);
-    const [image, setImage] = useState<{ id: number | null; src: string | null; remove: boolean }>({ id: popup?.image_file_id ?? null, src: popup?.image_path ? `${PUBLIC_URL}${popup.image_path}` : null, remove: false });
+    const [image, setImage] = useState<{ id: number | null; src: string | null; remove: boolean; original?: string | null }>({ id: popup?.image_file_id ?? null, src: popup?.image_path ? `${PUBLIC_URL}${popup.image_path}` : null, remove: false });
+    // O recorte 4:3 da imagem escolhida agora (o servidor recorta, redimensiona e comprime).
+    const [crop, setCrop] = useState<CropState | null>(null);
     const [picking, setPicking] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -161,7 +164,8 @@ function PopupEditor({ companyId, popup, canEdit, onClose, onSaved }: { companyI
             toast.error("Escolha uma imagem JPG, PNG ou WebP.");
             return;
         }
-        setImage({ id: f.id, src: fileSrc(f.thumb_url ?? f.url) ?? null, remove: false });
+        setImage({ id: f.id, src: fileSrc(f.thumb_url ?? f.url) ?? null, remove: false, original: fileSrc(f.url ?? f.preview_url) ?? null });
+        setCrop(null);
         setPicking(false);
     };
 
@@ -172,7 +176,9 @@ function PopupEditor({ companyId, popup, canEdit, onClose, onSaved }: { companyI
             title: title.trim(), body: body.trim() || null, button_label: buttonLabel.trim() || null, button_url: buttonUrl.trim() || null,
             starts_at: startsAt ? new Date(startsAt).toISOString() : null, ends_at: endsAt ? new Date(endsAt).toISOString() : null,
             pages, delay_seconds: delay, frequency, priority, is_active: active,
-            image_file_id: image.id && image.id !== popup?.image_file_id ? image.id : undefined, remove_image: image.remove || undefined,
+            // Uma imagem escolhida agora vai sempre (mesmo que seja a mesma): o recorte pode ter mudado.
+            image_file_id: image.original ? image.id ?? undefined : (image.id && image.id !== popup?.image_file_id ? image.id : undefined), remove_image: image.remove || undefined,
+            image_crop: image.original && crop ? crop.fraction : undefined,
         };
         try {
             if (popup) await updateSitePopup(companyId, popup.id, payload); else await createSitePopup(companyId, payload);
@@ -205,7 +211,13 @@ function PopupEditor({ companyId, popup, canEdit, onClose, onSaved }: { companyI
                             <Button size="sm" color="outline-primary" onClick={() => setPicking(true)} disabled={!canEdit}>Escolher nos Ficheiros</Button>
                             {image.src && !image.remove && <Button size="sm" color="outline-secondary" onClick={() => setImage({ id: null, src: null, remove: true })} disabled={!canEdit}>Tirar</Button>}
                         </div>
-                        <small className="text-muted d-block">Publica-se uma cópia reduzida (até 1200 px) para o site; o original fica nos Ficheiros.</small>
+                        <small className="text-muted d-block" data-testid="popup-recommended">Recomendado: {RECOMMENDED.width} × {RECOMMENDED.height} px (4:3), até {RECOMMENDED.kb} KB. O site publica {RECOMMENDED.width} × {RECOMMENDED.height} px; o original fica nos Ficheiros.</small>
+                        {image.original && !image.remove && canEdit && (
+                            <div className="mt-2">
+                                <PopupImageCropper src={image.original} onChange={setCrop} />
+                                <CropPixels state={crop} />
+                            </div>
+                        )}
 
                         <Row className="g-2 mt-2">
                             <Col sm={5}><Label for="pop-btn" className="form-label">Botão: texto (opcional)</Label><Input id="pop-btn" value={buttonLabel} maxLength={60} onChange={(e) => setButtonLabel(e.target.value)} disabled={!canEdit} /></Col>
@@ -250,6 +262,12 @@ function PopupEditor({ companyId, popup, canEdit, onClose, onSaved }: { companyI
                                 {buttonLabel && buttonUrl ? <span className="btn btn-primary btn-sm">{buttonLabel}</span> : null}
                             </div>
                         </div>
+                        {(image.original || image.src) && !image.remove && (
+                            <div className="mt-3">
+                                <Label className="form-label">A imagem no site</Label>
+                                <PopupDevicePreviews src={(image.original ?? image.src) as string} fraction={image.original ? crop?.fraction ?? null : null} />
+                            </div>
+                        )}
                         {series && (
                             <div className="mt-3" data-testid="popup-series">
                                 <Label className="form-label">Vistas nos últimos 30 dias</Label>
