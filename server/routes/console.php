@@ -582,6 +582,19 @@ Schedule::command('health:watch')
         \Illuminate\Support\Facades\Log::error('[Saúde] A vigilância falhou no scheduler');
     });
 
+// 03:20 (Lisboa) — Cópia diária da base de dados, cifrada, para um bucket próprio fora da VPS (R2;
+// config/backups.php), com 30 dias de retenção. Só com BACKUP_ENABLED=true (desligado por omissão, no
+// dev e em produção, até o bucket e a chave estarem no .env).
+Schedule::command('backup:database')
+    ->dailyAt('03:20')
+    ->timezone('Europe/Lisbon')
+    ->when(fn () => (bool) config('backups.enabled'))
+    ->name('database-backup-daily')
+    ->withoutOverlapping(120)
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Cópias] A cópia diária da base de dados falhou no scheduler');
+    });
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {
