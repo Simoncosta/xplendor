@@ -21,6 +21,7 @@ import { useAccess } from "contexts/ModulesContext";
 import Skeleton from "Components/Common/Skeleton";
 import AgencyMetaTab from "./AgencyMetaTab";
 import AgencyPortfoliosCard from "./AgencyPortfoliosCard";
+import AgencyAssetStatusCard from "./AgencyAssetStatusCard";
 
 /**
  * Painel da agência (a equipa da agência e o root, no contexto da agência): por cliente, o
@@ -93,6 +94,7 @@ export default function AgencyPanelPage() {
                 {tab === "atribuicoes" && isAgencyAdmin && <AssignmentsTab agencyId={agencyId} asRoot={!!wc?.isRoot} />}
                 {tab === "meta" && <AgencyMetaTab agencyId={agencyId} canManage={agencyAdmin && !wc?.isRoot}
                     manageReason={wc?.isRoot ? "A ligação da Meta é feita por um administrador da agência, com o seu login." : "Só o administrador da agência liga e desliga a Meta."} />}
+                {tab === "meta" && isAgencyAdmin && <AgencyAssetStatusCard agencyId={agencyId} />}
                 {tab === "meta" && isAgencyAdmin && <AgencyPortfoliosCard agencyId={agencyId} />}
             </Container>
         </div>

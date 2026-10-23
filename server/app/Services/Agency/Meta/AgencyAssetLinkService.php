@@ -69,7 +69,9 @@ class AgencyAssetLinkService
     {
         return ['id' => $l->id, 'asset_type' => $l->asset_type, 'external_id' => $l->external_id, 'page_id' => $l->page_id, 'name' => $l->name,
             'company_id' => $l->company_id, 'company' => $clients[$l->company_id] ?? null, 'status' => $l->status,
-            'message' => $l->status === AgencyAssetLink::NO_TASK ? self::NO_TASK_MESSAGE : null];
+            'message' => $l->status === AgencyAssetLink::NO_TASK ? self::NO_TASK_MESSAGE : ($l->status === AgencyAssetLink::NO_ACCESS ? $l->status_reason : null),
+            // Parceiro 5: a última verificação (diária, ou ao voltar a ligar a Meta da agência).
+            'checked_at' => $l->checked_at?->toIso8601String()];
     }
 
     /**
@@ -114,6 +116,9 @@ class AgencyAssetLinkService
                     $link->status = AgencyAssetLink::LINKED;
                 }
             }
+            // Ligar de novo limpa o motivo de um "sem acesso" anterior.
+            $link->status_reason = null;
+            $link->checked_at = now();
             $link->save();
 
             return $this->present($link, $this->clients($agencyId));

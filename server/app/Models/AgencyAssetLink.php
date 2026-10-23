@@ -11,9 +11,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Parceiro 4: um ativo da Meta da agência (Página, conta de Instagram ou conta de anúncios) ligado a uma
  * empresa gerida. Cada ativo só numa empresa. "sem_tarefa": a Página ficou registada, mas a Meta não deu o
  * token da Página (a pessoa que ligou a Meta da agência não tem uma tarefa nela, atribuída no portfólio).
+ * Parceiro 5: "sem_acesso", com o motivo (status_reason): o ativo saiu dos portfólios que a agência vê, ou
+ * a renovação do token da agência não chegou a ele. checked_at: a última verificação.
  */
 class AgencyAssetLink extends Model
 {
+    public const NO_ACCESS = 'sem_acesso';
+
     public const PAGE = 'page';
     public const INSTAGRAM = 'instagram';
     public const AD_ACCOUNT = 'ad_account';
@@ -25,7 +29,10 @@ class AgencyAssetLink extends Model
     /** A origem gravada nas tabelas de sempre quando a ligação vem da agência. */
     public const ORIGIN = 'agencia';
 
-    protected $fillable = ['agency_company_id', 'company_id', 'asset_type', 'external_id', 'page_id', 'name', 'business_id', 'status', 'linked_by_user_id'];
+    protected $fillable = ['agency_company_id', 'company_id', 'asset_type', 'external_id', 'page_id', 'name', 'business_id', 'status', 'linked_by_user_id',
+        'status_reason', 'checked_at'];
+
+    protected $casts = ['checked_at' => 'datetime'];
 
     public function company(): BelongsTo
     {

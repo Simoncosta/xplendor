@@ -25,6 +25,7 @@ use Illuminate\Support\Str;
  *     token de longa duração (cifrado), o utilizador da Meta, as permissões e o estado.
  *  3. warnRenewals(): avisa a agência no sino, uma vez, quando faltam 10 dias ou menos para o fim do
  *     token, e marca a ligação como expirada quando passa.
+ *     Parceiro 5: com ativos ligados a clientes, o token novo propaga-se a essas ligações (na fila).
  *  4. disconnect(): a ÚNICA ação que revoga na Meta, só as permissões que nenhuma outra ligação do
  *     mesmo utilizador usa (SharedMetaUser); o token apaga-se na XPLENDOR na mesma.
  * Sem utilizador de sistema por agora (fica para quando houver outra agência).
@@ -67,6 +68,10 @@ class AgencyMetaConnectionService
             'connected_at' => now(), 'renewal_warned_at' => null,
         ]));
         Log::info('[Agência] Ligação da Meta guardada', ['agencia' => $agencyId]);
+        // Parceiro 5: a renovação chega às ligações dos clientes (os tokens das Páginas e as cópias nos anúncios).
+        if (\App\Models\AgencyAssetLink::where('agency_company_id', $agencyId)->exists()) {
+            \App\Jobs\PropagateAgencyMetaTokenJob::dispatch($agencyId);
+        }
 
         return 'agency_ok';
     }

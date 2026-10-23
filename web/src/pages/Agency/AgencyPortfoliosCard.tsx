@@ -12,8 +12,10 @@ import { confirmAction } from "helpers/swal";
  * a um cliente ativo da agência (só a um). Uma Página sem tarefa atribuída à pessoa que ligou a Meta fica
  * registada com o que fazer.
  */
-type AssetType = "page" | "instagram" | "ad_account";
-type AssetLink = { id: number; asset_type: AssetType; external_id: string; company_id: number; company: string | null; status: "ligado" | "sem_tarefa"; message: string | null };
+export type AssetType = "page" | "instagram" | "ad_account";
+/** Parceiro 5: "sem_acesso", com o motivo em message, e a última verificação (checked_at). */
+export type AssetLink = { id: number; asset_type: AssetType; external_id: string; name?: string | null; company_id: number; company: string | null;
+    status: "ligado" | "sem_tarefa" | "sem_acesso"; message: string | null; checked_at?: string | null };
 export type LinksData = { clients: { id: number; name: string }[]; links: AssetLink[] };
 
 function LinkControl({ agencyId, type, externalId, data, onChanged }: { agencyId: number; type: AssetType; externalId: string; data: LinksData | null; onChanged: (d: LinksData) => void }) {

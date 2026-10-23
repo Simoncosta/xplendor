@@ -16,6 +16,7 @@ use App\Models\CompanyManagement;
  *  · Empresa com admin que só tinha acesso pela agência: começa um período de teste de 30 dias.
  *  · Ligações à Meta feitas pela agência: quem termina do lado da empresa escolhe logo (manter
  *    ou desligar); se termina a agência ou o root, o admin do cliente escolhe depois.
+ *  · Os ativos da Meta da agência (origem "agencia", Parceiro 5) desligam-se sempre, só na XPLENDOR.
  *  · Avisos ao(s) outro(s) lado(s), no sino e por email.
  */
 class ManagementEndEffects
@@ -44,6 +45,11 @@ class ManagementEndEffects
             return;
         }
         $hasAdmin = AgencyNotifier::hasAdmin($company->id);
+        // Parceiro 5: os ativos da Meta da agência (origem "agencia") desligam-se já, só na XPLENDOR; o que
+        // fica para escolher (manter ou desligar) são as ligações feitas pela agência com o login do cliente.
+        if ($agency) {
+            $this->connections->endAgencyOrigin($company->id, $agency->id);
+        }
         $made = $agency ? $this->connections->agencyMade($company->id, $agency->id) : [];
         $decision = null;
         $outcome = $hasAdmin ? 'handed_over' : 'archived';

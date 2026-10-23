@@ -522,6 +522,14 @@ Schedule::job(new \App\Jobs\WarnAgencyMetaRenewalJob())
     ->name('agency-meta-renewal')
     ->withoutOverlapping();
 
+// 09:15 (Lisboa): Parceiro 5, a verificação dos ativos da Meta ligados aos clientes (os portfólios e o
+// token nas ligações dos clientes). Lê a Meta: externa.
+Schedule::command('agency:meta-assets-check')
+    ->dailyAt('09:15')
+    ->timezone('Europe/Lisbon')
+    ->name('agency-meta-assets-daily')
+    ->withoutOverlapping();
+
 // 03:30 (Lisboa): Radar, o histórico das reações guarda 12 meses; apaga o que é mais antigo (interna).
 Schedule::job(new \App\Jobs\PurgeRadarReactionHistoryJob())
     ->dailyAt('03:30')

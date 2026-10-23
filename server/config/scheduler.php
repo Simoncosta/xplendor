@@ -35,6 +35,8 @@ return [
         // Projeção das despesas do gasto Meta: só lê as tabelas locais, mas trabalha sobre dados da
         // Meta e fica com o resto da Meta (decisão do spike de 22/10).
         'project-meta-expenses',
+        // Parceiro 5: a verificação dos ativos da Meta das agências (lê a Meta).
+        'agency-meta-assets-daily',
     ],
 
     // As tarefas agendadas que chegam à IA (pelos trabalhos que põem na fila). Todas têm de estar
