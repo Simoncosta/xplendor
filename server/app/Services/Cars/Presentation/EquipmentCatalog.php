@@ -87,6 +87,8 @@ final class EquipmentCatalog
         'Sensores de marcha atrás' => ['x_rear_sensors', 'Sensores de marcha atrás', 'cabine'],
         'Cruise Control' => ['x_cruise', 'Cruise control', 'cabine'],
         'Direcção Assistida' => ['x_power_steering', 'Direção assistida', 'cabine'],
+        // Chave própria (sessão do site da Quebom de 23/10: viatura 140, Moncayo); caía em "Outros".
+        'Direção Adaptativa' => ['x_adaptive_steering', 'Direção adaptativa', 'cabine'],
         'ABS' => ['x_abs', 'ABS', 'cabine'],
         'Airbag do Condutor' => ['x_airbag_driver', 'Airbag do condutor', 'cabine'],
         'Airbag de Passageiros' => ['x_airbag_passenger', 'Airbag do passageiro', 'cabine'],
