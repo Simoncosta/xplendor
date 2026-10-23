@@ -91,7 +91,8 @@ class PingwinArticleUnitsSyncTest extends TestCase
         $this->assertSame(['100415', '101208'], $svc->candidates($this->company->id), 'só os ativos');
 
         $stats = $svc->syncBatch($this->company->id, ['100415', '101208', '555']);
-        $this->assertSame(['articles' => 2, 'changed' => 2, 'failed' => 1], array_intersect_key($stats, array_flip(['articles', 'changed', 'failed'])));
+        // O 100415 só recebe os ids pela primeira vez (preenchido, não mudado); o 101208 muda de unidade.
+        $this->assertSame(['articles' => 2, 'changed' => 1, 'filled' => 1, 'failed' => 1], array_intersect_key($stats, array_flip(['articles', 'changed', 'filled', 'failed'])));
         $this->assertSame(['mode' => 'article_units', 'product_ids' => ['100415', '101208', '555']], array_intersect_key($this->payloads[0], array_flip(['mode', 'product_ids'])));
         $coca = PingwinCatalogItem::where('pingwin_id', '100415')->first();
         $this->assertSame(['11001', 'GRD24', '11001', '11001', 'Grade 24', 'Unidade'], [$coca->base_unit_id, $coca->default_purchase_unit_id,

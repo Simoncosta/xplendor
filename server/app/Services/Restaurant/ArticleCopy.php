@@ -100,14 +100,22 @@ final class ArticleCopy
         }
         $baseBefore = (string) $item->base_unit_id;
         $purchaseBefore = (string) $item->default_purchase_unit_id;
+        $columnsBefore = $item->only(ArticleUnitsChanged::COLUMNS);
         $item->fill($fill);
-        $unitsChanged = $item->isDirty(ArticleUnitsChanged::COLUMNS);
         $item->save();
+        // O primeiro preenchimento dos ids (com os mesmos nomes) não é uma mudança: só grava.
+        $unitsChanged = ArticleUnitsChanged::isRealChange($columnsBefore, $item);
 
         $after = self::present($item->fresh());
         $changes = [];
+        $nameColumn = ['purchase' => 'purchaseunit', 'sale' => 'saleunit'];
         foreach (self::UNITS as $key => [, $label]) {
-            if (($before['units'][$key]['id'] ?? null) !== ($after['units'][$key]['id'] ?? null) || ($before['units'][$key]['name'] ?? null) !== ($after['units'][$key]['name'] ?? null)) {
+            $idBefore = $before['units'][$key]['id'] ?? null;
+            // Mudou: um id que já existia (ou o nome dele) passou a outro, ou o nome guardado na cópia mudou.
+            $known = $idBefore !== null && ($idBefore !== ($after['units'][$key]['id'] ?? null) || $before['units'][$key]['name'] !== $after['units'][$key]['name']);
+            $nameBefore = isset($nameColumn[$key]) ? trim((string) ($columnsBefore[$nameColumn[$key]] ?? '')) : '';
+            $renamed = $nameBefore !== '' && $nameBefore !== trim((string) $item->{$nameColumn[$key]});
+            if ($known || $renamed) {
                 $changes[] = ['field' => $key, 'label' => $label, 'from' => $before['units'][$key]['name'], 'to' => $after['units'][$key]['name']];
             }
         }
@@ -116,6 +124,9 @@ final class ArticleCopy
         }
         if ($unitsChanged) {
             ArticleUnitsChanged::afterChange($item->fresh(), $baseBefore, purchaseBefore: $purchaseBefore);
+        } elseif ($item->wasChanged(ArticleUnitsChanged::COLUMNS)) {
+            // Só o primeiro preenchimento: a auditoria de unidades corre com os ids novos (como na leitura semanal).
+            \App\Jobs\RunUnitsAuditJob::dispatch($companyId);
         }
 
         return $changes;

@@ -24,6 +24,25 @@ final class ArticleUnitsChanged
     /** As colunas das unidades do artigo (as que contam como "as unidades mudaram"). */
     public const COLUMNS = ['base_unit_id', 'default_purchase_unit_id', 'default_sale_unit_id', 'default_stock_unit_id', 'purchaseunit', 'saleunit'];
 
+    /**
+     * As unidades mudaram a sério? Só quando um valor que a cópia já tinha (um id ou um nome) passa a
+     * outro. Preencher pela primeira vez (de vazio para um valor, por exemplo os ids que a cópia ainda não
+     * tinha) não é uma mudança: o que muda é só o que se sabe do artigo.
+     *
+     * @param array<string, mixed> $before as COLUMNS antes de gravar (coluna => valor)
+     */
+    public static function isRealChange(array $before, PingwinCatalogItem $item): bool
+    {
+        foreach (self::COLUMNS as $col) {
+            $old = trim((string) ($before[$col] ?? ''));
+            if ($old !== '' && $old !== trim((string) $item->{$col})) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** Descarta a escolha guardada nas linhas por lançar destes artigos (ids do catálogo). Devolve quantas linhas. */
     public static function forgetLaunchUnits(array $catalogItemIds): int
     {

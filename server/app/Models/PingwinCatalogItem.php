@@ -51,7 +51,9 @@ class PingwinCatalogItem extends Model
     protected static function booted(): void
     {
         static::updated(function (self $item) {
-            if ($item->wasChanged(\App\Services\ArticleUnitsChanged::COLUMNS)) {
+            // Só uma mudança a sério (não o primeiro preenchimento dos ids): getOriginal() ainda tem os valores antigos.
+            if ($item->wasChanged(\App\Services\ArticleUnitsChanged::COLUMNS)
+                && \App\Services\ArticleUnitsChanged::isRealChange($item->getOriginal(), $item)) {
                 \App\Services\ArticleUnitsChanged::forgetLaunchUnits([$item->id]);
             }
         });

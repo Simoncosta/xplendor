@@ -34,16 +34,16 @@ final class ArticleUnitsSyncService
 
     /**
      * Lê e grava um lote: os quatro ids e os nomes de compra e venda na cópia. Os artigos cujas unidades
-     * mudaram passam pela reanálise (escolhas guardadas nas faturas, Guião, aviso do histórico); a
-     * auditoria de unidades pede-se uma vez por lote.
+     * mudaram a sério passam pela reanálise (escolhas guardadas nas faturas, Guião, aviso do histórico); o
+     * primeiro preenchimento (filled) só grava. A auditoria de unidades pede-se uma vez por lote.
      *
      * @param  list<string>  $productIds
-     * @return array{articles: int, changed: int, failed: int, errors: array<string, string>}
+     * @return array{articles: int, changed: int, filled: int, failed: int, errors: array<string, string>}
      */
     public function syncBatch(int $companyId, array $productIds): array
     {
         $res = $this->pingwin->fetchArticleUnits($companyId, $productIds, self::BATCH_TIMEOUT);
-        $stats = ['articles' => 0, 'changed' => 0, 'failed' => 0, 'errors' => []];
+        $stats = ['articles' => 0, 'changed' => 0, 'filled' => 0, 'failed' => 0, 'errors' => []];
         foreach ((array) ($res['errors'] ?? []) as $pid => $error) {
             $stats['failed']++;
             $stats['errors'][(string) $pid] = mb_substr((string) $error, 0, 300);
@@ -57,6 +57,7 @@ final class ArticleUnitsSyncService
             }
             $stats['articles']++;
             $before = ['base' => (string) $item->base_unit_id, 'purchase' => (string) $item->default_purchase_unit_id];
+            $columnsBefore = $item->only(ArticleUnitsChanged::COLUMNS);
             $item->fill(array_filter([
                 'base_unit_id' => $u['base']['id'] ?? null, 'default_purchase_unit_id' => $u['purchase']['id'] ?? null,
                 'default_sale_unit_id' => $u['sale']['id'] ?? null, 'default_stock_unit_id' => $u['stock']['id'] ?? null,
@@ -67,6 +68,11 @@ final class ArticleUnitsSyncService
             }
             try {
                 $item->save();
+                // O primeiro preenchimento (de vazio para um valor) só grava: não é uma mudança.
+                if (! ArticleUnitsChanged::isRealChange($columnsBefore, $item)) {
+                    $stats['filled']++;
+                    continue;
+                }
                 $stats['changed']++;
                 ArticleUnitsChanged::afterChange($item, $before['base'], audit: false, purchaseBefore: $before['purchase']);
             } catch (\Throwable $e) {
@@ -75,7 +81,8 @@ final class ArticleUnitsSyncService
                 Log::warning('[PingWin Unidades] gravação falhou', ['company_id' => $companyId, 'product' => $pid, 'error' => $e->getMessage()]);
             }
         }
-        if ($stats['changed'] > 0) {
+        // A auditoria de unidades corre com o que se gravou (os ids novos também a informam).
+        if ($stats['changed'] + $stats['filled'] > 0) {
             RunUnitsAuditJob::dispatch($companyId);
         }
 
