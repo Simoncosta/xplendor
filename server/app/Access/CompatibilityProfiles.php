@@ -54,11 +54,12 @@ final class CompatibilityProfiles
             // A agência (teto): ver, criar e editar (mudar o nome e mover), sem apagar nem restaurar.
             self::CEILING => ['ver', 'criar', 'editar'],
         ],
-        // Bússola Master (R3, pergunta 7): os imóveis pelo padrão dos Ficheiros.
+        // Bússola Master (R3, pergunta 7): os imóveis pelo padrão dos Ficheiros, mas a agência nunca
+        // apaga imóveis (nem o administrador da agência): só o cliente.
         'imoveis' => [
             self::CLIENT_ADMIN => ['ver', 'criar', 'editar', 'apagar'],
             self::CLIENT_USER => ['ver', 'criar', 'editar'],
-            self::AGENCY_ADMIN => ['ver', 'criar', 'editar', 'apagar'],
+            self::AGENCY_ADMIN => ['ver', 'criar', 'editar'],
             self::AGENCY_MEMBER => ['ver', 'criar', 'editar'],
             self::CEILING => ['ver', 'criar', 'editar'],
         ],
