@@ -62,26 +62,10 @@ class RestaurantSpecialDays
         return $out;
     }
 
-    /** Feriados nacionais obrigatórios em Portugal. @return array<string, string> */
+    /** Feriados nacionais obrigatórios em Portugal (da fonte única, Bússola 5). @return array<string, string> */
     public function nationalHolidays(int $year): array
     {
-        $easter = $this->resolver->easter($year);
-
-        return [
-            "{$year}-01-01" => 'Ano Novo',
-            $easter->subDays(2)->toDateString() => 'Sexta-feira Santa',
-            $easter->toDateString() => 'Páscoa',
-            "{$year}-04-25" => 'Dia da Liberdade',
-            "{$year}-05-01" => 'Dia do Trabalhador',
-            $easter->addDays(60)->toDateString() => 'Corpo de Deus',
-            "{$year}-06-10" => 'Dia de Portugal',
-            "{$year}-08-15" => 'Assunção de Nossa Senhora',
-            "{$year}-10-05" => 'Implantação da República',
-            "{$year}-11-01" => 'Todos os Santos',
-            "{$year}-12-01" => 'Restauração da Independência',
-            "{$year}-12-08" => 'Imaculada Conceição',
-            "{$year}-12-25" => 'Natal',
-        ];
+        return \App\Services\Calendar\PortugalCalendar::national($year);
     }
 
     /** Âncoras herdadas do ramo (do caminho raiz até à folha) e as próprias da empresa. */

@@ -1,6 +1,6 @@
 {
     "ator": "agencia_membro_criou",
-    "rotas": 619,
+    "rotas": 621,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -419,6 +419,7 @@
         "GET api/v1/companies/{id}/marketing/bussola-stand/caption/{requestId}": 404,
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}": 404,
         "GET api/v1/companies/{id}/marketing/bussola/heatmap": 200,
+        "GET api/v1/companies/{id}/marketing/calendar": 200,
         "GET api/v1/companies/{id}/marketing/radar": 200,
         "GET api/v1/companies/{id}/marketing/radar/settings": 200,
         "GET api/v1/companies/{id}/my-access": 200,
@@ -669,6 +670,7 @@
         "POST api/v1/companies/{id}/marketing/bussola-stand/restore": 422,
         "POST api/v1/companies/{id}/marketing/bussola/caption": 422,
         "POST api/v1/companies/{id}/marketing/bussola/post": 422,
+        "POST api/v1/companies/{id}/marketing/calendar/react": 422,
         "POST api/v1/companies/{id}/marketing/radar/ignore": 422,
         "POST api/v1/companies/{id}/marketing/radar/mute": 422,
         "POST api/v1/companies/{id}/marketing/radar/react": 422,

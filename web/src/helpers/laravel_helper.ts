@@ -777,6 +777,9 @@ export const ignoreRadar = (companyId: number, signalId: number) => api.create(u
 export const muteRadar = (companyId: number, signalId: number) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/radar/mute`, { signal_id: signalId }, JSON_BODY);
 export const unmuteRadar = (companyId: number, index: number) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/radar/unmute`, { index }, JSON_BODY);
 export const updateRadarSettings = (companyId: number, data: { sports_enabled: boolean; sports_clubs: string[] }) => api.put(url.GET_COMPANIES + `/${companyId}/marketing/radar/settings`, data);
+// Bússola 5: o "Vem aí" (datas oficiais do ramo e do concelho) sem o módulo radar, no módulo linha_editorial.
+export const getCompassCalendar = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/calendar`);
+export const reactCompassCalendar = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/calendar/react`, data, JSON_BODY);
 // F3: "O que publicar e quando".
 export const getRestaurantSignals = (companyId: number, locationId?: number | null, showIgnored?: boolean) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals`, { ...(locationId ? { location_id: locationId } : {}), ...(showIgnored ? { show_ignored: 1 } : {}) });

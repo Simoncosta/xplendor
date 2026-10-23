@@ -199,7 +199,24 @@ class EditorialLineService
             'items'      => $items,
             'months'     => $this->monthsState($company),
             'posts'      => $this->postsInWindow($company, $start, $end),
+            'official'   => $this->officialInWindow($company, $end),
         ];
+    }
+
+    /**
+     * Bússola 5: as datas oficiais do ramo e do concelho (OfficialDates), de hoje ao fim da janela, só
+     * para ver na grelha (não são âncoras: não se escondem nem se editam aqui).
+     */
+    private function officialInWindow(Company $company, CarbonImmutable $end): array
+    {
+        $now = CarbonImmutable::now();
+        $days = max(0, (int) $now->setTimezone('Europe/Lisbon')->startOfDay()->diffInDays($end->startOfDay()));
+
+        return array_map(static fn (array $e) => [
+            'key' => $e['key'], 'occurrence' => $e['occurrence'], 'title' => $e['title'],
+            'starts_on' => $e['starts_on'], 'ends_on' => $e['ends_on'], 'note' => $e['note'],
+            'source' => ['name' => $e['source']['name'], 'url' => $e['source']['url']], 'reacted' => $e['reacted'],
+        ], \App\Services\Radar\Calendar\OfficialDates::upcomingFor($company->id, $now, $days));
     }
 
     /** Publicações (P1) da empresa dentro da janela — a par das âncoras (items). */

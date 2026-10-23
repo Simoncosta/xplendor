@@ -51,6 +51,7 @@ class TenancyArchitectureTest extends TestCase
         'RestaurantSignalsController.php' => 1,           // idem
         'StandCompassController.php' => 1,                // idem (a Bússola do stand)
         'RadarController.php' => 1,
+        'CompassCalendarController.php' => 1,             // Bússola 5: reagir a uma data pede quem produz na Linha Editorial (como o Radar)
         'ImoveisCompassController.php' => 1,              // idem (a Bússola do imobiliário)                       // idem (o Radar: reagir, ignorar e silenciar pedem quem produz na Linha Editorial)
         'UserController.php' => 1,                        // utilizador de outra empresa
     ];

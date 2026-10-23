@@ -4,6 +4,7 @@ jest.mock("contexts/ModulesContext", () => ({ useAccess: () => ({ modules: [], i
 jest.mock("./RestaurantBussola", () => () => null);
 jest.mock("./stand/StandBussola", () => () => null);
 jest.mock("./radar/RadarCard", () => () => null);
+jest.mock("./radar/CompassCalendarCard", () => () => null);
 jest.mock("./imoveis/ImoveisBussola", () => () => null);
 jest.mock("Components/Common/PageHeader", () => () => null);
 jest.mock("react-toastify", () => ({ ToastContainer: () => null }));

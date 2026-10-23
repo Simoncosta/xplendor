@@ -86,11 +86,15 @@ export function RadarSignalCard({ signal, canAct, canActReason, compact, onReact
     );
 }
 
-type ReactTarget = { kind: "signal"; signal: RadarSignal } | { kind: "date"; entry: RadarCalendarEntry };
+export type ReactTarget = { kind: "signal"; signal: RadarSignal } | { kind: "date"; entry: RadarCalendarEntry };
 
-/** "Reagir": a ideia com prazo, sem texto (título, data, redes e formato). */
-export function RadarReactModal({ companyId, target, formats, onClose, onDone }: {
+/**
+ * "Reagir": a ideia com prazo, sem texto (título, data, redes e formato). send: sem o módulo radar,
+ * as datas vão pela rota do calendário (Bússola 5).
+ */
+export function RadarReactModal({ companyId, target, formats, onClose, onDone, send = reactRadar }: {
     companyId: number; target: ReactTarget | null; formats: string[]; onClose: () => void; onDone: (message: string) => void;
+    send?: (companyId: number, data: any) => Promise<any>;
 }) {
     const [title, setTitle] = useState("");
     const [date, setDate] = useState("");
@@ -115,7 +119,7 @@ export function RadarReactModal({ companyId, target, formats, onClose, onDone }:
         setSaving(true);
         setError(null);
         try {
-            const res: any = await reactRadar(companyId, {
+            const res: any = await send(companyId, {
                 ...(target.kind === "signal" ? { signal_id: target.signal.id } : { calendar_key: target.entry.key, occurrence: target.entry.occurrence }),
                 title: title.trim(), publish_date: date, networks: chosen, media_formats: media, format,
             });
@@ -275,7 +279,18 @@ export function useRadar(companyId: number) {
     };
 }
 
-function CalendarList({ entries, canAct, canActReason, onReact }: { entries: RadarCalendarEntry[]; canAct: boolean; canActReason: string | null; onReact: (e: RadarCalendarEntry) => void }) {
+/** A fonte de uma data: a ligação e quando foi confirmada; o feriado municipal diz que veio das Configurações. */
+function CalendarSource({ e }: { e: RadarCalendarEntry }) {
+    const name = `Fonte: ${e.source.name}`;
+    return (
+        <div className="fs-12">
+            {e.source.url ? <a href={e.source.url} target="_blank" rel="noopener noreferrer">{name}</a> : <span className="text-muted">{name}</span>}
+            {e.confirmed_on && <span className="text-muted"> · confirmada a {fmtDay(e.confirmed_on)}</span>}
+        </div>
+    );
+}
+
+export function CalendarList({ entries, canAct, canActReason, onReact }: { entries: RadarCalendarEntry[]; canAct: boolean; canActReason: string | null; onReact: (e: RadarCalendarEntry) => void }) {
     const [canCreate, createReason] = useCan("bussola.criar");
     if (entries.length === 0) return <p className="text-muted fs-13 mb-0" data-testid="radar-upcoming-empty">Sem datas confirmadas para o seu ramo nos próximos 30 dias.</p>;
     return (
@@ -285,7 +300,7 @@ function CalendarList({ entries, canAct, canActReason, onReact }: { entries: Rad
                     <div className="min-w-0">
                         <div className="fw-medium">{e.title}</div>
                         <div className="fs-12 text-muted">{e.starts_on === e.ends_on ? fmtDay(e.starts_on) : `${fmtDay(e.starts_on)} a ${fmtDay(e.ends_on)}`}{e.note ? ` · ${e.note}` : ""}</div>
-                        <div className="fs-12"><a href={e.source.url} target="_blank" rel="noopener noreferrer">Fonte: {e.source.name}</a><span className="text-muted"> · confirmada a {fmtDay(e.confirmed_on)}</span></div>
+                        <CalendarSource e={e} />
                     </div>
                     {e.reacted ? <Badge color="success-subtle" className="text-success fw-normal">Ideia criada</Badge>
                         : <ReasonButton size="sm" color="primary" outline reason={!canCreate ? createReason : !canAct ? canActReason : null} onClick={() => onReact(e)}>Reagir</ReasonButton>}

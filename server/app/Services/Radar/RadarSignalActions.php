@@ -108,14 +108,15 @@ class RadarSignalActions
     /** Camada 2: "Reagir" a uma data do calendário (uma ideia por data e por empresa). */
     public function reactToDate(Company $company, User $user, string $key, string $occurrence, array $data): EditorialPost
     {
-        $entry = OfficialDates::find($key, $occurrence);
+        $entry = OfficialDates::find($key, $occurrence, $company->id);
         if ($entry === null) {
             throw ValidationException::withMessages(['calendar_key' => ['Esta data não está no calendário.']]);
         }
         if (EditorialPost::where('company_id', $company->id)->where('origin', 'calendario')->where('origin_ref', "{$key}@{$occurrence}")->exists()) {
             throw ValidationException::withMessages(['calendar_key' => ['Já existe uma ideia para esta data.']]);
         }
-        $lines = array_filter([$entry['title'] . '.', $entry['note'], 'Fonte: ' . $entry['source']['name'] . ' (confirmada a ' . CarbonImmutable::parse($entry['confirmed_on'])->format('d/m/Y') . ').']);
+        $lines = array_filter([$entry['title'] . '.', $entry['note'], 'Fonte: ' . $entry['source']['name']
+            . ($entry['confirmed_on'] ? ' (confirmada a ' . CarbonImmutable::parse($entry['confirmed_on'])->format('d/m/Y') . ').' : '.')]);
 
         $post = $this->createIdea($company, $user, $data, [
             'brief' => implode("\n", $lines),

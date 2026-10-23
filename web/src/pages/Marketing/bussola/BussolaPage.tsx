@@ -5,6 +5,7 @@ import RestaurantBussola from "./RestaurantBussola";
 import StandBussola from "./stand/StandBussola";
 import ImoveisBussola from "./imoveis/ImoveisBussola";
 import RadarCard from "./radar/RadarCard";
+import CompassCalendarCard from "./radar/CompassCalendarCard";
 import PageHeader from "Components/Common/PageHeader";
 import { useAccess } from "contexts/ModulesContext";
 import { getWorkingCompanyId } from "helpers/workingCompany";
@@ -13,7 +14,8 @@ import { getWorkingCompanyId } from "helpers/workingCompany";
  * Bússola comum: a página escolhe o fornecedor pelos módulos da empresa. Com o PingWin, a
  * restauração (as vendas e as reservas); com o stock, o stand (parte 3). Uma empresa com os
  * dois mostra a da restauração e um seletor para a do stand. Com o módulo radar, o bloco
- * "Radar" aparece logo a seguir às jogadas (ou sozinho, numa empresa sem fornecedor).
+ * "Radar" aparece logo a seguir às jogadas (ou sozinho, numa empresa sem fornecedor); sem ele, o
+ * bloco "Vem aí" (só as datas oficiais) aparece no mesmo sítio.
  */
 export type CompassProviderKey = "restauracao" | "stand" | "imobiliario";
 
@@ -35,7 +37,10 @@ export default function BussolaPage() {
     const providers = compassProviders(modules, isRoot);
     const [chosen, setChosen] = useState<CompassProviderKey | null>(null);
     const companyId = getWorkingCompanyId();
-    const radar = modules?.includes("radar") && companyId ? <RadarCard companyId={companyId} /> : undefined;
+    // Bússola 5: sem o módulo radar, o "Vem aí" aparece sozinho (as datas oficiais, com a Linha Editorial).
+    const radar = !companyId ? undefined
+        : modules?.includes("radar") ? <RadarCard companyId={companyId} />
+            : modules?.includes("linha_editorial") ? <CompassCalendarCard companyId={companyId} /> : undefined;
     if (providers.length === 0) {
         return (
             <div className="page-content">

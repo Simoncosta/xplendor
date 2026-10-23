@@ -35,6 +35,7 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { confirmAction } from "helpers/swal";
 import { useAccess } from "contexts/ModulesContext";
 import RadarNowPanel from "pages/Marketing/bussola/radar/RadarNowPanel";
+import type { EditorialOfficialDate } from "common/models/radar.model";
 import Skeleton from "Components/Common/Skeleton";
 
 // O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
@@ -126,10 +127,12 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
     const [phone] = useState(isPhone);
 
     const [loading, setLoading] = useState(true);
-    // Radar (Bússola Master): o painel lateral "Agora", só com o módulo radar.
+    // O painel lateral "Agora": as datas que vêm aí (sempre, Bússola 5) e, com o módulo radar, o que está a subir.
     const { modules } = useAccess();
     const hasRadar = !!modules?.includes("radar");
     const [nowOpen, setNowOpen] = useState(false);
+    // Bússola 5: as datas oficiais do ramo e do concelho, só para ver na grelha.
+    const [official, setOfficial] = useState<EditorialOfficialDate[]>([]);
     const [saving, setSaving] = useState(false);
     const [hasSector, setHasSector] = useState<boolean | null>(null);
     const [sectorName, setSectorName] = useState<string>("");
@@ -179,6 +182,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
             setRange({ from: d.from, to: d.to });
             setItems(d.items ?? []);
             setPosts(d.posts ?? []);
+            if (d.official) setOfficial(d.official);
             setMonths(d.months ?? []);
             setCanProduce(d.can_produce !== false);
             // Mês do URL (?mes=) se estiver na janela; senão o corrente.
@@ -309,8 +313,15 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
             classNames: ["bg-transparent", "border-0", "shadow-none", "p-0"],
             extendedProps: { kind: "post", post: p } as any,
         }));
-        return [...anchorEvents, ...postEvents];
-    }, [items, posts]);
+        const officialEvents = official.map((o) => ({
+            start: o.starts_on, end: o.ends_on !== o.starts_on ? nextDay(o.ends_on) : undefined,
+            allDay: true, display: "block", title: o.title,
+            backgroundColor: "transparent", borderColor: "transparent",
+            classNames: ["bg-transparent", "border-0", "shadow-none", "p-0"],
+            extendedProps: { kind: "official", official: o } as any,
+        }));
+        return [...anchorEvents, ...officialEvents, ...postEvents];
+    }, [items, posts, official]);
 
     const anchorChip = (it: Item) =>
         it.hidden ? "bg-warning-subtle text-warning"
@@ -430,7 +441,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                             {canProduce && (ideasReason
                                 ? reasonButton("ideas", ideasReason, <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")
                                 : <Button color="outline-primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</Button>)}
-                            {hasRadar && <Button color="outline-primary" size="sm" onClick={() => setNowOpen(true)} data-testid="editorial-now"><i className="ri-radar-line me-1" />Agora</Button>}
+                            <Button color="outline-primary" size="sm" onClick={() => setNowOpen(true)} data-testid="editorial-now"><i className="ri-radar-line me-1" />Agora</Button>
                             <ActionsMenu size="sm" label="Mais ações: Linha Editorial" items={[
                                 { label: "Aprovação por link", icon: "ri-links-line", onClick: () => setReviewOpen(true) },
                                 { label: "Âncora própria", icon: "ri-calendar-event-line", onClick: openCreate, hidden: !(selected && monthIsOpen) },
@@ -488,6 +499,8 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                                     eventClick={(arg) => {
                                         const ep = arg.event.extendedProps as any;
                                         if (ep.kind === "post") openPost((ep.post as EditorialPost).id);
+                                        // Uma data oficial não se edita aqui: abre o "Agora", onde se reage.
+                                        else if (ep.kind === "official") setNowOpen(true);
                                         else setPanelAnchor(ep.item as Item);
                                     }}
                                     eventContent={(arg) => {
@@ -503,6 +516,17 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                                                     {channelIcons(p).map((c) => <i key={c.icon} className={c.icon} />)}
                                                     <span className="rounded px-1 fw-semibold flex-shrink-0" title={sm.label} style={{ background: sm.hex, color: stageTextColor(stage), fontSize: "0.62rem" }}>{sm.short}</span>
                                                     <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
+                                                </div>
+                                            );
+                                        }
+                                        if (ep.kind === "official") {
+                                            const o = ep.official as EditorialOfficialDate;
+                                            return (
+                                                <div className="w-100 px-1 rounded bg-info-subtle text-info" data-testid="editorial-official-date" title={`${o.title} · Fonte: ${o.source.name}${o.reacted ? " · ideia criada" : ""}`}
+                                                    style={{ whiteSpace: "normal", lineHeight: 1.2, cursor: "pointer", fontSize: "0.7rem" }}>
+                                                    <i className="ri-government-line me-1" />
+                                                    <span>{o.title}</span>
+                                                    {o.reacted && <i className="ri-check-line ms-1" title="ideia criada" />}
                                                 </div>
                                             );
                                         }
@@ -552,7 +576,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                 </OffcanvasBody>
             </Offcanvas>
 
-            {hasRadar && companyId ? <RadarNowPanel companyId={companyId} isOpen={nowOpen} onClose={() => setNowOpen(false)} onChanged={() => void load()} /> : null}
+            {companyId ? <RadarNowPanel companyId={companyId} hasRadar={hasRadar} isOpen={nowOpen} onClose={() => setNowOpen(false)} onChanged={() => void load()} /> : null}
 
             {/* O painel único da publicação */}
             <PostPanel target={panel} onClose={() => setPanel(null)} companyId={companyId} anchors={anchorLinkOptions} pillars={pillars} range={range}

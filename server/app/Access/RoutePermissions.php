@@ -273,6 +273,8 @@ final class RoutePermissions
         'PATCH {id}/inbound-contacts/{contactId}' => 'contactos.editar',
         'DELETE {id}/inbound-contacts/{contactId}' => 'contactos.apagar',
         // Radar de oportunidade (no módulo radar).
+        'GET {id}/marketing/calendar' => 'bussola.ver',
+        'POST {id}/marketing/calendar/react' => 'bussola.criar',
         'GET {id}/marketing/radar' => 'bussola.ver',
         'POST {id}/marketing/radar/react' => 'bussola.criar',
         'POST {id}/marketing/radar/ignore' => 'bussola.editar',

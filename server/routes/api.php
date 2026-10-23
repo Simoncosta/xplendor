@@ -778,6 +778,9 @@ Route::prefix('v1')->group(function () {
                     // B3b — TROCA de ramo (destrutiva). SENSÍVEL: bloqueado em impersonation.
                     Route::put('/editorial/sector', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'changeSector'])->middleware('block_when_impersonating');
                     Route::get('/editorial/calendar', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'calendar']);
+                    // Bússola 5: o "Vem aí" (datas oficiais do ramo e do concelho) sem o módulo radar.
+                    Route::get('/marketing/calendar', [\App\Http\Controllers\Api\V1\CompassCalendarController::class, 'show']);
+                    Route::post('/marketing/calendar/react', [\App\Http\Controllers\Api\V1\CompassCalendarController::class, 'react']);
                     // B2 — máquina de estados dos meses (abrir/fechar em sequência, com cascata).
                     Route::post('/editorial/months/{year}/{month}/open', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'openMonth'])
                         ->whereNumber('year')->whereNumber('month')->middleware('editorial_producer');

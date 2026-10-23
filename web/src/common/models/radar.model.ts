@@ -149,11 +149,32 @@ export interface RadarCalendarEntry {
     starts_on: string;
     ends_on: string;
     note: string | null;
-    source: { name: string; url: string; format?: string };
-    confirmed_on: string;
-    confirmed_by: "machine" | "person";
+    /** url null: o feriado municipal que a empresa indicou nas Configurações (Bússola 5). */
+    source: { name: string; url: string | null; format?: string };
+    confirmed_on: string | null;
+    confirmed_by: "machine" | "person" | "empresa" | null;
     when: RadarWhen;
     reacted?: boolean;
+}
+
+/** Bússola 5: o "Vem aí" sem o módulo radar (GET marketing/calendar). */
+export interface CompassCalendarData {
+    calendar: RadarCalendarEntry[];
+    can_act: boolean;
+    can_act_reason: string | null;
+    formats: string[];
+}
+
+/** Uma data oficial na grelha da Linha Editorial (só para ver). */
+export interface EditorialOfficialDate {
+    key: string;
+    occurrence: string;
+    title: string;
+    starts_on: string;
+    ends_on: string;
+    note: string | null;
+    source: { name: string; url: string | null };
+    reacted: boolean;
 }
 
 export interface RadarSettings {
