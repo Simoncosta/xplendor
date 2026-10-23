@@ -9,7 +9,11 @@ use Tests\TestCase;
 
 class CarRequestSubsegmentTest extends TestCase
 {
-    public function test_motorhome_requires_subsegment(): void
+    /**
+     * O subsegmento deixou de ser pedido (abril de 2026): o CarRequest limpa-o sempre em
+     * prepareForValidation e a regra é "nullable" em todos os tipos, autocaravana incluída.
+     */
+    public function test_motorhome_no_longer_requires_subsegment(): void
     {
         $validator = Validator::make(
             $this->validCarPayload([
@@ -19,7 +23,7 @@ class CarRequestSubsegmentTest extends TestCase
             $this->subsegmentRules()
         );
 
-        $this->assertTrue($validator->errors()->has('subsegment'));
+        $this->assertFalse($validator->errors()->has('subsegment'));
     }
 
     public function test_motorhome_accepts_valid_subsegment(): void

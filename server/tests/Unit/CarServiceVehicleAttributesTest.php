@@ -40,9 +40,10 @@ class CarServiceVehicleAttributesTest extends TestCase
         $this->assertTrue($normalized['habitation_basics']['has_bathroom']);
         $this->assertTrue($normalized['habitation_basics']['has_kitchen']);
 
+        // Fix 1.C (2026-06-18): cada cama guarda a capacidade; sem ela no pedido, fica 1.
         $this->assertSame([
-            ['type' => 'central'],
-            ['type' => 'rebatível na cabine'],
+            ['capacity' => 1, 'type' => 'central'],
+            ['capacity' => 1, 'type' => 'rebatível na cabine'],
         ], $normalized['beds']);
 
         $this->assertSame(500, $normalized['autonomy_km']);

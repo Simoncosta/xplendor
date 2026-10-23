@@ -42,6 +42,10 @@ class StockPromotionControllerTest extends TestCase
 
         $this->companyA = $this->makeCompany('500000100', 'Stand A Lda');
         $this->companyB = $this->makeCompany('500000200', 'Stand B Lda');
+        // ACL (F3): as rotas do stock pedem o módulo do ramo automóvel ligado.
+        foreach ([$this->companyA, $this->companyB] as $c) {
+            app(\App\Services\CompanyModuleService::class)->applyPreset($c->id, 'automotive');
+        }
 
         $this->adminA = User::factory()->create([
             'company_id' => $this->companyA->id,
