@@ -7,6 +7,7 @@ namespace App\Services\Radar;
 use App\Models\Company;
 use App\Models\EditorialMonth;
 use App\Models\EditorialPost;
+use App\Models\RadarReactionHistory;
 use App\Models\RadarSetting;
 use App\Models\RadarSignal;
 use App\Models\User;
@@ -21,7 +22,8 @@ use Illuminate\Validation\ValidationException;
  * Radar: as ações do cartão. "Reagir" cria uma ideia (etapa Ideia) na Linha Editorial pelo mesmo
  * caminho da Bússola do stand, com o gancho, as fontes e o prazo, e SEM texto (o "Sugerir texto"
  * da Linha Editorial continua disponível, só a pedido). "Ignorar" tira o cartão. "Não mostrar
- * temas como este" tira-o e guarda o tema nas definições (reversível).
+ * temas como este" tira-o e guarda o tema nas definições (reversível). Cada decisão fica também
+ * no histórico de 12 meses (RadarReactionHistory, Bússola 4), que a purga dos 30 dias não apaga.
  */
 class RadarSignalActions
 {
@@ -98,6 +100,7 @@ class RadarSignalActions
             'origin' => 'radar', 'origin_ref' => 'radar:' . $signal->topic_id,
         ]);
         $signal->update(['status' => RadarSignal::REACTED, 'editorial_post_id' => $post->id, 'acted_at' => now(), 'acted_by_user_id' => $user->id]);
+        RadarReactionHistory::recordSignal($signal, RadarReactionHistory::REACTED);
 
         return $post;
     }
@@ -114,16 +117,20 @@ class RadarSignalActions
         }
         $lines = array_filter([$entry['title'] . '.', $entry['note'], 'Fonte: ' . $entry['source']['name'] . ' (confirmada a ' . CarbonImmutable::parse($entry['confirmed_on'])->format('d/m/Y') . ').']);
 
-        return $this->createIdea($company, $user, $data, [
+        $post = $this->createIdea($company, $user, $data, [
             'brief' => implode("\n", $lines),
             'sources' => [['title' => $entry['title'], 'source_name' => $entry['source']['name'], 'url' => $entry['source']['url'], 'published_at' => null]],
             'valid_until' => $entry['ends_on'], 'origin' => 'calendario', 'origin_ref' => "{$key}@{$occurrence}",
         ]);
+        RadarReactionHistory::recordCalendar($company->loadMissing('contentSector'), $key);
+
+        return $post;
     }
 
     public function ignore(RadarSignal $signal, User $user): void
     {
         $signal->update(['status' => RadarSignal::IGNORED, 'acted_at' => now(), 'acted_by_user_id' => $user->id]);
+        RadarReactionHistory::recordSignal($signal, RadarReactionHistory::IGNORED);
     }
 
     public function mute(RadarSignal $signal, User $user): void
@@ -137,6 +144,7 @@ class RadarSignalActions
                 'muted_at' => now()->toIso8601String(), 'user_id' => $user->id];
             $row->fill(['muted' => array_slice($muted, -100), 'updated_by_user_id' => $user->id])->save();
             $signal->update(['status' => RadarSignal::MUTED, 'acted_at' => now(), 'acted_by_user_id' => $user->id]);
+            RadarReactionHistory::recordSignal($signal, RadarReactionHistory::MUTED);
         });
     }
 

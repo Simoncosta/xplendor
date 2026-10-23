@@ -478,6 +478,16 @@ Schedule::job(new \App\Jobs\PurgeRadarItemsJob())
         \Illuminate\Support\Facades\Log::error('[Radar] Apagamento aos 30 dias falhou no scheduler');
     });
 
+// 03:30 (Lisboa): Radar, o histórico das reações guarda 12 meses; apaga o que é mais antigo (interna).
+Schedule::job(new \App\Jobs\PurgeRadarReactionHistoryJob())
+    ->dailyAt('03:30')
+    ->timezone('Europe/Lisbon')
+    ->name('radar-purge-history')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Radar] Apagamento do histórico das reações falhou no scheduler');
+    });
+
 // 08:30 (Lisboa) — AUDITORIA da restauração (Fatia 2): todas as regras da área, para as empresas
 // com o PingWin ligado. Depois dos jobs do PingWin da madrugada (o último é às 08:00). Só lê o
 // espelho e as tabelas da XPLENDOR: é interna (corre também no dev).
