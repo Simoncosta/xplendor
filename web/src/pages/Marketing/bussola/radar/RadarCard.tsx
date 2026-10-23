@@ -8,7 +8,7 @@ import ReasonButton from "Components/Common/ReasonButton";
 import { useCan } from "contexts/ModulesContext";
 import { MEDIA_FORMATS } from "common/models/editorialPost.model";
 import { getRadar, ignoreRadar, muteRadar, reactRadar, unmuteRadar, updateRadarSettings } from "helpers/laravel_helper";
-import type { RadarCalendarEntry, RadarPageData, RadarSettings, RadarSignal, RadarSource } from "common/models/radar.model";
+import type { RadarCalendarEntry, RadarPageData, RadarSettings, RadarSignal, RadarSource, RadarWhen } from "common/models/radar.model";
 import Skeleton from "Components/Common/Skeleton";
 
 /**
@@ -23,6 +23,18 @@ const todayIso = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europ
 const fmtDateTime = (iso: string | null) => iso ? new Date(iso).toLocaleString("pt-PT", { timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : null;
 const fmtTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString("pt-PT", { timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit" }) : null;
 const fmtDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" });
+const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+
+/** A janela em texto relativo, pelo "when" da resposta: "até hoje", "até amanhã", "até sexta-feira, 16/10". */
+export function windowLabel(when: RadarWhen, today: string = todayIso()): string {
+    if (when.is_today || when.date <= today) return "Vale até hoje";
+    const tomorrow = new Date(`${today}T12:00:00Z`);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    if (when.date === tomorrow.toISOString().slice(0, 10)) return "Vale até amanhã";
+    const d = new Date(`${when.date}T12:00:00Z`);
+    return `Vale até ${WEEKDAYS[d.getUTCDay()]}, ${when.date.slice(8, 10)}/${when.date.slice(5, 7)}`;
+}
+
 const errorText = (e: any, fallback: string) => (e?.errors ? (Object.values(e.errors).flat()[0] as string) : null) || e?.message || fallback;
 
 export function RadarSources({ sources }: { sources: RadarSource[] }) {
@@ -61,7 +73,7 @@ export function RadarSignalCard({ signal, canAct, canActReason, compact, onReact
                 <span className="text-muted">Porque lhe interessa: </span>{signal.why}
                 {signal.why_source === "template" && <Badge color="light" className="text-muted fw-normal ms-1">frase automática</Badge>}
             </div>
-            <div className="fs-12"><i className="ri-time-line me-1 text-muted" aria-hidden />Vale até {fmtDateTime(signal.valid_until)}</div>
+            <div className="fs-12" data-testid="radar-window" title={fmtDateTime(signal.valid_until) ?? undefined}><i className="ri-time-line me-1 text-muted" aria-hidden />{windowLabel(signal.when)}</div>
             {signal.notices.map((n) => <div key={n} className="fs-12"><Badge color="warning-subtle" className="text-warning fw-normal text-wrap text-start">{n}</Badge></div>)}
             {!compact && <RadarSources sources={signal.sources} />}
             <div className="text-muted fs-12">{signal.attribution}</div>

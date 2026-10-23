@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import RadarCard from "./RadarCard";
+import RadarCard, { windowLabel } from "./RadarCard";
 import { getRadar, ignoreRadar, reactRadar } from "helpers/laravel_helper";
 import type { RadarPageData } from "common/models/radar.model";
 
@@ -28,6 +28,23 @@ const page = (over: Partial<RadarPageData> = {}): RadarPageData => ({
     }],
     calendar: [], settings: { sports_enabled: false, sports_clubs: [], muted: [] }, can_act: true, can_act_reason: null, formats: ["Imagem única", "Carrossel"],
     refreshed_at: "2026-10-14T09:45:00Z", ...over,
+});
+
+describe("windowLabel (Bússola 2: a janela em texto relativo)", () => {
+    const when = (date: string, is_today = false) => ({ date, is_today, label: "", target: null });
+    it("hoje, amanhã e o dia da semana", () => {
+        expect(windowLabel(when("2026-10-14", true), "2026-10-14")).toBe("Vale até hoje");
+        expect(windowLabel(when("2026-10-15"), "2026-10-14")).toBe("Vale até amanhã");
+        expect(windowLabel(when("2026-10-16"), "2026-10-14")).toBe("Vale até sexta-feira, 16/10");
+        expect(windowLabel(when("2026-11-01"), "2026-10-31")).toBe("Vale até amanhã");
+        expect(windowLabel(when("2026-10-13"), "2026-10-14")).toBe("Vale até hoje");
+    });
+
+    it("o cartão mostra o texto relativo, sem data e hora", async () => {
+        (getRadar as jest.Mock).mockReset().mockResolvedValue({ data: page() });
+        render(<RadarCard companyId={7} />);
+        expect(await screen.findByTestId("radar-window")).toHaveTextContent(/^Vale até hoje$/);
+    });
 });
 
 describe("Radar: o bloco da Bússola", () => {
