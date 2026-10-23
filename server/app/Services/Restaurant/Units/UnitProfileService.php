@@ -103,6 +103,7 @@ final class UnitProfileService
         $open = $this->openFindingsByArticle();
         // Os artigos de agrupamento lançam-se sempre com quantidade 1: não entram no Guião.
         $grouping = \App\Models\ArticleGrouping::pingwinIdsFor($this->companyId);
+        $unitChanges = \App\Models\ArticleUnitChange::recentFor($this->companyId);
         $items = [];
         foreach ($this->evidence()->all() as $pid => $e) {
             $pid = (string) $pid;
@@ -133,6 +134,7 @@ final class UnitProfileService
                 'findings' => count($findings), 'impact_cents' => array_sum(array_column($findings, 'impact_cents')) ?: null,
                 'pending_cents' => array_sum(array_column($findings, 'impact_pending_cents')) ?: null,
                 'assigned' => $assigned, 'skipped' => (bool) $this->profileModel($pid)?->skipped_at,
+                'unit_changed' => isset($unitChanges[$pid]),
             ];
         }
         // Por veredicto (precisa de mudança, por identificar, está certo) e, em cada grupo, pelo € comprado.
@@ -240,6 +242,8 @@ final class UnitProfileService
         return [
             'article' => ['product_id' => $pid, 'code' => $code, 'label' => $e['label'], 'description' => $e['description'], 'family' => $e['family'],
                 'base_unit' => $e['base_unit'], 'base_family' => $e['base_family'], 'url' => "/cadastros/artigos/{$pid}"],
+            // A unidade base ou de compra mudou num artigo com histórico: as linhas antigas ficam na anterior.
+            'unit_changes' => \App\Models\ArticleUnitChange::recentFor($this->companyId, [$pid])[$pid] ?? [],
             'profile' => $profile ? [
                 'state' => $profile->state, 'base_confirmed' => $profile->base_confirmed, 'type' => $profile->article_type,
                 'count_unit' => $profile->count_unit, 'confirmed_by' => $profile->confirmer?->name, 'confirmed_at' => $profile->confirmed_at?->toIso8601String(),

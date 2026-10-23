@@ -43,6 +43,8 @@ final class ArticleCopy
             'forsale' => (bool) $item->forsale, 'forpurchase' => (bool) $item->forpurchase,
             'saleprice_cents' => $item->saleprice_cents, 'purchaseprice_cents' => $item->purchaseprice_cents,
             'units' => $units, 'read_at' => $readAt?->toIso8601String(), 'live_read_at' => $item->live_read_at ? \Illuminate\Support\Carbon::parse($item->live_read_at)->toIso8601String() : null,
+            // As mudanças recentes da unidade base ou de compra num artigo com histórico (as linhas antigas ficam na anterior).
+            'unit_changes' => \App\Models\ArticleUnitChange::recentFor((int) $item->company_id, [(string) $item->pingwin_id])[(string) $item->pingwin_id] ?? [],
         ];
     }
 
@@ -97,6 +99,7 @@ final class ArticleCopy
             }
         }
         $baseBefore = (string) $item->base_unit_id;
+        $purchaseBefore = (string) $item->default_purchase_unit_id;
         $item->fill($fill);
         $unitsChanged = $item->isDirty(ArticleUnitsChanged::COLUMNS);
         $item->save();
@@ -112,7 +115,7 @@ final class ArticleCopy
             $changes[] = ['field' => 'description', 'label' => 'Descrição', 'from' => $before['description'], 'to' => $after['description']];
         }
         if ($unitsChanged) {
-            ArticleUnitsChanged::afterChange($item->fresh(), $baseBefore);
+            ArticleUnitsChanged::afterChange($item->fresh(), $baseBefore, purchaseBefore: $purchaseBefore);
         }
 
         return $changes;

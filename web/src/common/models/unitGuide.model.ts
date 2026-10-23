@@ -12,7 +12,11 @@ export type UnitQueueItem = {
     verdict: UnitVerdictKey; verdict_text: string;
     product_id: string; label: string; family: string; spend_90d_eur: number | null; state: UnitProfileState; por_identificar: boolean;
     confidence: number; findings: number; impact_cents: number | null; pending_cents: number | null; assigned: boolean; skipped: boolean;
+    /** A unidade base ou de compra mudou há pouco num artigo com histórico de compras. */
+    unit_changed?: boolean;
 };
+/** Uma mudança de unidade num artigo com histórico: as linhas antigas ficam na unidade anterior. */
+export type ArticleUnitChange = { field: "base" | "purchase"; from: string | null; to: string | null; changed_at: string; history_lines: number; warning: string };
 export type UnitQueue = { items: UnitQueueItem[]; total: number; counts: { por_identificar: number; administrador: number; mudar?: number; ajuda?: number; certo?: number }; financial?: { visible: boolean } };
 
 export type UnitPackaging = { family: string; each: number; count: number; quantity: number; container: string | null; text: string; label: string; dose: string | null; source?: string };
@@ -54,6 +58,7 @@ export type UnitEvidencePurchase = {
 
 export type UnitGuideView = {
     article: { product_id: string; code: string | null; label: string; description: string; family: string; base_unit: string | null; base_family: string | null; url: string };
+    unit_changes?: ArticleUnitChange[];
     profile: { state: UnitProfileState; base_confirmed: string | null; type: string | null; count_unit: string | null; confirmed_by: string | null; confirmed_at: string | null;
         reason: string | null; info_text: string | null; has_photo: boolean; photo_url: string | null; skipped: boolean } | null;
     answers: Record<string, string | null>;

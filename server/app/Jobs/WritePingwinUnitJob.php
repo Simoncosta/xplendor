@@ -97,13 +97,14 @@ class WritePingwinUnitJob implements ShouldQueue
         if ($item) {
             // Uma escrita da XPLENDOR que muda as unidades do artigo: a mesma reanálise de uma leitura.
             $baseBefore = (string) $item->base_unit_id;
+            $purchaseBefore = (string) $item->default_purchase_unit_id;
             $item->fill(array_filter([
                 'default_purchase_unit_id' => $after['default_purchase_unit_id'] ?? null,
                 'base_unit_id' => $after['base_unit_id'] ?? null,
             ], fn ($v) => $v !== null && $v !== ''));
             if ($item->isDirty()) {
                 $item->save();
-                \App\Services\ArticleUnitsChanged::afterChange($item, $baseBefore);
+                \App\Services\ArticleUnitsChanged::afterChange($item, $baseBefore, purchaseBefore: $purchaseBefore);
             }
         }
 

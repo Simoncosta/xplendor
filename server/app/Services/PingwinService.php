@@ -1440,6 +1440,25 @@ class PingwinService
         return ['stock' => (array) ($result['stock'] ?? []), 'errors' => (array) ($result['errors'] ?? []), 'seconds' => (array) ($result['seconds'] ?? [])];
     }
 
+    /**
+     * SÓ LEITURA: as unidades de cada artigo (base, compra, venda e stock, ids e nomes), com o OPEN da
+     * leitura do stock e CLOSE, artigo a artigo, num só docker exec. Devolve {units: {id: {...}}, errors, seconds}.
+     */
+    public function fetchArticleUnits(int $companyId, array $productIds, int $timeout = 900): array
+    {
+        $integration = $this->connectedIntegration($companyId);
+        $this->invokeTimeout = $timeout;
+        $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode' => 'article_units',
+            'product_ids' => array_values(array_map('strval', $productIds)),
+        ]));
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura das unidades dos artigos no PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return ['units' => (array) ($result['units'] ?? []), 'errors' => (array) ($result['errors'] ?? []), 'seconds' => (array) ($result['seconds'] ?? [])];
+    }
+
     /** SÓ LEITURA: os armazéns (ativos e anulados) com as lojas servidas, a loja principal e a valorização. */
     public function fetchWarehouses(int $companyId): array
     {

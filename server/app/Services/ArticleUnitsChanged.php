@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Jobs\RunUnitsAuditJob;
+use App\Models\ArticleUnitChange;
 use App\Models\OcrInvoice;
 use App\Models\OcrInvoiceLine;
 use App\Models\PingwinCatalogItem;
 use App\Models\PingwinUnit;
 use App\Models\ProductUnitProfile;
+use Illuminate\Support\Facades\DB;
 
 /**
  * As unidades de um artigo mudaram (os ids no PingWin, ou os nomes da leitura do catálogo): a escolha
@@ -55,10 +57,13 @@ final class ArticleUnitsChanged
      * deixam a escolha guardada (as guardas do lançamento são calculadas de novo a cada pré-visualização),
      * a auditoria de unidades corre e, se a unidade base mudou, o perfil decidido no Guião fica "por rever".
      */
-    public static function afterChange(PingwinCatalogItem $item, ?string $baseBefore): void
+    public static function afterChange(PingwinCatalogItem $item, ?string $baseBefore, bool $audit = true, ?string $purchaseBefore = null): void
     {
         self::forgetLaunchUnits([$item->id]);
-        RunUnitsAuditJob::dispatch((int) $item->company_id);
+        if ($audit) {
+            RunUnitsAuditJob::dispatch((int) $item->company_id);
+        }
+        self::recordHistoryChange($item, ['base' => $baseBefore, 'purchase' => $purchaseBefore]);
 
         $baseAfter = (string) $item->base_unit_id;
         if ($baseBefore === null || $baseBefore === '' || $baseAfter === '' || $baseBefore === $baseAfter) {
@@ -72,5 +77,35 @@ final class ArticleUnitsChanged
             ->mapWithKeys(fn ($u) => [(string) $u->pingwin_id => trim($u->description . ($u->shortname ? " ({$u->shortname})" : ''))]);
         $profile->update(['state' => ProductUnitProfile::STATE_REVIEW,
             'reason' => sprintf('A unidade base mudou no PingWin (%s → %s): confirme de novo.', $names[$baseBefore] ?? $baseBefore, $names[$baseAfter] ?? $baseAfter)]);
+    }
+
+    /**
+     * A unidade base ou de compra de um artigo com histórico de compras mudou: as linhas antigas ficam na
+     * unidade anterior. Fica registado para o aviso no artigo e no Guião. Sem id antes (a cópia ainda não
+     * o tinha) não é uma mudança.
+     *
+     * @param array<string, ?string> $before field => id da unidade antes
+     */
+    private static function recordHistoryChange(PingwinCatalogItem $item, array $before): void
+    {
+        $cols = ['base' => 'base_unit_id', 'purchase' => 'default_purchase_unit_id'];
+        $changed = array_filter($cols, fn ($col, $field) => ($before[$field] ?? '') !== '' && (string) $item->{$col} !== ''
+            && (string) $item->{$col} !== $before[$field], ARRAY_FILTER_USE_BOTH);
+        if ($changed === []) {
+            return;
+        }
+        $lines = DB::table('pingwin_supplier_document_lines')->where('company_id', $item->company_id)->where('product_pingwin_id', (string) $item->pingwin_id)->count();
+        if ($lines === 0) {
+            return;
+        }
+        $ids = array_merge(array_values(array_intersect_key($before, $changed)), array_map(fn ($col) => (string) $item->{$col}, array_values($changed)));
+        $names = PingwinUnit::where('company_id', $item->company_id)->whereIn('pingwin_id', $ids)->get(['pingwin_id', 'description', 'shortname'])
+            ->mapWithKeys(fn ($u) => [(string) $u->pingwin_id => trim($u->description . ($u->shortname ? " ({$u->shortname})" : ''))]);
+        foreach ($changed as $field => $col) {
+            $to = (string) $item->{$col};
+            ArticleUnitChange::create(['company_id' => $item->company_id, 'product_pingwin_id' => (string) $item->pingwin_id, 'field' => $field,
+                'from_unit_id' => $before[$field], 'from_name' => $names[$before[$field]] ?? $before[$field],
+                'to_unit_id' => $to, 'to_name' => $names[$to] ?? $to, 'history_lines' => $lines, 'changed_at' => now()]);
+        }
     }
 }

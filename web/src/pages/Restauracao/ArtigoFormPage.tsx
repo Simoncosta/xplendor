@@ -29,6 +29,7 @@ import ActionsMenu from "Components/Common/ActionsMenu";
 import { confirmAction } from "helpers/swal";
 import Skeleton from "Components/Common/Skeleton";
 import ArticleCopyCard, { ArticleChange, ArticleChanges, ArticleCopy, fmtWhen } from "./ArticleCopyCard";
+import UnitChangesAlert from "./units/UnitChangesAlert";
 
 /**
  * XPLENDOR — Restauração › Artigo (criar / abrir / editar). Mesmo form nos 2 modos.
@@ -369,6 +370,7 @@ export default function ArtigoFormPage() {
                 ) : (
                     <Form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
                         {!isCreate && <ArticleChanges changes={changes} />}
+                        {!isCreate && <UnitChangesAlert changes={copy?.unit_changes ?? []} />}
                         {created && (
                             <div className="alert alert-success d-flex align-items-center gap-2" role="alert">
                                 <i className="ri-checkbox-circle-line fs-5" />

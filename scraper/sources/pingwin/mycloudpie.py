@@ -4324,6 +4324,46 @@ class MyCloudPieClient(StockDocsMixin):
             except Exception as exc:  # noqa: BLE001
                 log.warning("stock %s: CLOSE falhou (ignorado): %s", product_id, type(exc).__name__)
 
+    @staticmethod
+    def parse_article_units(main: Dict[str, Any]) -> Dict[str, Any]:
+        """Do OPEN do artigo: os ids e os nomes das quatro unidades (base, compra, venda e stock)."""
+        def unit(key: str) -> Dict[str, Any]:
+            uid = str(main.get(key) or "")
+            return {"id": uid or None, "name": (main.get(f"{key}_descr") or None) if uid else None}
+        return {
+            "id": str(main.get("id") or ""), "code": str(main.get("code") or ""), "description": main.get("description"),
+            "base": unit("base_unit_id"), "purchase": unit("default_purchase_unit_id"),
+            "sale": unit("default_sale_unit_id"), "stock": unit("default_stock_unit_id"),
+        }
+
+    def read_article_units(self, product_ids: List[str]) -> Dict[str, Any]:
+        """SÓ LEITURA: as unidades de cada artigo, com o mesmo OPEN da leitura do stock (maindataset e
+        lk_stockconfig) e CLOSE num finally; sem o tbstock. Uma falha num artigo não pára os outros.
+        Devolve {units: {id: {...}}, errors: {id: msg}, seconds: {id: s}}."""
+        out: Dict[str, Any] = {"units": {}, "errors": {}, "seconds": {}}
+        for pid in [str(p) for p in product_ids if str(p).strip()]:
+            t0 = time.monotonic()
+            object_id = None
+            try:
+                r = self._stock_post(f"{pid}/{self._STOCK_OPEN_DATASETS}", "OPEN,GET,INFO", None)
+                if r.status_code not in (200, 206):
+                    raise RuntimeError(f"OPEN falhou (HTTP {r.status_code}) — {self._soa_message(r.text)}")
+                object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+                main = ((r.json().get("product", {}) or {}).get("maindataset") or [{}])[0] or {}
+                if str(main.get("id") or "") != pid:
+                    raise RuntimeError("o OPEN não devolveu este artigo.")
+                out["units"][pid] = self.parse_article_units(main)
+            except Exception as exc:  # noqa: BLE001
+                out["errors"][pid] = f"{type(exc).__name__}: {exc}"[:300]
+            finally:
+                if object_id:
+                    try:
+                        self._stock_post("", "CLOSE", object_id)
+                    except Exception as exc:  # noqa: BLE001
+                        log.warning("unidades %s: CLOSE falhou (ignorado): %s", pid, type(exc).__name__)
+            out["seconds"][pid] = round(time.monotonic() - t0, 3)
+        return out
+
     def read_stock(self, product_ids: List[str]) -> Dict[str, Any]:
         """SÓ LEITURA: o stock de cada artigo (uma linha por armazém). Uma falha num artigo não pára
         os outros. Devolve {stock: {id: {article, rows, warehouses}}, errors: {id: msg}, seconds: {id: s}}."""

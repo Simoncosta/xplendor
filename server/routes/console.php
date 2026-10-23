@@ -150,6 +150,18 @@ Schedule::job(new \App\Jobs\DispatchBomSyncJob())
         \Illuminate\Support\Facades\Log::error('[PingWin Fichas] Despacho noturno falhou no scheduler');
     });
 
+// Segunda-feira 01:30 (Lisboa) — os ids das unidades (base, compra, venda e stock) em todos os artigos
+// ativos (SÓ LEITURA: o OPEN e o CLOSE da leitura do stock, artigo a artigo, em lotes de 50). Depois da
+// leitura do catálogo de domingo e fora do horário de serviço: ~1500 artigos a ~0,9 s ≈ 25 min.
+Schedule::job(new \App\Jobs\SyncArticleUnitsJob())
+    ->weeklyOn(1, '01:30')
+    ->timezone('Europe/Lisbon')
+    ->name('pingwin-article-units-weekly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[PingWin Unidades] Despacho semanal falhou no scheduler');
+    });
+
 // 06:30 (Lisboa) — conta corrente dos fornecedores PingWin (S1, SÓ LEITURA). Depois da
 // sync de vendas das 05:00 (~7 min; mais ao domingo com o catálogo completo): margem
 // de 1h30. Só despacha lotes de 40 fornecedores para a queue; com um único worker,

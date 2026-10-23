@@ -33,6 +33,12 @@ describe("ArticleCopyCard (cópia local do artigo)", () => {
         expect(screen.getByTestId("article-changes")).toHaveTextContent("Mudou no PingWin desde a última leitura: Unidade de compra: Unidade → Quilograma (KG).");
     });
 
+    it("avisa quando a unidade de um artigo com histórico mudou (as linhas antigas ficam na anterior)", () => {
+        const warning = "A unidade de compra mudou de Unidade (UN) para Quilograma (KG) a 26/10/2026: as 19 linhas de compra anteriores estão em Unidade (UN).";
+        render(<ArticleCopyCard copy={{ ...copy, unit_changes: [{ field: "purchase", from: "Unidade (UN)", to: "Quilograma (KG)", changed_at: "2026-10-26T01:40:00Z", history_lines: 19, warning }] }} error={null} />);
+        expect(screen.getByTestId("article-unit-changes")).toHaveTextContent(warning);
+    });
+
     it("sem mudanças, não mostra nada", () => {
         const { container } = render(<ArticleChanges changes={[]} />);
         expect(container).toBeEmptyDOMElement();

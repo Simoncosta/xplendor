@@ -10,6 +10,7 @@ import {
 } from "helpers/laravel_helper";
 import { UnitGuideView, UnitQuestion, UnitWrite } from "common/models/unitGuide.model";
 import RecipeEditorModal, { RecipePrefill } from "pages/Restauracao/fichas/RecipeEditor";
+import UnitChangesAlert from "./UnitChangesAlert";
 import "./unitGuide.css";
 
 /**
@@ -199,6 +200,8 @@ export default function UnitGuideArticle({ companyId, view, answers, setAnswers,
                 {previewing && <Spinner size="sm" aria-label="A atualizar a proposta" />}
                 <Link to={view.article.url} className="ms-auto fs-13">Abrir o artigo</Link>
             </div>
+
+            <UnitChangesAlert changes={view.unit_changes ?? []} />
 
             {/* A conclusão antes das evidências. */}
             <Card className={`mb-3 xp-verdict xp-verdict-${view.verdict.key}`} data-testid="guide-verdict">

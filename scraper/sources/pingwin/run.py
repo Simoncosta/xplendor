@@ -433,6 +433,14 @@ def run(cfg: dict) -> dict:
                 return {"ok": False, "error": "product_ids em falta."}
             return {"ok": True, "mode": "stock", **client.read_stock(ids)}
 
+        if mode == "article_units":
+            # SÓ LEITURA: as unidades de cada artigo (base, compra, venda e stock: ids e nomes), com o
+            # OPEN da leitura do stock e CLOSE, artigo a artigo; uma falha não pára os outros.
+            ids = [str(i) for i in (cfg.get("product_ids") or []) if i]
+            if not ids:
+                return {"ok": False, "error": "product_ids em falta."}
+            return {"ok": True, "mode": "article_units", **client.read_article_units(ids)}
+
         if mode == "warehouses":
             # SÓ LEITURA (Fatia 7a): a lista de armazéns (ativos e anulados) e o formulário de cada
             # ativo (lojas servidas, loja principal, valorização).

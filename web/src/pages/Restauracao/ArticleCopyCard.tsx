@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { Alert, Button, Spinner } from "reactstrap";
 import PageCard from "Components/Common/PageCard";
+import { ArticleUnitChange } from "common/models/unitGuide.model";
+import UnitChangesAlert from "./units/UnitChangesAlert";
 
 /**
  * A cópia local do artigo (sem esperar pelo PingWin): mostra-se logo ao abrir, com a hora dos dados,
@@ -11,6 +13,7 @@ export type ArticleCopy = {
     catalog_item_id: number; pingwin_id: string; code: string | null; description: string | null; family: string | null;
     product_status: string | null; is_active: boolean; saleprice_cents: number | null; purchaseprice_cents: number | null;
     units: Record<"base" | "purchase" | "sale" | "stock", ArticleCopyUnit>; read_at: string | null; live_read_at: string | null;
+    unit_changes?: ArticleUnitChange[];
 };
 export type ArticleChange = { field: string; label: string; from: string | null; to: string | null };
 
@@ -33,6 +36,7 @@ export default function ArticleCopyCard({ copy, error, onRetry }: { copy: Articl
                     {onRetry && <Button size="sm" color="link" className="py-0" onClick={onRetry}>Tentar de novo</Button>}
                 </Alert>
             )}
+            <UnitChangesAlert changes={copy.unit_changes ?? []} />
             <dl className="row mb-0 fs-13">
                 <dt className="col-5 col-md-3">Código</dt><dd className="col-7 col-md-9">{copy.code ?? "—"}</dd>
                 <dt className="col-5 col-md-3">Família</dt><dd className="col-7 col-md-9">{copy.family ?? "—"}</dd>
