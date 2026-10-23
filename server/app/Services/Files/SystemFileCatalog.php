@@ -61,6 +61,12 @@ class SystemFileCatalog
      */
     public function sync(int $companyId, bool $execute): array
     {
+        // Sem o módulo Ficheiros, nada se regista, venha de onde vier o pedido (o site do consultor,
+        // a Bússola do stand, o comando). Spike de 22/10: a empresa 51 tinha 8 registos do site do
+        // consultor sem o módulo ligado.
+        if (! app(\App\Services\CompanyModuleService::class)->isEnabled($companyId, 'ficheiros')) {
+            return [];
+        }
         $stats = [];
         $existing = StoredFile::where('company_id', $companyId)->where('is_system', true)->whereIn('source', array_keys(self::SOURCES))->get()->keyBy('source_ref');
         $seen = [];

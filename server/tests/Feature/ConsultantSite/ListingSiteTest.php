@@ -114,6 +114,10 @@ class ListingSiteTest extends TestCase
     {
         $p = $this->makeProperty(['reference' => 'REF-F', 'title' => 'Apartamento Exemplo']);
         $this->upload($p, 2)->assertCreated();
+        // Sem o módulo Ficheiros, nada se regista (spike de 22/10).
+        app(SystemFileCatalog::class)->sync($this->company->id, true);
+        $this->assertSame(0, StoredFile::where('company_id', $this->company->id)->count());
+        app(\App\Services\CompanyModuleService::class)->enable($this->company->id, 'ficheiros');
         app(SystemFileCatalog::class)->sync($this->company->id, true);
         $files = StoredFile::where('company_id', $this->company->id)->whereIn('source', ['imovel', 'imovel_original'])->get();
         $this->assertCount(4, $files);

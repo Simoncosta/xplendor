@@ -60,6 +60,8 @@ class HomeContentTest extends TestCase
         $jpeg = $this->jpegWithGps();
         $this->assertStringContainsString('GPSLatitude', $jpeg);
         $this->site->parishes()->sync([$this->parish]);
+        // O registo nos Ficheiros só acontece com o módulo ligado (spike de 22/10).
+        app(\App\Services\CompanyModuleService::class)->enable($this->company->id, 'ficheiros');
 
         $r = $this->actingAs($this->admin, 'sanctum')->post("/api/v1/companies/{$this->company->id}/consultant-site/zone-photos",
             ['file' => UploadedFile::fake()->createWithContent('rua.jpg', $jpeg), 'alt' => 'Rua de Paranhos', 'parish_id' => $this->parish], ['Accept' => 'application/json'])

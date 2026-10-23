@@ -116,6 +116,21 @@ class SystemFileCatalogTest extends TestCase
         $this->assertSame(9, StoredFile::count());
     }
 
+    public function test_without_the_files_module_nothing_is_registered_whoever_asks(): void
+    {
+        // Spike de 22/10: registos criados sem o módulo (o site do consultor chamava o registo direto).
+        app(CompanyModuleService::class)->disable($this->c->id, 'ficheiros');
+        $this->assertSame([], app(SystemFileCatalog::class)->sync($this->c->id, true));
+        app(SystemFileCatalog::class)->syncIfStale($this->c->id);
+        Artisan::call('files:catalog', ['--execute' => true]);
+        $this->assertSame(0, StoredFile::count());
+        $this->assertSame(0, FileFolder::where('company_id', $this->c->id)->count());
+
+        app(CompanyModuleService::class)->enable($this->c->id, 'ficheiros');
+        app(SystemFileCatalog::class)->sync($this->c->id, true);
+        $this->assertSame(9, StoredFile::count());
+    }
+
     public function test_what_leaves_the_module_stops_appearing_and_the_folders_follow_their_area(): void
     {
         app(SystemFileCatalog::class)->sync($this->c->id, true);
