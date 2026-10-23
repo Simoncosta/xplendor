@@ -19,10 +19,51 @@ import { OcrLaunchPreview } from "common/models/ocr.model";
 
 /** trigger: um pedido de fora (o painel "Fatura validada") para abrir a confirmação de lançar. */
 export type LaunchTrigger = { action: "draft" | "closed"; at: number } | null;
-type Props = { companyId: number; invoiceId: number; onChanged: () => void; trigger?: LaunchTrigger; refreshKey?: number };
+/** onPreview: a última pré-visualização, para o painel "Fatura validada" usar as mesmas guardas. */
+type Props = { companyId: number; invoiceId: number; onChanged: () => void; trigger?: LaunchTrigger; refreshKey?: number; onPreview?: (p: OcrLaunchPreview) => void };
 
 export const CLOSE_WARNING = "Depois de fechada, a fatura entra no stock e na conta corrente. Para corrigir, é preciso anular.";
 const UNIT_GUIDE = "/restauracao/auditoria/guiao";
+const ARTICLES = "/cadastros/artigos";
+
+export type LaunchFix = { to: string; label: string };
+/** O que os dois botões de gravar dizem (null = ativo) e onde se resolve o que falta. */
+export type LaunchState = { draft: string | null; closed: string | null; fixes: LaunchFix[] };
+
+/**
+ * Os motivos de "Gravar como rascunho" e "Gravar como fechada" a partir da pré-visualização: os mesmos
+ * no cartão e no painel "Fatura validada" (o ecrã nunca oferece o que o lançamento vai recusar).
+ */
+export function launchState(p: OcrLaunchPreview, busyWrite = false): LaunchState {
+    const failed = p.guards.filter((g) => !g.ok);
+    const onlyCheck = failed.length === 1 && failed[0].key === "conferencia";
+    const pending = busyWrite || p.writes.some((w) => w.status === "pendente");
+    // O motivo do tipo é o da guarda (a mensagem certa para cada tipo).
+    const typeReason = failed.find((g) => g.key === "tipo")?.message ?? null;
+    const launchReason = typeReason ?? (p.can_launch || onlyCheck ? null : failed.map((g) => g.message).join(" "));
+    const blockers = p.close?.blockers ?? [];
+    const closed = pending ? "Há uma escrita em curso." : typeReason ? typeReason
+        : p.close?.can_close ? null : blockers.map((b) => b.message).join(" ") || "Ainda não se pode fechar.";
+    const draft = pending ? "Há uma escrita em curso." : launchReason;
+
+    const keys = new Set([...failed.map((g) => g.key), ...blockers.map((b) => b.key)]);
+    const fixes: LaunchFix[] = [];
+    const add = (f: LaunchFix) => { if (!fixes.some((x) => x.to === f.to)) fixes.push(f); };
+    // Os artigos que o PingWin arredondava (unidade sem decimais) e os de agrupamento com taxas misturadas.
+    const planned = p.planned?.lines ?? [];
+    if (keys.has("unidades")) {
+        planned.filter((l) => l.kind === "linha" && l.rounded_from != null && l.article)
+            .forEach((l) => add({ to: `${ARTICLES}/${l.article!.pingwin_id}`, label: `Abrir ${l.article!.description ?? "o artigo"} em Cadastros › Artigos` }));
+    }
+    if (keys.has("unidades") || keys.has("unidades_confirmadas")) add({ to: UNIT_GUIDE, label: "Abrir o Guião de unidades" });
+    if (keys.has("agrupamento")) {
+        planned.filter((l) => l.kind === "grupo" && l.article)
+            .forEach((l) => add({ to: `${ARTICLES}/${l.article!.pingwin_id}`, label: `Abrir ${l.article!.description ?? "o artigo"} em Cadastros › Artigos` }));
+    }
+    if (keys.has("fornecedor")) add({ to: "/restauracao/fornecedores", label: "Abrir os fornecedores" });
+
+    return { draft, closed, fixes: draft || closed ? fixes : [] };
+}
 
 const eur = (cents?: number | null) => ((cents ?? 0) / 100).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
 const fmtDay = (d?: string | null) => (d ? d.split("-").reverse().join("/") : "—");
@@ -68,7 +109,7 @@ function PlannedLines({ planned }: { planned: NonNullable<OcrLaunchPreview["plan
     );
 }
 
-export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = null, refreshKey = 0 }: Props) {
+export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = null, refreshKey = 0, onPreview }: Props) {
     const [p, setP] = useState<OcrLaunchPreview | null>(null);
     const [busy, setBusy] = useState(false);
     const [confirm, setConfirm] = useState<"launch" | "launch_closed" | "close" | "void" | null>(null);
@@ -85,6 +126,8 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
     }, [companyId, invoiceId]);
 
     useEffect(() => { load(); }, [load, refreshKey]);
+    // Cada pré-visualização nova vai também para a página (o painel "Fatura validada").
+    useEffect(() => { if (p) onPreview?.(p); }, [p, onPreview]);
 
     // Polling enquanto há uma escrita em curso; no fim avisa a página (F3 e lista).
     const pending = p?.writes.find((w) => w.status === "pendente");
@@ -139,14 +182,11 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
     const onlyCheck = failed.length === 1 && failed[0].key === "conferencia";
     const draftActive = p.draft && p.draft.docstatus_id !== "8003";
     const last = p.writes[0];
-    // O motivo do tipo é o da guarda (a mensagem certa para cada tipo).
-    const typeReason = failed.find((g) => g.key === "tipo")?.message ?? null;
-    const launchReason = typeReason
-        ?? (p.can_launch || onlyCheck ? null : failed.map((g) => g.message).join(" "));
+    const state = launchState(p);
+    const launchReason = launchState({ ...p, writes: [] }).draft;
     const closeBlockers = p.close?.blockers ?? [];
-    const closeReason = pending ? "Há uma escrita em curso." : typeReason ? typeReason
-        : p.close?.can_close ? null : closeBlockers.map((b) => b.message).join(" ") || "Ainda não se pode fechar.";
-    reasonsRef.current = { draft: pending ? "Há uma escrita em curso." : launchReason, closed: closeReason };
+    const closeReason = state.closed;
+    reasonsRef.current = { draft: state.draft, closed: closeReason };
     const unitsMissing = closeBlockers.some((b) => b.key === "unidades_confirmadas");
 
     const run = async (fn: () => Promise<any>, closeAfter = false) => {

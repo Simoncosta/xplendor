@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, CardBody, Container, Row, Col, Spinner, Label, Alert, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import Select from "react-select";
 import { reactSelectTheme } from "../../helpers/reactSelectStyles";
@@ -12,7 +12,7 @@ import ReasonButton from "Components/Common/ReasonButton";
 import ArticlePicker from "./faturas/ArticlePicker";
 import CreateArticleModal, { CreateArticleData } from "./faturas/CreateArticleModal";
 import LineArticleCell from "./faturas/LineArticleCell";
-import LaunchCard, { LaunchTrigger } from "./faturas/LaunchCard";
+import LaunchCard, { LaunchTrigger, launchState } from "./faturas/LaunchCard";
 import VatByRateCard from "./faturas/VatByRateCard";
 import RereadModal from "./faturas/RereadModal";
 import PromoModal, { promoTag } from "./faturas/PromoModal";
@@ -26,7 +26,7 @@ import {
 import {
     OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption,
     OcrPingwinBlock, OcrPingwinDoc, OcrLinkMethod, OCR_LINK_STATUS,
-    OcrLineLink, OcrArticlesSummary, OcrLineLinksPayload, OCR_DOC_TYPES, NOTE_BLOCKED,
+    OcrLineLink, OcrArticlesSummary, OcrLineLinksPayload, OCR_DOC_TYPES, NOTE_BLOCKED, OcrLaunchPreview,
 } from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import Skeleton from "Components/Common/Skeleton";
@@ -123,6 +123,8 @@ export default function FaturaValidacaoPage() {
     const [imageHidden, setImageHidden] = useState<boolean>(readImageHidden);
     const [launchTrigger, setLaunchTrigger] = useState<LaunchTrigger>(null);
     const [launchRefresh, setLaunchRefresh] = useState(0);
+    // A última pré-visualização do cartão do lançamento: o painel "Fatura validada" usa as mesmas guardas.
+    const [launchPreview, setLaunchPreview] = useState<OcrLaunchPreview | null>(null);
     const savedBody = useRef<string>("");
     const [promoLine, setPromoLine] = useState<number | null>(null);   // "Promoção…" da linha
 
@@ -409,6 +411,11 @@ export default function FaturaValidacaoPage() {
     const docLabel = OCR_DOC_TYPES[docType] ?? null;
     const isCredit = docType === "NC";
     const noteBlocked = NOTE_BLOCKED[docType] ?? null;
+    // Os botões do painel "Fatura validada": os motivos das guardas do lançamento (as mesmas do cartão).
+    const launch = launchPreview ? launchState(launchPreview) : null;
+    const checking = "A verificar o que falta para gravar no PingWin…";
+    const savedDraftReason = noteBlocked ?? (launch ? launch.draft : checking);
+    const savedClosedReason = noteBlocked ?? (launch ? launch.closed : checking);
     const pageTitle = inv?.number ? `${docLabel && docType !== "FT" ? docLabel : "Fatura"} ${inv.number}` : "Validar fatura";
 
     if (loading) {
@@ -572,11 +579,11 @@ export default function FaturaValidacaoPage() {
                     <Alert color="success" className="d-flex flex-wrap align-items-center justify-content-between gap-2" data-testid="saved-panel">
                         <span><i className="ri-checkbox-circle-line me-1" /><strong>Fatura validada e guardada.</strong> {dirty ? "Há alterações por guardar." : "O que fazer a seguir?"}</span>
                         <span className="d-flex flex-wrap gap-2">
-                            <ReasonButton size="sm" color="primary" reason={noteBlocked} data-testid="saved-launch-draft"
+                            <ReasonButton size="sm" color="primary" reason={savedDraftReason} data-testid="saved-launch-draft"
                                 onClick={() => { setLaunchTrigger({ action: "draft", at: Date.now() }); document.getElementById("xp-launch")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
                                 <i className="ri-upload-cloud-2-line me-1" />Gravar no PingWin como rascunho
                             </ReasonButton>
-                            <ReasonButton size="sm" color="outline-primary" reason={noteBlocked} data-testid="saved-launch-closed"
+                            <ReasonButton size="sm" color="outline-primary" reason={savedClosedReason} data-testid="saved-launch-closed"
                                 onClick={() => { setLaunchTrigger({ action: "closed", at: Date.now() }); document.getElementById("xp-launch")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
                                 <i className="ri-lock-line me-1" />Gravar no PingWin como fechada
                             </ReasonButton>
@@ -586,6 +593,16 @@ export default function FaturaValidacaoPage() {
                             </ReasonButton>
                             <Button size="sm" color="light" onClick={() => navigate("/restauracao/faturas")}>Voltar à lista</Button>
                         </span>
+                        {!noteBlocked && launch && launch.draft && (
+                            <div className="w-100 fs-13" data-testid="saved-launch-blocked">
+                                <i className="ri-error-warning-line me-1" />Ainda não se pode gravar no PingWin: {launch.draft}
+                                {launch.fixes.length > 0 && (
+                                    <span className="d-flex flex-wrap gap-3 mt-1">
+                                        {launch.fixes.map((f) => <Link key={f.to} to={f.to}><i className="ri-arrow-right-line me-1" />{f.label}</Link>)}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </Alert>
                 )}
                 {(inv?.reread_unmatched ?? []).length > 0 && (
@@ -851,7 +868,7 @@ export default function FaturaValidacaoPage() {
                         {/* FB-1: lançar no PingWin em rascunho, fechar, anular */}
                         {inv && (inv.status === "por_validar" || inv.status === "validada") && (
                             <div id="xp-launch">
-                                <LaunchCard companyId={companyId} invoiceId={invoiceId} onChanged={refreshPingwin} trigger={launchTrigger} refreshKey={launchRefresh} />
+                                <LaunchCard companyId={companyId} invoiceId={invoiceId} onChanged={refreshPingwin} trigger={launchTrigger} refreshKey={launchRefresh} onPreview={setLaunchPreview} />
                             </div>
                         )}
                         {/* Fatia 5: a conferência com as guias; "Lançar guia" leva ao lançamento acima (nada se grava sozinho). */}

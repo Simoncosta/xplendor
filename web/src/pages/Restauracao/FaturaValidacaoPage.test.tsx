@@ -269,6 +269,44 @@ test("uma fatura (FT) continua a poder gravar no PingWin a partir do painel", as
     expect(screen.queryByTestId("credit-note")).toBeNull();
 });
 
+test("painel Fatura validada: com uma guarda do lançamento a falhar, os dois botões ficam desativados com o motivo e a ligação para resolver", async () => {
+    const UNIT_MSG = "O artigo COMIDA STAFF 23% é à unidade e a linha tem 8,09 kg: o PingWin arredonda para 9.";
+    mockApi.launchGet.mockResolvedValue({ data: preview({
+        can_launch: false,
+        guards: [{ key: "unidades", ok: false, label: "Unidade de cada linha", message: UNIT_MSG }],
+        close: { mode: "launch", can_close: false, closed_at: null, closed_by_name: null, blockers: [{ key: "unidades", label: "Unidade de cada linha", message: UNIT_MSG }] },
+        planned: { lines: [{ kind: "linha", line_id: 11, item: "COMIDA STAFF", rounded_from: 8.09, qnt: 9, price: 5, discount_pct: 0, promo_cents: 0, vat_rate: 23, net_cents: 4500, tax_cents: 1035, total_cents: 5535,
+            article: { id: 3, code: "101208", description: "COMIDA STAFF 23%", pingwin_id: "101208" } }], total_cents: 5535, target_cents: 5000, iec_from: null },
+    }) });
+    mockApi.update.mockResolvedValue({ data: { invoice: invoice({ status: "validada" }) } });
+    render(<FaturaValidacaoPage />);
+    fireEvent.click(await screen.findByText(/Validar e guardar/));
+    const panel = await screen.findByTestId("saved-panel");
+    await waitFor(() => expect(within(panel).getByTestId("saved-launch-draft")).toBeDisabled());
+    expect(within(panel).getByTestId("saved-launch-closed")).toBeDisabled();
+    const blocked = within(panel).getByTestId("saved-launch-blocked");
+    expect(blocked).toHaveTextContent(UNIT_MSG);
+    expect(within(blocked).getByRole("link", { name: /Abrir COMIDA STAFF 23% em Cadastros › Artigos/ })).toHaveAttribute("href", "/cadastros/artigos/101208");
+    expect(within(blocked).getByRole("link", { name: /Abrir o Guião de unidades/ })).toHaveAttribute("href", "/restauracao/auditoria/guiao");
+    fireEvent.click(within(panel).getByTestId("saved-launch-draft"));
+    expect(screen.queryByTestId("launch-modal")).toBeNull();
+});
+
+test("painel Fatura validada: só a conferência por aceitar deixa gravar em rascunho (aceita-se no modal), mas não como fechada", async () => {
+    mockApi.launchGet.mockResolvedValue({ data: preview({
+        can_launch: false,
+        guards: [{ key: "conferencia", ok: false, label: "Linhas a conferir com o QR", message: "As linhas não conferem com o QR." }],
+        close: { mode: "launch", can_close: false, closed_at: null, closed_by_name: null, blockers: [{ key: "conferencia", label: "Linhas a conferir com o QR", message: "As linhas não conferem com o QR." }] },
+    }) });
+    mockApi.update.mockResolvedValue({ data: { invoice: invoice({ status: "validada" }) } });
+    render(<FaturaValidacaoPage />);
+    fireEvent.click(await screen.findByText(/Validar e guardar/));
+    const panel = await screen.findByTestId("saved-panel");
+    await waitFor(() => expect(within(panel).getByTestId("saved-launch-closed")).toBeDisabled());
+    expect(within(panel).getByTestId("saved-launch-draft")).not.toBeDisabled();
+    expect(within(panel).queryByTestId("saved-launch-blocked")).toBeNull();
+});
+
 test("sem QR: QR ilegível, o adquirente verificado pelo texto e o IEC somado na linha", async () => {
     mockApi.get.mockResolvedValue({ data: { invoice: invoice({
         qr_ok: false, source: "sem_qr", check_status: "sem_qr", supplier_nif: "508888883", buyer_nif: "509999999", atcud: "ABCD1234-55", discounts: [], ignored_lines: [],
