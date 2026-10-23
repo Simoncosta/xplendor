@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardBody, CardHeader, Input, Label, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { getWorkflowSettings, setContentApprover, updateWorkflowSettings } from "helpers/laravel_helper";
@@ -27,7 +28,7 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
         getWorkflowSettings(companyId).then((r: any) => setData(r.data)).catch(() => setData(null));
     }, [companyId]);
 
-    const save = async (patch: Partial<Pick<WorkflowSettings, "content_approval_required" | "internal_review_required" | "production_mode" | "auto_publishing_enabled">>) => {
+    const save = async (patch: Partial<Pick<WorkflowSettings, "content_approval_required" | "internal_review_required" | "production_mode">>) => {
         if (!data) return;
         setBusy(true);
         try {
@@ -35,7 +36,6 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
                 content_approval_required: patch.content_approval_required ?? data.content_approval_required,
                 internal_review_required: patch.internal_review_required ?? data.internal_review_required,
                 ...(patch.production_mode ? { production_mode: patch.production_mode } : {}),
-                ...(patch.auto_publishing_enabled !== undefined ? { auto_publishing_enabled: patch.auto_publishing_enabled } : {}),
             });
             setData(r.data);
             toast.success("Definições guardadas.");
@@ -89,14 +89,11 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
                         checked={data.internal_review_required} onChange={(e) => save({ internal_review_required: e.target.checked })} />
                     <Label className="form-check-label" for="wf-internal">Revisão interna obrigatória, feita por outra pessoa</Label>
                 </div>
-                <div className="form-check form-switch mb-3">
-                    <Input type="checkbox" role="switch" className="form-check-input" id="wf-auto" disabled={!data.can_edit || busy}
-                        checked={data.auto_publishing_enabled} onChange={(e) => save({ auto_publishing_enabled: e.target.checked })} />
-                    <Label className="form-check-label" for="wf-auto">Publicação automática no Instagram e no Facebook</Label>
-                    <div className="form-text">
-                        Só publica sozinha a publicação com a caixa "Publicar automaticamente" marcada e com hora. Ainda em testes: por agora não chega às redes.
-                    </div>
-                </div>
+                {/* O interruptor vive nas Integrações › Redes sociais (integracoes.configurar); aqui só o estado. */}
+                <p className="mb-3 fs-13" data-testid="wf-auto-status">
+                    <i className="ri-send-plane-line me-1" />Publicação automática: <strong>{data.auto_publishing_enabled ? "ligada" : "desligada"}</strong>.{" "}
+                    <Link to={`/companies/${companyId}?tab=integrations`}>Mudar em Integrações › Redes sociais</Link>
+                </p>
 
                 <Label className="fw-semibold mb-1">Quem aprova os conteúdos</Label>
                 <p className="text-muted fs-12 mb-2">

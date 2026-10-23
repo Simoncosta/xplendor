@@ -50,6 +50,17 @@ class SocialConnectionController extends Controller
             'Publicação desligada. A leitura das redes sociais continua.');
     }
 
+    // PUT /companies/{id}/integrations/social/auto-publishing (o interruptor "Publicação automática", junto a "Ligar publicação")
+    public function setAutoPublishing(Request $request, int $companyId)
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+        $state = $this->publishing->setAutoPublishing($companyId, (bool) $data['enabled']);
+        Log::info('[Publicação automática] Interruptor.', ['company_id' => $companyId, 'enabled' => $state['auto_publishing_enabled']]);
+
+        return ApiResponse::success(['publishing' => $state],
+            $state['auto_publishing_enabled'] ? 'Publicação automática ligada.' : 'Publicação automática desligada.');
+    }
+
     // GET /companies/{id}/integrations/social/auth-url
     public function authUrl(Request $request, int $companyId)
     {

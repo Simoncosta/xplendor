@@ -58,6 +58,22 @@ class CompanyOcrLaunchController extends Controller
         return $this->status($companyId, $invoiceId, PingwinDocumentWrite::VOID, 'A anular o rascunho no PingWin…');
     }
 
+    /** Sem QR: "Conferi os totais com o papel" (marcar ou desmarcar; guarda quem e quando). */
+    public function paperCheck(Request $request, int $companyId, int $invoiceId)
+    {
+        [$inv, $err] = $this->invoice($companyId, $invoiceId);
+        if ($err) {
+            return $err;
+        }
+        try {
+            $this->launch->setPaperCheck($inv, $request->boolean('checked'), Auth::id());
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
+        }
+
+        return ApiResponse::success($this->launch->preview($inv->fresh()), $request->boolean('checked') ? 'Totais conferidos com o papel.' : 'Conferência com o papel retirada.');
+    }
+
     public function setLineUnit(Request $request, int $companyId, int $invoiceId, int $lineId)
     {
         [$inv, $err] = $this->invoice($companyId, $invoiceId);

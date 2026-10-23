@@ -6,7 +6,7 @@ import PageCard from "Components/Common/PageCard";
 import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
 import ActionsMenu from "Components/Common/ActionsMenu";
-import { closeOcrLaunch, getOcrLaunch, launchOcrInvoice, setOcrLineLaunchUnit, voidOcrLaunch } from "helpers/laravel_helper";
+import { closeOcrLaunch, getOcrLaunch, launchOcrInvoice, setOcrLineLaunchUnit, setOcrPaperCheck, voidOcrLaunch } from "helpers/laravel_helper";
 import { OcrLaunchPreview } from "common/models/ocr.model";
 
 /**
@@ -139,11 +139,12 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
     const onlyCheck = failed.length === 1 && failed[0].key === "conferencia";
     const draftActive = p.draft && p.draft.docstatus_id !== "8003";
     const last = p.writes[0];
-    const outOfScope = failed.some((g) => g.key === "tipo");
-    const launchReason = outOfScope ? "Por agora, lançar à mão no PingWin."
-        : p.can_launch || onlyCheck ? null : failed.map((g) => g.message).join(" ");
+    // O motivo do tipo é o da guarda (a mensagem certa para cada tipo).
+    const typeReason = failed.find((g) => g.key === "tipo")?.message ?? null;
+    const launchReason = typeReason
+        ?? (p.can_launch || onlyCheck ? null : failed.map((g) => g.message).join(" "));
     const closeBlockers = p.close?.blockers ?? [];
-    const closeReason = pending ? "Há uma escrita em curso." : outOfScope ? "Por agora, lançar à mão no PingWin."
+    const closeReason = pending ? "Há uma escrita em curso." : typeReason ? typeReason
         : p.close?.can_close ? null : closeBlockers.map((b) => b.message).join(" ") || "Ainda não se pode fechar.";
     reasonsRef.current = { draft: pending ? "Há uma escrita em curso." : launchReason, closed: closeReason };
     const unitsMissing = closeBlockers.some((b) => b.key === "unidades_confirmadas");
@@ -239,13 +240,32 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
                         {p.guards.map((g) => (
                             <li key={g.key} className="d-flex gap-2 mb-1">
                                 <i className={g.ok ? "ri-checkbox-circle-line text-success" : "ri-close-circle-line text-danger"} aria-hidden />
-                                <span>{g.label}{!g.ok && g.message && <span className="text-muted"> — {g.message}</span>}</span>
+                                <span>{g.label}{!g.ok && g.message && <span className="text-muted"> · {g.message}</span>}</span>
                             </li>
                         ))}
                     </ul>
+                    {p.paper_check && (
+                        <div className="form-check mb-2 fs-13" data-testid="launch-paper-check">
+                            <input className="form-check-input" type="checkbox" id={`paper-check-${invoiceId}`} checked={p.paper_check.checked} disabled={busy || !!pending}
+                                onChange={(e) => run(() => setOcrPaperCheck(companyId, invoiceId, e.target.checked))} />
+                            <label className="form-check-label" htmlFor={`paper-check-${invoiceId}`}>
+                                Conferi os totais com o papel
+                                <span className="text-muted d-block fs-12">
+                                    {p.paper_check.checked && p.paper_check.at
+                                        ? `Marcado por ${p.paper_check.by_name ?? "—"} a ${new Date(p.paper_check.at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}.`
+                                        : "Sem QR legível: confirme o total, o IVA e o NIF do adquirente na fatura em papel."}
+                                </span>
+                            </label>
+                        </div>
+                    )}
                     {p.can_launch && closeBlockers.length > 0 && <CloseBlockers blockers={closeBlockers} unitsMissing={unitsMissing} />}
                     {(p.discount_warnings ?? []).map((w, i) => (
                         <div key={i} className="fs-13 text-warning mb-1" data-testid="launch-discount-warning"><i className="ri-error-warning-line me-1" />{w}</div>
+                    ))}
+                    {p.planned && p.planned.lines.filter((l) => l.kind === "grupo").map((l, i) => (
+                        <div key={`g${i}`} className="fs-13 mb-1" data-testid="launch-grouped">
+                            <i className="ri-stack-line me-1" />{l.lines} {l.lines === 1 ? "linha junta-se" : "linhas juntam-se"} em {l.article?.description ?? l.item}: 1 × {eurC(l.net_cents)}
+                        </div>
                     ))}
                     {p.planned && p.planned.lines.some((l) => l.kind === "iec") && <PlannedLines planned={p.planned} />}
                     {needsUnit.length > 0 && (

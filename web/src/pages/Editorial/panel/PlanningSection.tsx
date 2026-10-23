@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { getBlogs } from "helpers/laravel_helper";
 import { BLOG_STATUS_META } from "common/models/blog.model";
 import { NETWORKS, Network, POST_CHANNEL_META, POST_FORMATS } from "common/models/editorialPost.model";
-import { FormatTable, crossCheck } from "common/models/editorialWorkflow.model";
+import { FormatTable, Stage, crossCheck } from "common/models/editorialWorkflow.model";
 import XSelect, { XOption } from "Components/Common/Select";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
@@ -27,6 +27,31 @@ export const emptyPlan = (date: string): PlanValues => ({
     title: "", publish_date: date, publish_time: "", site: false, networks: { instagram: "" }, order: ["instagram"],
     format: POST_FORMATS[0], pillar: "", link: "", keyword: "", blog_id: "", auto_publish: false,
 });
+
+/** Agora em Lisboa, como "AAAA-MM-DD HH:MM" (para comparar com a data e a hora da publicação). */
+const lisbonNow = () => new Date().toLocaleString("sv-SE", { timeZone: "Europe/Lisbon", hourCycle: "h23" }).slice(0, 16);
+
+/**
+ * F2: o que diz a caixa "Publicar automaticamente": porque não vai sair sozinha (interruptor
+ * desligado, sem hora, hora passada, ainda sem aprovação) ou que vai. O servidor decide na mesma
+ * (AutoPublishingScheduler::wanted). "switchOff" pede a ligação para as Integrações.
+ */
+export function autoPublishHint(v: Pick<PlanValues, "publish_date" | "publish_time">, enabled: boolean | undefined, stage: Stage | undefined, now: string = lisbonNow()):
+    { tone: "muted" | "warning" | "success"; text: string; switchOff?: boolean } {
+    if (enabled === false) {
+        return { tone: "warning", switchOff: true, text: "A publicação automática está desligada nesta empresa: esta publicação continua manual. Liga-se em " };
+    }
+    if (!v.publish_time) return { tone: "warning", text: "Sem hora, a publicação continua manual: indique a hora." };
+    if (`${v.publish_date} ${v.publish_time.slice(0, 5)}` <= now) {
+        return { tone: "warning", text: "A data e a hora já passaram: a publicação automática nunca sai atrasada. Escolha uma hora futura ou publique à mão." };
+    }
+    if (stage === "published" || stage === "analysis") return { tone: "muted", text: "Esta publicação já foi publicada." };
+    if (stage !== "scheduled") {
+        return { tone: "muted", text: "Fica marcada, mas só sai sozinha depois de aprovada (etapa Programado), à hora marcada em cada rede." };
+    }
+
+    return { tone: "success", text: "Aprovada e programada: sai sozinha à hora marcada em cada rede." };
+}
 
 /** O corpo do pedido (criar ou editar). */
 export function planPayload(v: PlanValues): Record<string, unknown> {
@@ -61,9 +86,11 @@ type Props = {
     errors?: string[];
     /** F2: o interruptor "Publicação automática" da empresa (desconhecido ao criar). */
     autoPublishingEnabled?: boolean;
+    /** A etapa da publicação (nenhuma ao criar). */
+    stage?: Stage;
 };
 
-export default function PlanningSection({ companyId, values: v, onChange, creating, disabled, lockedNetworks, formats, anchors, pillars, range, busy, onSubmit, onDelete, writeArticleUrl, errors, autoPublishingEnabled }: Props) {
+export default function PlanningSection({ companyId, values: v, onChange, creating, disabled, lockedNetworks, formats, anchors, pillars, range, busy, onSubmit, onDelete, writeArticleUrl, errors, autoPublishingEnabled, stage }: Props) {
     const [more, setMore] = useState(!creating);
     const [blogs, setBlogs] = useState<XOption[]>([]);
     const set = (patch: Partial<PlanValues>) => onChange({ ...v, ...patch });
@@ -95,6 +122,7 @@ export default function PlanningSection({ companyId, values: v, onChange, creati
     };
 
     const check = useMemo(() => crossCheck(formats, v.networks), [formats, v.networks]);
+    const hint = autoPublishHint(v, autoPublishingEnabled, stage);
     const pillarOptions: XOption[] = [{ value: "", label: "Sem pilar" }, ...[...pillars, ...(v.pillar && !pillars.includes(v.pillar) ? [v.pillar] : [])].map((p) => ({ value: p, label: p }))];
     const chip = (active: boolean, onClick: () => void, icon: string, label: string, id: string) => (
         <button type="button" id={id} role="checkbox" aria-checked={active} disabled={disabled} onClick={onClick}
@@ -126,12 +154,9 @@ export default function PlanningSection({ companyId, values: v, onChange, creati
                     <Input type="checkbox" className="form-check-input" id="pp-auto" checked={v.auto_publish} disabled={disabled}
                         onChange={(e) => set({ auto_publish: e.target.checked })} />
                     <Label className="form-check-label" for="pp-auto">Publicar automaticamente</Label>
-                    <div className="form-text">
-                        {autoPublishingEnabled === false
-                            ? "A publicação automática está desligada nas definições da Linha Editorial: esta publicação continua manual."
-                            : !v.publish_time
-                                ? "Sem hora, a publicação continua manual."
-                                : "Quando for programada, sai sozinha à hora marcada em cada rede."}
+                    <div className={`form-text ${hint.tone === "warning" && v.auto_publish ? "text-warning-emphasis" : hint.tone === "success" && v.auto_publish ? "text-success" : ""}`} data-testid="pp-auto-hint">
+                        {hint.text}
+                        {hint.switchOff && <><Link to={`/companies/${companyId}?tab=integrations`}>Integrações › Redes sociais</Link>.</>}
                     </div>
                 </div>
             )}

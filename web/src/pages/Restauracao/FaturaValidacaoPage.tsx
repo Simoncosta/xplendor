@@ -599,6 +599,11 @@ export default function FaturaValidacaoPage() {
                     </Alert>
                 )}
 
+                {inv?.prices_include_vat && (
+                    <Alert color="info" className="py-2" data-testid="vat-included">
+                        <i className="ri-percent-line me-1" /><strong>Preços com IVA incluído:</strong> convertidos para valores sem IVA. Cada linha mostra os dois valores; a soma das bases de cada taxa é a do quadro do IVA.
+                    </Alert>
+                )}
                 {isCredit && (
                     <Alert color="primary" className="py-2" data-testid="credit-note">
                         <i className="ri-arrow-go-back-line me-1" /><strong>Nota de crédito:</strong> os valores são um crédito do fornecedor a favor da empresa (por exemplo, vasilhame devolvido). Revê-se como uma fatura e lança-se no PingWin como Nota de crédito de fornecedor, em rascunho, com a data da nota e o número dela como Documento de referência.
@@ -654,6 +659,12 @@ export default function FaturaValidacaoPage() {
                         <Card>
                             <div className="card-header"><h5 className="card-title mb-0">Fornecedor & fatura</h5></div>
                             <CardBody>
+                                {inv?.handwritten_notes && (
+                                    <div className="fs-13 mb-2 p-2 rounded bg-light" data-testid="handwritten-notes">
+                                        <i className="ri-quill-pen-line me-1" /><strong>Notas escritas à mão:</strong> {inv.handwritten_notes}
+                                        <span className="d-block fs-12 text-muted">Vão para a Nota da folha da contabilidade, se estiver vazia. Não registam pagamentos nem mudam o fornecedor.</span>
+                                    </div>
+                                )}
                                 <Row className="g-2">
                                     <Col md={12}>
                                         <Label className="form-label">Fornecedor (ligar ao sincronizado)</Label>
@@ -729,6 +740,9 @@ export default function FaturaValidacaoPage() {
                                                         </button>
                                                     )}
                                                     {!!l.iec && <div className="fs-11 text-muted mt-1" data-testid={`line-iec-${i}`} title="O IEC vem numa coluna à parte e soma-se ao valor da linha">Inclui IEC de {eur(l.iec)}</div>}
+                                                    {l.vat_included !== null && l.vat_included !== undefined && (
+                                                        <div className="fs-11 text-muted mt-1" data-testid={`line-vat-included-${i}`}>Com IVA {eur(l.vat_included)} · sem IVA {eur(l.line_total ?? 0)}</div>
+                                                    )}
                                                 </td>
                                                 <td>{numInput(l.quantity, (v) => setLine(i, { quantity: v }), { "aria-label": `Quantidade, linha ${i + 1}`, title: l.quantity ?? "" })}</td>
                                                 <td><input className="form-control form-control-sm" value={l.unit ?? ""} title={l.unit ?? ""} onChange={(e) => setLine(i, { unit: e.target.value })} aria-label={`Unidade, linha ${i + 1}`} /></td>

@@ -1,0 +1,169 @@
+{
+ "_origem": "HAR de 23/10/2026 (criação à mão de uma fatura-recibo compra, FR C), só os campos usados; sem sessão nem nomes.",
+ "docconfig": {
+  "docconfigid": "584955579139752236",
+  "code": "FR C",
+  "shortname": "Fatura-recibo",
+  "docdescription": "Fatura-recibo compra",
+  "stksignal": 1,
+  "doctype": 1,
+  "settled": true,
+  "default_docstatus0": "8002",
+  "default_paycond": "",
+  "ordered_dates": false,
+  "req_docreference": false,
+  "set_price": true,
+  "set_qnt": true,
+  "movtaxes": true,
+  "entity_required": true
+ },
+ "docreference": [
+  {
+   "id": "",
+   "document": ""
+  },
+  {
+   "id": "1649601156562",
+   "document": "Documento de Referência"
+  }
+ ],
+ "paycondition": [
+  {
+   "id": "584955579139752255",
+   "description": "Pronto Pagamento"
+  }
+ ],
+ "taxgroups": [
+  {
+   "key": "0000000100000004000000010000000000000001",
+   "id": "1003001",
+   "description": "Normal"
+  },
+  {
+   "key": "0000000100000004000000020000000000000002",
+   "id": "1003002",
+   "description": "Intermédia"
+  },
+  {
+   "key": "0000000100000004000000030000000000000003",
+   "id": "1003003",
+   "description": "Reduzida"
+  },
+  {
+   "key": "0000000100000004000000040000000000000004",
+   "id": "1003004",
+   "description": "Isenta"
+  }
+ ],
+ "model_header": {
+  "key": "0000000100000002000000010000000000000001",
+  "id": "584955579139814447",
+  "store_code": "BO",
+  "store_id": "1099511639284",
+  "docconfig_id": "584955579139752236",
+  "doc_prefix": " BO",
+  "doc_number": 138,
+  "entity_id": "",
+  "doc_date": "20261023T00:00:00",
+  "due_date": "20261023T00:00:00",
+  "paycond_id": "584955579139752255",
+  "docreference_id": "",
+  "docreference_number": "",
+  "docreference_date": "",
+  "adjustment": "",
+  "total_tax": 0.0,
+  "total_products": 0.0,
+  "docstatus_id": "8002",
+  "taxscenario_id": "3101",
+  "subtotal": 0.0,
+  "gross_total": 0.0,
+  "total": 0.0
+ },
+ "header_after_entity": {
+  "key": "0000000100000002000000020000000000000001",
+  "id": "584955579139814447",
+  "store_code": "BO",
+  "store_id": "1099511639284",
+  "docconfig_id": "584955579139752236",
+  "doc_prefix": " BO",
+  "doc_number": 138,
+  "entity_id": "584955579139700812",
+  "doc_date": "20261023T00:00:00",
+  "due_date": "20261023T00:00:00",
+  "paycond_id": "584955579139752255",
+  "docreference_id": "1649601156562",
+  "docreference_number": "",
+  "docreference_date": "",
+  "adjustment": "",
+  "total_tax": 0.0,
+  "total_products": 0.0,
+  "docstatus_id": "8002",
+  "taxscenario_id": "3101",
+  "subtotal": 0.0,
+  "gross_total": 0.0,
+  "total": 0.0
+ },
+ "line_new": {
+  "key": "0000000100000002000000010000000000000001",
+  "id": "584955579139814456",
+  "product_id": "584955579139814328",
+  "product_code": "101352",
+  "price": 1.89,
+  "stk_signal": 1,
+  "unit_value": 1.0,
+  "line_number": 1,
+  "unit_id": "11001",
+  "tax_description": "Normal",
+  "taxgroup_id": "1003001",
+  "qnt": 1.0,
+  "unit_code": "UN",
+  "total": 1.89,
+  "tax_value": 0.43,
+  "total_w_tax": 2.32,
+  "discount1": 0.0
+ },
+ "header_saved_by_hand": {
+  "key": "0000000100000002000000040000000000000001",
+  "id": "584955579139814447",
+  "store_code": "BO",
+  "store_id": "1099511639284",
+  "docconfig_id": "584955579139752236",
+  "doc_prefix": " BO",
+  "doc_number": 138,
+  "entity_id": "584955579139700812",
+  "doc_date": "20261023T00:00:00",
+  "due_date": "20261023T00:00:00",
+  "paycond_id": "584955579139752255",
+  "docreference_id": "1649601156562",
+  "docreference_number": "",
+  "docreference_date": "",
+  "adjustment": "",
+  "total_tax": 0.43,
+  "total_products": 1.89,
+  "docstatus_id": "8002",
+  "taxscenario_id": "3101",
+  "subtotal": 1.89,
+  "gross_total": 2.32,
+  "total": 2.32
+ },
+ "verifydoc": [
+  {
+   "key": "0000000100000006000000010000000000000001",
+   "code": 0,
+   "msg": "OK"
+  }
+ ],
+ "request_entity": [
+  {
+   "key": "0000000100000002000000010000000000000001",
+   "entity_id": "584955579139700812"
+  }
+ ],
+ "request_line_new": [
+  {
+   "product_id": "584955579139814328",
+   "unit_id": "11001"
+  }
+ ],
+ "cancel_action": "CANCEL"
+}

@@ -10,7 +10,7 @@ import FaturaValidacaoPage from "./FaturaValidacaoPage";
 const mockNavigate = jest.fn();
 const mockApi = {
     get: jest.fn(), update: jest.fn(), revalidate: jest.fn(), reprocess: jest.fn(), changes: jest.fn(),
-    launchGet: jest.fn(), launch: jest.fn(), close: jest.fn(),
+    launchGet: jest.fn(), launch: jest.fn(), close: jest.fn(), paperCheck: jest.fn(),
 };
 // O Jest deste projeto não resolve o react-router-dom: o mínimo que a página usa.
 jest.mock("react-router-dom", () => ({
@@ -27,6 +27,7 @@ jest.mock("helpers/laravel_helper", () => ({
     getOcrLaunch: (...a: unknown[]) => mockApi.launchGet(...a),
     launchOcrInvoice: (...a: unknown[]) => mockApi.launch(...a),
     closeOcrLaunch: (...a: unknown[]) => mockApi.close(...a),
+    setOcrPaperCheck: (...a: unknown[]) => mockApi.paperCheck(...a),
     getOcrInvoiceImageBlob: () => Promise.reject(new Error("sem imagem")),
     voidOcrLaunch: jest.fn(), setOcrLineLaunchUnit: jest.fn(), searchOcrPingwinLink: jest.fn(), confirmOcrPingwinLink: jest.fn(), unlinkOcrPingwinLink: jest.fn(),
     associateOcrLineArticle: jest.fn(), unlinkOcrLineArticle: jest.fn(), createOcrLineArticle: jest.fn(), acceptOcrLineSuggestions: jest.fn(),
@@ -320,4 +321,67 @@ test("sem IEC nas linhas, o cartão do lançamento não mostra a lista", async (
     render(<FaturaValidacaoPage />);
     await screen.findByTestId("launch-guards");
     expect(screen.queryByTestId("launch-planned")).toBeNull();
+});
+
+test("a guarda do tipo mostra o tipo verdadeiro: fatura-recibo com visto, nota de débito com a sua mensagem", async () => {
+    mockApi.launchGet.mockResolvedValue({ data: preview({ can_launch: false, guards: [
+        { key: "tipo", ok: false, label: "Nota de débito (ND)", message: "As notas de débito ainda se lançam à mão no PingWin. Disponível em breve." }] }) });
+    const { unmount } = render(<FaturaValidacaoPage />);
+    expect(await screen.findByTestId("launch-guards")).toHaveTextContent("Nota de débito (ND) · As notas de débito ainda se lançam à mão no PingWin. Disponível em breve.");
+    unmount();
+    mockApi.launchGet.mockResolvedValue({ data: preview({ guards: [{ key: "tipo", ok: true, label: "Fatura-recibo (FR)", message: null }] }) });
+    render(<FaturaValidacaoPage />);
+    const g = await screen.findByTestId("launch-guards");
+    expect(g).toHaveTextContent("Fatura-recibo (FR)");
+    expect(g).not.toHaveTextContent("Fatura (FT)");
+});
+
+test("sem QR: Conferi os totais com o papel marca-se no cartão do lançamento e diz quem e quando", async () => {
+    const missing = { key: "qr", ok: false, label: "Sem QR: adquirente, IVA lido e totais conferidos com o papel", message: 'Sem QR legível, falta: marcar "Conferi os totais com o papel".' };
+    mockApi.launchGet.mockResolvedValue({ data: preview({ can_launch: false, guards: [missing], paper_check: { checked: false, at: null, by_name: null, missing: ['marcar "Conferi os totais com o papel"'] } }) });
+    mockApi.paperCheck.mockResolvedValue({ data: preview({ can_launch: true, guards: [{ ...missing, ok: true, message: null }],
+        paper_check: { checked: true, at: "2026-10-23T10:15:00+01:00", by_name: "Adriana", missing: [] } }) });
+    render(<FaturaValidacaoPage />);
+    expect(await screen.findByTestId("launch-guards")).toHaveTextContent('Sem QR legível, falta: marcar "Conferi os totais com o papel".');
+    const box = within(screen.getByTestId("launch-paper-check")).getByRole("checkbox");
+    expect(box).not.toBeChecked();
+    fireEvent.click(box);
+    await waitFor(() => expect(mockApi.paperCheck).toHaveBeenCalledWith(5, 7, true));
+    expect(await screen.findByText(/Marcado por Adriana a/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("launch-paper-check")).getByRole("checkbox")).toBeChecked();
+});
+
+test("com QR, a caixa da conferência com o papel não aparece", async () => {
+    render(<FaturaValidacaoPage />);
+    await screen.findByTestId("launch-guards");
+    expect(screen.queryByTestId("launch-paper-check")).toBeNull();
+});
+
+test("artigo de agrupamento: o cartão do lançamento diz quantas linhas se juntam e em quê", async () => {
+    mockApi.launchGet.mockResolvedValue({ data: preview({ planned: { iec_from: null, target_cents: 40916, total_cents: 40916, lines: [
+        { kind: "grupo", line_id: null, item: "COMIDA STAFF 23%", article: { id: 9, code: "908", description: "COMIDA STAFF 23%", pingwin_id: "PSTAFF" }, qnt: 1, price: 203.99,
+            discount_pct: 0, promo_cents: 0, vat_rate: 23, net_cents: 20399, tax_cents: 4692, total_cents: 25091, lines: 5, line_ids: [1, 2, 3, 4, 5] },
+        { kind: "linha", line_id: 6, item: "Outro", article: null, qnt: 1, price: 174.1, discount_pct: 0, promo_cents: 0, vat_rate: 23, net_cents: 17410, tax_cents: 4004, total_cents: 21414 },
+    ] } }) });
+    render(<FaturaValidacaoPage />);
+    expect(await screen.findByTestId("launch-grouped")).toHaveTextContent(/^5 linhas juntam-se em COMIDA STAFF 23%: 1 × 203,99\s€$/);
+    expect(screen.queryByTestId("launch-planned")).toBeNull(); // a tabela só aparece com IEC
+});
+
+test("talão com IVA incluído: o aviso, os dois valores em cada linha e as notas escritas à mão", async () => {
+    mockApi.get.mockResolvedValue({ data: { invoice: invoice({ doc_type: "FS", prices_include_vat: true, handwritten_notes: "Pago em dinheiro", discounts: [], ignored_lines: [],
+        lines: [line({ id: 41, item: "Grão 200 g", quantity: 2, unit_price: 0.965, line_total: 1.93, vat_rate: 23, vat_code: null, net_total: 1.93, vat_included: 2.38 })] }), pingwin: null, suppliers: [] } });
+    render(<FaturaValidacaoPage />);
+    expect(await screen.findByTestId("vat-included")).toHaveTextContent("Preços com IVA incluído: convertidos para valores sem IVA.");
+    expect(screen.getByTestId("line-vat-included-0")).toHaveTextContent(/Com IVA 2,38\s€ · sem IVA 1,93\s€/);
+    expect(screen.getByTestId("handwritten-notes")).toHaveTextContent("Notas escritas à mão: Pago em dinheiro");
+    expect(screen.getByTestId("doc-type")).toHaveTextContent("Fatura simplificada");
+});
+
+test("fatura normal: sem o aviso do IVA incluído nem notas", async () => {
+    render(<FaturaValidacaoPage />);
+    await screen.findByTestId("launch-guards");
+    expect(screen.queryByTestId("vat-included")).toBeNull();
+    expect(screen.queryByTestId("line-vat-included-0")).toBeNull();
+    expect(screen.queryByTestId("handwritten-notes")).toBeNull();
 });

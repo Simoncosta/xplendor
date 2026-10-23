@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { AutoPublicationBadge, AutoPublicationLine } from "./PublishSection";
-import type { SocialPublicationInfo } from "common/models/editorialWorkflow.model";
+import { AutoPublicationBadge, AutoPublicationLine, notPublishableText } from "./PublishSection";
+import type { PostWorkflow, SocialPublicationInfo, Stage } from "common/models/editorialWorkflow.model";
 
 jest.mock("helpers/laravel_helper", () => ({ savePostResults: jest.fn(), skipPostNetwork: jest.fn(), markPostPublished: jest.fn() }));
 jest.mock("../MarkPublishedModal", () => () => null);
@@ -47,5 +47,26 @@ describe("AutoPublicationLine (F2.2)", () => {
     it("diz que saiu sozinha", () => {
         render(<AutoPublicationLine info={info({ status: "published" })} published />);
         expect(screen.getByText("Publicada automaticamente pela XPLENDOR.")).toBeInTheDocument();
+    });
+});
+
+describe("notPublishableText (o que falta antes de Programado)", () => {
+    const wf = (stage: Stage, perms: Partial<PostWorkflow["permissions"]> = {}, approval = true) => ({
+        post: { stage } as PostWorkflow["post"],
+        permissions: { can_edit_content: true, can_approve: false, is_approver: false, is_team: false, can_produce: true, ...perms },
+        settings: { content_approval_required: approval, internal_review_required: false, production_mode: "self" as const },
+    });
+
+    it("na Aprovação, diz que o root e a impersonation não aprovam", () => {
+        expect(notPublishableText(wf("client_review", { is_team: true }))).toBe(
+            "Esta publicação está em Aprovação. A publicação e a análise ficam disponíveis em Programado. Falta a aprovação de um aprovador da empresa; o root (noutra empresa), a impersonation e a agência não aprovam.");
+        expect(notPublishableText(wf("client_review", { is_approver: true }))).toMatch(/pode aprovar no separador Aprovação/);
+        expect(notPublishableText(wf("client_review"))).toMatch(/o seu utilizador não aprova/);
+    });
+
+    it("antes da aprovação, diz o passo seguinte", () => {
+        expect(notPublishableText(wf("production"))).toMatch(/Esta publicação está em Produção\..*Falta enviar ao cliente/);
+        expect(notPublishableText(wf("production", {}, false))).toMatch(/Falta passar a Programado/);
+        expect(notPublishableText(wf("idea"))).toMatch(/Falta produzir o conteúdo/);
     });
 });

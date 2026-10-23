@@ -33,6 +33,8 @@ export interface SocialPublishingState {
     connected: boolean;
     connected_at: string | null;
     platforms: ("instagram" | "facebook")[];
+    /** O interruptor "Publicação automática" da empresa (muda-se aqui, nas Integrações). */
+    auto_publishing_enabled?: boolean;
 }
 
 export interface SocialCandidatePage {

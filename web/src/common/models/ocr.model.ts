@@ -24,6 +24,7 @@ export interface OcrInvoiceLine {
     discount_label?: string | null;
     net_total?: number | null;   // euros: valor − desconto (o custo do artigo)
     iec?: number | null;         // euros: o IEC de uma coluna à parte, já incluído no valor da linha
+    vat_included?: number | null; // euros: talão com IVA incluído, o valor da linha com IVA tal como lido
 }
 
 /** Os tipos de documento (campo D do QR, ou lido sem QR), com o nome que o ecrã mostra. */
@@ -111,6 +112,8 @@ export interface OcrInvoiceDetail {
     buyer_nif: string | null;
     atcud: string | null;
     doc_type: string | null;
+    prices_include_vat?: boolean;          // talão: os preços vinham com IVA (convertidos para sem IVA)
+    handwritten_notes?: string | null;     // o texto escrito à mão no documento, tal como está
     qr_ok: boolean | null;        // null = fatura anterior ao F2a
     source: OcrSource | null;
     lines_source: "texto" | "imagem" | null;
@@ -400,10 +403,17 @@ export interface OcrLaunchPreview {
     discount_warnings?: string[];
     /** O que iria para o PingWin (sem escrever nada): as linhas e, com IEC numa coluna à parte, a linha do IEC. */
     planned?: { lines: OcrPlannedLine[]; total_cents: number; target_cents: number | null; iec_from: string | null };
+    /** Sem QR legível: "Conferi os totais com o papel" (quem e quando) e o que falta para lançar. */
+    paper_check?: { checked: boolean; at: string | null; by_name: string | null; missing: string[] } | null;
 }
 
 export interface OcrPlannedLine {
-    kind: "linha" | "iec";
+    kind: "linha" | "iec" | "grupo";
+    /** Artigo de agrupamento: quantas linhas da fatura se juntam nesta (e quais). */
+    lines?: number;
+    line_ids?: number[];
+    /** Unidade sem decimais: a quantidade lida, antes do arredondamento que o PingWin faria. */
+    rounded_from?: number | null;
     line_id: number | null;
     item: string | null;
     article: { id: number; code: string | null; description: string | null; pingwin_id: string } | null;

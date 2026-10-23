@@ -60,6 +60,8 @@ final class OcrSchemas
             'tipoDocumento' => self::STR,
             'nifAdquirente' => self::STR,
             'atcud' => self::STR,
+            'precosComIva' => ['type' => 'boolean'],
+            'notasManuscritas' => self::STR,
             'numeroFatura' => self::STR,
             'dataEmissao' => self::STR,
             'linhas' => ['type' => 'array', 'items' => self::line()],
@@ -70,7 +72,7 @@ final class OcrSchemas
             ], ['ivaPorTaxa']),
             'quadroIva' => self::vatTable(),
             'descontos' => self::discounts(),
-        ], ['fornecedor', 'tipoDocumento', 'nifAdquirente', 'atcud', 'linhas', 'sumario', 'quadroIva', 'descontos']);
+        ], ['fornecedor', 'tipoDocumento', 'nifAdquirente', 'atcud', 'precosComIva', 'notasManuscritas', 'linhas', 'sumario', 'quadroIva', 'descontos']);
     }
 
     /** Com QR: só as linhas, o nome do fornecedor e as guias (o cabeçalho e os totais vêm do QR). */
@@ -78,11 +80,13 @@ final class OcrSchemas
     {
         return self::object([
             'fornecedorNome' => self::STR,
+            'precosComIva' => ['type' => 'boolean'],
+            'notasManuscritas' => self::STR,
             'linhas' => ['type' => 'array', 'items' => self::line()],
             'guias' => ['type' => 'array', 'items' => self::object(['numero' => self::STR, 'data' => self::STR], ['numero'])],
             'quadroIva' => self::vatTable(),
             'descontos' => self::discounts(),
-        ], ['linhas', 'guias', 'quadroIva', 'descontos']);
+        ], ['precosComIva', 'notasManuscritas', 'linhas', 'guias', 'quadroIva', 'descontos']);
     }
 
     /** Os campos opcionais de um esquema (contados como a API: cada propriedade fora de "required"). */

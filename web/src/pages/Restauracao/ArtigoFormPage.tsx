@@ -22,6 +22,7 @@ import ArtigoComprasTab from "./ArtigoComprasTab";
 import FichaTecnicaResumo from "./fichas/FichaTecnicaResumo";
 import ArtigoStockTab from "./stock/ArtigoStockTab";
 import ArticleSupplierCodes from "./faturas/ArticleSupplierCodes";
+import ArticleGroupingSwitch from "./faturas/ArticleGroupingSwitch";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PageHeader from "Components/Common/PageHeader";
 import ActionsMenu from "Components/Common/ActionsMenu";
@@ -502,6 +503,7 @@ export default function ArtigoFormPage() {
                                             unitOptions={baseUnitOptions}
                                         />
                                         {!isCreate && <ArticleSupplierCodes companyId={companyId} catalogItemId={catId} />}
+                                        {!isCreate && <ArticleGroupingSwitch companyId={companyId} catalogItemId={catId} />}
                                     </TabPane>
                                 </TabContent>
                             </CardBody>

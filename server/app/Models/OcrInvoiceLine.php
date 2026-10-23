@@ -30,6 +30,8 @@ class OcrInvoiceLine extends Model
         'promo_code', 'vat_code', 'gross_total_cents', 'discount_cents', 'discount_code', 'discount_label',
         // O IEC de uma coluna à parte, já somado ao valor da linha (só para o mostrar).
         'iec_cents',
+        // Talões com IVA incluído: o valor da linha com IVA, tal como foi lido (o valor da linha já é sem IVA).
+        'vat_included_cents',
     ];
 
     protected $casts = [
@@ -41,6 +43,7 @@ class OcrInvoiceLine extends Model
         'gross_total_cents' => 'integer',
         'discount_cents'   => 'integer',
         'iec_cents'        => 'integer',
+        'vat_included_cents' => 'integer',
         'vat_rate'         => 'integer',
         'article_id'       => 'integer',
         'link_confidence'  => 'float',

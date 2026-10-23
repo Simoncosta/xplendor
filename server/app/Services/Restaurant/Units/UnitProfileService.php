@@ -101,10 +101,12 @@ final class UnitProfileService
     public function queue(string $filter = 'todos'): array
     {
         $open = $this->openFindingsByArticle();
+        // Os artigos de agrupamento lançam-se sempre com quantidade 1: não entram no Guião.
+        $grouping = \App\Models\ArticleGrouping::pingwinIdsFor($this->companyId);
         $items = [];
         foreach ($this->evidence()->all() as $pid => $e) {
             $pid = (string) $pid;
-            if (! ($e['stock_relevant'] ?? true)) {
+            if (! ($e['stock_relevant'] ?? true) || isset($grouping[$pid])) {
                 continue;
             }
             $state = $e['profile']['state'] ?? null;

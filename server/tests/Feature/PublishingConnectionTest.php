@@ -30,7 +30,7 @@ use Tests\TestCase;
  * F2.8 · "Ligar publicação": uma autorização à parte (instagram_content_publish e
  * pages_manage_posts) que não mexe na ligação de leitura; os tokens das Páginas ficam nas contas
  * escolhidas e são os que o publicador usa. "Tentar de novo" numa publicação automática que
- * falhou. Outra empresa recebe 403 nas três rotas novas.
+ * falhou. O interruptor "Publicação automática" nas Integrações. Outra empresa recebe 403 nas rotas novas.
  */
 class PublishingConnectionTest extends TestCase
 {
@@ -200,6 +200,27 @@ class PublishingConnectionTest extends TestCase
         $this->as($this->adminB)->getJson("/api/v1/companies/{$this->a->id}/integrations/social/publish-auth-url")->assertStatus(403);
         $this->as($this->adminB)->deleteJson("/api/v1/companies/{$this->a->id}/integrations/social/publishing")->assertStatus(403);
         $this->as($this->adminB)->postJson("/api/v1/companies/{$this->a->id}/editorial/posts/1/retry-publication", ['network' => 'instagram'])->assertStatus(403);
+        $this->as($this->adminB)->putJson("/api/v1/companies/{$this->a->id}/integrations/social/auto-publishing", ['enabled' => true])->assertStatus(403);
+        $this->assertFalse((bool) $this->a->fresh()->auto_publishing_enabled);
         $this->assertSame([], $this->meta->callsTo('authUrl'));
+    }
+
+    public function test_the_switch_lives_in_integrations_and_schedules_the_programmed_posts(): void
+    {
+        CompanyModule::create(['company_id' => $this->a->id, 'module_key' => 'linha_editorial']);
+        $post = EditorialPost::create(['company_id' => $this->a->id, 'publish_date' => '2026-11-12', 'publish_time' => '12:00', 'auto_publish' => true,
+            'title' => 'Texto', 'format' => 'Texto', 'channel' => 'facebook', 'media_format' => 'fb_post', 'stage' => EditorialPost::STAGE_SCHEDULED]);
+        $this->assertSame(0, SocialPublication::count(), 'com o interruptor desligado, continua manual');
+
+        // Um utilizador sem integracoes.configurar não liga o interruptor.
+        $user = User::factory()->create(['company_id' => $this->a->id, 'role' => 'user']);
+        $this->as($user)->putJson("/api/v1/companies/{$this->a->id}/integrations/social/auto-publishing", ['enabled' => true])->assertStatus(403);
+
+        $this->as($this->adminA)->putJson("/api/v1/companies/{$this->a->id}/integrations/social/auto-publishing", ['enabled' => true])
+            ->assertOk()->assertJsonPath('data.publishing.auto_publishing_enabled', true);
+        $this->assertSame(SocialPublication::STATUS_SCHEDULED, SocialPublication::where('editorial_post_id', $post->id)->sole()->status);
+
+        $this->as($this->adminA)->putJson("/api/v1/companies/{$this->a->id}/integrations/social/auto-publishing", ['enabled' => false])->assertOk();
+        $this->assertSame(SocialPublication::STATUS_CANCELLED, SocialPublication::sole()->status);
     }
 }

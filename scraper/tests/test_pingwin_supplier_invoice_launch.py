@@ -4,8 +4,8 @@ XPLENDOR — FB-1: lançar a fatura de fornecedor no PingWin em RASCUNHO (8001).
     ÚLTIMA key → moradas GET sem corpo + MERGE tal como vieram → acerto → EDIT referência/acerto/
     8001 → verifydoc → SAVE → CLOSE);
   · troca do grupo de IVA quando a taxa do artigo não é a da fatura;
-  · acerto acima do máximo → CLOSE SEM SAVE;
-  · CLOSE em finally (também em erro) e SAVE sem resposta → saved "unknown";
+  · acerto acima do máximo → CANCEL SEM SAVE (o documento novo é descartado);
+  · em erro antes de gravar, CANCEL (sem resposta: CLOSE); SAVE sem resposta → saved "unknown" e CLOSE;
   · mudança de estado num só pedido (só 8002/8003) e os modos do run.py.
 """
 import json
@@ -62,7 +62,7 @@ class FakePW:
             raise requests.ConnectionError("rede")
         if path == "1209" and action == "NEW":
             return R(200, {"1209": {}}, {"ObjectID": "OID"})
-        if path == "1209" and action == "CLOSE":
+        if path == "1209" and action in ("CLOSE", "CANCEL"):
             return R(200, {"1209": {}})
         if path == "1209" and action == "SAVE":
             if self.save_raises:
@@ -187,7 +187,7 @@ def test_promo_discount_that_does_not_stay_on_the_line_stops_before_save():
     out = client(f).launch_supplier_invoice({**DOC, "lines": [{**DOC["lines"][0], "adjustment": "-3.78"}]})
     assert out["saved"] is False and "o desconto não ficou na linha" in out["error"]
     assert ("1209", "SAVE") not in [(c["path"], c["action"]) for c in f.calls]
-    assert f.calls[-1]["action"] == "CLOSE"
+    assert f.calls[-1]["action"] == "CANCEL"
 
 
 def test_adjustment_above_max_closes_without_save():
@@ -196,19 +196,25 @@ def test_adjustment_above_max_closes_without_save():
     assert out["saved"] is False and out["reason"] == "acerto" and out["adjustment"] == "0.43"
     actions = [(c["path"], c["action"]) for c in f.calls]
     assert ("1209", "SAVE") not in actions
-    assert actions[-1] == ("1209", "CLOSE")
+    assert actions[-1] == ("1209", "CANCEL") and out["cancelled"] is True  # o documento novo é descartado
 
 
 def test_close_in_finally_on_error_and_save_refused():
     f = FakePW(fail_at=("1209/details", "NEW"))
     out = client(f).launch_supplier_invoice(DOC)
     assert out["saved"] is False and "ConnectionError" in out["error"] and out["closed"] is True
-    assert f.calls[-1]["action"] == "CLOSE"
+    assert f.calls[-1]["action"] == "CANCEL" and out["cancelled"] is True
 
     f = FakePW(save_status=500)
     out = client(f).launch_supplier_invoice(DOC)
     assert out["saved"] is False and "Documento em branco!" in out["error"]
-    assert f.calls[-1]["action"] == "CLOSE"
+    assert f.calls[-1]["action"] == "CANCEL"
+
+    # Sem resposta ao CANCEL: fecha (o objeto nunca fica aberto).
+    f = FakePW(base_total="10.00", fail_at=("1209", "CANCEL"))
+    out = client(f).launch_supplier_invoice(DOC)
+    assert out["cancelled"] is False and out["closed"] is True
+    assert [c["action"] for c in f.calls[-2:]] == ["CANCEL", "CLOSE"]
 
 
 def test_save_without_answer_is_unknown_never_false():

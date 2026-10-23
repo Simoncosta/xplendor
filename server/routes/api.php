@@ -281,6 +281,8 @@ Route::prefix('v1')->group(function () {
                     // F2.8: "Ligar publicação", autorização à parte (a leitura não muda).
                     Route::get('/integrations/social/publish-auth-url', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'publishAuthUrl']);
                     Route::delete('/integrations/social/publishing', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'disconnectPublishing']);
+                    // O interruptor "Publicação automática" vive aqui, junto a "Ligar publicação".
+                    Route::put('/integrations/social/auto-publishing', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'setAutoPublishing']);
                 });
 
                 // F1c: link de configuração do cliente (gerar, renovar, revogar: admin da empresa,
@@ -377,6 +379,8 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/pingwin/articles/{catalogItemId}/supplier-prices', [CompanyPingwinController::class, 'supplierPrices'])->whereNumber('catalogItemId');
                     // F2d: códigos dos fornecedores do artigo (principal + alternativos) e o relatório "IVA a rever".
                     Route::get('/integrations/pingwin/articles/{catalogItemId}/supplier-codes', [\App\Http\Controllers\Api\V1\CompanyArticleCodesController::class, 'supplierCodes'])->whereNumber('catalogItemId');
+                    Route::get('/integrations/pingwin/articles/{catalogItemId}/grouping', [\App\Http\Controllers\Api\V1\CompanyArticleGroupingController::class, 'show'])->whereNumber('catalogItemId');
+                    Route::put('/integrations/pingwin/articles/{catalogItemId}/grouping', [\App\Http\Controllers\Api\V1\CompanyArticleGroupingController::class, 'update'])->whereNumber('catalogItemId');
                     Route::get('/integrations/pingwin/catalog/vat-divergences', [\App\Http\Controllers\Api\V1\CompanyArticleCodesController::class, 'vatDivergences']);
                     // Fatia 1: fichas técnicas (só leitura) — lista por Pareto e detalhe de um artigo.
                     Route::get('/restaurant/recipes', [\App\Http\Controllers\Api\V1\CompanyRecipeController::class, 'index']);
@@ -560,6 +564,7 @@ Route::prefix('v1')->group(function () {
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-launch', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'store'])->middleware('block_when_impersonating');
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-launch/close', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'close'])->middleware('block_when_impersonating');
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-launch/void', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'void'])->middleware('block_when_impersonating');
+                    Route::post('/ocr/invoices/{invoiceId}/pingwin-launch/paper-check', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'paperCheck'])->middleware('block_when_impersonating');
                     Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/launch-unit', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'setLineUnit'])->whereNumber('lineId');
                     // F1 — documentos de fornecedor do PingWin (SÓ LEITURA): lista, sync por período e estado do run.
                     Route::get('/integrations/pingwin/supplier-documents', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'index']);

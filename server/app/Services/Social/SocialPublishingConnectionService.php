@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Models\Company;
 use App\Models\SocialConnection;
 use App\Models\SocialConnectionAccount;
 use App\Models\SocialPublishingGrant;
@@ -90,7 +91,7 @@ class SocialPublishingConnectionService
         return $matched > 0 ? 'publish_ok' : 'error:publish_pages';
     }
 
-    /** Para o ecrã: ligada (com contas com token) ou não, e quando. */
+    /** Para o ecrã: ligada (com contas com token) ou não, e quando; e o interruptor "Publicação automática" da empresa. */
     public function status(int $companyId): array
     {
         $grant = SocialPublishingGrant::where('company_id', $companyId)->first();
@@ -100,7 +101,16 @@ class SocialPublishingConnectionService
             'connected' => $grant !== null && $accounts !== [],
             'connected_at' => $grant?->connected_at?->toIso8601String(),
             'platforms' => $accounts,
+            'auto_publishing_enabled' => (bool) Company::whereKey($companyId)->value('auto_publishing_enabled'),
         ];
+    }
+
+    /** O interruptor "Publicação automática" (agenda ou cancela as publicações Programadas, pelo evento do modelo). */
+    public function setAutoPublishing(int $companyId, bool $enabled): array
+    {
+        Company::findOrFail($companyId)->forceFill(['auto_publishing_enabled' => $enabled])->save();
+
+        return $this->status($companyId);
     }
 
     /** @return array{permission_kept_shared: bool} */

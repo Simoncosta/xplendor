@@ -87,6 +87,15 @@ class UnitGuideTest extends TestCase
         $this->assertNotEmpty($v['apply']['manual']);
     }
 
+    public function test_a_grouping_article_is_not_in_the_guide(): void
+    {
+        // Os artigos de agrupamento lançam-se sempre com quantidade 1: as unidades não interessam.
+        \App\Models\ArticleGrouping::create(['company_id' => $this->c, 'product_pingwin_id' => '9001', 'is_grouping' => true]);
+        $q = $this->actingAs($this->admin, 'sanctum')->getJson($this->url())->assertOk()->json('data');
+        $this->assertNotContains('9001', array_column($q['items'], 'product_id'));
+        $this->assertContains('9002', array_column($q['items'], 'product_id'));
+    }
+
     public function test_confirm_saves_the_profile_and_the_conversion_fixes_the_findings_and_counts_the_resolved_euros(): void
     {
         $this->audit();

@@ -563,6 +563,8 @@ class CompanyInvoiceOcrController extends Controller
             'buyer_nif'         => $inv->buyer_nif,
             'atcud'             => $inv->atcud,
             'doc_type'          => $inv->doc_type,
+            'prices_include_vat' => (bool) $inv->prices_include_vat,
+            'handwritten_notes' => $inv->handwritten_notes,
             'qr_ok'             => $inv->qr_ok,
             'source'            => $inv->source,
             'lines_source'      => $inv->lines_source,
@@ -595,6 +597,7 @@ class CompanyInvoiceOcrController extends Controller
                 'discount_label' => $l->discount_label,
                 'net_total'    => $l->line_total_cents !== null ? $l->line_total_cents / 100 : null,
                 'iec'          => $l->iec_cents !== null ? $l->iec_cents / 100 : null, // já incluído no valor da linha
+                'vat_included' => $l->vat_included_cents !== null ? $l->vat_included_cents / 100 : null, // o valor com IVA, tal como lido
                 'promo_code'   => $l->promo_code,
                 'vat_code'     => $l->vat_code,
                 'vat_rate'     => $l->vat_rate,

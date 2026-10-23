@@ -165,6 +165,7 @@ export const disconnectSocial = (companyId: number, options?: { purge: boolean; 
 // F2.8: "Ligar publicação" (autorização à parte; a leitura não muda).
 export const getSocialPublishAuthUrl = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/social/publish-auth-url`);
 export const disconnectSocialPublishing = (companyId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/integrations/social/publishing`);
+export const setSocialAutoPublishing = (companyId: number, enabled: boolean) => api.put(url.GET_COMPANIES + `/${companyId}/integrations/social/auto-publishing`, { enabled });
 export const recordFollowers = (companyId: number, data: { platform: "instagram" | "facebook"; followers_count: number }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/followers`, data);
 // "Sugerir perfil" (IA): pedir e consultar. Nunca grava o perfil.
@@ -610,7 +611,7 @@ export const approvePost = (companyId: number, postId: number, message?: string)
 export const requestPostChanges = (companyId: number, postId: number, message: string) => api.create(ED(companyId) + `/posts/${postId}/request-changes`, { message }, ED_JSON);
 export const approveAllPosts = (companyId: number, postIds: number[]) => api.create(ED(companyId) + `/approvals/approve-all`, { post_ids: postIds }, ED_JSON);
 export const getWorkflowSettings = (companyId: number) => api.get(ED(companyId) + `/workflow-settings`);
-export const updateWorkflowSettings = (companyId: number, data: { content_approval_required: boolean; internal_review_required: boolean; production_mode?: "self" | "team"; auto_publishing_enabled?: boolean }) => api.put(ED(companyId) + `/workflow-settings`, data);
+export const updateWorkflowSettings = (companyId: number, data: { content_approval_required: boolean; internal_review_required: boolean; production_mode?: "self" | "team" }) => api.put(ED(companyId) + `/workflow-settings`, data);
 export const setContentApprover = (companyId: number, userId: number, value: boolean) => api.put(ED(companyId) + `/approvers/${userId}`, { can_approve_content: value });
 // F3b: media (envio em partes de 8 MB, retomável), media da versão e grelha do Instagram.
 export const startMediaUpload = (companyId: number, file: { name: string; size: number; mime: string }) =>
@@ -1241,6 +1242,14 @@ export const closeOcrLaunch = (companyId: number, invoiceId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/close`, {});
 export const voidOcrLaunch = (companyId: number, invoiceId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/void`, {});
+/** Cadastros › Artigos: "Artigo de agrupamento" (definição da XPLENDOR; não mexe no PingWin). */
+export const getArticleGrouping = (companyId: number, catalogItemId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/grouping`);
+export const setArticleGrouping = (companyId: number, catalogItemId: number, grouping: boolean) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/grouping`, { grouping });
+/** Sem QR: "Conferi os totais com o papel" (marcar ou desmarcar). */
+export const setOcrPaperCheck = (companyId: number, invoiceId: number, checked: boolean) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/paper-check`, { checked });
 export const setOcrLineLaunchUnit = (companyId: number, invoiceId: number, lineId: number, data: { unit_id: string; quantity?: number | null }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/launch-unit`, data);
 

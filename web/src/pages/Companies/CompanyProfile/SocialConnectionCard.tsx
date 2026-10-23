@@ -194,10 +194,6 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
                             ) : (
                                 <p className="text-muted fs-12 mb-0">Só o administrador da empresa pode alterar ou desligar as redes sociais.</p>
                             )}
-                            {state!.status === "active" && state!.accounts.length > 0 && (
-                                <SocialPublishingBlock companyId={companyId} state={state!.publishing} canManage={canManage}
-                                    onChanged={(p) => setState((s) => (s ? { ...s, publishing: p } : s))} />
-                            )}
                         </div>
                     ) : canManage ? (
                         <div className="vstack gap-2">
@@ -207,6 +203,12 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
                         </div>
                     ) : (
                         <p className="text-muted fs-12 mb-0">Só o administrador da empresa pode ligar as redes sociais.</p>
+                    )}
+                    {/* A publicação e o interruptor "Publicação automática" aparecem sempre; "Ligar publicação" só com a leitura pronta. */}
+                    {!loading && state && (
+                        <SocialPublishingBlock companyId={companyId} state={state.publishing} canManage={canManage}
+                            readReady={state.status === "active" && state.accounts.length > 0}
+                            onChanged={(p) => setState((s) => (s ? { ...s, publishing: p } : s))} />
                     )}
                 </CardBody>
             </Card>

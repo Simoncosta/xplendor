@@ -82,11 +82,15 @@ class SocialPublicationModelTest extends TestCase
         $this->assertFalse($post->auto_publish);
         $this->assertFalse((bool) $this->a->fresh()->auto_publishing_enabled);
 
+        // O interruptor muda-se nas Integrações (integracoes.configurar); a Linha Editorial só o mostra.
+        $switch = fn ($enabled) => $this->actingAs($this->adminA, 'sanctum')->putJson("/api/v1/companies/{$this->a->id}/integrations/social/auto-publishing", ['enabled' => $enabled]);
+        $switch(true)->assertOk()->assertJsonPath('data.publishing.auto_publishing_enabled', true);
         $settings = fn (array $extra = []) => $this->actingAs($this->adminA, 'sanctum')->putJson("/api/v1/companies/{$this->a->id}/editorial/workflow-settings",
             ['content_approval_required' => false, 'internal_review_required' => false] + $extra);
-        $settings(['auto_publishing_enabled' => true])->assertOk()->assertJsonPath('data.auto_publishing_enabled', true);
-        $settings()->assertOk()->assertJsonPath('data.auto_publishing_enabled', true); // sem o campo, não muda
-        $settings(['auto_publishing_enabled' => false])->assertOk()->assertJsonPath('data.auto_publishing_enabled', false);
+        $settings(['auto_publishing_enabled' => false])->assertOk()->assertJsonPath('data.auto_publishing_enabled', true); // a Linha Editorial já não o muda
+        $this->actingAs($this->adminA, 'sanctum')->getJson("/api/v1/companies/{$this->a->id}/integrations/social")->assertOk()->assertJsonPath('data.publishing.auto_publishing_enabled', true);
+        $switch('talvez')->assertStatus(422);
+        $switch(false)->assertOk()->assertJsonPath('data.publishing.auto_publishing_enabled', false);
 
         $update = fn (array $extra = []) => $this->actingAs($this->adminA, 'sanctum')->putJson("/api/v1/companies/{$this->a->id}/editorial/posts/{$post->id}",
             ['title' => 'Menu de Natal', 'publish_date' => '2026-11-20', 'format' => 'Imagem única', 'channel' => 'social'] + $extra);

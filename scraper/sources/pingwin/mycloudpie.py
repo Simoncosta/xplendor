@@ -3947,6 +3947,8 @@ class MyCloudPieClient(StockDocsMixin):
     #   7. header EDIT parcial: docreference_*, adjustment, docstatus_id 8001 (RASCUNHO).
     #   8. fiscalrules.verifydoc (só registo: diz OK mesmo sem fornecedor nem linhas).
     #   9. SAVE → CLOSE SEMPRE (finally). Fechar sem SAVE não gasta número.
+    #      Falhou antes de gravar (ou o SAVE foi recusado): CANCEL /service/{dc} descarta o documento
+    #      novo, como o BO faz (HAR de 23/10); se o CANCEL não responder, CLOSE.
     # MUDAR DE ESTADO: POST /service/document/{id}/header OPEN,EDIT,SAVE,CLOSE [{"docstatus_id": …}].
     # NOTA DE CRÉDITO DE FORNECEDOR ({dc}=1205, V/NC, série VNC, stksignal −1; HAR de 21/10): o MESMO
     # protocolo. Por defeito nasce Fechada (8002): o passo 7 põe-na em rascunho como a fatura. A lista
@@ -3954,7 +3956,10 @@ class MyCloudPieClient(StockDocsMixin):
     # no passo 7 (doc_date), senão fica a do dia. Antes do SAVE confirma-se que a referência e a data ficaram.
     DOCW_DRAFT = "8001"
     DOCW_ALLOWED_STATUS = ("8001", "8002", "8003")  # NUNCA 8004 (Edição): mexe no stock logo no SAVE
-    DOCW_TYPES = ("1209", "1205")  # Fatura de fornecedor e Nota de crédito de fornecedor
+    # Fatura de fornecedor, Nota de crédito de fornecedor e Fatura-recibo compra (FR C, série " BO",
+    # liquidada no ato, só "Pronto Pagamento"; HAR de 23/10: o mesmo protocolo, a forma de pagamento
+    # fica por preencher e o PingWin grava).
+    DOCW_TYPES = ("1209", "1205", "584955579139752236")
     DOCW_TAX_RATES = {"normal": 23, "intermedia": 13, "reduzida": 6, "isenta": 0}
 
     def _docw(self, path: str, action: str, oid: str | None = None, body: Any = None) -> requests.Response:
@@ -4130,7 +4135,21 @@ class MyCloudPieClient(StockDocsMixin):
             out["error"] = f"{type(exc).__name__}: {exc}"[:500]
             return out
         finally:
-            out["closed"] = self._doc_close(dc, oid)
+            if out["saved"] is False:
+                out["cancelled"] = self._doc_cancel(dc, oid)
+            out["closed"] = out.get("cancelled") is True or self._doc_close(dc, oid)
+
+    def _doc_cancel(self, docconfig_id: str, object_id: str) -> bool:
+        """CANCEL de um documento novo ainda não gravado (descarta-o). Nunca levanta."""
+        try:
+            r = self.session.post(f"{self.api_url}/service/{docconfig_id}", data=b"",
+                                  headers=self._paycond_headers("CANCEL", object_id))
+            if r.status_code in (200, 204, 206):
+                return True
+            log.warning("documento %s CANCEL: HTTP %s — %s", docconfig_id, r.status_code, r.text[:200])
+        except Exception as exc:  # noqa: BLE001
+            log.warning("documento %s CANCEL falhou: %s", docconfig_id, type(exc).__name__)
+        return False
 
     def set_document_status(self, docheader_id: str, status: str) -> Dict[str, Any]:
         """⚠️ ESCRITA: muda o estado de UM documento (8002 fechar / 8003 anular). Pedido único."""

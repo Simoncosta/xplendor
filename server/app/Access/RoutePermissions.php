@@ -97,6 +97,7 @@ final class RoutePermissions
         'GET {id}/integrations/social/candidates' => 'integracoes.configurar',
         'GET {id}/integrations/social/publish-auth-url' => 'integracoes.configurar', // F2.8
         'DELETE {id}/integrations/social/publishing' => 'integracoes.configurar', // F2.8
+        'PUT {id}/integrations/social/auto-publishing' => 'integracoes.configurar', // o interruptor "Publicação automática"
         'GET {id}/setup-link' => 'integracoes.configurar',
         'POST {id}/setup-links' => 'integracoes.configurar',
         'POST {id}/setup-links/{linkId}/extend' => 'integracoes.configurar',
@@ -351,6 +352,9 @@ final class RoutePermissions
         'PUT {id}/integrations/pingwin/articles/{catalogItemId}' => 'restauracao.editar',
         'GET {id}/integrations/pingwin/articles/{catalogItemId}/supplier-prices' => 'restauracao.ver',
         'GET {id}/integrations/pingwin/articles/{catalogItemId}/supplier-codes' => 'restauracao.ver',
+        // Artigo de agrupamento (definição da XPLENDOR, não mexe no PingWin).
+        'GET {id}/integrations/pingwin/articles/{catalogItemId}/grouping' => 'restauracao.ver',
+        'PUT {id}/integrations/pingwin/articles/{catalogItemId}/grouping' => 'restauracao.editar',
         'GET {id}/integrations/pingwin/catalog/vat-divergences' => 'restauracao.ver',
         'GET {id}/restaurant/recipes' => 'restauracao.ver',
         'GET {id}/restaurant/recipes/{productId}' => 'restauracao.ver',
@@ -517,6 +521,8 @@ final class RoutePermissions
         // Fechar = quem pode lançar faturas (o fecho fica registado: quem e quando).
         'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch/close' => 'restauracao.criar',
         'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch/void' => 'restauracao.apagar',
+        // Sem QR: "Conferi os totais com o papel" (condição para lançar; quem lança, marca).
+        'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch/paper-check' => 'restauracao.criar',
         'DELETE {id}/ocr/invoices/{invoiceId}/pingwin-link' => 'restauracao.apagar',
         'POST {id}/ocr/invoices/{invoiceId}/pingwin-link' => 'restauracao.criar',
         'POST {id}/ocr/invoices/{invoiceId}/pingwin-link/confirm' => 'restauracao.editar',
@@ -711,6 +717,8 @@ final class RoutePermissions
         'GET {id}/integrations/pingwin/articles/read/{token}' => 'restauracao_artigos',
         'GET {id}/integrations/pingwin/articles/{catalogItemId}/supplier-prices' => 'restauracao_artigos',
         'GET {id}/integrations/pingwin/articles/{catalogItemId}/supplier-codes' => 'restauracao_artigos',
+        'GET {id}/integrations/pingwin/articles/{catalogItemId}/grouping' => 'restauracao_artigos',
+        'PUT {id}/integrations/pingwin/articles/{catalogItemId}/grouping' => 'restauracao_artigos',
         'GET {id}/integrations/pingwin/catalog/vat-divergences' => 'restauracao_artigos',
         'GET {id}/restaurant/recipes' => 'restauracao_artigos',
         'GET {id}/restaurant/recipes/{productId}' => 'restauracao_artigos',
@@ -838,6 +846,7 @@ final class RoutePermissions
         'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch/close' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch/void' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch/paper-check' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/launch-unit' => 'restauracao_faturas',
         'GET {id}/integrations/pingwin/supplier-documents' => 'restauracao_faturas',
         'POST {id}/integrations/pingwin/supplier-documents/close-checks' => 'restauracao_faturas',

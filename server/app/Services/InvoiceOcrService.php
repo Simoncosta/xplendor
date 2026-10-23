@@ -59,13 +59,15 @@ class InvoiceOcrService
     // b2b-v4: + código da promoção e código de IVA por linha, quadro do IVA e bloco de descontos.
     // b2b-v5: + tipo de documento, NIF do adquirente, ATCUD, IVA a 0 % e a coluna IEC somada.
     // b2b-v6: o ATCUD só junto da palavra "ATCUD" e o desconto da coluna "%Desc" na linha.
-    public const PROMPT_VERSION = 'b2b-v6';
+    // b2b-v7: + preços com IVA incluído (talões) e notas escritas à mão.
+    public const PROMPT_VERSION = 'b2b-v7';
     // Caminho com QR: a IA só lê as linhas (o cabeçalho vem do QR).
     // linhas-v2 (F3): + guias referidas na fatura (para a ligação de faturas de guias ao PingWin).
     // linhas-v3: + código da promoção e código de IVA por linha, quadro do IVA e bloco de descontos.
     // linhas-v4: + a coluna IEC somada ao valor da linha.
     // linhas-v5: o desconto da coluna "%Desc" na linha.
-    public const LINES_PROMPT_VERSION = 'linhas-v5';
+    // linhas-v6: + preços com IVA incluído (talões) e notas escritas à mão.
+    public const LINES_PROMPT_VERSION = 'linhas-v6';
 
     public const STATUS_NOT_OURS = 'nao_desta_empresa';
     public const CHECK_OK = 'confere';
@@ -251,7 +253,7 @@ class InvoiceOcrService
         $t0 = hrtime(true);
         $system = $qr ? $this->linesPrompt() : $this->prompt();
         $res = $this->callAnthropic($plan, $system, $qr);
-        $clean = $this->sanitize($this->decodeJson($res['content']));
+        $clean = $this->applyVatIncluded($this->sanitize($this->decodeJson($res['content'])), $qr);
         if (! $qr) {
             // ⚠️ O NIF do fornecedor NUNCA é o da própria empresa (esse é o cliente).
             $clean = $this->dropOwnCompanyIdentity($clean, $companyId);
@@ -815,6 +817,10 @@ class InvoiceOcrService
             'doc_type'      => AtInvoiceQr::docTypeLabel($this->str($raw['tipoDocumento'] ?? null)) !== null ? strtoupper(trim((string) $raw['tipoDocumento'])) : null,
             'buyer_nif'     => $this->nif($raw['nifAdquirente'] ?? null),
             'atcud'         => self::atcudFor($this->str($raw['atcud'] ?? null), $this->str($raw['numeroFatura'] ?? null)),
+            // Talões: os valores das linhas já incluem o IVA (convertidos em applyVatIncluded).
+            'vat_included'  => ($raw['precosComIva'] ?? false) === true,
+            // O texto escrito à mão no documento, tal como está (não tira conclusões).
+            'handwritten_notes' => ($n = $this->str($raw['notasManuscritas'] ?? null)) !== null ? mb_substr($n, 0, 500) : null,
             'number'        => $this->str($raw['numeroFatura'] ?? null),
             'issue_date'    => $this->date($raw['dataEmissao'] ?? null),
             'lines'         => $lines,
@@ -918,6 +924,8 @@ class InvoiceOcrService
                 'check_status'   => $qr ? ($check['ok'] ? self::CHECK_OK : self::CHECK_MISMATCH) : self::CHECK_NO_QR,
                 'check_diff'     => $qr ? $check['rows'] : null,
                 'guide_refs'     => ($clean['guides'] ?? []) ?: null,
+                'prices_include_vat' => ! empty($clean['vat_included']),
+                'handwritten_notes'  => $clean['handwritten_notes'] ?? null,
             ]);
 
             $invoice->discounts()->delete();
@@ -1292,6 +1300,85 @@ class InvoiceOcrService
         return mb_substr($atcud, 0, 70);
     }
 
+    /**
+     * Preços com IVA incluído (talões): as linhas passam a valores sem IVA, taxa a taxa, de forma que a soma
+     * das bases de cada taxa seja exatamente a base lida (do QR; sem QR, do quadro do IVA lido; senão, do
+     * sumário). Os cêntimos que sobram vão para as linhas maiores. Se a base lida estiver longe da conversão
+     * (mais do que os arredondamentos), fica a conversão e a conferência mostra a diferença. Guarda o valor
+     * com IVA em cada linha (vat_included_cents); o preço unitário passa a sem IVA; os descontos também.
+     */
+    public function applyVatIncluded(array $clean, ?array $qr): array
+    {
+        if (empty($clean['vat_included'])) {
+            return $clean;
+        }
+        $read = [];
+        $source = $qr ? (array) ($qr['by_rate'] ?? []) : (($clean['vat_table'] ?? []) ?: (array) ($clean['summary']['vat_breakdown'] ?? []));
+        foreach ($source as $r) {
+            $read[(int) $r['rate']] = ($read[(int) $r['rate']] ?? 0) + (int) $r['base_cents'];
+        }
+        $byRate = [];
+        foreach ($clean['lines'] as $i => $l) {
+            if ($l['vat_rate'] !== null && $l['line_total_cents'] !== null) {
+                $byRate[(int) $l['vat_rate']][] = $i;
+            }
+        }
+        $factor = [];
+        foreach ($byRate as $rate => $idx) {
+            $f = 1 + $rate / 100;
+            $factor[$rate] = $f;
+            $raw = [];
+            foreach ($idx as $i) {
+                $raw[$i] = $clean['lines'][$i]['line_total_cents'] / $f;
+            }
+            $base = array_map(fn ($v) => (int) floor($v + 1e-9), $raw);
+            $natural = (int) round(array_sum($raw));
+            $target = $read[$rate] ?? null;
+            if ($target === null || abs($target - $natural) > max(2, count($idx))) {
+                $target = $natural;
+            }
+            // Os cêntimos que faltam (ou sobram) vão para as linhas maiores, um a um.
+            $order = $idx;
+            usort($order, fn ($a, $b) => abs($clean['lines'][$b]['line_total_cents']) <=> abs($clean['lines'][$a]['line_total_cents']) ?: $a <=> $b);
+            $rest = $target - array_sum($base);
+            for ($k = 0; $rest !== 0 && $order !== []; $k++) {
+                $step = $rest > 0 ? 1 : -1;
+                $base[$order[$k % count($order)]] += $step;
+                $rest -= $step;
+            }
+            foreach ($idx as $i) {
+                $l = $clean['lines'][$i];
+                $disc = (int) round(((int) ($l['discount_cents'] ?? 0)) / $f);
+                $gross = $base[$i] + $disc;
+                $q = (float) ($l['quantity'] ?? 0);
+                $d = (float) ($l['discount_pct'] ?? 0);
+                $clean['lines'][$i] = array_merge($l, [
+                    'vat_included_cents' => (int) $l['line_total_cents'],
+                    'line_total_cents'   => $base[$i],
+                    'gross_total_cents'  => $gross,
+                    'discount_cents'     => $disc,
+                    // O preço sem IVA que, com a quantidade e o desconto da linha, dá o valor sem IVA.
+                    'unit_price'         => $q > 0 && $d < 100 ? number_format($gross / 100 / ($q * (1 - $d / 100)), 6, '.', '')
+                        : ($l['unit_price'] !== null ? number_format((float) $l['unit_price'] / $f, 6, '.', '') : null),
+                ]);
+            }
+        }
+        // O bloco de descontos: os valores também passam a sem IVA (pela taxa da linha a que ficaram).
+        foreach ($clean['discounts'] ?? [] as $k => $d) {
+            $allocs = [];
+            foreach ($d['allocations'] ?? [] as $a) {
+                $line = $clean['lines'][$a['line']] ?? null;
+                $allocs[] = ['line' => $a['line'], 'cents' => $line ? (int) round($a['cents'] / ($factor[(int) $line['vat_rate']] ?? 1)) : (int) $a['cents']];
+            }
+            $f = $d['vat_rate'] !== null ? ($factor[(int) $d['vat_rate']] ?? (1 + $d['vat_rate'] / 100)) : null;
+            $clean['discounts'][$k]['allocations'] = $allocs;
+            $clean['discounts'][$k]['amount_cents'] = $allocs !== [] ? array_sum(array_column($allocs, 'cents'))
+                : ($f ? (int) round($d['amount_cents'] / $f) : $d['amount_cents']);
+        }
+
+        return $clean;
+    }
+
     /** "+ 0,52 TAXA IEC INCL. PREÇO U.V.", "IEC BEB AÇÚCAR INCL. PUV": informativa (já no preço). */
     public static function isInformativeLine(?string $item): bool
     {
@@ -1356,6 +1443,8 @@ class InvoiceOcrService
   "tipoDocumento": "FT|FS|FR|NC|ND",
   "nifAdquirente": "string (9 dígitos, o NIF do CLIENTE)",
   "atcud": "string",
+  "precosComIva": true|false,
+  "notasManuscritas": "string",
   "numeroFatura": "string",
   "dataEmissao": "YYYY-MM-DD",
   "linhas": [
@@ -1376,6 +1465,10 @@ class InvoiceOcrService
 - O CLIENTE aparece como DESTINATÁRIO, muitas vezes após "Exmo(s). Sr(s)", "Cliente", "Adquirente", "Faturar a", "Nome/Morada do cliente". NÃO uses o NIF nem o nome que aparecem aí.
 - Se tiveres dúvida entre os dois NIFs, escolhe o do topo/cabeçalho (emissor). Se mesmo assim não tiveres a certeza, OMITE o nif (não adivinhes).
 - O NIF do CLIENTE/adquirente vai para "nifAdquirente" (é usado para confirmar que a fatura é desta empresa). Se não estiver escrito ou não for legível, devolve "".
+
+PREÇOS COM IVA INCLUÍDO E NOTAS À MÃO:
+- "precosComIva": true quando os preços e os valores das linhas JÁ INCLUEM o IVA (talões de supermercado e faturas simplificadas de retalho: a soma das linhas é o total a pagar e o quadro do IVA tem a base mais baixa, ex.: total 2,38 com base 1,93 e IVA 0,45). false nas faturas normais (valores das linhas sem IVA). Em qualquer caso, copia os preços e os valores das linhas tal como estão escritos: a Xplendor converte.
+- "notasManuscritas": o texto escrito À MÃO no documento (ex.: "Pago em dinheiro", "Reembolso a …"), tal como está, separado por " / " se houver mais do que um; "" se não houver. Não interpretes nem tires conclusões.
 
 TIPO, NÚMERO E ATCUD:
 - "tipoDocumento" pelo título do documento: FT = Fatura, FS = Fatura simplificada, FR = Fatura-recibo, NC = Nota de crédito, ND = Nota de débito. Se não tiveres a certeza, devolve "" (texto vazio). O mesmo em "nifAdquirente" e "atcud": "" quando não estiverem escritos.
@@ -1440,6 +1533,8 @@ PROMPT;
 
 {
   "fornecedorNome": "string (nome do EMISSOR, no topo — nunca o cliente/adquirente)",
+  "precosComIva": true|false,
+  "notasManuscritas": "string",
   "linhas": [
     {"codigo": "string", "item": "string", "quantidade": number, "unidade": "string", "precoUnitario": number, "descontoPct": number, "taxaIva": number, "totalLinha": number, "codigoPromocao": "string", "codigoIva": "string", "valorIec": number}
   ],
@@ -1453,7 +1548,7 @@ CAMPOS DE CADA LINHA:
 - item: descrição do artigo.
 - quantidade, unidade (UN, KG, CX, L…), precoUnitario (sem IVA), descontoPct (0 se não houver).
 - taxaIva: a taxa de IVA da linha em % (ex.: 6, 13, 23; 0 se isento). Se a fatura usar códigos de taxa, converte-os para a percentagem.
-- totalLinha: valor da linha SEM IVA, já com o desconto da própria linha (a coluna "Valor"/"Total"/"Líquido"), mas ANTES dos descontos do bloco de descontos.
+- totalLinha: valor da linha SEM IVA (ou COM IVA, tal como está, se precosComIva), já com o desconto da própria linha (a coluna "Valor"/"Total"/"Líquido"), mas ANTES dos descontos do bloco de descontos.
 
 DESCONTOS DE PROMOÇÃO E CÓDIGOS (ex.: Makro):
 - Se a linha tiver a coluna do código da promoção (ex.: "DD"), copia-o para "codigoPromocao". A coluna "DP" (ex.: "P") NÃO é um desconto e não entra no cálculo: ignora-a.
@@ -1465,6 +1560,10 @@ DESCONTOS DE PROMOÇÃO E CÓDIGOS (ex.: Makro):
 - COLUNA IEC SOMADA (ex.: bebidas com uma coluna "IEC" à parte): se a fatura tiver o IEC (imposto especial de consumo) numa coluna própria que SE SOMA ao valor da linha (o total da fatura = valor líquido + IEC + IVA), põe o IEC da linha em "valorIec" e o valor líquido (sem o IEC) em "totalLinha". A Xplendor soma os dois. Se o IEC já vier incluído no preço (linhas "+ … INCL."), NÃO preenchas "valorIec".
 - Artigos ao peso: quantidade em kg tal como está (ex.: 0.909) e unidade "KG".
 - descontoPct: a percentagem de desconto da linha, da coluna de desconto em percentagem ("%Desc", "Desc. %", "Desc"), tal como está escrita (ex.: 35,01 → 35.01). Confirma: quantidade × precoUnitario × (1 − descontoPct/100) ≈ totalLinha (sem o IEC). Nunca a calcules a partir de um desconto em €.
+
+PREÇOS COM IVA INCLUÍDO E NOTAS À MÃO:
+- "precosComIva": true quando os preços e os valores das linhas JÁ INCLUEM o IVA (talões de supermercado e faturas simplificadas de retalho: a soma das linhas é o total a pagar e o quadro do IVA tem a base mais baixa, ex.: total 2,38 com base 1,93 e IVA 0,45). false nas faturas normais (valores das linhas sem IVA). Em qualquer caso, copia os preços e os valores das linhas tal como estão escritos: a Xplendor converte.
+- "notasManuscritas": o texto escrito À MÃO no documento (ex.: "Pago em dinheiro", "Reembolso a …"), tal como está, separado por " / " se houver mais do que um; "" se não houver. Não interpretes nem tires conclusões.
 
 REGRAS:
 - TODAS as linhas de artigos, de TODAS as páginas, uma entrada por linha, pela ordem da fatura. Inclui portes, taras, ecovalor e outras linhas com valor se aparecerem como linhas.

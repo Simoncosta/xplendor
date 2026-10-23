@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Company;
+use App\Models\FinanceDocumentMark;
 use App\Models\OcrInvoice;
 use App\Models\OcrInvoicePingwinLink;
 use App\Models\PingwinSupplier;
@@ -151,6 +152,7 @@ class OcrPingwinLinkService
             $gone = $links->filter(fn ($l) => ! isset($docs[$l->docheader_id]) || $docs[$l->docheader_id]->docstatus_id === self::VOIDED);
             if ($gone->isEmpty()) {
                 $inv->update($state + $this->linkedState($inv, $links, $docs));
+                $this->fillAccountingNote($inv);
 
                 return $inv;
             }
@@ -164,6 +166,7 @@ class OcrPingwinLinkService
         $pool = $this->pool($inv, $entities);
         $state += $this->autoMatch($inv, $pool);
         $inv->update($state);
+        $this->fillAccountingNote($inv);
 
         return $inv;
     }
@@ -286,6 +289,7 @@ class OcrPingwinLinkService
             }
             $inv->pingwinLinks()->update(['confirmed_by' => $userId, 'confirmed_at' => now()]);
             $inv->update(['link_note' => null] + $this->linkedState($inv, $links, $this->docs($inv->company_id, $links->pluck('docheader_id')->all())));
+            $this->fillAccountingNote($inv);
 
             return $inv;
         }
@@ -313,8 +317,30 @@ class OcrPingwinLinkService
         $rejected = array_values(array_diff((array) ($inv->link_rejected ?? []), $docheaderIds));
         $inv->update(['link_rejected' => $rejected ?: null, 'link_note' => null, 'link_checked_at' => now()]
             + $this->linkedState($inv, $links, $docs));
+        $this->fillAccountingNote($inv);
 
         return $inv;
+    }
+
+    /**
+     * As notas escritas à mão na fatura vão para a Nota da folha da contabilidade de cada documento do
+     * PingWin ligado, só se essa Nota estiver vazia (nunca apaga uma Nota já escrita). Não tiram nenhuma
+     * conclusão: não registam pagamentos nem mudam o fornecedor.
+     */
+    public function fillAccountingNote(OcrInvoice $inv): void
+    {
+        $notes = trim((string) $inv->handwritten_notes);
+        if ($notes === '') {
+            return;
+        }
+        foreach ($inv->pingwinLinks()->pluck('docheader_id') as $docheader) {
+            $mark = FinanceDocumentMark::firstOrNew(['company_id' => $inv->company_id, 'docheader_id' => (string) $docheader]);
+            if (trim((string) $mark->note) !== '') {
+                continue;
+            }
+            $mark->note = mb_substr($notes, 0, 500);
+            $mark->save();
+        }
     }
 
     /** Desligar: os documentos ligados passam a rejeitados (não voltam sozinhos) e volta a procurar. */

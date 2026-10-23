@@ -168,7 +168,7 @@ export interface WorkflowSettings {
     content_approval_required: boolean;
     internal_review_required: boolean;
     production_mode: ProductionMode;
-    /** F2: interruptor "Publicação automática" (desligado por omissão). */
+    /** F2: interruptor "Publicação automática" (desligado por omissão); só leitura aqui, muda-se nas Integrações. */
     auto_publishing_enabled: boolean;
     can_change_mode: boolean;
     can_edit: boolean;

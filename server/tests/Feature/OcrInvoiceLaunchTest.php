@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Jobs\LaunchPingwinDocumentJob;
+use App\Models\ArticleGrouping;
 use App\Models\Company;
 use App\Models\CompanyIntegration;
 use App\Models\OcrInvoice;
@@ -276,14 +277,20 @@ class OcrInvoiceLaunchTest extends TestCase
         $this->assertContains('fornecedor', $this->failedGuards($this->invoice()));
     }
 
-    public function test_out_of_scope_types_are_disabled_with_message(): void
+    public function test_the_type_guard_shows_the_real_type_with_the_right_message(): void
     {
-        $expected = ['FR' => 'Por agora, lançar à mão no PingWin.', 'FS' => 'Por agora, lançar à mão no PingWin.',
-            'ND' => 'As notas de débito ainda se lançam à mão no PingWin. Disponível em breve.'];
-        foreach ($expected as $t => $message) {
-            $g = collect($this->svc()->preview($this->invoice(['doc_type' => $t]))['guards'])->firstWhere('key', 'tipo');
-            $this->assertFalse($g['ok']);
-            $this->assertSame($message, $g['message']);
+        $cases = [
+            'FT' => [true, 'Fatura (FT)', null],
+            'NC' => [true, 'Nota de crédito (NC)', null],
+            'FR' => [true, 'Fatura-recibo (FR)', null],
+            'FS' => [true, 'Fatura simplificada (FS)', null],
+            'ND' => [false, 'Nota de débito (ND)', 'As notas de débito ainda se lançam à mão no PingWin. Disponível em breve.'],
+            'VD' => [false, 'Venda a dinheiro (VD)', 'Por agora, lançar à mão no PingWin.'],
+            ''   => [false, 'Sem tipo', 'O QR não se leu e a leitura não identificou o tipo.'],
+        ];
+        foreach ($cases as $t => [$ok, $label, $message]) {
+            $g = collect($this->svc()->preview($this->invoice(['doc_type' => $t === '' ? null : $t]))['guards'])->firstWhere('key', 'tipo');
+            $this->assertSame([$ok, $label, $message], [$g['ok'], $g['label'], $g['message']], "tipo {$t}");
         }
     }
 
@@ -386,6 +393,217 @@ class OcrInvoiceLaunchTest extends TestCase
             'doc_date' => '20261020T00:00:00', 'docstatus_id' => '8001', 'docreference_number' => 'NC CX/0196']];
         $w = $this->launchNow($this->creditNote());
         $this->assertSame('Já está lançada no PingWin (VNC BOVNC/90). Ficou ligada à nota; nada foi criado.', $w->error);
+    }
+
+    // ───────────────────────────────────────────────────────────── faturas-recibo (FR C)
+
+    public function test_a_fr_launches_as_fr_c_in_draft_with_the_invoice_date_and_reference(): void
+    {
+        $inv = $this->invoice(['doc_type' => 'FR', 'number' => 'FR FR.JM26/23178', 'issue_date' => '2026-10-20']);
+        $this->assertTrue($this->svc()->preview($inv)['can_launch']);
+        $this->okLaunch('10.38', ['header' => ['docconfig_id' => OcrPingwinLinkService::FRC, 'doc_prefix' => ' BO', 'doc_number' => 138,
+            'doc_date' => '20261020T00:00:00', 'docreference_number' => 'FR FR.JM26/23178']]);
+        $this->launchResult['result'] = array_replace($this->launchResult['result'], ['docconfig_id' => OcrPingwinLinkService::FRC, 'document' => ' BO/138',
+            'header_before_save' => ['id' => 'DOC1', 'doc_prefix' => ' BO', 'doc_number' => 138, 'store_code' => 'BO']]);
+        $w = $this->launchNow($inv);
+        $this->assertSame('ok', $w->status, (string) $w->error);
+
+        $doc = collect($this->calls)->firstWhere(0, 'launch')[1];
+        $this->assertSame([OcrPingwinLinkService::FRC, '8001', OcrInvoiceLaunchService::DOCREF_ID, 'FR FR.JM26/23178', '20261020T00:00:00', '20261020T00:00:00', '0.05'],
+            [$doc['docconfig_id'], $doc['docstatus_id'], $doc['docreference_id'], $doc['docreference_number'], $doc['docreference_date'], $doc['doc_date'], $doc['max_adjustment']]);
+        $this->assertSame(['1.415000', '2.000000'], array_column($doc['lines'], 'price'));
+        $mirror = PingwinSupplierDocument::where('docheader_id', 'DOC1')->first();
+        $this->assertSame([OcrPingwinLinkService::FRC, 'Fatura-recibo compra', '8001'], [$mirror->docconfig_id, $mirror->doctype, $mirror->docstatus_id]);
+
+        $this->confirmUnits();
+        $close = $this->svc()->requestStatus($inv->fresh(), PingwinDocumentWrite::CLOSE, $this->user->id);
+        $this->assertSame('ok', $this->svc()->execute($close->id)->status);
+        $this->assertSame(['status', 'DOC1', '8002', OcrPingwinLinkService::FRC], collect($this->calls)->firstWhere(0, 'status'));
+    }
+
+    public function test_a_simplified_invoice_launches_as_fr_c(): void
+    {
+        // O número do talão tem 27 carateres: o Documento de referência (25) fica sem o prefixo do tipo, inteiro.
+        $inv = $this->invoice(['doc_type' => 'FS', 'number' => 'FS 0489064251229I824/052982', 'issue_date' => '2026-10-15']);
+        $p = $this->svc()->preview($inv);
+        $this->assertSame('Fatura simplificada (FS)', collect($p['guards'])->firstWhere('key', 'tipo')['label']);
+        $this->assertSame(['0489064251229I824/052982', false], [$p['docreference']['number'], $p['docreference']['truncated']]);
+        $this->okLaunch('10.38', ['header' => ['docconfig_id' => OcrPingwinLinkService::FRC, 'doc_date' => '20261015T00:00:00', 'docreference_number' => '0489064251229I824/052982']]);
+        $w = $this->launchNow($inv);
+        $this->assertSame('ok', $w->status, (string) $w->error);
+        $doc = collect($this->calls)->firstWhere(0, 'launch')[1];
+        $this->assertSame([OcrPingwinLinkService::FRC, '8001', OcrInvoiceLaunchService::DOCREF_ID, '0489064251229I824/052982', '20261015T00:00:00'],
+            [$doc['docconfig_id'], $doc['docstatus_id'], $doc['docreference_id'], $doc['docreference_number'], $doc['doc_date']]);
+        $this->assertSame('Fatura-recibo compra', PingwinSupplierDocument::where('docheader_id', 'DOC1')->value('doctype'));
+        // Só se tira o prefixo quando não cabe; um número curto fica como está.
+        $this->assertSame(['FT A/77', 'FT 2026/00000000000000000', 'FAC 02002202601/024366'], [OcrInvoiceLaunchService::docReference('FT A/77'),
+            OcrInvoiceLaunchService::docReference('FT 2026/00000000000000000'), OcrInvoiceLaunchService::docReference('FAC 02002202601/024366')]);
+    }
+
+    public function test_a_fr_already_launched_by_hand_is_found_and_linked(): void
+    {
+        // À mão: a FR C ficou com a data do dia (23/10, a fatura é de 20/10) e sem referência; a FR C anulada não conta.
+        $this->liveDocs = [
+            ['id' => 'FR138', 'docconfig_id' => OcrPingwinLinkService::FRC, 'document' => 'BO/138', 'entity_id' => 'SUPX', 'total' => 10.38, 'doc_date' => '20261023T00:00:00', 'docstatus_id' => '8002', 'docreference_number' => ''],
+            ['id' => 'FR139', 'docconfig_id' => OcrPingwinLinkService::FRC, 'document' => 'BO/139', 'entity_id' => 'SUPX', 'total' => 10.38, 'doc_date' => '20261020T00:00:00', 'docstatus_id' => '8003', 'docreference_number' => ''],
+        ];
+        $inv = $this->invoice(['doc_type' => 'FR', 'number' => 'FR FR.JM26/23178', 'issue_date' => '2026-10-20']);
+        $w = $this->launchNow($inv);
+        $this->assertSame('Já está lançada no PingWin (BO/138). Ficou ligada à fatura-recibo; nada foi criado.', $w->error);
+        $this->assertNull(collect($this->calls)->firstWhere(0, 'launch'));
+        $this->assertSame(['FR138'], $inv->fresh()->pingwinLinks()->pluck('docheader_id')->all());
+        $g = collect($this->svc()->preview($inv->fresh())['guards'])->firstWhere('key', 'nao_lancada');
+        $this->assertSame('Já está lançada no PingWin (BO/138).', $g['message']);
+    }
+
+    public function test_a_fr_launched_as_an_invoice_1209_with_the_same_reference_is_found(): void
+    {
+        $this->liveDocs = [['id' => 'FT55', 'docconfig_id' => '1209', 'document' => 'VFT BOVFT/55', 'entity_id' => 'SUPX', 'total' => 99.0,
+            'doc_date' => '20261001T00:00:00', 'docstatus_id' => '8002', 'docreference_number' => 'FR FR.JM26/23178']];
+        $w = $this->launchNow($this->invoice(['doc_type' => 'FR', 'number' => 'FR FR.JM26/23178', 'issue_date' => '2026-10-20']));
+        $this->assertSame('Já está lançada no PingWin (VFT BOVFT/55). Ficou ligada à fatura-recibo; nada foi criado.', $w->error);
+    }
+
+    // ───────────────────────────────────────────────────────────── sem QR legível
+
+    /** Fatura sem QR: o quadro do IVA lido igual às linhas (6 %: 2,83 + 0,17; 23 %: 6,00 + 1,38). */
+    private function withoutQr(array $o = []): OcrInvoice
+    {
+        return $this->invoice(array_merge(['qr_ok' => false, 'qr_data' => null, 'check_status' => 'sem_qr', 'vat_table' => [
+            ['code' => 'A', 'rate' => 6, 'base_cents' => 283, 'vat_cents' => 17], ['code' => 'B', 'rate' => 23, 'base_cents' => 600, 'vat_cents' => 138]]], $o));
+    }
+
+    public function test_without_qr_it_launches_only_with_the_buyer_the_read_vat_and_the_paper_check(): void
+    {
+        $inv = $this->withoutQr();
+        $p = $this->svc()->preview($inv);
+        $this->assertFalse($p['can_launch']);
+        $g = collect($p['guards'])->keyBy('key');
+        $this->assertSame('Sem QR: adquirente, IVA lido e totais conferidos com o papel', $g['qr']['label']);
+        $this->assertSame('Sem QR legível, falta: marcar "Conferi os totais com o papel".', $g['qr']['message']);
+        $this->assertTrue($g['conferencia']['ok']);
+        $this->assertSame('Linhas a conferir com o quadro do IVA lido', $g['conferencia']['label']);
+        $this->assertSame(0, $p['estimate']['adjustment_cents'], 'o total vem do sumário lido');
+
+        // Marcar "Conferi os totais com o papel" guarda quem e quando; com as três condições, lança-se.
+        $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch/paper-check", ['checked' => true])
+            ->assertOk()->assertJsonPath('data.can_launch', true)->assertJsonPath('data.paper_check.by_name', $this->user->name);
+        $inv->refresh();
+        $this->assertSame($this->user->id, (int) $inv->paper_checked_by);
+        $this->assertNotNull($inv->paper_checked_at);
+        $this->okLaunch();
+        $this->assertSame('ok', $this->launchNow($inv)->status);
+
+        // Desmarcar volta a bloquear.
+        $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch/paper-check", ['checked' => false])->assertOk();
+        $this->assertNull($inv->fresh()->paper_checked_at);
+    }
+
+    public function test_without_qr_the_message_says_what_is_missing(): void
+    {
+        $inv = $this->withoutQr(['buyer_nif' => '500000001', 'vat_table' => [['code' => 'A', 'rate' => 6, 'base_cents' => 300, 'vat_cents' => 18],
+            ['code' => 'B', 'rate' => 23, 'base_cents' => 600, 'vat_cents' => 138]], 'paper_checked_by' => $this->user->id, 'paper_checked_at' => now()]);
+        $g = collect($this->svc()->preview($inv)['guards'])->keyBy('key');
+        $this->assertSame('Sem QR legível, falta: o NIF do adquirente lido ser o da empresa (lido: 500000001); o IVA por taxa bater com o quadro do IVA lido.', $g['qr']['message']);
+        $this->assertFalse($g['conferencia']['ok']);
+        // Com QR, a conferência com o papel não se usa.
+        $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$this->invoice()->id}/pingwin-launch/paper-check", ['checked' => true])
+            ->assertStatus(422);
+    }
+
+    // ───────────────────────────────────────────── decimais à unidade e artigos de agrupamento
+
+    /**
+     * O caso real (números da fatura, sem nomes): 3 linhas em kg ligadas a um artigo à unidade e 1 linha
+     * de 174,10 €, tudo a 23 %; base 332,65 €, total 409,16 €.
+     */
+    private function wholeUnitInvoice(): array
+    {
+        PingwinUnit::where('company_id', $this->yuko->id)->where('pingwin_id', '11001')->update(['raw' => ['frac_unit' => 0]]);
+        PingwinUnit::where('company_id', $this->yuko->id)->where('pingwin_id', '11002')->update(['raw' => ['frac_unit' => 1]]);
+        $staff = PingwinCatalogItem::create(['company_id' => $this->yuko->id, 'pingwin_id' => 'PSTAFF', 'code' => '908', 'description' => 'COMIDA STAFF 23%',
+            'is_active' => true, 'product_status' => 'Ativo', 'base_unit_id' => '11001', 'default_purchase_unit_id' => '11001', 'purchaseunit' => 'Unidade']);
+        $inv = $this->invoice(['qr_data' => ['fields' => ['O' => '409.16'], 'by_rate' => [['rate' => 23, 'base_cents' => 33265, 'vat_cents' => 7651]]]]);
+        $inv->lines()->delete();
+        foreach ([[8.09, '9.190000', 7437], [8.09, '2.490000', 2015], [8.665, '7.390000', 6403]] as $i => [$q, $price, $total]) {
+            OcrInvoiceLine::create(['ocr_invoice_id' => $inv->id, 'company_id' => $this->yuko->id, 'position' => $i, 'item' => "Carne {$i}", 'quantity' => $q, 'unit' => 'KG',
+                'unit_price' => $price, 'line_total_cents' => $total, 'gross_total_cents' => $total, 'vat_rate' => 23, 'article_id' => $staff->id,
+                'link_state' => 'ligada', 'link_method' => 'mapa', 'launch_unit_id' => '11001']);
+        }
+        OcrInvoiceLine::create(['ocr_invoice_id' => $inv->id, 'company_id' => $this->yuko->id, 'position' => 3, 'item' => 'Outro', 'quantity' => 1, 'unit' => 'UN',
+            'unit_price' => '174.100000', 'line_total_cents' => 17410, 'gross_total_cents' => 17410, 'vat_rate' => 23, 'article_id' => $this->b->id,
+            'link_state' => 'ligada', 'link_method' => 'mapa']);
+
+        return [$inv->fresh(), $staff];
+    }
+
+    public function test_decimals_on_an_article_by_the_unit_block_the_launch_and_the_estimate_shows_the_rounding(): void
+    {
+        [$inv] = $this->wholeUnitInvoice();
+        $p = $this->svc()->preview($inv);
+        $g = collect($p['guards'])->keyBy('key');
+        $this->assertFalse($g['unidades']['ok']);
+        $this->assertSame('O artigo COMIDA STAFF 23% é à unidade e a linha tem 8,09 kg: o PingWin arredonda para 9. Confirme a unidade no Guião de unidades ou marque o artigo como artigo de agrupamento.',
+            explode(' O artigo', $g['unidades']['message'])[0]);
+        $this->assertStringContainsString('a linha tem 8,665 kg: o PingWin arredonda para 9.', $g['unidades']['message']);
+        // O total estimado já simula o arredondamento: 9 × 9,19 + 9 × 2,49 + 9 × 7,39 = 171,63 € em vez de 158,55 €.
+        $this->assertSame([8271, 2241, 6651, 17410], array_column(array_slice($p['planned']['lines'], 0, 4), 'net_cents'));
+        $this->assertSame([42524, 40916, -1608], [$p['estimate']['computed_cents'], $p['estimate']['target_cents'], $p['estimate']['adjustment_cents']]);
+        $this->assertFalse($g['acerto']['ok']);
+        $this->assertFalse($p['can_launch']);
+    }
+
+    public function test_a_grouping_article_joins_its_lines_into_one_and_the_total_matches(): void
+    {
+        [$inv, $staff] = $this->wholeUnitInvoice();
+        // Cadastros › Artigos: "Artigo de agrupamento" (guarda quem e quando).
+        $this->actingAs($this->user, 'sanctum')->putJson("/api/v1/companies/{$this->yuko->id}/integrations/pingwin/articles/{$staff->id}/grouping", ['grouping' => true])
+            ->assertOk()->assertJsonPath('data.grouping', true)->assertJsonPath('data.changed_by_name', $this->user->name);
+        $this->assertSame($this->user->id, (int) ArticleGrouping::first()->changed_by);
+
+        $p = $this->svc()->preview($inv->fresh());
+        $this->assertTrue($p['can_launch'], json_encode(collect($p['guards'])->where('ok', false)->values()));
+        $group = collect($p['planned']['lines'])->firstWhere('kind', 'grupo');
+        $this->assertSame([3, 1.0, 158.55, 15855, 23, 'COMIDA STAFF 23%'], [$group['lines'], $group['qnt'], $group['price'], $group['net_cents'], $group['vat_rate'], $group['article']['description']]);
+        $this->assertSame([40916, 40916, 0], [$p['estimate']['computed_cents'], $p['estimate']['target_cents'], $p['estimate']['adjustment_cents']]);
+        $this->assertSame('confere', $inv->fresh()->check_status, 'a conferência com o QR continua a usar as linhas lidas');
+        // As linhas juntas não precisam das unidades confirmadas para fechar (só o outro artigo).
+        $this->assertStringNotContainsString('COMIDA STAFF', json_encode($p['close']['blockers'], JSON_UNESCAPED_UNICODE));
+
+        $this->okLaunch('409.16', ['header' => ['total_products' => 332.65, 'total_tax' => 76.51],
+            'details' => [['line_number' => 1, 'product_id' => 'PSTAFF', 'total' => 158.55, 'tax_value' => 36.47, 'qnt' => 1, 'price' => 158.55],
+                ['line_number' => 2, 'product_id' => 'PB', 'total' => 174.10, 'tax_value' => 40.04, 'qnt' => 1, 'price' => 174.10]]]);
+        $this->assertSame('ok', $this->launchNow($inv->fresh())->status);
+        $doc = collect($this->calls)->firstWhere(0, 'launch')[1];
+        $this->assertCount(2, $doc['lines']);
+        $this->assertSame(['PSTAFF', '11001', '1.000000', '158.550000', '0', 23], [$doc['lines'][0]['product_id'], $doc['lines'][0]['unit_id'], $doc['lines'][0]['qnt'],
+            $doc['lines'][0]['price'], $doc['lines'][0]['discount1'], $doc['lines'][0]['vat_rate']]);
+        $this->assertSame('409.16', $doc['target_total']);
+    }
+
+    public function test_grouping_lines_with_different_vat_rates_block(): void
+    {
+        [$inv, $staff] = $this->wholeUnitInvoice();
+        ArticleGrouping::create(['company_id' => $this->yuko->id, 'product_pingwin_id' => 'PSTAFF', 'is_grouping' => true]);
+        $inv->lines()->where('position', 2)->update(['vat_rate' => 13]);
+        $g = collect($this->svc()->preview($inv->fresh())['guards'])->firstWhere('key', 'agrupamento');
+        $this->assertSame([false, 'As linhas do artigo COMIDA STAFF 23% têm taxas de IVA diferentes; crie um artigo por taxa.'], [$g['ok'], $g['message']]);
+    }
+
+    public function test_a_unit_that_accepts_decimals_and_whole_quantities_do_not_change(): void
+    {
+        PingwinUnit::where('company_id', $this->yuko->id)->where('pingwin_id', '11001')->update(['raw' => ['frac_unit' => 0]]);
+        PingwinUnit::where('company_id', $this->yuko->id)->where('pingwin_id', '11002')->update(['raw' => ['frac_unit' => 1]]);
+        // A linha 1 em KG (o artigo A é ao quilo) com 8,09; a linha 2 com 3 unidades.
+        $inv = $this->invoice([], []);
+        $inv->lines()->where('position', 0)->update(['quantity' => 8.09]);
+        $p = $this->svc()->preview($inv->fresh());
+        $this->assertTrue(collect($p['guards'])->firstWhere('key', 'unidades')['ok']);
+        $rows = collect($p['planned']['lines'])->where('kind', 'linha')->values();
+        $this->assertSame([8.09, 3.0], [$rows[0]['qnt'], $rows[1]['qnt']]);
+        $this->assertSame([283, 600], [$rows[0]['net_cents'], $rows[1]['net_cents']]);
+        $this->assertSame([null, null], [$rows[0]['rounded_from'], $rows[1]['rounded_from']]);
+        $this->assertSame(0, $p['estimate']['adjustment_cents']);
     }
 
     public function test_check_difference_can_be_accepted_and_is_recorded(): void

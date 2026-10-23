@@ -5,7 +5,7 @@ XPLENDOR — lançar a NOTA DE CRÉDITO de fornecedor (1205) no PingWin, com o M
   · a sequência completa da 1205 (NEW → modelo → fornecedor → linhas → moradas → total → EDIT do
     cabeçalho com a data da nota, o Documento de referência e 8001 → verifydoc → SAVE → CLOSE);
   · a nota nasce Fechada (8002) no modelo e fica em rascunho; valores positivos; sem acerto;
-  · a referência ou a data que não ficam → CLOSE SEM SAVE;
+  · a referência ou a data que não ficam → CANCEL SEM SAVE (o documento novo é descartado);
   · só 1209 e 1205 (a nota de débito 1206 é recusada).
 """
 import json
@@ -60,7 +60,7 @@ class FakePW1205:
         self.calls.append({"path": path, "action": action, "body": body, "oid": headers.get("ObjectID")})
         if path == DC and action == "NEW":
             return R(200, {DC: {}}, {"ObjectID": "OID"})
-        if path == DC and action in ("SAVE", "CLOSE"):
+        if path == DC and action in ("SAVE", "CLOSE", "CANCEL"):
             return R(200, {DC: {}})
         if path == f"{DC}/header,doctaxes.taxgroup" and action == "GET,INFO":
             assert body is None, "o modelo pede-se SEM corpo"
@@ -152,7 +152,7 @@ def test_a_total_that_is_not_the_notes_closes_without_save():
     res = client(fake).launch_supplier_invoice({**DOC, "target_total": "45.01"})
     assert res["saved"] is False and res["reason"] == "acerto"
     assert ("1205", "SAVE") not in [(c["path"], c["action"]) for c in fake.calls]
-    assert fake.calls[-1]["action"] == "CLOSE"
+    assert fake.calls[-1]["action"] == "CANCEL"
 
 
 def test_reference_or_date_that_does_not_stay_closes_without_save():
@@ -160,7 +160,7 @@ def test_reference_or_date_that_does_not_stay_closes_without_save():
         res = client(fake).launch_supplier_invoice(DOC)
         assert res["saved"] is False and word in res["error"] and "Nada foi gravado" in res["error"]
         assert ("1205", "SAVE") not in [(c["path"], c["action"]) for c in fake.calls]
-        assert fake.calls[-1]["action"] == "CLOSE"
+        assert fake.calls[-1]["action"] == "CANCEL"
 
 
 def test_only_invoices_and_credit_notes_are_launched():

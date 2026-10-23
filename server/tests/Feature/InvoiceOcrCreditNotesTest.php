@@ -303,4 +303,89 @@ class InvoiceOcrCreditNotesTest extends TestCase
         $this->assertSame(0, $clean['lines'][0]['vat_rate']);
         $this->assertSame([['code' => 'A', 'rate' => 0, 'base_cents' => 600, 'vat_cents' => 0]], $clean['vat_table']);
     }
+
+    // ─────────────────────────────────────────── talões com IVA incluído e notas à mão
+
+    /** Um talão (FS) com QR: as bases e o IVA por taxa e o total. */
+    private function ticketQr(string $taxes, string $vat, string $total): string
+    {
+        return 'A:' . self::SUPPLIER . '*B:' . self::OWN . "*C:PT*D:FS*E:N*F:20261015*G:FS 0489/052982*H:ABCD1234-52982*I1:PT*{$taxes}*N:{$vat}*O:{$total}*Q:AbCd*R:0001";
+    }
+
+    private function ticketLines(array $lines, array $o = []): array
+    {
+        return $o + ['fornecedorNome' => 'Supermercado Teste', 'precosComIva' => true, 'notasManuscritas' => '', 'linhas' => $lines, 'guias' => [], 'quadroIva' => [], 'descontos' => []];
+    }
+
+    public function test_a_ticket_with_vat_included_is_converted_and_matches_the_vat_table(): void
+    {
+        // "2 X 1,19 = 2,38" e o quadro do IVA: 23 %, base 1,93, IVA 0,45, total 2,38.
+        $this->bindFake($this->analysis([[$this->ticketQr('I7:1.93*I8:0.45', '0.45', '2.38'), 1]]), [$this->ticketLines([
+            ['item' => 'Grão 200 g', 'quantidade' => 2, 'unidade' => 'UN', 'precoUnitario' => 1.19, 'totalLinha' => 2.38, 'taxaIva' => 23]])]);
+        $inv = $this->runOcr();
+
+        $this->assertSame('por_validar', $inv->status);
+        $this->assertTrue($inv->prices_include_vat);
+        $l = $inv->lines->first();
+        $this->assertSame([193, 193, 238, 23], [$l->line_total_cents, $l->gross_total_cents, $l->vat_included_cents, $l->vat_rate]);
+        $this->assertSame('0.965000', (string) $l->unit_price, '2 × 0,965 = 1,93');
+        $this->assertSame('confere', $inv->check_status);
+        $v = collect(app(OcrInvoiceRereadService::class)->vatByRate($inv)['rows'])->firstWhere('rate', 23);
+        $this->assertEquals([1.93, 1.93, 0.45, 0.44, true], [$v['read_base'], $v['calc_base'], $v['read_vat'], $v['calc_vat'], $v['ok']]);
+        // O PingWin calcula o IVA à linha (0,44): 2,37 €, e o acerto de 0,01 € (até 0,05 €) leva-o aos 2,38 €.
+        $e = app(\App\Services\OcrInvoiceLaunchService::class)->estimate($inv, $inv->lines);
+        $this->assertSame([237, 238, 1], [$e['computed_cents'], $e['target_cents'], $e['adjustment_cents']]);
+    }
+
+    public function test_a_ticket_with_two_rates_matches_the_bases_to_the_cent(): void
+    {
+        $qr = $this->ticketQr('I3:4.31*I4:0.26*I7:7.03*I8:1.62', '1.88', '13.22');
+        $lines = [];
+        foreach ([['Pão', 1.19, 6], ['Leite', 0.89, 6], ['Fruta', 2.49, 6], ['Detergente', 3.99, 23], ['Esponja', 1.49, 23], ['Guardanapos', 0.79, 23], ['Grão', 2.38, 23]] as [$item, $total, $rate]) {
+            $lines[] = ['item' => $item, 'quantidade' => 1, 'unidade' => 'UN', 'precoUnitario' => $total, 'totalLinha' => $total, 'taxaIva' => $rate];
+        }
+        $this->bindFake($this->analysis([[$qr, 1]]), [$this->ticketLines($lines)]);
+        $inv = $this->runOcr();
+
+        $by = $inv->lines->sortBy('position')->values();
+        $this->assertSame([113, 83, 235, 325, 121, 64, 193], $by->pluck('line_total_cents')->all(), 'os cêntimos que sobram vão para as linhas maiores');
+        $this->assertSame([431, 703], [(int) $by->where('vat_rate', 6)->sum('line_total_cents'), (int) $by->where('vat_rate', 23)->sum('line_total_cents')]);
+        $this->assertSame([119, 89, 249, 399, 149, 79, 238], $by->pluck('vat_included_cents')->all());
+        $this->assertSame('confere', $inv->check_status);
+    }
+
+    public function test_a_normal_invoice_without_vat_included_does_not_change(): void
+    {
+        $this->bindFake($this->analysis([[self::QR_FT, 1]]), [['fornecedorNome' => 'X', 'precosComIva' => false, 'notasManuscritas' => '', 'linhas' => [
+            ['item' => 'Artigo', 'quantidade' => 4, 'precoUnitario' => 25, 'totalLinha' => 100.00, 'taxaIva' => 23]], 'guias' => [], 'quadroIva' => [], 'descontos' => []]]);
+        $inv = $this->runOcr();
+        $l = $inv->lines->first();
+        $this->assertFalse($inv->prices_include_vat);
+        $this->assertSame([10000, null, '25.000000'], [$l->line_total_cents, $l->vat_included_cents, (string) $l->unit_price]);
+        $this->assertSame('confere', $inv->check_status);
+    }
+
+    public function test_handwritten_notes_are_kept_and_fill_an_empty_accounting_note_only(): void
+    {
+        $this->bindFake($this->analysis([[self::QR_FT, 1]]), [['fornecedorNome' => 'X', 'precosComIva' => false, 'notasManuscritas' => 'Pago em dinheiro / Reembolso a colaborador',
+            'linhas' => [['item' => 'Artigo', 'quantidade' => 1, 'precoUnitario' => 100, 'totalLinha' => 100.00, 'taxaIva' => 23]], 'guias' => [], 'quadroIva' => [], 'descontos' => []]]);
+        $inv = $this->runOcr();
+        $this->assertSame('Pago em dinheiro / Reembolso a colaborador', $inv->handwritten_notes);
+
+        // Ligada a dois documentos do PingWin: o que não tem Nota recebe as notas; o que já tem fica como está.
+        foreach (['DOC-A', 'DOC-B'] as $d) {
+            DB::table('pingwin_supplier_documents')->insert(['company_id' => $this->company->id, 'docheader_id' => $d, 'docconfig_id' => '1209', 'document' => "VFT {$d}",
+                'doc_date' => '2026-10-17', 'total_cents' => 12300, 'docstatus_id' => '8002', 'created_at' => now(), 'updated_at' => now()]);
+        }
+        \App\Models\FinanceDocumentMark::create(['company_id' => $this->company->id, 'docheader_id' => 'DOC-B', 'note' => 'Nota já escrita']);
+        $supplier = $inv->supplier_id;
+        app(\App\Services\OcrPingwinLinkService::class)->confirm($inv->fresh(), ['DOC-A', 'DOC-B'], null, null);
+        $notes = \App\Models\FinanceDocumentMark::where('company_id', $this->company->id)->pluck('note', 'docheader_id')->all();
+        $this->assertSame(['DOC-A' => 'Pago em dinheiro / Reembolso a colaborador', 'DOC-B' => 'Nota já escrita'], [ 'DOC-A' => $notes['DOC-A'], 'DOC-B' => $notes['DOC-B']]);
+        // Não tiram conclusões: nenhum pagamento registado e o fornecedor não muda.
+        $this->assertSame(0, \App\Models\FinancePayment::count());
+        $this->assertSame($supplier, $inv->fresh()->supplier_id);
+        $this->assertStringContainsString('"notasManuscritas"', app(InvoiceOcrService::class)->linesPrompt());
+        $this->assertStringContainsString('"precosComIva": true|false', app(InvoiceOcrService::class)->prompt());
+    }
 }

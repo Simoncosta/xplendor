@@ -3,7 +3,7 @@ import { Badge, Button, Col, Input, Label, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { retryPostPublication, savePostResults, skipPostNetwork } from "helpers/laravel_helper";
 import { Network, POST_CHANNEL_META, mediaFormatLabel } from "common/models/editorialPost.model";
-import { METRICS, METRIC_SOURCE_LABEL, PostNetworkDetail, PostResults, PostWorkflow, SocialPublicationInfo, fmtRate } from "common/models/editorialWorkflow.model";
+import { METRICS, METRIC_SOURCE_LABEL, PostNetworkDetail, PostResults, PostWorkflow, STAGE_META, SocialPublicationInfo, fmtRate } from "common/models/editorialWorkflow.model";
 import MarkPublishedModal from "../MarkPublishedModal";
 import ReasonButton from "Components/Common/ReasonButton";
 
@@ -63,6 +63,33 @@ export function AutoPublicationLine({ info, published }: { info: SocialPublicati
     }
 
     return published ? <div className="text-muted fs-12 mt-1"><i className="ri-robot-2-line me-1" />Publicada automaticamente pela XPLENDOR.</div> : null;
+}
+
+/**
+ * Antes de Programado: o que falta, dito para esta etapa. Na Aprovação, quem não pode aprovar sabe
+ * porquê (a decisão é de uma pessoa da empresa; a equipa em sessão como cliente e o root noutra
+ * empresa não aprovam).
+ */
+export function notPublishableText(data: Pick<PostWorkflow, "post" | "permissions" | "settings">): string {
+    const stage = data.post.stage;
+    const approval = data.settings.content_approval_required;
+    const head = `Esta publicação está em ${STAGE_META[stage].label}. A publicação e a análise ficam disponíveis em Programado. `;
+    switch (stage) {
+        case "idea":
+        case "planning":
+            return head + (approval ? "Falta produzir o conteúdo, enviá-lo ao cliente e a aprovação de um aprovador da empresa." : "Falta produzir o conteúdo e passá-lo a Programado.");
+        case "production":
+            return head + (approval ? "Falta enviar ao cliente (separador Aprovação) e a aprovação de um aprovador da empresa." : "Falta passar a Programado (separador Aprovação).");
+        case "internal_review":
+            return head + "Falta a revisão interna, feita por outra pessoa" + (approval ? ", e a aprovação de um aprovador da empresa." : ", e passar a Programado.");
+        case "client_review":
+            if (data.permissions.is_approver) return head + "Falta a aprovação: pode aprovar no separador Aprovação.";
+            return head + (data.permissions.is_team
+                ? "Falta a aprovação de um aprovador da empresa; o root (noutra empresa), a impersonation e a agência não aprovam."
+                : "Falta a aprovação do administrador ou de um aprovador da empresa; o seu utilizador não aprova.");
+        default:
+            return head;
+    }
 }
 
 function NetworkResults({ companyId, postId, network, r, canRecord, onChanged }: { companyId: number; postId: number; network: Network; r: PostResults | undefined; canRecord: boolean; onChanged: (d: PostWorkflow) => void }) {
@@ -199,8 +226,8 @@ export default function PublishSection({ companyId, data, onChanged }: Props) {
 
     if (!publishable) {
         return (
-            <div className="text-muted fs-13 border rounded p-3">
-                <i className="ri-information-line me-1" />A publicação e a análise ficam disponíveis depois de aprovada (etapa Programado). Antes disso, trate do conteúdo e da aprovação.
+            <div className="text-muted fs-13 border rounded p-3" data-testid="publish-not-yet">
+                <i className="ri-information-line me-1" />{notPublishableText(data)}
             </div>
         );
     }

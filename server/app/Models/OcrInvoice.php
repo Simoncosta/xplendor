@@ -32,6 +32,8 @@ class OcrInvoice extends Model
         'link_search_pending', 'duplicate_of_id', 'guide_refs',
         // FB-1: diferença das linhas face ao QR aceite pela pessoa
         'check_accepted_by', 'check_accepted_at',
+        'paper_checked_by', 'paper_checked_at', // sem QR: "Conferi os totais com o papel"
+        'prices_include_vat', 'handwritten_notes', // talões com IVA incluído e notas escritas à mão
         // Descontos, quadro do IVA lido, linhas informativas, leitura original, "Reler" e quem fechou.
         'vat_table', 'ignored_lines', 'read_snapshot', 'reread_keep', 'closed_by', 'closed_at',
         // F2c
@@ -54,6 +56,8 @@ class OcrInvoice extends Model
         'link_search_pending' => 'boolean',
         'guide_refs'        => 'array',
         'check_accepted_at' => 'datetime',
+        'paper_checked_at'  => 'datetime',
+        'prices_include_vat' => 'boolean',
         'vat_table'         => 'array',
         'ignored_lines'     => 'array',
         'read_snapshot'     => 'array',
