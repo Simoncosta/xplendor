@@ -1,6 +1,6 @@
 {
     "ator": "agencia_admin",
-    "rotas": 621,
+    "rotas": 623,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/collaborators/{collaborator}/access/invite",
@@ -196,6 +196,7 @@
         "GET api/v1/companies/{company}": 200,
         "GET api/v1/companies/{id}/ai-requests/latest": 422,
         "GET api/v1/companies/{id}/alerts": 200,
+        "GET api/v1/companies/{id}/alerts/preferences": 200,
         "GET api/v1/companies/{id}/alerts/unread-count": 200,
         "GET api/v1/companies/{id}/analytics/automotive/marketing": 200,
         "GET api/v1/companies/{id}/analytics/ga4/traffic": 200,
@@ -694,6 +695,7 @@
         "POST api/v1/companies/{id}/users": 403,
         "POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid": 403,
         "PUT api/v1/companies/{company}": 403,
+        "PUT api/v1/companies/{id}/alerts/preferences": 422,
         "PUT api/v1/companies/{id}/blogs/{blog}": 422,
         "PUT api/v1/companies/{id}/brand-profile": 200,
         "PUT api/v1/companies/{id}/car-ai-analyses-feedback/{carAiAnalysesId}": 404,

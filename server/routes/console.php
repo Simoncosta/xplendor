@@ -477,6 +477,15 @@ Schedule::command('ine:release-calendar --execute')
     ->name('ine-release-calendar-weekly')
     ->withoutOverlapping();
 
+// Bússola 7: os avisos dos sinais de nota alta (sino e e-mail), das 9 às 20 horas de Lisboa. Interna:
+// o sino não sai da XPLENDOR e o e-mail segue a guarda ExternalCalls dentro do serviço.
+Schedule::command('radar:high-score-alerts')
+    ->everyFifteenMinutes()
+    ->between('09:00', '20:00')
+    ->timezone('Europe/Lisbon')
+    ->name('radar-high-score-alerts')
+    ->withoutOverlapping();
+
 // Bússola 6: o aviso ao root de "rever a data" (uma vez por mês, no sino da equipa). Interna.
 Schedule::command('calendar:review-reminders')
     ->dailyAt('09:05')

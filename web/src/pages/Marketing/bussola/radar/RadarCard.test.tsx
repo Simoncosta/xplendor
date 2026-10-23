@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import RadarCard, { windowLabel } from "./RadarCard";
-import { getRadar, ignoreRadar, reactRadar } from "helpers/laravel_helper";
+import { getAlertPreferences, getRadar, ignoreRadar, reactRadar, updateAlertPreferences } from "helpers/laravel_helper";
 import type { RadarPageData } from "common/models/radar.model";
 
 jest.mock("react-router-dom", () => ({ Link: ({ to, children, ...rest }: any) => <a href={to} {...rest}>{children}</a> }), { virtual: true });
@@ -13,7 +13,14 @@ jest.mock("contexts/ModulesContext", () => ({
 jest.mock("helpers/laravel_helper", () => ({
     getRadar: jest.fn(), reactRadar: jest.fn(() => Promise.resolve({ message: "Ideia criada na Linha Editorial, com o gancho e as fontes, sem texto." })),
     ignoreRadar: jest.fn(() => Promise.resolve({})), muteRadar: jest.fn(() => Promise.resolve({})), unmuteRadar: jest.fn(), updateRadarSettings: jest.fn(),
+    getAlertPreferences: jest.fn(), updateAlertPreferences: jest.fn(),
 }));
+
+// Bússola 7: a preferência dos avisos de nota alta, no topo do cartão (os simulacros são repostos antes de cada teste).
+beforeEach(() => {
+    (getAlertPreferences as jest.Mock).mockResolvedValue({ data: { radar_high_score: true } });
+    (updateAlertPreferences as jest.Mock).mockResolvedValue({ data: { radar_high_score: false } });
+});
 
 const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Lisbon" });
 const page = (over: Partial<RadarPageData> = {}): RadarPageData => ({

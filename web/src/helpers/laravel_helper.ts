@@ -381,7 +381,9 @@ export const getAdminRadar = () => api.get(url.GET_ADMIN + `/radar`);
 export const getAdminRadarItems = (params: RadarItemsQuery = {}) => api.get(url.GET_ADMIN + `/radar/items`, params);
 // R2: a relevância por ramo e o interruptor do Radar por empresa (o módulo radar).
 export const getAdminRadarRelevances = (params: { sector?: string; days?: number } = {}) => api.get(url.GET_ADMIN + `/radar/relevances`, params);
-export const switchAdminRadarCompany = (companyId: number, enabled: boolean) => api.create(url.GET_ADMIN + `/radar/companies/${companyId}/switch`, { enabled }, JSON_BODY);
+// Bússola 7: a pontuação a partir da qual um sinal gera aviso (sino e e-mail).
+export const updateAdminRadarAlerts = (data: { min_score: number; reason?: string }) => api.put(url.GET_ADMIN + `/radar/alerts`, data);
+export const switchAdminRadarCompany =(companyId: number, enabled: boolean) => api.create(url.GET_ADMIN + `/radar/companies/${companyId}/switch`, { enabled }, JSON_BODY);
 export const getAdminCharges = (params?: { status?: string; company_id?: number; overdue?: 1 }) => api.get(url.GET_ADMIN + `/charges`, params);
 export const createAdminCharge = (data: FormData) => api.create(url.GET_ADMIN + `/charges`, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const adminChargeAction = (id: number, action: "paid" | "cancel" | "refuse" | "send", body: Record<string, unknown> = {}) =>
@@ -421,6 +423,9 @@ export const decideAdminCompanyRequest = (id: number, decision: "approve" | "dec
 export const getBaseDashboard = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/dashboard/base`);
 export const getCompany = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}`);
 export const getAlertsUnreadCount = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/alerts/unread-count`);
+// Bússola 7: as preferências de avisos de quem está ligado (hoje, os avisos dos sinais de nota alta do Radar).
+export const getAlertPreferences = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/alerts/preferences`);
+export const updateAlertPreferences = (companyId: number, data: { radar_high_score: boolean }) => api.put(url.GET_COMPANIES + `/${companyId}/alerts/preferences`, data);
 
 // Gestão por agências: as empresas onde a pessoa pode trabalhar (a própria e as geridas; o root vê todas).
 export const getWorkingCompanies = () => api.get(url.GET_COMPANIES);

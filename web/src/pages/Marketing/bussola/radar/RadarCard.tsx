@@ -10,6 +10,7 @@ import { MEDIA_FORMATS } from "common/models/editorialPost.model";
 import { getRadar, ignoreRadar, muteRadar, reactRadar, unmuteRadar, updateRadarSettings } from "helpers/laravel_helper";
 import type { RadarCalendarEntry, RadarPageData, RadarSettings, RadarSignal, RadarSource, RadarWhen } from "common/models/radar.model";
 import Skeleton from "Components/Common/Skeleton";
+import RadarAlertPreference from "./RadarAlertPreference";
 
 /**
  * Radar de oportunidade (Bússola Master): "Está a subir" (o que está a acontecer agora) e "Vem aí"
@@ -331,6 +332,7 @@ export default function RadarCard({ companyId }: { companyId: number }) {
                 )}
                 {data && !data.sector_missing && (
                     <>
+                        <RadarAlertPreference companyId={companyId} />
                         <h6 className="text-uppercase text-muted fs-12 mb-2">Está a subir</h6>
                         {data.signals.length === 0 ? (
                             <p className="text-muted fs-13" data-testid="radar-empty">{data.enabled ? "Nada a subir agora para o seu ramo. A recolha é de 15 em 15 minutos." : "O Radar não tem recolhas novas neste momento."}</p>

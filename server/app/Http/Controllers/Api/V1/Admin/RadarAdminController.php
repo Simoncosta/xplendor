@@ -17,6 +17,8 @@ use App\Models\RadarTopic;
 use App\Services\Radar\Filter\Lexicon;
 use App\Services\Radar\RadarBudget;
 use App\Services\Radar\RadarCollector;
+use App\Services\Radar\RadarHighScoreAlerts;
+use App\Settings\Settings;
 use App\Services\Radar\Sources\RadarSources;
 use Carbon\CarbonInterface;
 use App\Services\CompanyModuleService;
@@ -125,6 +127,7 @@ class RadarAdminController extends Controller
             'signals' => $this->signalsByCompany(),
             'companies' => $this->companies(),
             'ine' => $this->ineAndParishes(),
+            'alerts' => self::alerts(),
             'labels' => Lexicon::LABELS,
             'limits' => [
                 'max_requests_per_hour' => (int) config('radar.max_requests_per_hour', 4),
@@ -193,6 +196,28 @@ class RadarAdminController extends Controller
             ])->all();
 
         return ApiResponse::success(['rows' => $rows], 'Radar: relevância.');
+    }
+
+    // PUT /admin/radar/alerts {min_score, reason?} — Bússola 7: a pontuação a partir da qual se avisa.
+    public function updateAlerts(Request $request)
+    {
+        $data = $request->validate(['min_score' => ['required', 'integer', 'min:0', 'max:255'], 'reason' => ['nullable', 'string', 'max:255']],
+            ['min_score.*' => 'Indique uma pontuação inteira entre 0 e 255.']);
+        $changed = Settings::setPlatform(['radar.alert_min_score' => (int) $data['min_score']], $request->user(), $data['reason'] ?? null);
+
+        return ApiResponse::success(self::alerts(), $changed ? 'Guardado.' : 'Nada mudou.');
+    }
+
+    /** Bússola 7: o limiar, os avisos de hoje, o horário e se o e-mail sai (a guarda das chamadas externas). */
+    private static function alerts(): array
+    {
+        return [
+            'min_score' => RadarHighScoreAlerts::minScore(),
+            'default_min_score' => (int) \App\Settings\SettingsCatalog::get('radar.alert_min_score')['default'],
+            'sent_today' => RadarHighScoreAlerts::sentToday(),
+            'window' => ['from' => sprintf('%02d:00', RadarHighScoreAlerts::FROM_HOUR), 'to' => sprintf('%02d:00', RadarHighScoreAlerts::TO_HOUR)],
+            'email_enabled' => \App\Support\ExternalCalls::allowed(),
+        ];
     }
 
     // POST /admin/radar/companies/{company}/switch {enabled}

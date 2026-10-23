@@ -28,6 +28,8 @@ final class RoutePermissions
         'GET {id}/alerts' => 'empresa.ver',
         'PATCH {id}/alerts/read' => 'empresa.ver',
         'GET {id}/alerts/unread-count' => 'empresa.ver',
+        'GET {id}/alerts/preferences' => 'empresa.ver',
+        'PUT {id}/alerts/preferences' => 'empresa.ver',
         'POST {id}/alerts/{alertId}/read' => 'empresa.ver',
         'GET {id}/dashboard/base' => 'empresa.ver',
         'DELETE {id}/management' => 'empresa.aprovar',

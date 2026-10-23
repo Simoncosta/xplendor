@@ -17,6 +17,7 @@ class Alert extends Model
         'severity',
         'is_read',
         'own_only',
+        'kind',
     ];
 
     protected $casts = [

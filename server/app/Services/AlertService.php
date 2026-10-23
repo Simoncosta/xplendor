@@ -45,13 +45,17 @@ class AlertService
         return $createdAlerts;
     }
 
-    /** $ownOnlyToo: incluir os avisos só da própria empresa (falso para quem entra pela agência). */
-    public function getRecentForCompany(int $companyId, bool $unreadOnly = false, int $limit = 20, bool $ownOnlyToo = true): Collection
+    /**
+     * $ownOnlyToo: incluir os avisos só da própria empresa (falso para quem entra pela agência).
+     * $hideKinds: os tipos de aviso que a pessoa desligou (Bússola 7, UserNotificationPreference).
+     */
+    public function getRecentForCompany(int $companyId, bool $unreadOnly = false, int $limit = 20, bool $ownOnlyToo = true, array $hideKinds = []): Collection
     {
         $query = Alert::query()
             ->with(['car.brand:id,name', 'car.model:id,name'])
             ->where('company_id', $companyId)
             ->when(! $ownOnlyToo, fn ($q) => $q->where('own_only', false))
+            ->tap(fn ($q) => self::withoutKinds($q, $hideKinds))
             ->latest();
 
         if ($unreadOnly) {
@@ -61,20 +65,22 @@ class AlertService
         return $query->limit($limit)->get()->map(fn (Alert $alert) => $this->transformAlert($alert));
     }
 
-    public function unreadCountForCompany(int $companyId, bool $ownOnlyToo = true): int
+    public function unreadCountForCompany(int $companyId, bool $ownOnlyToo = true, array $hideKinds = []): int
     {
         return Alert::query()
             ->where('company_id', $companyId)
             ->when(! $ownOnlyToo, fn ($q) => $q->where('own_only', false))
+            ->tap(fn ($q) => self::withoutKinds($q, $hideKinds))
             ->where('is_read', false)
             ->count();
     }
 
-    public function markAsRead(int $companyId, array $ids = [], bool $ownOnlyToo = true): int
+    public function markAsRead(int $companyId, array $ids = [], bool $ownOnlyToo = true, array $hideKinds = []): int
     {
         $query = Alert::query()
             ->where('company_id', $companyId)
             ->when(! $ownOnlyToo, fn ($q) => $q->where('own_only', false))
+            ->tap(fn ($q) => self::withoutKinds($q, $hideKinds))
             ->where('is_read', false);
 
         if (!empty($ids)) {
@@ -93,6 +99,14 @@ class AlertService
             ->update(['is_read' => true]) > 0;
     }
 
+    /** Sem os tipos de aviso escondidos (os avisos sem tipo ficam sempre). */
+    private static function withoutKinds($query, array $kinds): void
+    {
+        if ($kinds !== []) {
+            $query->where(fn ($q) => $q->whereNull('kind')->orWhereNotIn('kind', $kinds));
+        }
+    }
+
     public function getAlertsForDailySummary(Company $company): Collection
     {
         // Sem os avisos só da própria empresa (seguem por email direto aos admins; o resumo de uma
@@ -101,6 +115,8 @@ class AlertService
             ->with(['car.brand:id,name', 'car.model:id,name'])
             ->where('company_id', $company->id)
             ->where('own_only', false)
+            // Bússola 7: os avisos de nota alta já seguem por email a quem os quer (e não a quem os desligou).
+            ->tap(fn ($q) => self::withoutKinds($q, [\App\Models\UserNotificationPreference::RADAR_HIGH_SCORE]))
             ->where('created_at', '>=', now()->subDay())
             ->latest()
             ->get()
@@ -120,9 +136,11 @@ class AlertService
         string $severity = 'medium',
         ?string $detailPath = null,
         bool $ownOnly = false,
+        ?string $kind = null,
     ): Alert {
         return Alert::create([
             'own_only' => $ownOnly,
+            'kind' => $kind,
             'company_id' => $companyId,
             'car_id' => null,
             'type' => in_array($type, ['urgent', 'warning', 'opportunity'], true) ? $type : 'warning',

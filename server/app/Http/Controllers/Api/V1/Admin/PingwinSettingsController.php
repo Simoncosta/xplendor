@@ -26,7 +26,8 @@ class PingwinSettingsController extends Controller
 
         return ApiResponse::success([
             'global_writes_enabled' => PingwinWriteGate::globalEnabled(),
-            'platform' => Settings::describe(null, SettingsCatalog::PLATFORM),
+            // Só as do PingWin (a do Radar muda-se em Admin › Radar).
+            'platform' => array_values(array_filter(Settings::describe(null, SettingsCatalog::PLATFORM), fn ($d) => str_starts_with($d['key'], 'pingwin.'))),
             'companies' => Company::whereIn('id', $companies)->orderBy('id')->get(['id', 'fiscal_name', 'trade_name'])->map(fn ($c) => [
                 'id' => $c->id, 'name' => $c->trade_name ?: $c->fiscal_name,
                 'settings' => Settings::describe($c->id, SettingsCatalog::COMPANY_ROOT),
@@ -43,7 +44,8 @@ class PingwinSettingsController extends Controller
     public function updatePlatform(Request $request)
     {
         $v = $request->validate(['values' => ['required', 'array', 'min:1'], 'reason' => ['nullable', 'string', 'max:255']]);
-        $values = array_intersect_key($v['values'], array_flip(SettingsCatalog::keys(SettingsCatalog::PLATFORM)));
+        $keys = array_filter(SettingsCatalog::keys(SettingsCatalog::PLATFORM), fn ($k) => str_starts_with($k, 'pingwin.'));
+        $values = array_intersect_key($v['values'], array_flip($keys));
         if (count($values) !== count($v['values'])) {
             return ApiResponse::error('Há definições que não são da plataforma.', 422);
         }

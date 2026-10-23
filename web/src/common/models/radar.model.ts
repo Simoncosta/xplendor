@@ -56,6 +56,14 @@ export interface RadarTopicSummary {
     source_names: string[];
 }
 
+export interface RadarAdminAlerts {
+    min_score: number;
+    default_min_score: number;
+    sent_today: number;
+    window: { from: string; to: string };
+    email_enabled: boolean;
+}
+
 export interface RadarSummary {
     /** RADAR_ENABLED: desligado, nada é recolhido nem avaliado. */
     radar_enabled: boolean;
@@ -67,6 +75,8 @@ export interface RadarSummary {
     signals?: RadarAdminCompanySignals[];
     companies?: RadarAdminCompany[];
     ine?: RadarAdminIne;
+    /** Bússola 7: os avisos dos sinais de nota alta (o limiar e os avisos de hoje). */
+    alerts?: RadarAdminAlerts;
     totals: { items_24h: number; blocked_24h: number; items_30d: number; blocked_30d: number; topics_open: number; topics_open_passed: number };
     blocked_by_reason: { reason: RadarReason; label: string; count: number }[];
     flags: { flag: RadarFlag; label: string; count: number }[];

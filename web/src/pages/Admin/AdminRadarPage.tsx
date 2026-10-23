@@ -4,6 +4,7 @@ import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import RadarBudgetCard from "./RadarBudgetCard";
 import CompassBudgetCard from "./CompassBudgetCard";
+import RadarAlertsCard from "./RadarAlertsCard";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import XSelect from "Components/Common/Select";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
@@ -261,6 +262,7 @@ export default function AdminRadarPage() {
                 <Row className="g-3">
                     <Col lg={6}><RadarBudgetCard budget={summary?.budget} /></Col>
                     <Col lg={6}><CompassBudgetCard compass={summary?.compass} /></Col>
+                    <Col lg={6}><RadarAlertsCard alerts={summary?.alerts} onSaved={(a) => setSummary((s) => (s ? { ...s, alerts: a } : s))} /></Col>
                 </Row>
 
                 <PageCard

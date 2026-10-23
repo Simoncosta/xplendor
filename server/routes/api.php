@@ -117,6 +117,9 @@ Route::prefix('v1')->group(function () {
                 Route::get('/decisions', [CarDecisionController::class, 'index']);
                 Route::get('/alerts', [AlertController::class, 'index']);
                 Route::get('/alerts/unread-count', [AlertController::class, 'unreadCount']);
+                // Bússola 7: as preferências de avisos de quem está ligado (os sinais de nota alta).
+                Route::get('/alerts/preferences', [AlertController::class, 'preferences']);
+                Route::put('/alerts/preferences', [AlertController::class, 'updatePreferences']);
                 Route::patch('/alerts/read', [AlertController::class, 'markRead']);
                 Route::post('/alerts/{alertId}/read', [AlertController::class, 'markOneRead']);
                 Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
@@ -1043,6 +1046,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/radar', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'summary']);
             Route::get('/radar/items', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'items']);
             Route::get('/radar/relevances', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'relevances']);
+            // Bússola 7: a pontuação a partir da qual um sinal gera aviso (sino e e-mail).
+            Route::put('/radar/alerts', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'updateAlerts']);
             Route::post('/radar/companies/{company}/switch', [\App\Http\Controllers\Api\V1\Admin\RadarAdminController::class, 'switchCompany'])->whereNumber('company');
 
             // IMPERSONATION — INICIAR (só root). Emite token de impersonation p/ o user-alvo.
