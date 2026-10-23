@@ -7,6 +7,7 @@ namespace App\Services\Radar;
 use App\Access\Access;
 use App\Mail\RadarHighScoreMail;
 use App\Models\Company;
+use App\Models\RadarRelevance;
 use App\Models\RadarSignal;
 use App\Models\User;
 use App\Models\UserNotificationPreference;
@@ -20,11 +21,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Bússola 7: os avisos dos sinais de nota alta. Um sinal do Radar por tratar, ainda na janela e com
- * pontuação igual ou acima do limiar (Admin › Radar; 85 por omissão) gera um aviso no sino (tipo
- * radar_high_score) e um e-mail a quem vê a Bússola e não desligou estes avisos. No máximo um por dia
- * e por empresa (dia de Lisboa), só das 9 às 20 horas; um sinal da noite espera pelas 9. O e-mail
- * segue a guarda das chamadas externas (no dev fica por enviar).
+ * Bússola 7: os avisos dos sinais de nota alta. Um sinal do Radar por tratar, ainda na janela, cuja
+ * relevância dada pela IA ao ramo da empresa (radar_relevances.score, de 0 a 100) é igual ou acima do
+ * limiar (Admin › Radar; 85 por omissão; decisão de 24/10) gera um aviso no sino (tipo radar_high_score)
+ * e um e-mail a quem vê a Bússola e não desligou estes avisos. Com vários, avisa o de maior pontuação do
+ * encaixe (radar_signals.score: a relevância mais a zona e a marca). No máximo um por dia e por empresa
+ * (dia de Lisboa), só das 9 às 20 horas; um sinal da noite espera pelas 9. O e-mail segue a guarda das
+ * chamadas externas (no dev fica por enviar).
  */
 class RadarHighScoreAlerts
 {
@@ -64,16 +67,19 @@ class RadarHighScoreAlerts
             return ['motivo' => 'Fora do horário dos avisos (9 às 20 horas, Lisboa).'] + $out;
         }
         $min = self::minScore();
-        $companies = RadarSignal::where('status', RadarSignal::NEW)->whereNull('alerted_at')->where('score', '>=', $min)
+        $companies = RadarSignal::where('status', RadarSignal::NEW)->whereNull('alerted_at')
             ->where('window_until', '>', $now)->distinct()->pluck('company_id');
         foreach ($companies as $companyId) {
             $companyId = (int) $companyId;
-            if (! $this->modules->isEnabled($companyId, 'radar')
+            $slug = Company::with('contentSector')->find($companyId)?->contentSector?->slug;
+            if ($slug === null || ! $this->modules->isEnabled($companyId, 'radar')
                 || RadarSignal::where('company_id', $companyId)->where('alerted_at', '>=', self::startOfDay($now))->exists()) {
                 continue;
             }
+            // O limiar vê a relevância da IA para o ramo; a ordem é a do encaixe (o melhor sinal primeiro).
             $signal = RadarSignal::with('topic')->where('company_id', $companyId)->where('status', RadarSignal::NEW)->whereNull('alerted_at')
-                ->where('score', '>=', $min)->where('window_until', '>', $now)->orderByDesc('score')->orderBy('created_at')->first();
+                ->whereIn('topic_id', RadarRelevance::select('topic_id')->where('sector_slug', $slug)->where('score', '>=', $min))
+                ->where('window_until', '>', $now)->orderByDesc('score')->orderBy('created_at')->first();
             if ($signal === null || $signal->topic === null) {
                 continue;
             }

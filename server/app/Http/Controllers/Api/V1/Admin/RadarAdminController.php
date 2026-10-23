@@ -198,11 +198,11 @@ class RadarAdminController extends Controller
         return ApiResponse::success(['rows' => $rows], 'Radar: relevância.');
     }
 
-    // PUT /admin/radar/alerts {min_score, reason?} — Bússola 7: a pontuação a partir da qual se avisa.
+    // PUT /admin/radar/alerts {min_score, reason?} — Bússola 7: a relevância da IA (0 a 100) a partir da qual se avisa.
     public function updateAlerts(Request $request)
     {
-        $data = $request->validate(['min_score' => ['required', 'integer', 'min:0', 'max:255'], 'reason' => ['nullable', 'string', 'max:255']],
-            ['min_score.*' => 'Indique uma pontuação inteira entre 0 e 255.']);
+        $data = $request->validate(['min_score' => ['required', 'integer', 'min:0', 'max:100'], 'reason' => ['nullable', 'string', 'max:255']],
+            ['min_score.*' => 'Indique uma relevância inteira entre 0 e 100.']);
         $changed = Settings::setPlatform(['radar.alert_min_score' => (int) $data['min_score']], $request->user(), $data['reason'] ?? null);
 
         return ApiResponse::success(self::alerts(), $changed ? 'Guardado.' : 'Nada mudou.');

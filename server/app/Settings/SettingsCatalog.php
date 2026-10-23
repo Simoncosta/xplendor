@@ -148,11 +148,11 @@ final class SettingsCatalog
                 'label' => 'Guia sem encomenda provada',
                 'info' => 'Provado o envio sem encomenda (uma Guia nova). Sem a prova, só se envia a partir de uma encomenda.',
             ],
-            // Bússola 7 (Admin › Radar): a pontuação a partir da qual um sinal gera aviso (sino e e-mail).
+            // Bússola 7 (Admin › Radar): a relevância da IA (0 a 100) a partir da qual um sinal gera aviso (sino e e-mail).
             'radar.alert_min_score' => [
-                'level' => self::PLATFORM, 'type' => 'number', 'default' => 85, 'min' => 0, 'max' => 255, 'config' => null, 'env' => null,
-                'label' => 'Radar: pontuação para avisar',
-                'info' => 'Um sinal do Radar com esta pontuação ou mais gera um aviso no sino e por e-mail, no máximo um por dia e por empresa, das 9 às 20 horas.',
+                'level' => self::PLATFORM, 'type' => 'number', 'default' => 85, 'min' => 0, 'max' => 100, 'config' => null, 'env' => null,
+                'label' => 'Radar: relevância da IA para avisar',
+                'info' => 'Um sinal do Radar cuja relevância dada pela IA ao ramo (de 0 a 100) é igual ou acima deste valor gera um aviso no sino e por e-mail, no máximo um por dia e por empresa, das 9 às 20 horas.',
             ],
             'pingwin.proven.units' => [
                 'level' => self::PLATFORM, 'type' => 'bool', 'default' => false, 'config' => 'auditoria.unit_write_proven', 'env' => 'UNIT_WRITE_PROVEN',

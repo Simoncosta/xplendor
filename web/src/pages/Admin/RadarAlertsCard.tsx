@@ -6,8 +6,8 @@ import { updateAdminRadarAlerts } from "helpers/laravel_helper";
 import type { RadarAdminAlerts } from "common/models/radar.model";
 
 /**
- * Bússola 7: os avisos dos sinais de nota alta (sino e e-mail). O root muda a pontuação a partir da
- * qual se avisa; no máximo um aviso por dia e por empresa, só no horário indicado (Lisboa).
+ * Bússola 7: os avisos dos sinais de nota alta (sino e e-mail). O root muda a relevância da IA (0 a 100)
+ * a partir da qual se avisa; no máximo um aviso por dia e por empresa, só no horário indicado (Lisboa).
  */
 export default function RadarAlertsCard({ alerts, onSaved }: { alerts: RadarAdminAlerts | undefined; onSaved: (a: RadarAdminAlerts) => void }) {
     const [value, setValue] = useState("");
@@ -15,7 +15,7 @@ export default function RadarAlertsCard({ alerts, onSaved }: { alerts: RadarAdmi
     useEffect(() => { if (alerts) setValue(String(alerts.min_score)); }, [alerts]);
     if (!alerts) return null;
     const n = Number(value);
-    const invalid = value.trim() === "" || !Number.isInteger(n) || n < 0 || n > 255;
+    const invalid = value.trim() === "" || !Number.isInteger(n) || n < 0 || n > 100;
     const save = async () => {
         if (invalid) return;
         setSaving(true);
@@ -31,13 +31,13 @@ export default function RadarAlertsCard({ alerts, onSaved }: { alerts: RadarAdmi
     };
     return (
         <PageCard title="Avisos de nota alta" data-testid="radar-alerts"
-            info={`Um sinal com esta pontuação ou mais gera um aviso no sino e por e-mail, no máximo um por dia e por empresa, entre as ${alerts.window.from} e as ${alerts.window.to} (Lisboa). Cada pessoa pode desligar os seus no cartão do Radar.`}
+            info={`Um sinal cuja relevância dada pela IA ao ramo (de 0 a 100) é igual ou acima deste valor gera um aviso no sino e por e-mail, no máximo um por dia e por empresa, entre as ${alerts.window.from} e as ${alerts.window.to} (Lisboa). Com vários, avisa primeiro o mais bem colocado no Radar. Cada pessoa pode desligar os seus no cartão do Radar.`}
             status={<Badge color={alerts.email_enabled ? "success-subtle" : "secondary-subtle"} className={alerts.email_enabled ? "text-success" : "text-secondary"}>{alerts.email_enabled ? "E-mail ligado" : "E-mail desligado (chamadas externas)"}</Badge>}>
             <div className="p-3">
                 <div className="d-flex flex-wrap align-items-end gap-2">
                     <div>
-                        <Label for="radar-alert-score" className="fs-13">Pontuação mínima (0 a 255; por omissão {alerts.default_min_score})</Label>
-                        <Input id="radar-alert-score" type="number" min={0} max={255} step={1} value={value} invalid={invalid} onChange={(e) => setValue(e.target.value)} style={{ maxWidth: 140 }} />
+                        <Label for="radar-alert-score" className="fs-13">Relevância mínima da IA (0 a 100; por omissão {alerts.default_min_score})</Label>
+                        <Input id="radar-alert-score" type="number" min={0} max={100} step={1} value={value} invalid={invalid} onChange={(e) => setValue(e.target.value)} style={{ maxWidth: 140 }} />
                     </div>
                     <Button color="primary" disabled={saving || invalid || n === alerts.min_score} onClick={save} data-testid="radar-alerts-save">{saving ? <Spinner size="sm" /> : "Guardar"}</Button>
                 </div>

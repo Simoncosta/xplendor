@@ -15,7 +15,7 @@ describe("Bússola 7: os avisos de nota alta no painel do root", () => {
 
     it("mostra o limiar, os avisos de hoje e o estado do e-mail", () => {
         render(<RadarAlertsCard alerts={alerts} onSaved={jest.fn()} />);
-        expect(screen.getByLabelText(/Pontuação mínima/)).toHaveValue(85);
+        expect(screen.getByLabelText(/Relevância mínima da IA \(0 a 100/)).toHaveValue(85);
         expect(screen.getByTestId("radar-alerts-today")).toHaveTextContent("2 avisos enviados hoje.");
         expect(screen.getByText("E-mail desligado (chamadas externas)")).toBeInTheDocument();
         expect(screen.getByTestId("radar-alerts-save")).toBeDisabled();
@@ -24,9 +24,9 @@ describe("Bússola 7: os avisos de nota alta no painel do root", () => {
     it("guarda um novo limiar e recusa valores fora do intervalo", async () => {
         const onSaved = jest.fn();
         render(<RadarAlertsCard alerts={alerts} onSaved={onSaved} />);
-        fireEvent.change(screen.getByLabelText(/Pontuação mínima/), { target: { value: "300" } });
+        fireEvent.change(screen.getByLabelText(/Relevância mínima/), { target: { value: "101" } });
         expect(screen.getByTestId("radar-alerts-save")).toBeDisabled();
-        fireEvent.change(screen.getByLabelText(/Pontuação mínima/), { target: { value: "75" } });
+        fireEvent.change(screen.getByLabelText(/Relevância mínima/), { target: { value: "75" } });
         fireEvent.click(screen.getByTestId("radar-alerts-save"));
         await waitFor(() => expect(updateAdminRadarAlerts).toHaveBeenCalledWith({ min_score: 75 }));
         await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ min_score: 75 })));

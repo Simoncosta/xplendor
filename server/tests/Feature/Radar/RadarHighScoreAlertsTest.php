@@ -68,14 +68,16 @@ class RadarHighScoreAlertsTest extends TestCase
         CarbonImmutable::setTestNow(CarbonImmutable::parse($utc));
     }
 
-    private function signal(string $title, int $score, ?Company $c = null): RadarSignal
+    /** Um sinal: $relevance é a relevância da IA para o ramo (0 a 100); $fit, a pontuação do encaixe (por omissão, a mesma). */
+    private function signal(string $title, int $relevance, ?int $fit = null, ?Company $c = null): RadarSignal
     {
         $topic = RadarTopic::create(['kind' => 'trend', 'title' => $title, 'normalized_key' => 'trend:' . md5($title), 'first_seen_at' => now()->subHour(), 'last_seen_at' => now(),
             'filter_verdict' => RadarItem::VERDICT_PASSED, 'filter_reasons' => [], 'filter_flags' => [], 'sources' => [['title' => $title, 'source_name' => 'Jornal Exemplo', 'url' => 'https://exemplo.pt/a']],
             'window_until' => now()->addDays(2), 'expires_at' => now()->addDays(30)]);
+        \App\Models\RadarRelevance::create(['topic_id' => $topic->id, 'sector_slug' => 'restauracao', 'relevant' => true, 'score' => $relevance, 'theme' => 'gastronomia']);
 
         return RadarSignal::create(['company_id' => ($c ?? $this->company)->id, 'topic_id' => $topic->id, 'why' => "Uma feira próxima do ramo ({$title}).", 'why_source' => 'template',
-            'window_until' => now()->addDays(2), 'status' => RadarSignal::NEW, 'score' => $score, 'flags' => [], 'sources' => []]);
+            'window_until' => now()->addDays(2), 'status' => RadarSignal::NEW, 'score' => $fit ?? $relevance, 'flags' => [], 'sources' => []]);
     }
 
     private function alertNow(): array
@@ -108,6 +110,27 @@ class RadarHighScoreAlertsTest extends TestCase
         $this->artisan('radar:high-score-alerts')->assertSuccessful();
     }
 
+    public function test_the_threshold_looks_at_the_ai_relevance_and_the_fit_score_picks_the_best(): void
+    {
+        // Relevância 70 com um encaixe enorme (zona e marca): não chega ao limiar de 85.
+        $belowThreshold = $this->signal('Feira do queijo', 70, 120);
+        $relevantA = $this->signal('Festival do pão', 88, 98);
+        $relevantB = $this->signal('Mercado de Natal', 95, 95);
+
+        $this->assertSame(1, $this->alertNow()['alerts']);
+        $this->assertNotNull($relevantA->fresh()->alerted_at, 'entre os relevantes, o de maior encaixe');
+        $this->assertNull($relevantB->fresh()->alerted_at);
+        $this->assertSame('Radar: está a subir Festival do pão', Alert::where('company_id', $this->company->id)->value('title'));
+
+        // Nos dias seguintes: o outro relevante; o de relevância 70 nunca.
+        $this->at('2026-10-15 10:00:00');
+        $this->alertNow();
+        $this->assertNotNull($relevantB->fresh()->alerted_at);
+        $this->at('2026-10-16 10:00:00');
+        $this->assertSame(0, $this->alertNow()['alerts']);
+        $this->assertNull($belowThreshold->fresh()->alerted_at);
+    }
+
     public function test_the_window_the_threshold_and_the_external_guard(): void
     {
         $s = $this->signal('Feira do queijo', 80);
@@ -121,7 +144,8 @@ class RadarHighScoreAlertsTest extends TestCase
 
         // O root baixa o limiar em Admin › Radar.
         $root = User::factory()->create(['company_id' => $this->company->id, 'role' => 'root']);
-        $this->actingAs($root, 'sanctum')->putJson('/api/v1/admin/radar/alerts', ['min_score' => 300])->assertStatus(422);
+        $this->actingAs($root, 'sanctum')->putJson('/api/v1/admin/radar/alerts', ['min_score' => 101])->assertStatus(422)
+            ->assertJsonPath('errors.min_score.0', 'Indique uma relevância inteira entre 0 e 100.');
         $this->actingAs($root, 'sanctum')->putJson('/api/v1/admin/radar/alerts', ['min_score' => 75])->assertOk()->assertJsonPath('data.min_score', 75);
         $this->actingAs($root, 'sanctum')->getJson('/api/v1/admin/radar')->assertOk()->assertJsonPath('data.alerts.min_score', 75)->assertJsonPath('data.alerts.default_min_score', 85);
         $this->actingAs($this->admin, 'sanctum')->putJson('/api/v1/admin/radar/alerts', ['min_score' => 10])->assertStatus(403);
