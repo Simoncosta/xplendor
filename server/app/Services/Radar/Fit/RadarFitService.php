@@ -19,6 +19,7 @@ use App\Services\Ai\AiText;
 use App\Services\Compass\CompassTexts;
 use App\Services\CompanyModuleService;
 use App\Services\Radar\Filter\TermMatcher;
+use App\Services\Radar\RadarBudget;
 use App\Services\Radar\RadarCollector;
 use App\Services\Radar\RadarPage;
 use App\Services\Radar\RadarText;
@@ -32,7 +33,8 @@ use Illuminate\Support\Facades\Log;
  * escolhidos), os temas silenciados e os temas e palavras a evitar do perfil da marca; ordenadas
  * pela relevância, mais 15 pela zona (avisos do distrito) e 10 pelos pilares e palavras a usar;
  * no máximo 3 por dia (hora de Lisboa, contando também os ignorados). Para cada uma, o "porque
- * lhe interessa" (radar_porque), ou o modelo de frase.
+ * lhe interessa" (radar_porque), ou o modelo de frase: também quando o limite mensal de pedidos
+ * ou o teto diário de custo do Radar (global ou da empresa, RadarBudget) estão atingidos.
  */
 class RadarFitService
 {
@@ -41,7 +43,7 @@ class RadarFitService
     public const ZONE_POINTS = 15;
     public const BRAND_POINTS = 10;
 
-    public function __construct(private readonly CompanyModuleService $modules) {}
+    public function __construct(private readonly CompanyModuleService $modules, private readonly RadarBudget $budget) {}
 
     /** @return array{criados: int, excluidos: array<string, int>, motivo: ?string} */
     public function fit(int $companyId, ?CarbonImmutable $now = null): array
@@ -159,7 +161,7 @@ class RadarFitService
     private function why(Company $company, string $sectorName, RadarTopic $topic): array
     {
         $template = self::template($topic);
-        if (! AiGateway::available(self::FUNCTION) || AiRequestQuota::exhausted($company->id, self::FUNCTION)) {
+        if (! AiGateway::available(self::FUNCTION) || AiRequestQuota::exhausted($company->id, self::FUNCTION) || ! $this->budget->allows($company->id)) {
             return [$template, 'template'];
         }
         try {

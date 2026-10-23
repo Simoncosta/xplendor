@@ -25,6 +25,15 @@ return [
     // falhados, os 304 e a leitura diária do robots.txt). Só o --force do comando passa por cima.
     'max_requests_per_hour' => 4,
 
+    // O teto de custo da IA do Radar (Bússola 1), em USD por dia civil de Lisboa: no global (a
+    // relevância e o "porque lhe interessa" somados) e por empresa (o "porque", o único com empresa).
+    // Ao bater no teto vale a frase de recurso e o root recebe um aviso no sino, uma vez por dia.
+    // A repetição do verificador de português já vem no custo de cada pedido.
+    'budget' => [
+        'global_daily_usd' => (float) env('RADAR_DAILY_BUDGET_USD', 2.00),
+        'company_daily_usd' => (float) env('RADAR_COMPANY_DAILY_BUDGET_USD', 0.30),
+    ],
+
     // Itens, tendências e recolhas com mais de 30 dias são apagados (às 03:20 de Lisboa).
     'retention_days' => 30,
 

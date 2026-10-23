@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Card, CardBody, Col, Container, Row } from "reactstrap";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
+import RadarBudgetCard from "./RadarBudgetCard";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import XSelect from "Components/Common/Select";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
@@ -254,6 +255,8 @@ export default function AdminRadarPage() {
                         </Col>
                     ))}
                 </Row>
+
+                <RadarBudgetCard budget={summary?.budget} />
 
                 <PageCard
                     title="Itens"

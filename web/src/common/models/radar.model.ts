@@ -61,6 +61,7 @@ export interface RadarSummary {
     radar_enabled: boolean;
     sources: RadarSourceSummary[];
     relevance?: RadarAdminSector[];
+    budget?: RadarAdminBudget;
     signals?: RadarAdminCompanySignals[];
     companies?: RadarAdminCompany[];
     ine?: RadarAdminIne;
@@ -175,6 +176,15 @@ export interface RadarPageData {
 
 /** Painel do root (R2): relevância por ramo, sinais por empresa e o interruptor de cada empresa. */
 export interface RadarAdminSector { sector: string; evaluated: number; relevant: number; cost_month_usd: number }
+/** Bússola 1: o gasto de hoje (dia de Lisboa) da IA do Radar e os tetos. */
+export interface RadarAdminBudget {
+    global_cap_usd: number;
+    company_cap_usd: number;
+    spent_today_usd: number;
+    global_reached: boolean;
+    by_function: { function: string; requests: number; cost_usd: number }[];
+    companies: { company_id: number; company: string | null; requests: number; cost_usd: number; reached: boolean }[];
+}
 export interface RadarAdminCompanySignals { company_id: number; company: string | null; today: number; by_status: Record<string, number>; cost_month_usd: number }
 export interface RadarAdminCompany { id: number; name: string; sector: string | null; radar_enabled: boolean }
 

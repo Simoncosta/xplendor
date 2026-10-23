@@ -15,6 +15,7 @@ use App\Models\RadarSignal;
 use App\Models\RadarRun;
 use App\Models\RadarTopic;
 use App\Services\Radar\Filter\Lexicon;
+use App\Services\Radar\RadarBudget;
 use App\Services\Radar\RadarCollector;
 use App\Services\Radar\Sources\RadarSources;
 use Carbon\CarbonInterface;
@@ -118,6 +119,7 @@ class RadarAdminController extends Controller
             'flags' => collect($flags)->map(fn ($n, $f) => ['flag' => $f, 'label' => Lexicon::LABELS[$f] ?? $f, 'count' => $n])->values()->all(),
             'topics' => $topics,
             'relevance' => $this->relevanceBySector(),
+            'budget' => $this->budgetToday(),
             'signals' => $this->signalsByCompany(),
             'companies' => $this->companies(),
             'ine' => $this->ineAndParishes(),
@@ -214,6 +216,33 @@ class RadarAdminController extends Controller
             ->map(fn ($r) => ['sector' => $r->sector_slug, 'evaluated' => (int) $r->evaluated, 'relevant' => (int) $r->relevant,
                 'cost_month_usd' => round((float) RadarRelevance::where('sector_slug', $r->sector_slug)->where('created_at', '>=', now()->startOfMonth())->sum('cost_usd'), 4)])
             ->all();
+    }
+
+    /** Bússola 1: o gasto de hoje (dia de Lisboa) da IA do Radar, os tetos, por função e por empresa. */
+    private function budgetToday(): array
+    {
+        $start = now('Europe/Lisbon')->startOfDay()->utc();
+        $today = AiRequest::whereIn('mode', RadarBudget::FUNCTIONS)->where('created_at', '>=', $start);
+        $spent = round(RadarBudget::spentToday(), 4);
+        $byCompany = (clone $today)->whereNotNull('company_id')->selectRaw('company_id, count(*) as requests, coalesce(sum(cost_usd), 0) as cost')
+            ->groupBy('company_id')->orderByDesc('cost')->get();
+        $companyNames = Company::whereIn('id', $byCompany->pluck('company_id'))->get()->mapWithKeys(fn ($c) => [$c->id => $c->trade_name ?: $c->fiscal_name]);
+
+        return [
+            'global_cap_usd' => RadarBudget::globalCap(),
+            'company_cap_usd' => RadarBudget::companyCap(),
+            'spent_today_usd' => $spent,
+            'global_reached' => $spent >= RadarBudget::globalCap(),
+            'by_function' => collect(RadarBudget::FUNCTIONS)->map(fn ($f) => [
+                'function' => $f,
+                'requests' => (clone $today)->where('mode', $f)->count(),
+                'cost_usd' => round((float) (clone $today)->where('mode', $f)->sum('cost_usd'), 4),
+            ])->all(),
+            'companies' => $byCompany->map(fn ($r) => [
+                'company_id' => (int) $r->company_id, 'company' => $companyNames[$r->company_id] ?? null, 'requests' => (int) $r->requests,
+                'cost_usd' => round((float) $r->cost, 4), 'reached' => (float) $r->cost >= RadarBudget::companyCap(),
+            ])->values()->all(),
+        ];
     }
 
     /** Por empresa com sinais: criados hoje e em 30 dias, por estado, e o custo do "porque lhe interessa" no mês. */

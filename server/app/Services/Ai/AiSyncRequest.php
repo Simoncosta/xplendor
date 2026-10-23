@@ -9,11 +9,12 @@ use App\Models\AiRequest;
 /**
  * As funções síncronas (descrição e análise de viaturas): passam pela mesma interface única e
  * ficam registadas em ai_requests com o fornecedor, o modelo, os tokens, o custo e o
- * resultado do verificador do português, como as outras.
+ * resultado do verificador do português, como as outras. Sem empresa só a relevância do Radar,
+ * que é por ramo.
  */
 class AiSyncRequest
 {
-    public static function run(string $function, AiPrompt $prompt, int $companyId, ?int $userId = null, array $extra = []): AiResult
+    public static function run(string $function, AiPrompt $prompt, ?int $companyId, ?int $userId = null, array $extra = []): AiResult
     {
         $settings = AiFunctionSettings::for($function);
         $request = AiRequest::create($extra + [

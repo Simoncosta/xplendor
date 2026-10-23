@@ -11,7 +11,9 @@ use App\Models\RadarRelevance;
 use App\Models\RadarTopic;
 use App\Services\Ai\AiGateway;
 use App\Services\Ai\AiPrompt;
+use App\Services\Ai\AiSyncRequest;
 use App\Services\Ai\AiText;
+use App\Services\Radar\RadarBudget;
 use App\Services\Radar\RadarCollector;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -21,13 +23,16 @@ use Illuminate\Support\Facades\Log;
  * Radar: a relevância, uma vez por tendência e por ramo (não por empresa), em lotes de 20, pela
  * função radar_relevancia. Só os ramos com pelo menos uma empresa com o módulo radar ligado, e só
  * as tendências que passaram o filtro de segurança: uma tendência bloqueada nunca chega à IA.
- * O custo e os tokens ficam em radar_relevances (não há empresa para ai_requests).
+ * Cada lote fica em ai_requests (sem empresa) e o custo repartido em radar_relevances. Antes de
+ * cada lote, o teto diário do Radar (RadarBudget): atingido, o resto fica para o dia seguinte.
  */
 class RadarRelevanceService
 {
     public const FUNCTION = 'radar_relevancia';
     public const BATCH = 20;
     public const MAX_PER_RUN = 200;
+
+    public function __construct(private readonly RadarBudget $budget) {}
 
     /** @return array<string, string> slug => nome dos ramos com o Radar ligado nalguma empresa */
     public static function activeSectors(): array
@@ -62,8 +67,13 @@ class RadarRelevanceService
                 ->whereNotExists(fn ($q) => $q->from('radar_relevances')->whereColumn('radar_relevances.topic_id', 'radar_topics.id')->where('sector_slug', $slug))
                 ->orderBy('id')->limit(self::MAX_PER_RUN)->get();
             foreach ($topics->chunk(self::BATCH) as $batch) {
+                if (! $this->budget->allows(null, $now)) {
+                    $out['motivo'] = 'Teto diário de custo do Radar atingido.';
+                    break 2;
+                }
                 try {
-                    $res = app(AiGateway::class)->generate(self::FUNCTION, $this->prompt($slug, $name, $batch->values()->all()));
+                    $res = AiSyncRequest::run(self::FUNCTION, $this->prompt($slug, $name, $batch->values()->all()), null, null,
+                        ['input' => ['sector' => $slug, 'topic_ids' => $batch->pluck('id')->values()->all()]]);
                 } catch (\Throwable $e) {
                     Log::warning('[Radar] Relevância falhou num lote', ['ramo' => $slug, 'tendencias' => $batch->count(), 'tipo' => class_basename($e)]);
 
