@@ -121,10 +121,25 @@ class RefreshStaleMarketAggregatesJobTest extends TestCase
 
     public function test_excludes_inactive_cars(): void
     {
-        foreach (['sold', 'draft', 'inactive'] as $status) {
+        foreach (['draft', 'inactive'] as $status) {
             $car = $this->makeCar(['status' => $status]);
             $this->assertFalse($this->resolve()->contains('id', $car->id), "status={$status} should be excluded");
         }
+    }
+
+    public function test_sold_cars_enter_only_in_the_30_days_after_the_sale(): void
+    {
+        // Decisão de 24/10: os vendidos entram na leitura só nos 30 dias depois da data da venda.
+        $recent = $this->makeCar(['status' => 'sold', 'sold_at' => now()->subDays(29)]);
+        $limit = $this->makeCar(['status' => 'sold', 'sold_at' => now()->subDays(30)->addMinute()]);
+        $old = $this->makeCar(['status' => 'sold', 'sold_at' => now()->subDays(31)]);
+        $undated = $this->makeCar(['status' => 'sold', 'sold_at' => null]);
+
+        $result = $this->resolve();
+        $this->assertTrue($result->contains('id', $recent->id), 'vendido há 29 dias entra');
+        $this->assertTrue($result->contains('id', $limit->id), 'vendido há menos de 30 dias entra');
+        $this->assertFalse($result->contains('id', $old->id), 'vendido há 31 dias sai');
+        $this->assertFalse($result->contains('id', $undated->id), 'vendido sem data de venda não entra');
     }
 
     public function test_excludes_caravan_and_motorcycle(): void

@@ -15,9 +15,16 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * A leitura noturna do preço de mercado das viaturas à venda (Standvirtual), no máximo 20 por noite. Os
+ * vendidos entram desde 25/05 (o site público passou a mostrá-los), mas só nos SOLD_DAYS dias depois da
+ * data da venda (decisão de 24/10); depois saem. Um vendido sem data de venda não entra.
+ */
 class RefreshStaleMarketAggregatesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public const SOLD_DAYS = 30;
 
     public int $tries   = 1;
     public int $timeout = 600;
@@ -43,7 +50,10 @@ class RefreshStaleMarketAggregatesJob implements ShouldQueue
     public function resolveStaleCars(): Collection
     {
         return Car::query()
-            ->whereIn('status', ['active', 'sold', 'available_soon'])
+            ->where(function ($query): void {
+                $query->whereIn('status', ['active', 'available_soon'])
+                    ->orWhere(fn ($sold) => $sold->where('status', 'sold')->whereNotNull('sold_at')->where('sold_at', '>=', now()->subDays(self::SOLD_DAYS)));
+            })
             ->whereIn('vehicle_type', ['car', 'motorhome'])
             ->whereNotNull('car_brand_id')
             ->whereNotNull('car_model_id')
