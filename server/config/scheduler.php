@@ -24,6 +24,8 @@ return [
         'bussola-stand-nightly', 'bussola-imoveis-nightly',
         // Bússola Master (R3): a referência do INE do imobiliário (lê o INE).
         'ine-housing-prices-monthly',
+        // Bússola 6: o calendário de difusão do INE (lê o INE).
+        'ine-release-calendar-weekly',
         // Auditoria (Fatia 2): a saúde do tracking lê o GA4.
         'tracking-health-daily',
         // Auditoria v2-C: os documentos de caixa lidos no PingWin.

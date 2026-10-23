@@ -41,7 +41,7 @@ final class OfficialDates
         $at = ['name' => 'Autoridade Tributária, Agenda Fiscal', 'url' => 'https://info.portaldasfinancas.gov.pt/pt/apoio_contribuinte/calendario_fiscal/Pages/obrigacoes.aspx', 'format' => 'página'];
         $ine = ['name' => 'INE, calendário de difusão', 'url' => 'https://www.ine.pt/xportal/xmain?xpid=INE&xpgid=ine_calendarios&xlang=pt', 'format' => 'ics'];
 
-        return [
+        $entries = [
             'bce.monetary_policy_decision' => [
                 'title' => 'Decisão de política monetária do BCE', 'sectors' => ['imobiliario'], 'municipality' => null,
                 'note' => 'Anúncio às 13:15 e conferência de imprensa às 13:45 (hora de Lisboa).',
@@ -92,6 +92,48 @@ final class OfficialDates
                 'source' => $ine, 'confirmed_on' => '2026-10-14', 'confirmed_by' => 'machine', 'review_month' => 'todos os meses',
             ],
         ];
+
+        // Bússola 6: as datas lidas no calendário do INE juntam-se às do código; a leitura mais recente
+        // passa a ser a data de confirmação.
+        foreach (IneReleaseCalendar::fetchedByKey() as $key => $f) {
+            if (! isset($entries[$key])) {
+                continue;
+            }
+            $dates = array_merge((array) ($entries[$key]['dates'] ?? []), $f['dates']);
+            $entries[$key]['dates'] = array_values(array_map('unserialize', array_unique(array_map('serialize', $dates))));
+            usort($entries[$key]['dates'], fn ($a, $b) => $a[0] <=> $b[0]);
+            if ($f['fetched_on'] > (string) $entries[$key]['confirmed_on']) {
+                $entries[$key]['confirmed_on'] = $f['fetched_on'];
+                $entries[$key]['confirmed_by'] = 'machine';
+            }
+        }
+
+        return $entries;
+    }
+
+    /** Os nomes dos meses de review_month ("junho e dezembro", "todos os meses"). */
+    private const MONTHS = ['janeiro' => 1, 'fevereiro' => 2, 'março' => 3, 'abril' => 4, 'maio' => 5, 'junho' => 6,
+        'julho' => 7, 'agosto' => 8, 'setembro' => 9, 'outubro' => 10, 'novembro' => 11, 'dezembro' => 12];
+
+    /** As entradas a rever neste mês (review_month) e as por confirmar (sempre). @return array<string, array<string, mixed>> */
+    public static function dueForReview(int $month): array
+    {
+        return array_filter(self::entries(), function (array $e) use ($month) {
+            if (self::status($e) === self::PENDING) {
+                return true;
+            }
+            $text = mb_strtolower((string) ($e['review_month'] ?? ''));
+            if (str_contains($text, 'todos os meses')) {
+                return true;
+            }
+            foreach (self::MONTHS as $name => $n) {
+                if ($n === $month && preg_match('/\b' . $name . '\b/u', $text)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
     }
 
     public static function status(array $e): string

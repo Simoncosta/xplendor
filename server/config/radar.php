@@ -40,6 +40,12 @@ return [
         'monthly_requests_per_company' => (int) env('COMPASS_MONTHLY_AI_REQUESTS', 60),
     ],
 
+    // Bússola 6: o calendário de difusão do INE (ficheiro .ics), lido uma vez por semana pela tarefa
+    // ine-release-calendar-weekly (externa: só com SCHEDULE_EXTERNAL_JOBS). Vazio = não lê (por omissão).
+    'ine_calendar' => [
+        'url' => (string) env('INE_CALENDAR_URL', ''),
+    ],
+
     // Itens, tendências e recolhas com mais de 30 dias são apagados (às 03:20 de Lisboa).
     'retention_days' => 30,
 

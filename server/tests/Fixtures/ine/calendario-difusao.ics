@@ -1,0 +1,25 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Amostra simulada para os testes da XPLENDOR (nao e o ficheiro do INE)//PT
+BEGIN:VEVENT
+UID:amostra-1
+DTSTART;VALUE=DATE:20261119
+SUMMARY:Taxas de Juro Implícitas no Crédito à Habitação - Outubro de 2026
+END:VEVENT
+BEGIN:VEVENT
+UID:amostra-2
+DTSTART:20261125T110000Z
+SUMMARY:Inquérito à Avaliação Bancária na Habitação\, Outubro de 2026
+END:VEVENT
+BEGIN:VEVENT
+UID:amostra-3
+DTSTART;VALUE=DATE:20990115
+SUMMARY:Estatísticas de Preços da Habitação ao nível local - 3.º Trimestre
+  (data fictícia da amostra)
+END:VEVENT
+BEGIN:VEVENT
+UID:amostra-4
+DTSTART;VALUE=DATE:20990120
+SUMMARY:Índice de Preços no Consumidor (não seguido)
+END:VEVENT
+END:VCALENDAR

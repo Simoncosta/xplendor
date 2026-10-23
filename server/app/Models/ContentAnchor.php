@@ -17,10 +17,11 @@ class ContentAnchor extends Model
         'title', 'sector_id', 'country', 'origin', 'rule_type',
         'month', 'day', 'ordinal', 'weekday',
         'start_month', 'start_day', 'end_month', 'end_day',
-        'easter_offset', 'notes', 'suggestion',
+        'easter_offset', 'notes', 'suggestion', 'next_business_day',
     ];
 
     protected $casts = [
+        'next_business_day' => 'boolean',
         'month' => 'integer', 'day' => 'integer',
         'ordinal' => 'integer', 'weekday' => 'integer',
         'start_month' => 'integer', 'start_day' => 'integer',

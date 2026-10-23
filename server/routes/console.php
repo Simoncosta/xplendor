@@ -469,6 +469,21 @@ Schedule::command('ine:housing-prices --execute --if-used')
     ->name('ine-housing-prices-monthly')
     ->withoutOverlapping();
 
+// Bússola 6: o calendário de difusão do INE (as datas de publicação seguidas), às segundas. Lê o INE:
+// é externa (só com SCHEDULE_EXTERNAL_JOBS) e, sem INE_CALENDAR_URL, não faz nada.
+Schedule::command('ine:release-calendar --execute')
+    ->weeklyOn(1, '05:10')
+    ->timezone('Europe/Lisbon')
+    ->name('ine-release-calendar-weekly')
+    ->withoutOverlapping();
+
+// Bússola 6: o aviso ao root de "rever a data" (uma vez por mês, no sino da equipa). Interna.
+Schedule::command('calendar:review-reminders')
+    ->dailyAt('09:05')
+    ->timezone('Europe/Lisbon')
+    ->name('calendar-review-reminders')
+    ->withoutOverlapping();
+
 // A cada 15 minutos: Radar de oportunidade, a recolha dos feeds públicos (Google Trends, jornais,
 // BCE). Externa (lê fontes na Internet): desligada no dev pelo SCHEDULE_EXTERNAL_JOBS. O teto de
 // 4 pedidos por fonte e por hora é do próprio Radar (RadarCollector).

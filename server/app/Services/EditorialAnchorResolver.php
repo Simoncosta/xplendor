@@ -56,6 +56,33 @@ class EditorialAnchorResolver
      */
     public function resolve(ContentAnchor|EditorialOwnAnchor $a, int $year): array
     {
+        $r = $this->resolveRule($a, $year);
+        // Bússola 6: um prazo (IMI, IRS) que calha num fim de semana ou feriado nacional passa para o dia útil seguinte.
+        if ($a instanceof ContentAnchor && $a->next_business_day) {
+            if ($r['type'] === 'day') {
+                $r['date'] = self::nextBusinessDay($r['date']);
+            } else {
+                $r['end'] = self::nextBusinessDay($r['end']);
+            }
+        }
+
+        return $r;
+    }
+
+    /** O próprio dia, se for útil; senão o dia útil seguinte (sem sábados, domingos e feriados nacionais). */
+    public static function nextBusinessDay(string $date): string
+    {
+        $d = CarbonImmutable::parse($date);
+        $holidays = \App\Services\Calendar\PortugalCalendar::national((int) $d->year) + \App\Services\Calendar\PortugalCalendar::national((int) $d->year + 1);
+        while ($d->isWeekend() || isset($holidays[$d->toDateString()])) {
+            $d = $d->addDay();
+        }
+
+        return $d->toDateString();
+    }
+
+    private function resolveRule(ContentAnchor|EditorialOwnAnchor $a, int $year): array
+    {
         switch ($a->rule_type) {
             case 'fixa':
                 return ['type' => 'day', 'date' => CarbonImmutable::create($year, (int) $a->month, (int) $a->day)->toDateString()];
