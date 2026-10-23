@@ -32,7 +32,9 @@ class PortugalCalendarTest extends TestCase
         $this->assertSame('Corpo de Deus', $h['2026-06-04']);
         $this->assertSame('Todos os Santos', $h['2026-11-01']);
         $this->assertSame(PortugalCalendar::SOURCE_CT, PortugalCalendar::source()['source']);
-        $this->assertSame('por_confirmar', PortugalCalendar::source()['status']);
+        // Confirmados no Código do Trabalho, artigo 234.º, a 23/10/2026 (o Carnaval não é obrigatório).
+        $this->assertSame(['confirmada', '2026-10-23'], [PortugalCalendar::source()['status'], PortugalCalendar::source()['confirmed_on']]);
+        $this->assertNotContains('Carnaval', PortugalCalendar::national(2026));
     }
 
     public function test_the_municipal_holiday_and_between(): void

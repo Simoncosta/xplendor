@@ -21,8 +21,8 @@ use Tests\TestCase;
 
 /**
  * Bússola 5: o "Vem aí" sem o módulo radar (rotas marketing/calendar, no módulo linha_editorial), o
- * feriado municipal da empresa, as datas por confirmar (Santo António de Lisboa) e as datas oficiais
- * na grelha da Linha Editorial.
+ * feriado municipal da empresa, as datas de Lisboa (o feriado de Santo António a 13 de junho e a noite de
+ * 12 para a restauração, confirmados a 23/10/2026) e as datas oficiais na grelha da Linha Editorial.
  */
 class CompassCalendarTest extends TestCase
 {
@@ -112,24 +112,39 @@ class CompassCalendarTest extends TestCase
         $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/react'), $body)->assertStatus(422)->assertJsonPath('errors.calendar_key.0', 'Já existe uma ideia para esta data.');
         $this->assertTrue($this->actingAs($this->admin, 'sanctum')->getJson($this->url())->json('data.calendar.0.reacted'));
 
-        // Santo António de Lisboa está por confirmar: não aparece nem se pode usar.
-        $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/react'), ['calendar_key' => 'local.lisboa.santo_antonio', 'occurrence' => '2027-06-12'] + $body)
+        // Uma data que não está no calendário não se pode usar.
+        $this->actingAs($this->admin, 'sanctum')->postJson($this->url('/react'), ['calendar_key' => 'local.lisboa.inventada', 'occurrence' => '2027-06-12'] + $body)
             ->assertStatus(422)->assertJsonPath('errors.calendar_key.0', 'Esta data não está no calendário.');
     }
 
-    public function test_unconfirmed_dates_stay_out_and_the_company_holiday_does_not_repeat_a_local_date(): void
+    public function test_lisbon_dates_and_the_company_holiday_does_not_repeat_a_local_date(): void
     {
-        $this->assertArrayHasKey('local.lisboa.santo_antonio', OfficialDates::pending());
-        $this->assertSame('Câmara Municipal de Lisboa', OfficialDates::pending()['local.lisboa.santo_antonio']['source']['name']);
-        $keys = fn (?string $mun, ?array $holiday = null) => array_map(fn ($e) => "{$e['key']}@{$e['occurrence']}",
-            OfficialDates::upcoming(['universal', 'restauracao'], $mun, CarbonImmutable::parse('2027-06-01'), 30, $holiday));
-        $this->assertNotContains('local.lisboa.santo_antonio@2027-06-12', $keys('Lisboa'));
+        // Tudo confirmado a 23/10/2026; uma entrada sem data de confirmação continuaria por confirmar (fora das listas).
+        $this->assertSame([], OfficialDates::pending());
+        $this->assertSame(OfficialDates::PENDING, OfficialDates::status(['confirmed_on' => null]));
+        $lisbon = OfficialDates::entries()['local.lisboa.santo_antonio'];
+        $this->assertSame(['Câmara Municipal de Lisboa', '2026-10-23', OfficialDates::CONFIRMED], [$lisbon['source']['name'], $lisbon['confirmed_on'], OfficialDates::status($lisbon)]);
+
+        $keys = fn (array $slugs, ?string $mun, ?array $holiday = null) => array_map(fn ($e) => "{$e['key']}@{$e['occurrence']}",
+            OfficialDates::upcoming($slugs, $mun, CarbonImmutable::parse('2027-06-01'), 30, $holiday));
+        // Restauração em Lisboa: a noite de 12 (marchas e arraiais, não é feriado) e o feriado municipal a 13.
+        $restaurant = $keys(['universal', 'restauracao'], 'Lisboa');
+        $this->assertContains('local.lisboa.noite_santo_antonio@2027-06-12', $restaurant);
+        $this->assertContains('local.lisboa.santo_antonio@2027-06-13', $restaurant);
+        // Outro ramo em Lisboa: só o feriado. Noutro concelho: nenhuma das duas.
+        $stand = $keys(['universal', 'automovel', 'carros'], 'Lisboa');
+        $this->assertContains('local.lisboa.santo_antonio@2027-06-13', $stand);
+        $this->assertNotContains('local.lisboa.noite_santo_antonio@2027-06-12', $stand);
+        $this->assertSame([], array_values(array_filter($keys(['universal', 'restauracao'], 'Porto'), fn ($k) => str_contains($k, 'lisboa'))));
+        // O feriado municipal indicado pela empresa de Lisboa (13/06) não repete o Santo António.
+        Settings::setCompany($this->company->id, ['calendar.municipal_holiday' => '13/06'], $this->admin);
+        $this->assertNotContains(OfficialDates::COMPANY_HOLIDAY . '@2027-06-13', $keys(['universal', 'restauracao'], 'Lisboa', OfficialDates::companyHoliday($this->company->id)));
 
         Settings::setCompany($this->company->id, ['calendar.municipal_holiday' => '24/06'], $this->admin);
-        $porto = $keys('Porto', OfficialDates::companyHoliday($this->company->id));
+        $porto = $keys(['universal', 'restauracao'], 'Porto', OfficialDates::companyHoliday($this->company->id));
         $this->assertContains('local.porto.sao_joao@2027-06-23', $porto);
         $this->assertNotContains(OfficialDates::COMPANY_HOLIDAY . '@2027-06-24', $porto, 'o São João já é o feriado do Porto');
-        $this->assertContains(OfficialDates::COMPANY_HOLIDAY . '@2027-06-24', $keys('Braga', OfficialDates::companyHoliday($this->company->id)));
+        $this->assertContains(OfficialDates::COMPANY_HOLIDAY . '@2027-06-24', $keys(['universal', 'restauracao'], 'Braga', OfficialDates::companyHoliday($this->company->id)));
     }
 
     public function test_permissions_module_and_tenancy(): void

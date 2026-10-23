@@ -12,12 +12,14 @@ namespace App\Services\Calendar;
  * As âncoras da Linha Editorial são dados (content_anchors); o teste PortugalCalendarTest garante que
  * os feriados delas são estes.
  *
- * Cada entrada diz a fonte onde se confirma e quando foi confirmada. As datas já estavam no código sem
- * fonte: ficam "por confirmar" (confirmed_on null) até alguém as conferir na fonte indicada.
+ * Cada entrada diz a fonte onde se confirma e quando foi confirmada. Os 13 feriados obrigatórios foram
+ * confirmados no Código do Trabalho, artigo 234.º, a 23/10/2026 (o Carnaval não é obrigatório).
  */
 final class PortugalCalendar
 {
     public const SOURCE_CT = ['name' => 'Código do Trabalho, artigo 234.º (feriados obrigatórios)', 'url' => 'https://diariodarepublica.pt/dr/legislacao-consolidada/lei/2009-34546475'];
+
+    public const CONFIRMED_ON = '2026-10-23';
 
     /** Os feriados de data fixa: mm-dd => nome. */
     public const FIXED = [
@@ -29,10 +31,10 @@ final class PortugalCalendar
     /** Os feriados móveis: dias a contar do domingo de Páscoa => nome. */
     public const EASTER = [-2 => 'Sexta-feira Santa', 0 => 'Páscoa', 60 => 'Corpo de Deus'];
 
-    /** De onde vêm as datas e quando foram confirmadas (null = por confirmar na fonte). */
+    /** De onde vêm as datas e quando foram confirmadas. */
     public static function source(): array
     {
-        return ['source' => self::SOURCE_CT, 'confirmed_on' => null, 'confirmed_by' => null, 'status' => 'por_confirmar'];
+        return ['source' => self::SOURCE_CT, 'confirmed_on' => self::CONFIRMED_ON, 'confirmed_by' => 'person', 'status' => 'confirmada'];
     }
 
     /** O domingo de Páscoa (algoritmo de Meeus/Jones/Butcher, calendário gregoriano). */

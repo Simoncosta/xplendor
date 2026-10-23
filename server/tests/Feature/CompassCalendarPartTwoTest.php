@@ -118,8 +118,10 @@ class CompassCalendarPartTwoTest extends TestCase
         $this->assertCount(1, $alerts);
         $this->assertSame('Rever as datas do calendário (outubro de 2026)', $alerts[0]->title);
         $this->assertStringContainsString('INE: Taxas de Juro Implícitas no Crédito à Habitação (confirmada a 14/10/2026', $alerts[0]->message);
-        $this->assertStringContainsString('Santo António de Lisboa (noite de 12 e feriado municipal a 13) (por confirmar; Câmara Municipal de Lisboa)', $alerts[0]->message);
-        $this->assertStringContainsString('Feriados nacionais (por confirmar', $alerts[0]->message);
+        // Confirmados a 23/10/2026: os feriados nacionais e o Santo António já não pedem revisão; não há datas por confirmar.
+        $this->assertStringNotContainsString('por confirmar', $alerts[0]->message);
+        $this->assertStringNotContainsString('Feriados nacionais', $alerts[0]->message);
+        $this->assertStringNotContainsString('Santo António', $alerts[0]->message, 'o Santo António revê-se em maio');
         $this->assertStringNotContainsString('BCE', $alerts[0]->message, 'o BCE revê-se em junho e dezembro');
 
         $this->assertArrayHasKey('bce.monetary_policy_decision', OfficialDates::dueForReview(12));
@@ -142,6 +144,7 @@ class CompassCalendarPartTwoTest extends TestCase
         $this->assertSame(['IMI: 2.ª prestação', 'IMI: pagamento único ou 1.ª prestação', 'IMI: última prestação', 'IRS: entrega da declaração', 'IRS: pagamento ou reembolso'],
             $anchors->keys()->sort()->values()->all());
         $this->assertTrue($anchors->every(fn ($a) => $a->next_business_day && $a->country === 'PT'));
+        $this->assertTrue($anchors->every(fn ($a) => str_contains((string) $a->notes, 'Portal das Finanças (Autoridade Tributária), confirmada a 23/10/2026')), 'confirmadas a 23/10/2026');
 
         $r = app(EditorialAnchorResolver::class);
         $this->assertSame('2026-06-01', $r->resolve($anchors['IMI: pagamento único ou 1.ª prestação'], 2026)['date'], '31/05/2026 é domingo');

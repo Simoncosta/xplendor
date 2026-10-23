@@ -38,7 +38,8 @@ final class OfficialDates
     public static function entries(): array
     {
         $bce = ['name' => 'Banco Central Europeu, calendário das reuniões', 'url' => 'https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html', 'format' => 'página'];
-        $at = ['name' => 'Autoridade Tributária, Agenda Fiscal', 'url' => 'https://info.portaldasfinancas.gov.pt/pt/apoio_contribuinte/calendario_fiscal/Pages/obrigacoes.aspx', 'format' => 'página'];
+        $at = ['name' => 'Portal das Finanças, Agenda Fiscal', 'url' => 'https://info.portaldasfinancas.gov.pt/pt/apoio_contribuinte/calendario_fiscal/Pages/obrigacoes.aspx', 'format' => 'página'];
+        $lisboa = ['name' => 'Câmara Municipal de Lisboa', 'url' => 'https://www.lisboa.pt', 'format' => 'página'];
         $ine = ['name' => 'INE, calendário de difusão', 'url' => 'https://www.ine.pt/xportal/xmain?xpid=INE&xpgid=ine_calendarios&xlang=pt', 'format' => 'ics'];
 
         $entries = [
@@ -50,15 +51,15 @@ final class OfficialDates
             ],
             'fiscal.imi.prestacoes' => [
                 'title' => 'IMI: prazo de pagamento (até ao fim do mês)', 'sectors' => ['imobiliario'], 'municipality' => null,
-                'note' => 'Até 100 euros, só maio; de 100 a 500 euros, maio e novembro; acima de 500 euros, maio, agosto e novembro (Código do IMI, artigo 120.º).',
+                'note' => 'Até 100 euros, só maio; de 100 a 500 euros, maio e novembro; acima de 500 euros, maio, agosto e novembro (Código do IMI, artigo 120.º). Num fim de semana ou feriado, o prazo passa para o dia útil seguinte.',
                 'yearly' => [['05-01', '05-31'], ['08-01', '08-31'], ['11-01', '11-30']],
-                'source' => $at, 'confirmed_on' => '2026-10-12', 'confirmed_by' => 'machine', 'review_month' => 'janeiro',
+                'source' => $at, 'confirmed_on' => '2026-10-23', 'confirmed_by' => 'person', 'review_month' => 'janeiro',
             ],
             'fiscal.irs.entrega' => [
                 'title' => 'IRS: período de entrega da declaração', 'sectors' => ['automovel', 'imobiliario'], 'municipality' => null,
-                'note' => 'De 1 de abril a 30 de junho (Código do IRS, artigo 60.º).',
+                'note' => 'De 1 de abril a 30 de junho (Código do IRS, artigo 60.º); pagamento ou reembolso até 31 de agosto. Num fim de semana ou feriado, o prazo passa para o dia útil seguinte.',
                 'yearly' => [['04-01', '06-30']],
-                'source' => $at, 'confirmed_on' => '2026-10-12', 'confirmed_by' => 'machine', 'review_month' => 'março',
+                'source' => $at, 'confirmed_on' => '2026-10-23', 'confirmed_by' => 'person', 'review_month' => 'março',
             ],
             'local.porto.sao_joao' => [
                 'title' => 'São João do Porto (noite de 23 e feriado municipal a 24)', 'sectors' => [self::ALL], 'municipality' => 'porto',
@@ -66,12 +67,19 @@ final class OfficialDates
                 'yearly' => [['06-23', '06-24']],
                 'source' => ['name' => 'Município do Porto', 'url' => 'https://www.porto.pt', 'format' => 'página'], 'confirmed_on' => '2026-10-12', 'confirmed_by' => 'machine', 'review_month' => 'maio',
             ],
-            // Bússola 5: pedido nas Notas para a restauração e o stand. Por confirmar na fonte.
+            // Confirmado a 23/10/2026: o feriado municipal de Lisboa é a 13 de junho (Santo António).
             'local.lisboa.santo_antonio' => [
-                'title' => 'Santo António de Lisboa (noite de 12 e feriado municipal a 13)', 'sectors' => [self::ALL], 'municipality' => 'lisboa',
+                'title' => 'Santo António, feriado municipal de Lisboa', 'sectors' => [self::ALL], 'municipality' => 'lisboa',
                 'note' => null,
-                'yearly' => [['06-12', '06-13']],
-                'source' => ['name' => 'Câmara Municipal de Lisboa', 'url' => 'https://www.lisboa.pt', 'format' => 'página'], 'confirmed_on' => null, 'confirmed_by' => null, 'review_month' => 'maio',
+                'yearly' => [['06-13']],
+                'source' => $lisboa, 'confirmed_on' => '2026-10-23', 'confirmed_by' => 'person', 'review_month' => 'maio',
+            ],
+            // A noite de 12 de junho (marchas e arraiais): data especial para a restauração em Lisboa, não é feriado.
+            'local.lisboa.noite_santo_antonio' => [
+                'title' => 'Noite de Santo António em Lisboa (marchas e arraiais)', 'sectors' => ['restauracao'], 'municipality' => 'lisboa',
+                'note' => 'Não é feriado: é a noite das marchas populares e dos arraiais.',
+                'yearly' => [['06-12']],
+                'source' => $lisboa, 'confirmed_on' => '2026-10-23', 'confirmed_by' => 'person', 'review_month' => 'maio',
             ],
             'ine.precos_habitacao_local' => [
                 'title' => 'INE: Estatísticas de Preços da Habitação ao nível local', 'sectors' => ['imobiliario'], 'municipality' => null,
