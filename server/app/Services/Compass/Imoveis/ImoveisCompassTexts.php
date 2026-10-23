@@ -37,9 +37,14 @@ final class ImoveisCompassTexts
                 $plays[ImoveisCompassService::textKey($g)] = $g;
             }
         }
-        // O limite mensal da empresa (CompassAiBudget): esgotado, ficam os modelos de frase (a frase de recurso).
-        if ($plays === [] || ! CompassAiBudget::allows($companyId)) {
+        if ($plays === []) {
             CompassText::where('provider', ImoveisSignalService::PROVIDER)->where('company_id', $companyId)->delete();
+
+            return 0;
+        }
+        // O limite mensal da empresa (CompassAiBudget): esgotado, ficam as frases deste mês; as jogadas sem frase ficam com o modelo.
+        if (! CompassAiBudget::allows($companyId)) {
+            CompassAiBudget::keepThisMonthOnly(CompassText::where('provider', ImoveisSignalService::PROVIDER)->where('company_id', $companyId));
 
             return 0;
         }

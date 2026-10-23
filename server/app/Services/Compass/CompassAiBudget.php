@@ -12,8 +12,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Bússola: o limite mensal de pedidos à IA das frases "O quê" (bussola_jogadas), por empresa (decisão de
  * 23/10: 60 por mês). Conta os pedidos registados em ai_requests no mês civil de Lisboa, de todos os
- * ramos (restauração, stand e imobiliário). Esgotado, as jogadas ficam com o modelo de frase (a frase de
- * recurso) até ao mês seguinte. O gasto aparece no painel do root, ao lado do teto do Radar.
+ * ramos (restauração, stand e imobiliário). Esgotado (decisão de 24/10), as frases da IA já geradas nesse
+ * mês ficam até ao mês seguinte; só as jogadas sem frase gerada recebem o modelo de frase (a frase de
+ * recurso). O gasto aparece no painel do root, ao lado do teto do Radar.
  */
 final class CompassAiBudget
 {
@@ -22,6 +23,15 @@ final class CompassAiBudget
     public static function monthlyLimit(): int
     {
         return max(0, (int) config('radar.compass.monthly_requests_per_company', 60));
+    }
+
+    /**
+     * Com o limite esgotado: ficam as frases geradas neste mês (as de meses anteriores saem). Devolve
+     * quantas saíram. $query: as frases da empresa no ramo.
+     */
+    public static function keepThisMonthOnly(\Illuminate\Database\Eloquent\Builder $query, ?CarbonImmutable $now = null): int
+    {
+        return $query->where(fn ($q) => $q->whereNull('generated_at')->orWhere('generated_at', '<', self::monthStart($now)))->delete();
     }
 
     /** O início do mês civil de Lisboa (em UTC, como o created_at). */

@@ -529,9 +529,14 @@ class RestaurantCompassService
                 $plays[$g['key']] ??= ['group' => $g, 'facts' => $facts, 'names' => $names];
             }
         }
-        // O limite mensal da empresa (CompassAiBudget): esgotado, ficam os modelos de frase (a frase de recurso).
-        if ($plays === [] || ! \App\Services\Compass\CompassAiBudget::allows($companyId)) {
+        if ($plays === []) {
             RestaurantCompassText::where('company_id', $companyId)->delete();
+
+            return 0;
+        }
+        // O limite mensal da empresa (CompassAiBudget): esgotado, ficam as frases deste mês; as jogadas sem frase ficam com o modelo.
+        if (! \App\Services\Compass\CompassAiBudget::allows($companyId)) {
+            \App\Services\Compass\CompassAiBudget::keepThisMonthOnly(RestaurantCompassText::where('company_id', $companyId));
 
             return 0;
         }

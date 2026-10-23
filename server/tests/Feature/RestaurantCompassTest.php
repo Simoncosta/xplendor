@@ -289,23 +289,32 @@ class RestaurantCompassTest extends TestCase
         $this->assertSame(1, AiRequest::where('mode', 'bussola_jogadas')->where('status', 'done')->count());
     }
 
-    public function test_with_the_monthly_limit_used_up_the_plays_keep_the_template_and_nothing_is_asked(): void
+    public function test_with_the_monthly_limit_used_up_this_months_texts_stay_and_new_plays_get_the_template(): void
     {
         $this->weak($this->baixa, 3, 'almoco', 'alta', 30);
         $this->fresh();
         $this->configureAi();
         $this->fakeAi(['jogadas' => [['chave' => 'weak_period:wd3', 'o_que' => 'Mostre um prato do dia ao almoço de quarta, com uma fotografia da sala.']]]);
         $this->assertSame(1, app(RestaurantCompassService::class)->generateTexts($this->company->id));
+        // Uma frase de um mês anterior: com o limite esgotado, essa sai.
+        RestaurantCompassText::create(['company_id' => $this->company->id, 'play_key' => 'item_up:prod:X', 'text' => 'Uma frase antiga.', 'generated_at' => now()->subMonthNoOverflow()->startOfMonth()]);
         // Mais 59 pedidos este mês (60 no total): o limite está esgotado.
         for ($i = 0; $i < 59; $i++) {
             AiRequest::forceCreate(['company_id' => $this->company->id, 'mode' => 'bussola_jogadas', 'status' => AiRequest::DONE, 'input' => [],
                 'model' => 'claude-haiku-5-5', 'prompt_version' => 'bussola_jogadas-v1', 'cost_usd' => 0.001]);
         }
+        // Uma jogada nova, ainda sem frase gerada.
+        $this->item($this->baixa, 'item_up', 'U', 'Sangria', 'media', 30, 50);
+        $this->fresh();
         Http::fake(fn () => throw new \LogicException('Pedido à IA depois do limite.'));
+
         $this->assertSame(0, app(RestaurantCompassService::class)->generateTexts($this->company->id));
-        $this->assertSame(0, RestaurantCompassText::count(), 'a frase de recurso: o modelo de frase');
-        $this->assertSame('template', $this->payload(null, true)['plays'][0]['what']['source']);
-        $this->assertSame(60, AiRequest::where('mode', 'bussola_jogadas')->count());
+        $this->assertSame(['weak_period:wd3'], RestaurantCompassText::pluck('play_key')->all(), 'a frase deste mês fica; a antiga sai');
+        $plays = collect($this->payload(null, true)['plays'])->keyBy('type');
+        $this->assertSame(['ai', 'Mostre um prato do dia ao almoço de quarta, com uma fotografia da sala.'], [$plays['weak_period']['what']['source'], $plays['weak_period']['what']['text']]);
+        $this->assertSame('template', $plays['item_up']['what']['source'], 'a jogada nova recebe o modelo de frase');
+        Http::assertNothingSent();
+        $this->assertSame(60, AiRequest::where('mode', 'bussola_jogadas')->count(), 'zero pedidos à IA depois do limite');
     }
 
     public function test_the_portuguese_checker_rejects_brazilian_portuguese_and_causes(): void
