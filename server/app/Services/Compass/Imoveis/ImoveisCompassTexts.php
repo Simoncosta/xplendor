@@ -9,6 +9,7 @@ use App\Models\CompassText;
 use App\Services\Ai\AiGateway;
 use App\Services\Ai\AiPrompt;
 use App\Services\Ai\AiSyncRequest;
+use App\Services\Compass\CompassAiBudget;
 use App\Services\Compass\CompassTexts;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +37,8 @@ final class ImoveisCompassTexts
                 $plays[ImoveisCompassService::textKey($g)] = $g;
             }
         }
-        if ($plays === []) {
+        // O limite mensal da empresa (CompassAiBudget): esgotado, ficam os modelos de frase (a frase de recurso).
+        if ($plays === [] || ! CompassAiBudget::allows($companyId)) {
             CompassText::where('provider', ImoveisSignalService::PROVIDER)->where('company_id', $companyId)->delete();
 
             return 0;

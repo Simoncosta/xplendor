@@ -3,6 +3,7 @@ import { Badge, Card, CardBody, Col, Container, Row } from "reactstrap";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import RadarBudgetCard from "./RadarBudgetCard";
+import CompassBudgetCard from "./CompassBudgetCard";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import XSelect from "Components/Common/Select";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
@@ -256,7 +257,11 @@ export default function AdminRadarPage() {
                     ))}
                 </Row>
 
-                <RadarBudgetCard budget={summary?.budget} />
+                {/* O teto do Radar e, ao lado, o limite mensal das frases da Bússola. */}
+                <Row className="g-3">
+                    <Col lg={6}><RadarBudgetCard budget={summary?.budget} /></Col>
+                    <Col lg={6}><CompassBudgetCard compass={summary?.compass} /></Col>
+                </Row>
 
                 <PageCard
                     title="Itens"

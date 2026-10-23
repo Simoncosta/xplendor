@@ -62,6 +62,8 @@ export interface RadarSummary {
     sources: RadarSourceSummary[];
     relevance?: RadarAdminSector[];
     budget?: RadarAdminBudget;
+    /** Bússola: o limite mensal da bussola_jogadas por empresa, ao lado do teto do Radar. */
+    compass?: CompassAiBudget;
     signals?: RadarAdminCompanySignals[];
     companies?: RadarAdminCompany[];
     ine?: RadarAdminIne;
@@ -177,6 +179,16 @@ export interface RadarPageData {
 /** Painel do root (R2): relevância por ramo, sinais por empresa e o interruptor de cada empresa. */
 export interface RadarAdminSector { sector: string; evaluated: number; relevant: number; cost_month_usd: number }
 /** Bússola 1: o gasto de hoje (dia de Lisboa) da IA do Radar e os tetos. */
+export interface CompassAiBudget {
+    function: string;
+    monthly_limit: number;
+    /** Mês civil de Lisboa (AAAA-MM). */
+    month: string;
+    requests_month: number;
+    cost_month_usd: number;
+    companies: { company_id: number; company: string | null; requests: number; cost_usd: number; reached: boolean }[];
+}
+
 export interface RadarAdminBudget {
     global_cap_usd: number;
     company_cap_usd: number;

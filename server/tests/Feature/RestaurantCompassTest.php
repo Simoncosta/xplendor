@@ -289,6 +289,25 @@ class RestaurantCompassTest extends TestCase
         $this->assertSame(1, AiRequest::where('mode', 'bussola_jogadas')->where('status', 'done')->count());
     }
 
+    public function test_with_the_monthly_limit_used_up_the_plays_keep_the_template_and_nothing_is_asked(): void
+    {
+        $this->weak($this->baixa, 3, 'almoco', 'alta', 30);
+        $this->fresh();
+        $this->configureAi();
+        $this->fakeAi(['jogadas' => [['chave' => 'weak_period:wd3', 'o_que' => 'Mostre um prato do dia ao almoço de quarta, com uma fotografia da sala.']]]);
+        $this->assertSame(1, app(RestaurantCompassService::class)->generateTexts($this->company->id));
+        // Mais 59 pedidos este mês (60 no total): o limite está esgotado.
+        for ($i = 0; $i < 59; $i++) {
+            AiRequest::forceCreate(['company_id' => $this->company->id, 'mode' => 'bussola_jogadas', 'status' => AiRequest::DONE, 'input' => [],
+                'model' => 'claude-haiku-5-5', 'prompt_version' => 'bussola_jogadas-v1', 'cost_usd' => 0.001]);
+        }
+        Http::fake(fn () => throw new \LogicException('Pedido à IA depois do limite.'));
+        $this->assertSame(0, app(RestaurantCompassService::class)->generateTexts($this->company->id));
+        $this->assertSame(0, RestaurantCompassText::count(), 'a frase de recurso: o modelo de frase');
+        $this->assertSame('template', $this->payload(null, true)['plays'][0]['what']['source']);
+        $this->assertSame(60, AiRequest::where('mode', 'bussola_jogadas')->count());
+    }
+
     public function test_the_portuguese_checker_rejects_brazilian_portuguese_and_causes(): void
     {
         $this->weak($this->baixa, 3, 'almoco', 'alta', 30);

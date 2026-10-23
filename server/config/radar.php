@@ -34,6 +34,12 @@ return [
         'company_daily_usd' => (float) env('RADAR_COMPANY_DAILY_BUDGET_USD', 0.30),
     ],
 
+    // Bússola: as frases "O quê" da IA (bussola_jogadas), no máximo 60 pedidos por mês por empresa (mês de
+    // Lisboa, todos os ramos; decisão de 23/10). Esgotado, ficam os modelos de frase até ao mês seguinte.
+    'compass' => [
+        'monthly_requests_per_company' => (int) env('COMPASS_MONTHLY_AI_REQUESTS', 60),
+    ],
+
     // Itens, tendências e recolhas com mais de 30 dias são apagados (às 03:20 de Lisboa).
     'retention_days' => 30,
 

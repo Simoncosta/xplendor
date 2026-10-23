@@ -120,6 +120,8 @@ class RadarAdminController extends Controller
             'topics' => $topics,
             'relevance' => $this->relevanceBySector(),
             'budget' => $this->budgetToday(),
+            // Ao lado do teto do Radar: o limite mensal das frases da Bússola (bussola_jogadas) por empresa.
+            'compass' => \App\Services\Compass\CompassAiBudget::summary(),
             'signals' => $this->signalsByCompany(),
             'companies' => $this->companies(),
             'ine' => $this->ineAndParishes(),
