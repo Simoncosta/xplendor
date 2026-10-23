@@ -79,3 +79,6 @@ echo "🔁 Reload nginx (docker)"
 docker restart xplendor-nginx
 
 echo "✅ Deploy OK"
+
+## docker compose -f docker-compose.prod.yml --profile admin up -d phpmyadmin
+## docker compose -f docker-compose.prod.yml --profile admin stop phpmyadmin
