@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\DB;
  *  · closed:{id}: fechado nos últimos 30 dias, sem publicação de testemunho;
  *  · zone:{parish_id}: freguesia com imóveis e sem publicação da zona em 30 dias;
  *  · interest:{id}: 3 ou mais contactos no total (a parte do site do consultor mais a manual; atualizada há 30 dias ou menos);
- *  · bce:{AAAAMMDD}: hoje há decisão de política monetária do BCE (calendário oficial).
+ *  · bce:{AAAAMMDD}: hoje há decisão de política monetária do BCE (calendário oficial). Sai pela
+ *    data do calendário, mesmo sem o comunicado e com o Radar desligado; a ligação ao comunicado
+ *    chega quando o Radar o recolhe (o coletor recalcula as empresas nesse momento).
  */
 final class ImoveisSignalService
 {
@@ -37,6 +39,18 @@ final class ImoveisSignalService
         $at = DB::table('compass_runs')->where('provider', self::PROVIDER)->where('company_id', $companyId)->value('computed_at');
 
         return $at ? CarbonImmutable::parse($at) : null;
+    }
+
+    /**
+     * Recalcula (em fila) todas as empresas com o módulo imoveis: às 05:25 e, no dia de decisão do
+     * BCE, quando o Radar recolhe o comunicado (a jogada ganha a ligação). @return int as empresas
+     */
+    public static function recomputeAll(): int
+    {
+        $ids = DB::table('company_modules')->where('module_key', 'imoveis')->pluck('company_id');
+        $ids->each(fn ($id) => \App\Jobs\RecomputeImoveisCompassJob::dispatch((int) $id));
+
+        return $ids->count();
     }
 
     public function ensureFresh(int $companyId): void

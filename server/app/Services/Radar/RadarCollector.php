@@ -6,6 +6,8 @@ namespace App\Services\Radar;
 
 use App\Models\RadarItem;
 use App\Models\RadarRun;
+use App\Services\Compass\Imoveis\ImoveisSignalService;
+use App\Services\Radar\Calendar\OfficialDates;
 use App\Services\Radar\Filter\RadarSafetyFilter;
 use App\Services\Radar\Sources\RadarFetchException;
 use App\Services\Radar\Sources\RadarItemDto;
@@ -26,7 +28,8 @@ use InvalidArgumentException;
  *    (também os falhados, os 304, as simulações e a leitura do robots.txt); acima disso a fonte
  *    não é lida, salvo com force. As leituras de uma amostra gravada (fixture) não contam.
  *  · Uma fonte em falha não pára as outras; cada recolha fica em radar_runs.
- *  · Cada item novo passa pelo filtro de segurança e, a gravar, entra numa tendência.
+ *  · Cada item novo passa pelo filtro de segurança e, a gravar, entra numa tendência. O
+ *    comunicado do BCE num dia de decisão recalcula a Bússola do imobiliário (Bússola 3).
  *  · Simulação por omissão: faz o pedido, mostra o que entraria, e só regista a recolha (para
  *    o teto); nenhum item nem tendência é gravado.
  * Os registos (log) só levam contagens, nunca títulos.
@@ -187,7 +190,8 @@ class RadarCollector
         $now = CarbonImmutable::now();
         $expires = $now->addDays((int) config('radar.retention_days', 30));
 
-        $work = function () use ($byKey, $existing, $key, $execute, $now, $expires, &$counts) {
+        $bceToday = false;
+        $work = function () use ($byKey, $existing, $key, $execute, $now, $expires, &$counts, &$bceToday) {
             foreach ($byKey as $externalKey => $dto) {
                 if (in_array($externalKey, $existing, true)) {
                     continue;
@@ -222,10 +226,16 @@ class RadarCollector
                     continue;
                 }
                 $counts['novos']++;
-                $this->topics->assign($item);
+                $topic = $this->topics->assign($item);
+                $bceToday = $bceToday || ($topic?->kind === 'bce' && $topic->filter_verdict === RadarItem::VERDICT_PASSED
+                    && OfficialDates::isBceDecisionDay($now->setTimezone('Europe/Lisbon')->startOfDay()));
             }
         };
         $execute ? DB::transaction($work) : $work();
+        // Bússola 3: o comunicado do BCE do dia de decisão chegou; a jogada do imobiliário ganha a ligação.
+        if ($bceToday) {
+            Log::info('[Radar] Comunicado do BCE recolhido: recalcular a Bússola do imobiliário', ['empresas' => ImoveisSignalService::recomputeAll()]);
+        }
         $counts['filtrados'] = array_filter($counts['filtrados']);
         ksort($counts['filtrados']);
 

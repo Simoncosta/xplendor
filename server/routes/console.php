@@ -442,10 +442,7 @@ Schedule::command('consultor:interest-sync')
 
 // 05:25 (Lisboa): Bússola do imobiliário, os sinais das empresas com o módulo imoveis (as frases
 // da IA vão a seguir). Externa (P2 do fecho): chega à IA, por isso fica desligada no dev.
-Schedule::call(function () {
-    \Illuminate\Support\Facades\DB::table('company_modules')->where('module_key', 'imoveis')->pluck('company_id')
-        ->each(fn ($id) => \App\Jobs\RecomputeImoveisCompassJob::dispatch((int) $id));
-})
+Schedule::call(fn () => \App\Services\Compass\Imoveis\ImoveisSignalService::recomputeAll())
     ->dailyAt('05:25')
     ->timezone('Europe/Lisbon')
     ->name('bussola-imoveis-nightly')
