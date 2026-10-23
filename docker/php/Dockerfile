@@ -8,9 +8,10 @@ COPY --from=docker:27 /usr/local/bin/docker /usr/local/bin/docker
 # Instala dependências necessárias
 # ffmpeg/ffprobe: media da Linha Editorial (capa do vídeo, duração, dimensões, codec).
 # Partilhado pelos contentores php, worker e scheduler: obriga a reconstruir as imagens.
+# mariadb-client: o mariadb-dump das cópias diárias cifradas da base (backup:database).
 RUN apt-get update && apt-get install -y \
     zip unzip git curl libpng-dev libonig-dev libxml2-dev libzip-dev \
-    libjpeg-dev libfreetype6-dev libwebp-dev ffmpeg \
+    libjpeg-dev libfreetype6-dev libwebp-dev ffmpeg mariadb-client \
     && docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
