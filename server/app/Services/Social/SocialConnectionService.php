@@ -117,8 +117,9 @@ class SocialConnectionService
                 'last_error_kind' => null,
                 'last_error_message' => null,
             ])->save();
-            // Nova autorização: os tokens das Páginas escolhidas antes deixam de valer.
-            $this->deleteAccounts($connection);
+            // Nova autorização: os tokens das Páginas escolhidas antes deixam de valer. Ficam só as
+            // contas com a ligação de publicação (F2), até à nova escolha decidir quais continuam.
+            $this->deleteAccounts($connection, keepPublishing: true);
         });
 
         return [$companyId, 'choose', $linkId];
@@ -183,12 +184,17 @@ class SocialConnectionService
         $primaryInstagram = in_array($primaryInstagram, $instagramIds, true) ? $primaryInstagram : ($instagramIds[0] ?? null);
 
         DB::transaction(function () use ($connection, $companyId, $facebookIds, $instagramIds, $byPage, $byInstagram, $primaryFacebook, $primaryInstagram) {
+            // F2: os tokens de publicação das contas que continuam (mesma rede, mesma conta e mesma
+            // Página) passam para as contas novas; os das contas que saíram apagam-se com elas.
+            $publishing = $connection->accounts()->whereNotNull('publish_access_token')->get()
+                ->mapWithKeys(fn (SocialConnectionAccount $a) => [self::accountKey($a->platform, (string) $a->external_id, (string) $a->page_id) => $a->publish_access_token]);
             $this->deleteAccounts($connection);
             foreach ($facebookIds as $id) {
                 $p = $byPage[$id];
                 SocialConnectionAccount::create([
                     'company_id' => $companyId, 'social_connection_id' => $connection->id, 'platform' => SocialFollowerSnapshot::PLATFORM_FACEBOOK,
                     'external_id' => $id, 'page_id' => $id, 'name' => $p['name'], 'page_access_token' => $p['access_token'], 'is_primary' => $id === $primaryFacebook,
+                    'publish_access_token' => $publishing[self::accountKey(SocialFollowerSnapshot::PLATFORM_FACEBOOK, (string) $id, (string) $id)] ?? null,
                 ]);
             }
             // Instagram e Página são escolhas independentes: a conta de Instagram guarda a
@@ -201,6 +207,7 @@ class SocialConnectionService
                     'company_id' => $companyId, 'social_connection_id' => $connection->id, 'platform' => SocialFollowerSnapshot::PLATFORM_INSTAGRAM,
                     'external_id' => $id, 'page_id' => $p['id'], 'name' => $p['instagram']['name'] ?? $p['name'], 'username' => $p['instagram']['username'] ?? null,
                     'page_access_token' => $p['access_token'], 'is_primary' => $id === $primaryInstagram,
+                    'publish_access_token' => $publishing[self::accountKey(SocialFollowerSnapshot::PLATFORM_INSTAGRAM, (string) $id, (string) $p['id'])] ?? null,
                 ]);
             }
             $connection->update(['status' => SocialConnection::STATUS_ACTIVE, 'last_error_at' => null, 'last_error_kind' => null, 'last_error_message' => null]);
@@ -269,11 +276,20 @@ class SocialConnectionService
         return ['read' => $read, 'failed' => count($failures), 'skipped' => false];
     }
 
-    /** Apaga as contas escolhidas e as fotos de perfil copiadas. */
-    private function deleteAccounts(SocialConnection $connection): void
+    private static function accountKey(string $platform, string $externalId, string $pageId): string
     {
-        $paths = $connection->accounts()->whereNotNull('profile_picture_path')->pluck('profile_picture_path')->all();
-        $connection->accounts()->delete();
+        return "{$platform}|{$externalId}|{$pageId}";
+    }
+
+    /**
+     * Apaga as contas escolhidas e as fotos de perfil copiadas. Com keepPublishing (nova autorização
+     * da leitura), as contas com o token de publicação ficam até à nova escolha (F2).
+     */
+    private function deleteAccounts(SocialConnection $connection, bool $keepPublishing = false): void
+    {
+        $accounts = fn () => $connection->accounts()->when($keepPublishing, fn ($q) => $q->whereNull('publish_access_token'));
+        $paths = $accounts()->whereNotNull('profile_picture_path')->pluck('profile_picture_path')->all();
+        $accounts()->delete();
         if ($paths) {
             \App\Services\Media\MediaService::disk()->delete($paths);
         }

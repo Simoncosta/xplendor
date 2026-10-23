@@ -167,6 +167,41 @@ class PublishingConnectionTest extends TestCase
         $this->assertCount(2, $this->meta->callsTo('revokePermission'), 'nada mais revogado');
     }
 
+    public function test_reconnecting_the_networks_keeps_the_publishing_tokens_of_the_accounts_that_stay(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->readConnection($this->a);
+        $this->connectPublishing(SocialPublishingGrant::SCOPES);
+        $this->assertSame(2, SocialConnectionAccount::whereNotNull('publish_access_token')->count());
+
+        // Voltar a ligar a leitura: nova autorização com a Página de sempre e uma Página nova.
+        $url = (string) $this->as($this->adminA)->getJson("/api/v1/companies/{$this->a->id}/integrations/social/auth-url")->assertOk()->json('data.url');
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $q);
+        $this->meta->token = ['token' => 'leitura-2', 'expires_at' => null, 'user_id' => 'U1', 'scopes' => SocialConnection::SCOPES];
+        $this->meta->pages = [
+            ['id' => '1001', 'name' => 'Quebom', 'access_token' => 'pagina-leitura-2', 'instagram' => ['id' => '17841', 'username' => 'quebom', 'name' => 'Quebom']],
+            ['id' => '2002', 'name' => 'Quebom Norte', 'access_token' => 'pagina-norte', 'instagram' => ['id' => '18000', 'username' => 'quebomnorte', 'name' => 'Quebom Norte']],
+        ];
+        $location = (string) $this->get('/api/oauth/meta/social/callback?state=' . urlencode((string) $q['state']) . '&code=ok')->headers->get('Location');
+        $this->assertStringEndsWith('social=choose', $location);
+        $this->assertSame(2, SocialConnectionAccount::whereNotNull('publish_access_token')->count(), 'a publicação continua enquanto se escolhe');
+
+        // Fica a Página 1001; sai o Instagram 17841; entram a Página 2002 e o Instagram 18000.
+        $this->as($this->adminA)->putJson("/api/v1/companies/{$this->a->id}/integrations/social/accounts", [
+            'facebook' => ['1001', '2002'], 'instagram' => ['18000'], 'primary_facebook' => '1001', 'primary_instagram' => '18000',
+        ])->assertOk();
+
+        $accounts = SocialConnectionAccount::where('company_id', $this->a->id)->get()->keyBy(fn ($a) => "{$a->platform}:{$a->external_id}");
+        $this->assertSame(['facebook:1001', 'facebook:2002', 'instagram:18000'], $accounts->keys()->sort()->values()->all());
+        $this->assertSame('pagina-publicar', $accounts['facebook:1001']->publish_access_token, 'a Página que continua guarda a publicação');
+        $this->assertSame('pagina-leitura-2', $accounts['facebook:1001']->page_access_token, 'e fica com o token novo da leitura');
+        $this->assertNull($accounts['facebook:2002']->publish_access_token, 'uma Página nova não herda nada');
+        $this->assertNull($accounts['instagram:18000']->publish_access_token);
+        $this->assertSame('publicar', SocialPublishingGrant::where('company_id', $this->a->id)->value('access_token'), 'a ligação de publicação fica intacta');
+        $this->assertSame(['facebook'], $this->as($this->adminA)->getJson("/api/v1/companies/{$this->a->id}/integrations/social")->json('data.publishing.platforms'));
+        $this->assertSame([], $this->meta->callsTo('revokePermission'));
+    }
+
     public function test_retry_brings_a_failed_publication_back_and_only_a_failed_one(): void
     {
         $this->a->forceFill(['auto_publishing_enabled' => true])->save();
