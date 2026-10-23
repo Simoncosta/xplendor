@@ -211,7 +211,7 @@ class OcrInvoiceLaunchService
             $info = $this->lineInfo($l, $articles[$l->article_id] ?? null);
             // Linha de um artigo de agrupamento: vai junta, com quantidade 1 (a unidade é a do artigo).
             if (isset($grouping[$l->article_id])) {
-                $info = ['grouped' => true, 'unit_id' => $this->groupUnit($articles[$l->article_id]), 'unit_source' => 'agrupamento', 'unit_ok' => true] + $info;
+                $info = ['grouped' => true, 'unit_id' => $this->groupUnit($articles[$l->article_id]), 'unit_source' => 'agrupamento', 'unit_ok' => true, 'unit_rounds' => false] + $info;
             }
 
             return $info;
@@ -250,10 +250,23 @@ class OcrInvoiceLaunchService
         // A unidade de cada linha (as de agrupamento não contam) e as quantidades com decimais numa unidade
         // que não os aceita (o PingWin arredondava-as para cima).
         $unitMsgs = $lineInfo->every(fn ($l) => $l['unit_ok']) ? [] : ['Escolha a unidade das linhas assinaladas.'];
+        // A mensagem nomeia a unidade escolhida para a linha (não o artigo), diz qual das unidades com o
+        // mesmo nome aceita decimais e oferece outra unidade do artigo, quando há (diagnóstico de 23/10).
         foreach (collect($estimate['planned'])->where('kind', 'linha')->whereNotNull('rounded_from') as $row) {
             $l = $lines->firstWhere('id', $row['line_id']);
-            $unitMsgs[] = sprintf('O artigo %s é à unidade e a linha tem %s%s: o PingWin arredonda para %s. Confirme a unidade no Guião de unidades ou marque o artigo como artigo de agrupamento.',
-                $row['article']['description'] ?? (string) $l?->item, self::qty($row['rounded_from']), $l?->unit ? ' ' . mb_strtolower((string) $l->unit) : '', self::qty($row['qnt']));
+            $info = $lineInfo->firstWhere('id', $row['line_id']) ?? [];
+            $msg = sprintf('Linha «%s» (%s): a unidade escolhida para esta linha, %s, não aceita decimais e a linha tem %s%s; o PingWin arredonda para %s.',
+                (string) $l?->item, $row['article']['description'] ?? '—', $info['unit_label'] ?? 'sem nome',
+                self::qty($row['rounded_from']), $l?->unit ? ' ' . mb_strtolower((string) $l->unit) : '', self::qty($row['qnt']));
+            $twins = isset($info['unit_id']) ? $this->sameNameDecimalUnits($inv->company_id, (string) $info['unit_id']) : [];
+            if ($twins !== []) {
+                $msg .= sprintf(' Há mais do que uma unidade «%s»: a que aceita decimais é %s.',
+                    (string) PingwinUnit::where('company_id', $inv->company_id)->where('pingwin_id', $info['unit_id'])->value('description'), implode(', ', $twins));
+            }
+            $msg .= ($info['decimal_units'] ?? []) !== []
+                ? ' Pode escolher outra unidade do artigo que aceita decimais: ' . implode(', ', $info['decimal_units']) . '.'
+                : ' Confirme a unidade no Guião de unidades.';
+            $unitMsgs[] = $msg . ' Se o artigo junta produtos diferentes, marque-o como artigo de agrupamento.';
         }
         $add('unidades', $unitMsgs === [], 'Unidade de cada linha', implode(' ', $unitMsgs));
         // Artigos de agrupamento: só se juntam linhas com a mesma taxa de IVA.
@@ -414,17 +427,28 @@ class OcrInvoiceLaunchService
         ])->sortBy(fn ($u) => [$u['id'] === (string) $a->default_purchase_unit_id ? 0 : 1, $u['label']])->values();
     }
 
-    /** A unidade da linha: a escolhida pela pessoa, ou a do OCR se corresponder a UMA do artigo. */
+    /**
+     * A unidade da linha: a escolhida pela pessoa, ou a do OCR se corresponder a UMA do artigo. Uma
+     * escolha que arredonda (unidade sem decimais e quantidade com decimais) cede à unidade lida na
+     * fatura quando esta aceita decimais (diagnóstico de 23/10).
+     */
     private function lineInfo(OcrInvoiceLine $l, ?PingwinCatalogItem $a): array
     {
         $options = $a ? $this->articleUnits($a) : collect();
         $chosen = $l->launch_unit_id && $options->contains('id', $l->launch_unit_id) ? $l->launch_unit_id : null;
         $auto = null;
-        if (! $chosen && $a) {
+        if ($a) {
             $want = self::unitKey($l->unit);
             $hits = $want === null ? collect() : $options->filter(fn ($u) => self::unitKey($u['short']) === $want || self::unitKey($u['description']) === $want);
             $auto = $hits->count() === 1 ? $hits->first()['id'] : null;
         }
+        $whole = $a ? $this->wholeUnits((int) $a->company_id, $options->pluck('id')->all()) : [];
+        $decimal = $a ? $this->wholeUnits((int) $a->company_id, $options->pluck('id')->all(), false) : [];
+        $fractional = $l->quantity !== null && abs((float) $l->quantity - round((float) $l->quantity)) > 1e-6;
+        if ($chosen && $auto && $auto !== $chosen && $fractional && isset($whole[$chosen]) && isset($decimal[$auto])) {
+            $chosen = null;
+        }
+        $unitId = $chosen ?? $auto;
 
         return [
             'id'           => $l->id,
@@ -434,10 +458,32 @@ class OcrInvoiceLaunchService
             'quantity'     => $l->quantity !== null ? (float) $l->quantity : null,
             'article'      => $a ? ['id' => $a->id, 'code' => $a->code, 'description' => $a->description, 'pingwin_id' => $a->pingwin_id] : null,
             'unit_options' => $options->map(fn ($u) => ['value' => $u['id'], 'label' => $u['label']])->values(),
-            'unit_id'      => $chosen ?? $auto,
+            'unit_id'      => $unitId,
             'unit_source'  => $chosen ? 'escolhida' : ($auto ? 'fatura' : null),
-            'unit_ok'      => ($chosen ?? $auto) !== null,
+            'unit_ok'      => $unitId !== null,
+            'unit_label'   => $unitId !== null ? ($options->firstWhere('id', $unitId)['label'] ?? null) : null,
+            'unit_rounds'  => $unitId !== null && $fractional && isset($whole[$unitId]),
+            // As outras unidades do artigo que aceitam decimais (as que se podem oferecer).
+            'decimal_units' => $a ? $options->filter(fn ($u) => isset($decimal[$u['id']]) && $u['id'] !== $unitId)->pluck('label')->values()->all() : [],
         ];
+    }
+
+    /** As outras unidades da empresa com o mesmo nome que aceitam decimais ("Unidade (UN2)"). */
+    private function sameNameDecimalUnits(int $companyId, string $unitId): array
+    {
+        $unit = PingwinUnit::where('company_id', $companyId)->where('pingwin_id', $unitId)->first(['description']);
+        if (! $unit || trim((string) $unit->description) === '') {
+            return [];
+        }
+        $twins = PingwinUnit::where('company_id', $companyId)->where('description', $unit->description)->where('pingwin_id', '!=', $unitId)
+            ->where(fn ($q) => $q->whereNull('is_active')->orWhere('is_active', true))->get(['pingwin_id', 'description', 'shortname', 'raw']);
+
+        // Só as que o PingWin diz que aceitam decimais (frac_unit 1); sem a informação, não se diz.
+        return $twins->filter(function ($u) {
+            $raw = is_array($u->raw) ? $u->raw : (array) json_decode((string) $u->raw, true);
+
+            return ! empty($raw['frac_unit']);
+        })->map(fn ($u) => trim($u->description . ($u->shortname ? " ({$u->shortname})" : '')))->values()->all();
     }
 
     /** "KG", "Kgs.", "Quilograma" → KG; "Un", "UND" → UN; "L", "Litro" → LT; outras: o próprio texto. */
@@ -547,18 +593,21 @@ class OcrInvoiceLaunchService
         return $out;
     }
 
-    /** As unidades (pingwin_id) que não aceitam decimais (frac_unit 0 no PingWin). @return array<string, true> */
-    private function wholeUnits(int $companyId, array $unitIds): array
+    /**
+     * As unidades (pingwin_id) que não aceitam decimais (frac_unit 0 no PingWin); com $whole = false, as
+     * que o PingWin diz que aceitam (frac_unit 1). Sem a informação, nenhuma das duas. @return array<string, true>
+     */
+    private function wholeUnits(int $companyId, array $unitIds, bool $whole = true): array
     {
         if ($unitIds === []) {
             return [];
         }
 
         return PingwinUnit::where('company_id', $companyId)->whereIn('pingwin_id', array_unique(array_map('strval', $unitIds)))->get(['pingwin_id', 'raw'])
-            ->filter(function ($u) {
+            ->filter(function ($u) use ($whole) {
                 $raw = is_array($u->raw) ? $u->raw : (array) json_decode((string) $u->raw, true);
 
-                return array_key_exists('frac_unit', $raw) && ! (bool) $raw['frac_unit'];
+                return array_key_exists('frac_unit', $raw) && (bool) $raw['frac_unit'] !== $whole;
             })->mapWithKeys(fn ($u) => [(string) $u->pingwin_id => true])->all();
     }
 

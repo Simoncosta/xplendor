@@ -669,6 +669,16 @@ class PingwinService
             ];
         }
 
+        // As unidades (nomes) que mudam nesta leitura: o upsert não dispara os eventos do modelo, por
+        // isso a escolha guardada nas linhas por lançar cai aqui (ArticleUnitsChanged).
+        $before = \App\Models\PingwinCatalogItem::where('company_id', $companyId)->whereIn('pingwin_id', array_column($rows, 'pingwin_id'))
+            ->get(['pingwin_id', 'purchaseunit', 'saleunit'])->keyBy(fn ($i) => (string) $i->pingwin_id);
+        $unitsChanged = array_values(array_map(fn ($r) => $r['pingwin_id'], array_filter($rows, function ($r) use ($before) {
+            $old = $before[$r['pingwin_id']] ?? null;
+
+            return $old && ([$old->purchaseunit, $old->saleunit] !== [$r['purchaseunit'], $r['saleunit']]);
+        })));
+
         // UPSERT em lotes por (company_id, pingwin_id) — idempotente. Não toca em
         // created_at ao atualizar (só nas colunas de dados + updated_at/synced_at).
         if (! empty($rows)) {
@@ -681,6 +691,7 @@ class PingwinService
             foreach (array_chunk($rows, 500) as $chunk) {
                 \App\Models\PingwinCatalogItem::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
             }
+            \App\Services\ArticleUnitsChanged::forPingwinIds($companyId, $unitsChanged);
         }
 
         // ⚠️ RECONCILIAÇÃO DE ANULADOS (bug de integridade): o "anular" no PingWin é

@@ -543,9 +543,10 @@ class OcrInvoiceLaunchTest extends TestCase
         $p = $this->svc()->preview($inv);
         $g = collect($p['guards'])->keyBy('key');
         $this->assertFalse($g['unidades']['ok']);
-        $this->assertSame('O artigo COMIDA STAFF 23% é à unidade e a linha tem 8,09 kg: o PingWin arredonda para 9. Confirme a unidade no Guião de unidades ou marque o artigo como artigo de agrupamento.',
-            explode(' O artigo', $g['unidades']['message'])[0]);
-        $this->assertStringContainsString('a linha tem 8,665 kg: o PingWin arredonda para 9.', $g['unidades']['message']);
+        $this->assertSame('Linha «Carne 0» (COMIDA STAFF 23%): a unidade escolhida para esta linha, Unidade (UN), não aceita decimais e a linha tem 8,09 kg; o PingWin arredonda para 9.'
+            . ' Confirme a unidade no Guião de unidades. Se o artigo junta produtos diferentes, marque-o como artigo de agrupamento.',
+            explode(' Linha «Carne 1»', $g['unidades']['message'])[0]);
+        $this->assertStringContainsString('a linha tem 8,665 kg; o PingWin arredonda para 9.', $g['unidades']['message']);
         // O total estimado já simula o arredondamento: 9 × 9,19 + 9 × 2,49 + 9 × 7,39 = 171,63 € em vez de 158,55 €.
         $this->assertSame([8271, 2241, 6651, 17410], array_column(array_slice($p['planned']['lines'], 0, 4), 'net_cents'));
         $this->assertSame([42524, 40916, -1608], [$p['estimate']['computed_cents'], $p['estimate']['target_cents'], $p['estimate']['adjustment_cents']]);

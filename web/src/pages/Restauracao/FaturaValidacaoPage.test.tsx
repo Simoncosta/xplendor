@@ -307,6 +307,28 @@ test("painel Fatura validada: só a conferência por aceitar deixa gravar em ras
     expect(within(panel).queryByTestId("saved-launch-blocked")).toBeNull();
 });
 
+test("uma linha cuja unidade arredonda aparece para escolher outra unidade do artigo", async () => {
+    mockApi.launchGet.mockResolvedValue({ data: preview({
+        can_launch: false,
+        guards: [{ key: "unidades", ok: false, label: "Unidade de cada linha", message: "Linha «Carne 0» (COMIDA STAFF 23%): a unidade escolhida para esta linha, Unidade (UN), não aceita decimais." }],
+        lines: [{ id: 11, position: 0, item: "Carne 0", ocr_unit: "KG", quantity: 8.09, article: { id: 3, code: "101208", description: "COMIDA STAFF 23%", pingwin_id: "101208" },
+            unit_options: [{ value: "11001", label: "Unidade (UN)" }, { value: "11002", label: "Quilograma (KG)" }], unit_id: "11001", unit_source: "escolhida", unit_ok: true, unit_rounds: true }],
+    }) });
+    render(<FaturaValidacaoPage />);
+    const table = await screen.findByTestId("launch-units");
+    expect(within(table).getByText("arredonda")).toBeInTheDocument();
+    expect(within(table).getByLabelText("Unidade da linha 1")).toBeInTheDocument();
+});
+
+test("Revalidar relê o lançamento mesmo quando a revalidação falha", async () => {
+    mockApi.revalidate.mockRejectedValue(new Error("falhou"));
+    render(<FaturaValidacaoPage />);
+    await screen.findByTestId("launch-card");
+    const before = mockApi.launchGet.mock.calls.length;
+    fireEvent.click(screen.getByTestId("revalidate"));
+    await waitFor(() => expect(mockApi.launchGet.mock.calls.length).toBeGreaterThan(before));
+});
+
 test("sem QR: QR ilegível, o adquirente verificado pelo texto e o IEC somado na linha", async () => {
     mockApi.get.mockResolvedValue({ data: { invoice: invoice({
         qr_ok: false, source: "sem_qr", check_status: "sem_qr", supplier_nif: "508888883", buyer_nif: "509999999", atcud: "ABCD1234-55", discounts: [], ignored_lines: [],

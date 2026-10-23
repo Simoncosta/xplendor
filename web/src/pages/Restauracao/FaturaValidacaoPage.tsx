@@ -384,11 +384,12 @@ export default function FaturaValidacaoPage() {
         try {
             const r: any = await revalidateOcrInvoice(companyId, invoiceId, override ? bodyOf(supplierId, supplierName, supplierNif, number, issueDate, override, summary) : body);
             if (r?.data?.invoice) hydrate(r.data.invoice);
-            setLaunchRefresh((n) => n + 1);
             toast.success("Validações feitas de novo.");
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível revalidar a fatura.");
         } finally {
+            // O lançamento relê-se sempre (mesmo com erro): o cartão nunca fica com guardas antigas.
+            setLaunchRefresh((n) => n + 1);
             setRevalidating(false);
         }
     };

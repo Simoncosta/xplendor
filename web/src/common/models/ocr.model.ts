@@ -370,8 +370,10 @@ export interface OcrLaunchLine {
     article: { id: number; code: string | null; description: string | null; pingwin_id: string } | null;
     unit_options: { value: string; label: string }[];
     unit_id: string | null;
-    unit_source: "escolhida" | "fatura" | null;
+    unit_source: "escolhida" | "fatura" | "agrupamento" | null;
     unit_ok: boolean;
+    /** A unidade da linha não aceita decimais e a quantidade tem-nos (o PingWin arredondava). */
+    unit_rounds?: boolean;
 }
 
 export interface OcrDocWrite {

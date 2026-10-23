@@ -126,6 +126,13 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
     }, [companyId, invoiceId]);
 
     useEffect(() => { load(); }, [load, refreshKey]);
+    // Ao voltar a esta janela (por exemplo depois de marcar um artigo de agrupamento noutro separador),
+    // a pré-visualização relê-se: o ecrã nunca fica com guardas antigas.
+    useEffect(() => {
+        const onFocus = () => { void load(); };
+        window.addEventListener("focus", onFocus);
+        return () => window.removeEventListener("focus", onFocus);
+    }, [load]);
     // Cada pré-visualização nova vai também para a página (o painel "Fatura validada").
     useEffect(() => { if (p) onPreview?.(p); }, [p, onPreview]);
 
@@ -213,7 +220,8 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
 
     // A escolha de unidades só interessa a uma fatura que se pode lançar (FT e ainda não lançada).
     const launchable = !failed.some((g) => g.key === "tipo" || g.key === "nao_lancada");
-    const needsUnit = launchable ? p.lines.filter((l) => !l.unit_ok && l.article) : [];
+    // Também as linhas cuja unidade arredonda: pode escolher-se outra unidade do artigo.
+    const needsUnit = launchable ? p.lines.filter((l) => (!l.unit_ok || l.unit_rounds) && l.article) : [];
     const adj = p.estimate.adjustment_cents;
 
     const actions = draftActive ? (
@@ -311,14 +319,15 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
                     {needsUnit.length > 0 && (
                         <div className="table-responsive">
                             <table className="table table-sm table-bordered align-middle mb-0 fs-13" data-testid="launch-units">
-                                <caption className="visually-hidden">Linhas sem unidade</caption>
+                                <caption className="visually-hidden">Linhas sem unidade ou com uma unidade que arredonda</caption>
                                 <thead className="table-light text-muted"><tr><th>Linha</th><th>Na fatura</th><th style={{ minWidth: 180 }}>Unidade do artigo</th><th style={{ width: 110 }}>Quantidade</th><th /></tr></thead>
                                 <tbody>
                                     {needsUnit.map((l) => {
                                         const d = unitDraft[l.id] ?? { unit_id: "", quantity: l.quantity !== null ? String(l.quantity) : "" };
                                         return (
                                             <tr key={l.id}>
-                                                <td>{l.article?.code} {l.article?.description}</td>
+                                                <td>{l.article?.code} {l.article?.description}
+                                                    {l.unit_rounds && <span className="badge bg-warning-subtle text-warning ms-1" title="A unidade escolhida não aceita decimais: o PingWin arredonda a quantidade.">arredonda</span>}</td>
                                                 <td>{l.quantity ?? "—"} {l.ocr_unit ?? "(sem unidade)"}</td>
                                                 <td><XSelect small ariaLabel={`Unidade da linha ${l.position + 1}`} options={l.unit_options} value={d.unit_id} placeholder="Escolher…" searchable={false}
                                                     onChange={(v) => setUnitDraft((s) => ({ ...s, [l.id]: { ...d, unit_id: v } }))} /></td>

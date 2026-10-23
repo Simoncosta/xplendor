@@ -44,6 +44,16 @@ class PingwinCatalogItem extends Model
         'synced_at'           => 'datetime',
     ];
 
+    /** As unidades do artigo mudaram: a escolha guardada nas linhas das faturas por lançar cai. */
+    protected static function booted(): void
+    {
+        static::updated(function (self $item) {
+            if ($item->wasChanged(\App\Services\ArticleUnitsChanged::COLUMNS)) {
+                \App\Services\ArticleUnitsChanged::forgetLaunchUnits([$item->id]);
+            }
+        });
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
