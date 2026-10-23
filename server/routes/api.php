@@ -978,6 +978,7 @@ Route::prefix('v1')->group(function () {
                 // Parceiro 2: a ligação da Meta da agência (ver: a agência; ligar e desligar: o administrador).
                 $meta = \App\Http\Controllers\Api\V1\Agency\AgencyMetaController::class;
                 Route::get('/meta', [$meta, 'show']);
+                Route::get('/meta/portfolios', [$meta, 'portfolios']); // Parceiro 3: só leitura, administrador da agência
                 Route::middleware('block_when_impersonating')->group(function () use ($meta) {
                     Route::get('/meta/auth-url', [$meta, 'authUrl']);
                     Route::delete('/meta', [$meta, 'disconnect']);

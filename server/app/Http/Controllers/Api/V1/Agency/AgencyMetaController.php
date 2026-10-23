@@ -44,6 +44,18 @@ class AgencyMetaController extends Controller
         return ApiResponse::success(['url' => $this->connections->authUrl($this->agency($request), $request->user())], 'Abra o endereço para autorizar a Meta.');
     }
 
+    // GET /agencies/{agency}/meta/portfolios?refresh=1 (Parceiro 3): os portfólios e os ativos, só leitura.
+    // Os ativos de todos os clientes que partilharam com a agência: só o administrador da agência (e o root).
+    public function portfolios(Request $request)
+    {
+        abort_unless(app(CompanyAccess::class)->isAgencyAdmin($request->user(), $this->agency($request)->id), 403,
+            'Só o administrador da agência vê os portfólios e os ativos partilhados.');
+        $data = $request->validate(['refresh' => ['nullable', 'boolean']]);
+
+        return ApiResponse::success(app(\App\Services\Agency\Meta\AgencyPortfolioService::class)->list($this->agency($request)->id, (bool) ($data['refresh'] ?? false)),
+            'Portfólios da Meta da agência.');
+    }
+
     // DELETE /agencies/{agency}/meta
     public function disconnect(Request $request)
     {

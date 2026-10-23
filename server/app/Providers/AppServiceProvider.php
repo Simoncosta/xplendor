@@ -174,6 +174,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(\App\Services\Ga4\Ga4ClientInterface::class, \App\Services\Ga4\Ga4RestClient::class);
         // Meta (redes sociais): a Graph API por trás do contrato (nos testes, FakeMetaSocialClient).
         $this->app->bind(\App\Services\Social\MetaSocialClientInterface::class, \App\Services\Social\MetaSocialClient::class);
+        // Parceiro 3: a leitura dos portfólios da agência (nos testes, FakeMetaBusinessClient).
+        $this->app->bind(\App\Services\Agency\Meta\MetaBusinessClientInterface::class, \App\Services\Agency\Meta\MetaBusinessClient::class);
         // F2 (publicação automática): o cliente real só com o driver "meta"; senão o simulado (config/social_publishing.php).
         $this->app->bind(\App\Services\Social\Publishing\MetaPublishingClient::class, fn ($app) => config('social_publishing.driver') === 'meta'
             ? $app->make(\App\Services\Social\Publishing\MetaGraphPublishingClient::class)
