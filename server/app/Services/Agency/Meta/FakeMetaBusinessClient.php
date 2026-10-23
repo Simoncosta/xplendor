@@ -35,4 +35,14 @@ class FakeMetaBusinessClient implements MetaBusinessClientInterface
 
         return $this->failure ?? ['ok' => true] + ($this->assets[$businessId] ?? ['pages' => [], 'ad_accounts' => [], 'instagram' => []]);
     }
+
+    /** @var array<string, ?string> o token de cada Página (null = sem tarefa na Página) */
+    public array $pageTokens = [];
+
+    public function pageToken(string $userToken, string $pageId): array
+    {
+        $this->calls[] = ['pageToken', [$userToken, $pageId]];
+
+        return $this->failure ?? ['ok' => true, 'access_token' => $this->pageTokens[$pageId] ?? null];
+    }
 }

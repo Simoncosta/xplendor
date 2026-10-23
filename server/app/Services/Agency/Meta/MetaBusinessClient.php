@@ -76,6 +76,18 @@ class MetaBusinessClient implements MetaBusinessClientInterface
         return $result;
     }
 
+    public function pageToken(string $userToken, string $pageId): array
+    {
+        $r = $this->send(fn () => Http::timeout(self::TIMEOUT)->get(MetaSocialClient::GRAPH_URL . '/' . $pageId, ['fields' => 'access_token', 'access_token' => $userToken]));
+        if (! $r || ! $r->successful()) {
+            return ['ok' => false, 'kind' => MetaSocialClient::classify($r),
+                'message' => mb_substr((string) ($r?->json('error.message') ?? ($r ? 'HTTP ' . $r->status() : 'Sem ligação à Meta.')), 0, 300)];
+        }
+        $token = (string) ($r->json('access_token') ?? '');
+
+        return ['ok' => true, 'access_token' => $token !== '' ? $token : null];
+    }
+
     /** @return array{ok: bool, data?: list<array>, kind?: string, message?: string} */
     private function list(string $path, array $query, string $userToken): array
     {

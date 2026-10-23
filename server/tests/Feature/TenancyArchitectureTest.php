@@ -38,6 +38,7 @@ class TenancyArchitectureTest extends TestCase
         'Admin/SupportTicketController.php' => 2,         // + a impersonation (regra transversal)
         'Agency/AgencyController.php' => 6,               // painel da agência (rotas /agencies, fora das rotas de empresa)
         'Agency/AgencyMetaController.php' => 2,           // Parceiros 2 e 3: só o administrador da agência liga e desliga a Meta e vê os portfólios (rotas /agencies)
+        'Agency/AgencyMetaLinksController.php' => 3,      // Parceiro 4: só o administrador da agência vê, liga e desliga os ativos dos clientes (rotas /agencies)
         'CompanyController.php' => 1,                     // criar empresas (rota sem empresa no endereço): só o root
         'CompanyRecipeEditController.php' => 1,           // gravar fichas no PingWin só nos artigos da guarda (PINGWIN_BOM_WRITE_ALLOWLIST; regra transversal)
         'CompanyStockController.php' => 1,                // gravar o mínimo/máximo no PingWin só nos artigos da guarda (PINGWIN_STOCK_WRITE_ALLOWLIST; regra transversal)

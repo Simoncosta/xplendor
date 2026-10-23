@@ -982,9 +982,14 @@ Route::prefix('v1')->group(function () {
                 $meta = \App\Http\Controllers\Api\V1\Agency\AgencyMetaController::class;
                 Route::get('/meta', [$meta, 'show']);
                 Route::get('/meta/portfolios', [$meta, 'portfolios']); // Parceiro 3: só leitura, administrador da agência
-                Route::middleware('block_when_impersonating')->group(function () use ($meta) {
+                // Parceiro 4: os ativos ligados aos clientes (ver: administrador e root; ligar e desligar: administrador).
+                $links = \App\Http\Controllers\Api\V1\Agency\AgencyMetaLinksController::class;
+                Route::get('/meta/links', [$links, 'index']);
+                Route::middleware('block_when_impersonating')->group(function () use ($meta, $links) {
                     Route::get('/meta/auth-url', [$meta, 'authUrl']);
                     Route::delete('/meta', [$meta, 'disconnect']);
+                    Route::post('/meta/links', [$links, 'store']);
+                    Route::delete('/meta/links/{link}', [$links, 'destroy'])->whereNumber('link');
                 });
                 Route::middleware('block_when_impersonating')->group(function () use ($c) {
                     Route::post('/management-requests', [$c, 'storeManagementRequest'])->middleware('throttle:20,1');

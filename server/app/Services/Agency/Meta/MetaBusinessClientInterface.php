@@ -21,4 +21,12 @@ interface MetaBusinessClientInterface
      * @return array{ok: bool, pages?: list<array>, ad_accounts?: list<array>, instagram?: list<array>, kind?: string, message?: string}
      */
     public function assets(string $userToken, string $businessId): array;
+
+    /**
+     * Parceiro 4: o token de uma Página (GET /{page-id}?fields=access_token). A Meta só o dá se a pessoa
+     * tiver uma tarefa na Página (atribuída no portfólio); sem ela, access_token vem null.
+     *
+     * @return array{ok: bool, access_token?: ?string, kind?: string, message?: string}
+     */
+    public function pageToken(string $userToken, string $pageId): array;
 }

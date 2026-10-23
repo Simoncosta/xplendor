@@ -450,6 +450,11 @@ export const getAgencyMetaAuthUrl = (agencyId: number) => api.get(AG(agencyId) +
 export const disconnectAgencyMeta = (agencyId: number) => api.delete(AG(agencyId) + `/meta`);
 // Parceiro 3: os portfólios e os ativos partilhados com a agência (só leitura).
 export const getAgencyMetaPortfolios = (agencyId: number, refresh = false) => api.get(AG(agencyId) + `/meta/portfolios`, refresh ? { refresh: 1 } : undefined);
+// Parceiro 4: ligar ativos da Meta da agência a uma empresa gerida (cada ativo só numa empresa).
+export const getAgencyMetaLinks = (agencyId: number) => api.get(AG(agencyId) + `/meta/links`);
+export const linkAgencyMetaAsset = (agencyId: number, data: { company_id: number; asset_type: "page" | "instagram" | "ad_account"; external_id: string; replace?: boolean }) =>
+    api.create(AG(agencyId) + `/meta/links`, data);
+export const unlinkAgencyMetaAsset = (agencyId: number, linkId: number) => api.delete(AG(agencyId) + `/meta/links/${linkId}`);
 // F1d (root): pedidos de gestão com a situação de faturação, e terminar uma relação.
 export const getAdminManagementRequests = (status?: string) => api.get(url.GET_ADMIN + `/management-requests`, status ? { status } : undefined);
 export const endAdminCompanyManagement = (companyId: number, reason: string) => api.create(url.GET_ADMIN + `/companies/${companyId}/management/end`, { reason });
