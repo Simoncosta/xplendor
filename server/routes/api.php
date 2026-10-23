@@ -375,6 +375,9 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/pingwin/articles/{productId}', [CompanyPingwinController::class, 'showArticle'])->whereNumber('productId');
                     // Artigos — poll do resultado de uma leitura assíncrona (form-lookups/artigo).
                     Route::get('/integrations/pingwin/articles/read/{token}', [CompanyPingwinController::class, 'articleRead']);
+                    // Artigos — a cópia local (abre logo) e "Atualizar do PingWin" (leitura a pedido, com limite).
+                    Route::get('/integrations/pingwin/articles/{productId}/copy', [CompanyPingwinController::class, 'articleCopy'])->whereNumber('productId');
+                    Route::post('/integrations/pingwin/articles/{productId}/refresh', [CompanyPingwinController::class, 'refreshArticle'])->whereNumber('productId');
                     // Artigos — tab Compras (C1, só leitura): linhas de fornecedor do espelho.
                     Route::get('/integrations/pingwin/articles/{catalogItemId}/supplier-prices', [CompanyPingwinController::class, 'supplierPrices'])->whereNumber('catalogItemId');
                     // F2d: códigos dos fornecedores do artigo (principal + alternativos) e o relatório "IVA a rever".

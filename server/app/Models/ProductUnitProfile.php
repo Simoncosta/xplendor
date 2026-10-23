@@ -16,7 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class ProductUnitProfile extends Model
 {
-    public const STATES = ['por_identificar', 'sugerido', 'confirmado', 'aplicado_no_pingwin', 'nao_se_aplica'];
+    public const STATES = ['por_identificar', 'sugerido', 'confirmado', 'aplicado_no_pingwin', 'nao_se_aplica', self::STATE_REVIEW];
+    /** Decidido, mas a unidade base mudou no PingWin depois: volta à fila até alguém confirmar de novo. */
+    public const STATE_REVIEW = 'por_rever';
     public const TYPES = ['peso', 'volume', 'contavel', 'embalado_peso', 'embalado_inteiro'];
     public const BASES = ['kg', 'L', 'un'];
     /** Abaixo disto, o artigo fica "Por identificar" (U8). */

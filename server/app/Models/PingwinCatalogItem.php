@@ -27,6 +27,8 @@ class PingwinCatalogItem extends Model
         'setexpireday', 'weight', 'default_supplier_id', 'fixedsupplier', 'obs',
         // Fatia 1 (fichas técnicas): o armazém do custo, o preço sem IVA e a hora da última leitura.
         'cost_warehouse_id', 'saleprice_wo_tax_cents', 'bom_synced_at',
+        // A última leitura ao vivo do artigo (abrir ou "Atualizar do PingWin"), que grava as unidades na cópia.
+        'live_read_at',
     ];
 
     protected $casts = [
@@ -42,6 +44,7 @@ class PingwinCatalogItem extends Model
         'weight'              => 'float',
         'raw'                 => 'array',
         'synced_at'           => 'datetime',
+        'live_read_at'        => 'datetime',
     ];
 
     /** As unidades do artigo mudaram: a escolha guardada nas linhas das faturas por lançar cai. */

@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\PingwinCatalogItem;
 use App\Services\PingwinService;
+use App\Services\Restaurant\ArticleCopy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,9 +41,19 @@ class ReadPingwinProductJob implements ShouldQueue
     public function handle(PingwinService $pingwin): void
     {
         $article = $pingwin->readProduct($this->companyId, $this->productId); // pode lançar → retry
+        // A leitura ao vivo grava na cópia (ids e nomes das unidades) e diz o que mudou face a ela.
+        $changes = [];
+        $copy = null;
+        try {
+            $changes = ArticleCopy::applyRead($this->companyId, $this->productId, $article);
+            $item = PingwinCatalogItem::where('company_id', $this->companyId)->where('pingwin_id', $this->productId)->first();
+            $copy = $item ? ArticleCopy::present($item) : null;
+        } catch (\Throwable $e) {
+            Log::warning('[PingWin Ler Artigo] a cópia não foi gravada', ['company_id' => $this->companyId, 'product_id' => $this->productId, 'error' => mb_substr($e->getMessage(), 0, 300)]);
+        }
         Cache::put(
             PingwinService::readKey($this->companyId, $this->token),
-            ['status' => 'ready', 'result' => ['article' => $article]],
+            ['status' => 'ready', 'result' => ['article' => $article, 'changes' => $changes, 'copy' => $copy]],
             now()->addSeconds(120)
         );
     }

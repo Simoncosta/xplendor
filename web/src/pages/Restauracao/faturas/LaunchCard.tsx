@@ -6,8 +6,9 @@ import PageCard from "Components/Common/PageCard";
 import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
 import ActionsMenu from "Components/Common/ActionsMenu";
-import { closeOcrLaunch, getOcrLaunch, launchOcrInvoice, setOcrLineLaunchUnit, setOcrPaperCheck, voidOcrLaunch } from "helpers/laravel_helper";
+import { closeOcrLaunch, getArticleRead, getOcrLaunch, launchOcrInvoice, refreshArticle, setOcrLineLaunchUnit, setOcrPaperCheck, voidOcrLaunch } from "helpers/laravel_helper";
 import { OcrLaunchPreview } from "common/models/ocr.model";
+import { useArticleReadPolling } from "../useArticleReadPolling";
 
 /**
  * XPLENDOR — FB-1: "Lançar no PingWin". "Gravar como rascunho" cria a Fatura de fornecedor em
@@ -117,6 +118,8 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
     const [awaitClose, setAwaitClose] = useState<number | null>(null);
     const [acceptDiff, setAcceptDiff] = useState(false);
     const [unitDraft, setUnitDraft] = useState<Record<number, { unit_id: string; quantity: string }>>({});
+    const [refreshingArticle, setRefreshingArticle] = useState<string | null>(null);
+    const { read } = useArticleReadPolling(companyId);
 
     const load = useCallback(async () => {
         try {
@@ -209,6 +212,20 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
             if (e?.errors?.failed) load();
         } finally {
             setBusy(false);
+        }
+    };
+
+    // "Atualizar do PingWin" de um artigo da linha: lê-o ao vivo, grava na cópia e volta a ver as guardas.
+    const refreshFromPingwin = async (pingwinId: string) => {
+        setRefreshingArticle(pingwinId);
+        const r = await read(() => refreshArticle(companyId, pingwinId), (t) => getArticleRead(companyId, t));
+        setRefreshingArticle(null);
+        if (r.status === "ready") {
+            const changes: { label: string; from: string | null; to: string | null }[] = r.data?.changes ?? [];
+            toast.success(changes.length ? `Atualizado do PingWin: ${changes.map((c) => `${c.label} ${c.from ?? "—"} → ${c.to ?? "—"}`).join("; ")}.` : "Atualizado do PingWin: nada mudou.");
+            await load();
+        } else {
+            toast.error(r.error_message ?? "Não foi possível atualizar o artigo.");
         }
     };
 
@@ -333,7 +350,13 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
                                                     onChange={(v) => setUnitDraft((s) => ({ ...s, [l.id]: { ...d, unit_id: v } }))} /></td>
                                                 <td><Input bsSize="sm" type="number" step="any" min={0} className="text-end" aria-label={`Quantidade da linha ${l.position + 1}`} value={d.quantity}
                                                     onChange={(e) => setUnitDraft((s) => ({ ...s, [l.id]: { ...d, quantity: e.target.value } }))} /></td>
-                                                <td><ReasonButton size="sm" color="outline-primary" reason={!d.unit_id ? "Escolha a unidade." : null} disabled={busy} onClick={() => saveUnit(l.id)}>Guardar</ReasonButton></td>
+                                                <td className="text-nowrap">
+                                                    <ReasonButton size="sm" color="outline-primary" reason={!d.unit_id ? "Escolha a unidade." : null} disabled={busy} onClick={() => saveUnit(l.id)}>Guardar</ReasonButton>
+                                                    <Button size="sm" color="link" className="py-0" disabled={refreshingArticle !== null} data-testid={`launch-refresh-${l.id}`}
+                                                        title="Lê o artigo no PingWin agora (as unidades da cópia podem estar desatualizadas)." onClick={() => refreshFromPingwin(l.article!.pingwin_id)}>
+                                                        {refreshingArticle === l.article!.pingwin_id ? <Spinner size="sm" /> : "Atualizar do PingWin"}
+                                                    </Button>
+                                                </td>
                                             </tr>
                                         );
                                     })}

@@ -387,6 +387,9 @@ class CompanyPingwinController extends Controller
      * forsale/forpurchase). Devolve última sincronização + famílias distintas.
      */
     /** Ordenações permitidas do catálogo de artigos (?sort=, via ListSort): chave → coluna. */
+    /** "Atualizar do PingWin": leituras a pedido de um artigo, por empresa e por minuto. */
+    public const REFRESH_PER_MINUTE = 10;
+
     private const CATALOG_SORTS = [
         'code'           => 'code',
         'description'    => 'description',
@@ -488,6 +491,45 @@ class CompanyPingwinController extends Controller
         \App\Jobs\ReadPingwinProductJob::dispatch($companyId, $productId, $token);
 
         return ApiResponse::success(['read_id' => $token, 'status' => 'pending'], 'A carregar o artigo do PingWin…');
+    }
+
+    /** A cópia local de um artigo (sem ir ao PingWin): o ecrã mostra-a logo, enquanto a leitura ao vivo não chega. */
+    public function articleCopy(int $companyId, string $productId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $item = \App\Models\PingwinCatalogItem::where('company_id', $companyId)->where('pingwin_id', $productId)->first();
+        if (! $item) {
+            return ApiResponse::error('Artigo não encontrado.', 404);
+        }
+
+        return ApiResponse::success(\App\Services\Restaurant\ArticleCopy::present($item), 'Cópia local do artigo.');
+    }
+
+    /**
+     * "Atualizar do PingWin": lê o artigo ao vivo (a mesma leitura de abrir, no worker), grava na cópia os
+     * ids e os nomes das unidades e relê as unidades do artigo. Leitura leve e com limite de pedidos.
+     */
+    public function refreshArticle(int $companyId, string $productId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        if (! \App\Models\PingwinCatalogItem::where('company_id', $companyId)->where('pingwin_id', $productId)->exists()) {
+            return ApiResponse::error('Artigo não encontrado.', 404);
+        }
+        $key = 'pingwin-article-refresh:' . $companyId;
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, self::REFRESH_PER_MINUTE)) {
+            $wait = \Illuminate\Support\Facades\RateLimiter::availableIn($key);
+
+            return ApiResponse::error("Muitos pedidos ao PingWin. Aguarde {$wait} s e tente de novo.", 429);
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($key, 60);
+        $token = (string) Str::uuid();
+        \App\Jobs\ReadPingwinProductJob::dispatch($companyId, $productId, $token);
+
+        return ApiResponse::success(['read_id' => $token, 'status' => 'pending'], 'A atualizar o artigo do PingWin…', 202);
     }
 
     /**

@@ -1,6 +1,6 @@
 {
     "ator": "impersonacao_admin",
-    "rotas": 617,
+    "rotas": 619,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -343,6 +343,7 @@
         "GET api/v1/companies/{id}/integrations/pingwin/articles/{catalogItemId}/supplier-codes": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/articles/{catalogItemId}/supplier-prices": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/articles/{productId}": 200,
+        "GET api/v1/companies/{id}/integrations/pingwin/articles/{productId}/copy": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/catalog": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/catalog/vat-divergences": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/documents": 200,
@@ -588,6 +589,7 @@
         "POST api/v1/companies/{id}/integrations/google/connect": 403,
         "POST api/v1/companies/{id}/integrations/meta/connect": 403,
         "POST api/v1/companies/{id}/integrations/pingwin/articles": 422,
+        "POST api/v1/companies/{id}/integrations/pingwin/articles/{productId}/refresh": 404,
         "POST api/v1/companies/{id}/integrations/pingwin/catalog/sync": 200,
         "POST api/v1/companies/{id}/integrations/pingwin/connect": 403,
         "POST api/v1/companies/{id}/integrations/pingwin/documents": 422,

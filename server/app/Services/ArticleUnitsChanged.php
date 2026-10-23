@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Jobs\RunUnitsAuditJob;
 use App\Models\OcrInvoice;
 use App\Models\OcrInvoiceLine;
 use App\Models\PingwinCatalogItem;
+use App\Models\PingwinUnit;
+use App\Models\ProductUnitProfile;
 
 /**
  * As unidades de um artigo mudaram (os ids no PingWin, ou os nomes da leitura do catálogo): a escolha
@@ -39,8 +42,35 @@ final class ArticleUnitsChanged
         if ($pingwinIds === []) {
             return 0;
         }
-
-        return self::forgetLaunchUnits(PingwinCatalogItem::where('company_id', $companyId)
+        $n = self::forgetLaunchUnits(PingwinCatalogItem::where('company_id', $companyId)
             ->whereIn('pingwin_id', array_map('strval', $pingwinIds))->pluck('id')->all());
+        RunUnitsAuditJob::dispatch($companyId);
+
+        return $n;
+    }
+
+    /**
+     * Depois de as unidades de um artigo mudarem por uma leitura ("Atualizar do PingWin", abrir o
+     * artigo, a leitura de domingo) ou por uma escrita da XPLENDOR: as faturas por lançar que o usam
+     * deixam a escolha guardada (as guardas do lançamento são calculadas de novo a cada pré-visualização),
+     * a auditoria de unidades corre e, se a unidade base mudou, o perfil decidido no Guião fica "por rever".
+     */
+    public static function afterChange(PingwinCatalogItem $item, ?string $baseBefore): void
+    {
+        self::forgetLaunchUnits([$item->id]);
+        RunUnitsAuditJob::dispatch((int) $item->company_id);
+
+        $baseAfter = (string) $item->base_unit_id;
+        if ($baseBefore === null || $baseBefore === '' || $baseAfter === '' || $baseBefore === $baseAfter) {
+            return;
+        }
+        $profile = ProductUnitProfile::where('company_id', $item->company_id)->where('product_pingwin_id', (string) $item->pingwin_id)->first();
+        if (! $profile || ! in_array($profile->state, ['confirmado', 'aplicado_no_pingwin'], true)) {
+            return;
+        }
+        $names = PingwinUnit::where('company_id', $item->company_id)->whereIn('pingwin_id', [$baseBefore, $baseAfter])->get(['pingwin_id', 'description', 'shortname'])
+            ->mapWithKeys(fn ($u) => [(string) $u->pingwin_id => trim($u->description . ($u->shortname ? " ({$u->shortname})" : ''))]);
+        $profile->update(['state' => ProductUnitProfile::STATE_REVIEW,
+            'reason' => sprintf('A unidade base mudou no PingWin (%s → %s): confirme de novo.', $names[$baseBefore] ?? $baseBefore, $names[$baseAfter] ?? $baseAfter)]);
     }
 }

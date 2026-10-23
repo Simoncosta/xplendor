@@ -555,6 +555,12 @@ export const getArticle = (companyId: number, pingwinId: string) =>
 // Poll do resultado de uma leitura assíncrona (form-lookups ou artigo), pelo token.
 export const getArticleRead = (companyId: number, token: string) =>
     api.get(A(companyId) + `/read/${token}`);
+// A cópia local do artigo (abre logo, sem ir ao PingWin).
+export const getArticleCopy = (companyId: number, pingwinId: string) =>
+    api.get(A(companyId) + `/${pingwinId}/copy`);
+// "Atualizar do PingWin": lê o artigo ao vivo e grava na cópia (com limite de pedidos). Poll em read/{token}.
+export const refreshArticle = (companyId: number, pingwinId: string) =>
+    api.create(A(companyId) + `/${pingwinId}/refresh`, {});
 // ⚠️ ESCRITA: criar (exige confirm:true). Poll em articles/creation/{id}.
 export const createArticle = (companyId: number, data: Record<string, any>) =>
     api.create(A(companyId), data);

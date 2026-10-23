@@ -11,7 +11,7 @@ import XSelect from "Components/Common/Select";
 import PageCard from "Components/Common/PageCard";
 import InfoTip from "Components/Common/InfoTip";
 import {
-    getArticleFormLookups, getArticle, getArticleRead,
+    getArticleFormLookups, getArticle, getArticleRead, getArticleCopy, refreshArticle,
     createArticle, getArticleCreation, updateArticle, getArticleEdition,
     deleteArticle, getArticleDeletion, getPingwinArticleSupplierPrices,
 } from "helpers/laravel_helper";
@@ -28,6 +28,7 @@ import PageHeader from "Components/Common/PageHeader";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import { confirmAction } from "helpers/swal";
 import Skeleton from "Components/Common/Skeleton";
+import ArticleCopyCard, { ArticleChange, ArticleChanges, ArticleCopy, fmtWhen } from "./ArticleCopyCard";
 
 /**
  * XPLENDOR — Restauração › Artigo (criar / abrir / editar). Mesmo form nos 2 modos.
@@ -145,15 +146,35 @@ export default function ArtigoFormPage() {
         return () => { alive = false; };
     }, [isCreate, companyId, read]);
 
-    // ── EDITAR: carregar o artigo real (read polling) e preencher o form ──
+    // ── EDITAR: a cópia local abre logo; a leitura ao vivo (read polling) substitui-a, assinala o que
+    // mudou e grava na cópia. "Atualizar do PingWin" volta a ler (com limite de pedidos). ──
+    const [copy, setCopy] = useState<ArticleCopy | null>(null);
+    const [liveError, setLiveError] = useState<string | null>(null);
+    const [changes, setChanges] = useState<ArticleChange[]>([]);
+    const [formReady, setFormReady] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
+    useEffect(() => {
+        if (isCreate || !companyId || !pingwinId) return;
+        let alive = true;
+        getArticleCopy(companyId, pingwinId).then((r: any) => { if (alive && r?.data) setCopy(r.data); }).catch(() => { /* sem cópia: espera pela leitura */ });
+        return () => { alive = false; };
+    }, [isCreate, companyId, pingwinId]);
+
     useEffect(() => {
         if (isCreate || !companyId || !pingwinId) return;
         let alive = true;
         (async () => {
             setLoading(true);
-            const r = await read(() => getArticle(companyId, pingwinId), (t) => getArticleRead(companyId, t));
+            setLiveError(null);
+            const start = reloadKey > 0 ? () => refreshArticle(companyId, pingwinId) : () => getArticle(companyId, pingwinId);
+            const r = await read(start, (t) => getArticleRead(companyId, t));
             if (!alive) return;
+            setRefreshing(false);
             if (r.status === "ready") {
+                setChanges(r.data?.changes ?? []);
+                if (r.data?.copy) setCopy(r.data.copy);
+                setFormReady(true);
                 const art = r.data?.article ?? {};
                 setLookups(art.lookups ?? {});
                 const m = art.maindataset ?? {};
@@ -192,14 +213,17 @@ export default function ArtigoFormPage() {
                 // Não auto-preencher por cima dos valores carregados.
                 setTouched({ shortname: true, button_name: true, stock_unit_id: true, label_unit_id: true, volume_unit_id: true });
             } else {
-                toast.error(r.error_message ?? "Não foi possível carregar o artigo.");
+                // Sem resposta do PingWin: fica a cópia, com o aviso (ou o erro, se não houver cópia).
+                setLiveError(r.error_message ?? "Não foi possível carregar o artigo do PingWin.");
+                if (reloadKey > 0 && formReady) toast.error(r.error_message ?? "Não foi possível atualizar o artigo.");
             }
             setLoading(false);
         })();
         return () => { alive = false; };
-        // Só recarrega quando muda o artigo/empresa (compras e location.state são lidos à carga).
+        // Só recarrega quando muda o artigo/empresa ou se pede "Atualizar do PingWin" (compras e location.state são lidos à carga).
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isCreate, companyId, pingwinId, read]);
+    }, [isCreate, companyId, pingwinId, read, reloadKey]);
+    const refreshLive = () => { setRefreshing(true); setReloadKey((n) => n + 1); };
 
     // Aviso do browser ao fechar/recarregar com alterações de fornecedores por gravar.
     useEffect(() => {
@@ -333,13 +357,18 @@ export default function ArtigoFormPage() {
                     info={isCreate ? "Cria um artigo no PingWin." : "Altera o artigo no PingWin, incluindo o Estado."}
                 />
 
-                {loading ? (
+                {!isCreate && !formReady && copy ? (
+                    // A cópia local abre logo; com o PingWin sem resposta, fica com o aviso.
+                    <ArticleCopyCard copy={copy} error={loading ? null : liveError} onRetry={refreshLive} />
+                ) : (isCreate ? loading : !formReady) ? (
                     <div className="card"><div className="card-body">
-                        <p className="text-muted fs-13 mb-3">A carregar do PingWin…</p>
-                        <Skeleton variant="lines" lines={8} label="" />
+                        {liveError && !loading
+                            ? <p className="text-danger fs-13 mb-0" data-testid="article-error">{liveError}</p>
+                            : <><p className="text-muted fs-13 mb-3">A carregar do PingWin…</p><Skeleton variant="lines" lines={8} label="" /></>}
                     </div></div>
                 ) : (
                     <Form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+                        {!isCreate && <ArticleChanges changes={changes} />}
                         {created && (
                             <div className="alert alert-success d-flex align-items-center gap-2" role="alert">
                                 <i className="ri-checkbox-circle-line fs-5" />
@@ -351,14 +380,19 @@ export default function ArtigoFormPage() {
                         <PageCard
                             title="Artigo"
                             flush={false}
-                            actions={!isCreate ? (
+                            status={!isCreate && copy?.live_read_at ? <span className="text-muted fs-12" data-testid="article-read-at">Lido do PingWin a {fmtWhen(copy.live_read_at)}</span> : undefined}
+                            actions={!isCreate ? (<>
+                                <Button size="sm" color="light" onClick={refreshLive} disabled={refreshing || busy} data-testid="article-refresh"
+                                    title="Lê o artigo de novo no PingWin e atualiza a cópia da XPLENDOR (unidades incluídas).">
+                                    {refreshing ? <><Spinner size="sm" className="me-1" />A atualizar…</> : <><i className="ri-refresh-line me-1" />Atualizar do PingWin</>}
+                                </Button>
                                 <ActionsMenu size="sm" label={`Mais ações: ${f.description || "artigo"}`} items={[
                                     {
                                         label: "Anular", icon: "ri-delete-bin-line", danger: true, onClick: () => setAnularOpen(true),
                                         disabledReason: busy ? "Aguarde: há uma gravação em curso no PingWin." : loading ? "A carregar o artigo." : null,
                                     },
                                 ]} />
-                            ) : undefined}
+                            </>) : undefined}
                         >
                                 <Row className="g-3">
                                     <Col md={2}>

@@ -154,7 +154,8 @@ final class UnitProfileService
     {
         foreach ($items as $i) {
             $p = $this->profileModel($i['product_id']);
-            if ($p && $p->isDecided()) {
+            // "Por rever" (a unidade base mudou no PingWin) fica até alguém confirmar de novo.
+            if ($p && ($p->isDecided() || $p->state === ProductUnitProfile::STATE_REVIEW)) {
                 continue;
             }
             $state = $i['por_identificar'] ? 'por_identificar' : 'sugerido';

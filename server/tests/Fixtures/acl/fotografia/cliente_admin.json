@@ -1,6 +1,6 @@
 {
     "ator": "cliente_admin",
-    "rotas": 617,
+    "rotas": 619,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "POST api/v1/companies/{id}/management/first-admin",
@@ -195,6 +195,7 @@
         "GET api/v1/companies/{id}/integrations/pingwin/articles/{catalogItemId}/supplier-codes": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/articles/{catalogItemId}/supplier-prices": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/articles/{productId}": 200,
+        "GET api/v1/companies/{id}/integrations/pingwin/articles/{productId}/copy": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/catalog": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/catalog/vat-divergences": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/documents": 200,
@@ -440,6 +441,7 @@
         "POST api/v1/companies/{id}/integrations/google/connect": 422,
         "POST api/v1/companies/{id}/integrations/meta/connect": 422,
         "POST api/v1/companies/{id}/integrations/pingwin/articles": 422,
+        "POST api/v1/companies/{id}/integrations/pingwin/articles/{productId}/refresh": 404,
         "POST api/v1/companies/{id}/integrations/pingwin/catalog/sync": 200,
         "POST api/v1/companies/{id}/integrations/pingwin/connect": 422,
         "POST api/v1/companies/{id}/integrations/pingwin/documents": 422,

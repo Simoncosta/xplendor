@@ -10,7 +10,7 @@ import FaturaValidacaoPage from "./FaturaValidacaoPage";
 const mockNavigate = jest.fn();
 const mockApi = {
     get: jest.fn(), update: jest.fn(), revalidate: jest.fn(), reprocess: jest.fn(), changes: jest.fn(),
-    launchGet: jest.fn(), launch: jest.fn(), close: jest.fn(), paperCheck: jest.fn(),
+    launchGet: jest.fn(), launch: jest.fn(), close: jest.fn(), paperCheck: jest.fn(), refresh: jest.fn(), read: jest.fn(),
 };
 // O Jest deste projeto não resolve o react-router-dom: o mínimo que a página usa.
 jest.mock("react-router-dom", () => ({
@@ -29,6 +29,8 @@ jest.mock("helpers/laravel_helper", () => ({
     closeOcrLaunch: (...a: unknown[]) => mockApi.close(...a),
     setOcrPaperCheck: (...a: unknown[]) => mockApi.paperCheck(...a),
     getOcrInvoiceImageBlob: () => Promise.reject(new Error("sem imagem")),
+    refreshArticle: (...a: unknown[]) => mockApi.refresh(...a),
+    getArticleRead: (...a: unknown[]) => mockApi.read(...a),
     voidOcrLaunch: jest.fn(), setOcrLineLaunchUnit: jest.fn(), searchOcrPingwinLink: jest.fn(), confirmOcrPingwinLink: jest.fn(), unlinkOcrPingwinLink: jest.fn(),
     associateOcrLineArticle: jest.fn(), unlinkOcrLineArticle: jest.fn(), createOcrLineArticle: jest.fn(), acceptOcrLineSuggestions: jest.fn(),
     deleteOcrInvoice: jest.fn(), makeOcrLineCodePrincipal: jest.fn(), correctOcrLineArticleVat: jest.fn(),
@@ -318,6 +320,16 @@ test("uma linha cuja unidade arredonda aparece para escolher outra unidade do ar
     const table = await screen.findByTestId("launch-units");
     expect(within(table).getByText("arredonda")).toBeInTheDocument();
     expect(within(table).getByLabelText("Unidade da linha 1")).toBeInTheDocument();
+
+    // "Atualizar do PingWin": lê o artigo ao vivo, diz o que mudou e volta a ver as guardas.
+    mockApi.refresh.mockResolvedValue({ data: { read_id: "t1" } });
+    mockApi.read.mockResolvedValue({ data: { status: "ready", changes: [{ label: "Unidade de compra", from: "Unidade", to: "Quilograma (KG)" }] } });
+    const before = mockApi.launchGet.mock.calls.length;
+    fireEvent.click(within(table).getByTestId("launch-refresh-11"));
+    await waitFor(() => expect(mockApi.refresh).toHaveBeenCalledWith(5, "101208"), { timeout: 3000 });
+    await waitFor(() => expect(mockApi.launchGet.mock.calls.length).toBeGreaterThan(before), { timeout: 3000 });
+    const { toast } = jest.requireMock("react-toastify");
+    expect(toast.success).toHaveBeenCalledWith("Atualizado do PingWin: Unidade de compra Unidade → Quilograma (KG).");
 });
 
 test("Revalidar relê o lançamento mesmo quando a revalidação falha", async () => {

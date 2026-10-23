@@ -1,6 +1,7 @@
 /** XPLENDOR — Auditoria v2: o Guião de unidades (fila, artigo, proposta, o que muda, PingWin). */
 
-export type UnitProfileState = "por_identificar" | "sugerido" | "confirmado" | "aplicado_no_pingwin" | "nao_se_aplica";
+/** por_rever: estava decidido, mas a unidade base mudou no PingWin depois (volta à fila). */
+export type UnitProfileState = "por_identificar" | "sugerido" | "confirmado" | "aplicado_no_pingwin" | "nao_se_aplica" | "por_rever";
 export type UnitBase = "kg" | "L" | "un";
 
 export type UnitVerdictKey = "mudar" | "ajuda" | "certo";

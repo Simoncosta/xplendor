@@ -247,7 +247,7 @@ export default function UnitGuidePage() {
                                                                     <span className={`rounded-circle ${g.tone === "grey" ? "xp-guide-dot-grey" : `bg-${g.tone}`} flex-shrink-0 mt-1`} style={{ width: 8, height: 8 }} aria-hidden />
                                                                     <span className="text-truncate">
                                                                         <span className="d-block text-truncate">{x.label}</span>
-                                                                        <span className="fs-12 opacity-75 d-block text-truncate">{unidade ? x.verdict_text : x.state === "confirmado" ? "Confirmado" : x.verdict_text}{x.skipped ? " · saltado" : ""}{x.assigned ? " · administrador" : ""}</span>
+                                                                        <span className="fs-12 opacity-75 d-block text-truncate">{unidade ? x.verdict_text : x.state === "confirmado" ? "Confirmado" : x.verdict_text}{x.state === "por_rever" ? " · por rever (a unidade base mudou no PingWin)" : ""}{x.skipped ? " · saltado" : ""}{x.assigned ? " · administrador" : ""}</span>
                                                                     </span>
                                                                 </span>
                                                                 <span className="fs-12 text-nowrap text-end">

@@ -88,7 +88,11 @@ class UpdatePingwinCatalogJob implements ShouldQueue
         }
 
         // Só AGORA o espelho — com os valores CONFIRMADOS pelo servidor (não os enviados).
+        $baseBefore = (string) $item->base_unit_id;
         $this->updateMirror($item, $changes, $confirm);
+        if ($item->wasChanged(\App\Services\ArticleUnitsChanged::COLUMNS)) {
+            \App\Services\ArticleUnitsChanged::afterChange($item, $baseBefore);
+        }
 
         $write->update(['status' => 'ok', 'pingwin_id' => (string) $item->pingwin_id, 'finished_at' => now()]);
         $alerts->createSystemAlert(

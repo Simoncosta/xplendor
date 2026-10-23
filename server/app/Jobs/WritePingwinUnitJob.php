@@ -93,11 +93,19 @@ class WritePingwinUnitJob implements ShouldQueue
             Log::info('[PingWin] reler unidades depois da escrita falhou', ['error' => mb_substr($e->getMessage(), 0, 300)]);
         }
         $after = (array) ($res['after'] ?? []);
-        PingwinCatalogItem::where('company_id', $write->company_id)->where('pingwin_id', $write->product_pingwin_id)
-            ->update(array_filter([
+        $item = PingwinCatalogItem::where('company_id', $write->company_id)->where('pingwin_id', $write->product_pingwin_id)->first();
+        if ($item) {
+            // Uma escrita da XPLENDOR que muda as unidades do artigo: a mesma reanálise de uma leitura.
+            $baseBefore = (string) $item->base_unit_id;
+            $item->fill(array_filter([
                 'default_purchase_unit_id' => $after['default_purchase_unit_id'] ?? null,
                 'base_unit_id' => $after['base_unit_id'] ?? null,
             ], fn ($v) => $v !== null && $v !== ''));
+            if ($item->isDirty()) {
+                $item->save();
+                \App\Services\ArticleUnitsChanged::afterChange($item, $baseBefore);
+            }
+        }
 
         if ($write->profile_id && $write->status === 'ok') {
             app(UnitProfileService::class, ['companyId' => $write->company_id])->afterPingwinWrite($write);
