@@ -150,25 +150,77 @@ class SitePopupsTest extends TestCase
         $rgb = imagecolorat(imagecreatefromstring(Storage::disk('public')->get($popup->fresh()->image_path)), 480, 360);
         $this->assertGreaterThan(150, ($rgb >> 16) & 0xFF, 'agora a metade vermelha');
 
-        // Uma imagem com muito pormenor (ruído em blocos de 6 px, mais do que uma fotografia) fica até 200 KB.
-        $noise = imagecreatetruecolor(1600, 1200);
-        for ($y = 0; $y < 1200; $y += 6) {
-            for ($x = 0; $x < 1600; $x += 6) {
-                imagefilledrectangle($noise, $x, $y, $x + 5, $y + 5, imagecolorallocate($noise, random_int(0, 255), random_int(0, 255), random_int(0, 255)));
-            }
-        }
-        ob_start();
-        imagepng($noise);
-        $noisePath = 'files/company_' . $this->stand->id . '/' . Str::uuid() . '.png';
-        Storage::disk('local')->put($noisePath, (string) ob_get_clean());
-        $noiseFile = StoredFile::create(['company_id' => $this->stand->id, 'name' => 'ruido.png', 'extension' => 'png', 'mime' => 'image/png', 'size_bytes' => 1,
-            'disk' => 'local', 'path' => $noisePath, 'source' => 'upload', 'source_ref' => 'upload:' . Str::uuid(), 'is_system' => false]);
-        $noisy = $this->create(['title' => 'Ruído', 'image_file_id' => $noiseFile->id]);
-        $this->assertLessThanOrEqual(200 * 1024, strlen(Storage::disk('public')->get($noisy->image_path)));
+        // As cores lisas ficam muito abaixo de 200 KB.
+        $this->assertLessThanOrEqual(200 * 1024, strlen(Storage::disk('public')->get($popup->fresh()->image_path)));
 
         // Um recorte fora de 0 a 1 é recusado.
         $this->actingAs($this->standAdmin, 'sanctum')->postJson($this->base() . '/site-popups',
             $this->payload(['image_file_id' => $file->id, 'image_crop' => ['x' => 0.8, 'y' => 0, 'width' => 1.4, 'height' => 0.5]]))->assertStatus(422);
+    }
+
+    /** Guarda uma imagem nos Ficheiros da empresa. */
+    private function stored(string $bytes, string $mime, string $ext): StoredFile
+    {
+        $path = 'files/company_' . $this->stand->id . '/' . Str::uuid() . ".{$ext}";
+        Storage::disk('local')->put($path, $bytes);
+
+        return StoredFile::create(['company_id' => $this->stand->id, 'name' => "imagem.{$ext}", 'extension' => $ext, 'mime' => $mime, 'size_bytes' => strlen($bytes),
+            'disk' => 'local', 'path' => $path, 'source' => 'upload', 'source_ref' => 'upload:' . Str::uuid(), 'is_system' => false]);
+    }
+
+    public function test_the_quality_never_goes_below_60_and_a_copy_still_over_200_kb_is_saved_and_logged(): void
+    {
+        \Illuminate\Support\Facades\Log::spy();
+        // Ruído píxel a píxel: nenhuma qualidade razoável o põe em 200 KB.
+        $noise = imagecreatetruecolor(1600, 1200);
+        for ($y = 0; $y < 1200; $y++) {
+            for ($x = 0; $x < 1600; $x++) {
+                imagesetpixel($noise, $x, $y, random_int(0, 0xFFFFFF));
+            }
+        }
+        ob_start();
+        imagepng($noise);
+        $popup = $this->create(['title' => 'Ruído', 'image_file_id' => $this->stored((string) ob_get_clean(), 'image/png', 'png')->id]);
+
+        $bytes = Storage::disk('public')->get($popup->image_path);
+        $this->assertSame([960, 720], array_slice(getimagesizefromstring($bytes), 0, 2));
+        $this->assertGreaterThan(200 * 1024, strlen($bytes), 'grava a cópia mesmo acima de 200 KB');
+        $this->assertSame(60, \App\Services\SitePopups\SitePopupService::IMAGE_MIN_QUALITY);
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('warning')->withArgs(fn ($msg, $ctx) => str_contains($msg, '200 KB') && ($ctx['qualidade'] ?? null) === 60)->once();
+    }
+
+    public function test_the_exif_orientation_is_applied_before_the_crop(): void
+    {
+        // Uma foto vertical tirada com o telemóvel de lado: os píxeis estão deitados (600 × 400, esquerda vermelha e
+        // direita azul) e a orientação EXIF 6 diz para rodar 90 graus no sentido dos ponteiros. O navegador mostra-a de
+        // pé (400 × 600): o vermelho em cima e o azul em baixo. As frações do recorte vêm dessa imagem.
+        $img = imagecreatetruecolor(600, 400);
+        imagefilledrectangle($img, 0, 0, 299, 399, imagecolorallocate($img, 220, 20, 20));
+        imagefilledrectangle($img, 300, 0, 599, 399, imagecolorallocate($img, 20, 20, 220));
+        ob_start();
+        imagejpeg($img, null, 95);
+        $jpeg = (string) ob_get_clean();
+        $tiff = 'II' . pack('v', 42) . pack('V', 8) . pack('v', 1) . pack('v', 0x0112) . pack('v', 3) . pack('V', 1) . pack('v', 6) . pack('v', 0) . pack('V', 0);
+        $app1 = "\xFF\xE1" . pack('n', strlen("Exif\0\0" . $tiff) + 2) . "Exif\0\0" . $tiff;
+        $jpeg = substr($jpeg, 0, 2) . $app1 . substr($jpeg, 2);
+        $this->assertSame(6, (int) (exif_read_data('data://image/jpeg;base64,' . base64_encode($jpeg))['Orientation'] ?? 0), 'a amostra tem a orientação 6');
+
+        // A metade de cima da imagem como o navegador a mostra: tem de ficar toda vermelha.
+        $popup = $this->create(['image_file_id' => $this->stored($jpeg, 'image/jpeg', 'jpg')->id, 'image_crop' => ['x' => 0, 'y' => 0, 'width' => 1, 'height' => 0.5]]);
+        $copy = imagecreatefromstring(Storage::disk('public')->get($popup->image_path));
+        $this->assertSame([960, 720], [imagesx($copy), imagesy($copy)]);
+        foreach ([[60, 360], [480, 360], [900, 360]] as [$x, $y]) {
+            $rgb = imagecolorat($copy, $x, $y);
+            $this->assertGreaterThan(150, ($rgb >> 16) & 0xFF, "vermelho em {$x},{$y}");
+            $this->assertLessThan(90, $rgb & 0xFF, "sem azul em {$x},{$y}");
+        }
+    }
+
+    public function test_an_image_smaller_than_960_by_720_is_enlarged(): void
+    {
+        $popup = $this->create(['image_file_id' => $this->image(400, 300)->id]);
+        [$w, $h] = getimagesizefromstring(Storage::disk('public')->get($popup->image_path));
+        $this->assertSame([960, 720], [$w, $h], 'o site recebe sempre 960 × 720 (o editor avisa que vai parecer desfocada)');
     }
 
     public function test_the_public_api_lists_only_the_live_popups_by_priority_with_their_pages(): void

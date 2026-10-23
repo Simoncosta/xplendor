@@ -29,13 +29,14 @@ class SitePopupService
 {
     /**
      * A imagem do aviso no site (medidas reais do site da Quebom, spike de 23/10): 4:3, publicada a
-     * 960 × 720 px, em WebP, até 200 KB (a qualidade desce de 10 em 10, desde 80, até caber).
+     * 960 × 720 px, em WebP, até 200 KB (a qualidade desce de 10 em 10, desde 80, até caber). Nunca abaixo
+     * de 60 (decisão de 24/10): se na qualidade 60 ainda passar de 200 KB, grava-se essa e regista-se no log.
      */
     public const IMAGE_WIDTH = 960;
     public const IMAGE_HEIGHT = 720;
     public const IMAGE_MAX_BYTES = 200 * 1024;
     public const IMAGE_QUALITY = 80;
-    private const IMAGE_MIN_QUALITY = 20;
+    public const IMAGE_MIN_QUALITY = 60;
 
     public function __construct(private readonly FileAccess $files) {}
 
@@ -133,7 +134,7 @@ class SitePopupService
                 $webp = $image->toWebp($quality)->toString();
             }
             if (strlen($webp) > self::IMAGE_MAX_BYTES) {
-                \Illuminate\Support\Facades\Log::warning('[Avisos do site] A imagem não coube em 200 KB mesmo na qualidade mínima', ['file_id' => $file->id, 'bytes' => strlen($webp)]);
+                \Illuminate\Support\Facades\Log::warning('[Avisos do site] A imagem não coube em 200 KB mesmo na qualidade mínima', ['file_id' => $file->id, 'bytes' => strlen($webp), 'qualidade' => $quality]);
             }
         } catch (\Throwable) {
             throw ValidationException::withMessages(['image_file_id' => ['Não foi possível ler esta imagem.']]);
