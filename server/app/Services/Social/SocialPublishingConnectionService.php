@@ -82,7 +82,7 @@ class SocialPublishingConnectionService
                 'meta_user_id' => $token['user_id'] ?? null,
                 'access_token' => $token['token'],
                 'token_expires_at' => $token['expires_at'] ?? null,
-                'granted_scopes' => $token['scopes'],
+                'granted_scopes' => array_values(array_intersect((array) $token['scopes'], SocialPublishingGrant::SCOPES)),
                 'connected_by_user_id' => $state['user_id'] ?? null,
                 'connected_at' => now(),
             ]);

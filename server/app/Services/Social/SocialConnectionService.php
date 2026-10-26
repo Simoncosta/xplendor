@@ -97,7 +97,8 @@ class SocialConnectionService
             $declined = array_filter($missing, fn ($p) => ($statuses[$p] ?? null) === 'declined');
             // Só se revoga se este utilizador da Meta não tiver outra ligação das redes ativa (cortava-a).
             if (SharedMetaUser::canRevokeNewSocialGrant($token['user_id'] ?? null)) {
-                foreach ($token['scopes'] as $granted) {
+                // Só as da leitura: as de publicar ou da agência pertencem a outras ligações.
+                foreach (array_intersect($token['scopes'], SocialConnection::SCOPES) as $granted) {
                     $this->meta->revokePermission($token['token'], $granted);
                 }
             }
@@ -111,7 +112,7 @@ class SocialConnectionService
                 'meta_user_id' => $token['user_id'],
                 'access_token' => $token['token'],
                 'token_expires_at' => $token['expires_at'],
-                'granted_scopes' => $token['scopes'],
+                'granted_scopes' => array_values(array_intersect($token['scopes'], SocialConnection::SCOPES)),
                 'status' => SocialConnection::STATUS_PENDING_SELECTION,
                 // Origem: o utilizador que iniciou, ou o link de configuração do cliente (sem utilizador).
                 'connected_by_user_id' => $linkId ? null : ($state['user_id'] ?? null),

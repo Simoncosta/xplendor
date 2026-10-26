@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Models\AgencyMetaConnection;
 use App\Models\SocialConnection;
+use App\Models\SocialPublishingGrant;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -95,8 +97,20 @@ class MetaSocialClient implements MetaSocialClientInterface
             // 0 ou ausente = sem data de expiração (NULL), nunca 1970 nem uma data inventada.
             'expires_at' => \App\Support\MetaTokenExpiry::fromDebug($data),
             'user_id' => isset($data['user_id']) ? (string) $data['user_id'] : null,
-            'scopes' => array_values(array_intersect(SocialConnection::SCOPES, (array) ($data['scopes'] ?? SocialConnection::SCOPES))),
+            'scopes' => array_values(array_intersect(self::knownScopes(), (array) ($data['scopes'] ?? SocialConnection::SCOPES))),
         ];
+    }
+
+    /**
+     * As permissões que algum fluxo desta autorização usa: as três da leitura, as duas de publicar
+     * (SocialPublishingGrant) e as da agência (AgencyMetaConnection). Cada fluxo confirma as suas e
+     * guarda só essas; as outras que a Meta devolva (email, public_profile, …) saem aqui.
+     *
+     * @return list<string>
+     */
+    public static function knownScopes(): array
+    {
+        return array_values(array_unique([...SocialConnection::SCOPES, ...SocialPublishingGrant::SCOPES, ...AgencyMetaConnection::SCOPES]));
     }
 
     /**
