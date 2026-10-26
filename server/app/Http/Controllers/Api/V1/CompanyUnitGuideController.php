@@ -27,8 +27,12 @@ class CompanyUnitGuideController extends Controller
         if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
-        $v = $request->validate(['fila' => ['nullable', Rule::in(['todos', 'por_identificar', 'administrador'])]]);
-        $data = (new UnitProfileService($companyId))->queue($v['fila'] ?? 'todos');
+        $v = $request->validate([
+            'fila' => ['nullable', Rule::in(['todos', 'por_identificar', 'administrador'])],
+            'q' => ['nullable', 'string', 'max:100'],
+            'estado' => ['nullable', Rule::in(UnitProfileService::ESTADOS)],
+        ]);
+        $data = (new UnitProfileService($companyId))->queue($v['fila'] ?? 'todos', $v['q'] ?? null, $v['estado'] ?? null);
 
         return ApiResponse::success($this->redact($request, $companyId, $data), 'Guião de unidades.');
     }
@@ -39,7 +43,13 @@ class CompanyUnitGuideController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        return $this->viewResponse($request, $companyId, (new UnitProfileService($companyId))->view($productId));
+        $service = new UnitProfileService($companyId);
+        // A ligação direta a um artigo que não está no Guião: 404 com o motivo (o ecrã mostra-o e a pesquisa).
+        if ($reason = $service->outOfGuide($productId)) {
+            return ApiResponse::error($reason, 404, ['artigo' => ['fora_do_guiao']]);
+        }
+
+        return $this->viewResponse($request, $companyId, $service->view($productId));
     }
 
     /** As respostas às perguntas, sem gravar: a proposta e o "O que muda" refazem-se. */

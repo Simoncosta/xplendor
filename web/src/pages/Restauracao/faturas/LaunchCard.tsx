@@ -7,7 +7,8 @@ import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import { closeOcrLaunch, getArticleRead, getOcrLaunch, launchOcrInvoice, refreshArticle, setOcrLineLaunchUnit, setOcrPaperCheck, voidOcrLaunch } from "helpers/laravel_helper";
-import { OcrLaunchPreview } from "common/models/ocr.model";
+import { OcrGuideArticle, OcrLaunchPreview } from "common/models/ocr.model";
+import { UNIT_GUIDE, unitGuideLink } from "../units/guideLink";
 import { useArticleReadPolling } from "../useArticleReadPolling";
 
 /**
@@ -24,18 +25,25 @@ export type LaunchTrigger = { action: "draft" | "closed"; at: number } | null;
 type Props = { companyId: number; invoiceId: number; onChanged: () => void; trigger?: LaunchTrigger; refreshKey?: number; onPreview?: (p: OcrLaunchPreview) => void };
 
 export const CLOSE_WARNING = "Depois de fechada, a fatura entra no stock e na conta corrente. Para corrigir, é preciso anular.";
-const UNIT_GUIDE = "/restauracao/auditoria/guiao";
 const ARTICLES = "/cadastros/artigos";
 
 export type LaunchFix = { to: string; label: string };
 /** O que os dois botões de gravar dizem (null = ativo) e onde se resolve o que falta. */
 export type LaunchState = { draft: string | null; closed: string | null; fixes: LaunchFix[] };
 
+/** Os artigos das linhas com a unidade por resolver (a guarda) ou por confirmar no Guião (o fecho), sem repetir. */
+export function unitGuideArticles(p: OcrLaunchPreview): OcrGuideArticle[] {
+    const all = [...(p.guards.find((g) => g.key === "unidades" && !g.ok)?.articles ?? []),
+        ...(p.close?.blockers.find((b) => b.key === "unidades_confirmadas")?.articles ?? [])];
+    return all.filter((a, i) => all.findIndex((x) => x.pingwin_id === a.pingwin_id) === i);
+}
+
 /**
  * Os motivos de "Gravar como rascunho" e "Gravar como fechada" a partir da pré-visualização: os mesmos
  * no cartão e no painel "Fatura validada" (o ecrã nunca oferece o que o lançamento vai recusar).
+ * backTo: o caminho da fatura, para o "Voltar à fatura" no Guião de unidades.
  */
-export function launchState(p: OcrLaunchPreview, busyWrite = false): LaunchState {
+export function launchState(p: OcrLaunchPreview, busyWrite = false, backTo?: string): LaunchState {
     const failed = p.guards.filter((g) => !g.ok);
     const onlyCheck = failed.length === 1 && failed[0].key === "conferencia";
     const pending = busyWrite || p.writes.some((w) => w.status === "pendente");
@@ -56,7 +64,12 @@ export function launchState(p: OcrLaunchPreview, busyWrite = false): LaunchState
         planned.filter((l) => l.kind === "linha" && l.rounded_from != null && l.article)
             .forEach((l) => add({ to: `${ARTICLES}/${l.article!.pingwin_id}`, label: `Abrir ${l.article!.description ?? "o artigo"} em Cadastros › Artigos` }));
     }
-    if (keys.has("unidades") || keys.has("unidades_confirmadas")) add({ to: UNIT_GUIDE, label: "Abrir o Guião de unidades" });
+    // Cada artigo com a unidade por resolver liga ao seu artigo no Guião (e volta à fatura).
+    if (keys.has("unidades") || keys.has("unidades_confirmadas")) {
+        const arts = unitGuideArticles(p);
+        arts.forEach((a) => add({ to: unitGuideLink(a.pingwin_id, backTo), label: `Abrir ${a.description} no Guião de unidades` }));
+        if (arts.length === 0) add({ to: UNIT_GUIDE, label: "Abrir o Guião de unidades" });
+    }
     if (keys.has("agrupamento")) {
         planned.filter((l) => l.kind === "grupo" && l.article)
             .forEach((l) => add({ to: `${ARTICLES}/${l.article!.pingwin_id}`, label: `Abrir ${l.article!.description ?? "o artigo"} em Cadastros › Artigos` }));
@@ -192,7 +205,8 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
     const onlyCheck = failed.length === 1 && failed[0].key === "conferencia";
     const draftActive = p.draft && p.draft.docstatus_id !== "8003";
     const last = p.writes[0];
-    const state = launchState(p);
+    const back = `/restauracao/faturas/${invoiceId}`;
+    const state = launchState(p, false, back);
     const launchReason = launchState({ ...p, writes: [] }).draft;
     const closeBlockers = p.close?.blockers ?? [];
     const closeReason = state.closed;
@@ -297,7 +311,7 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
                         : <p className="mb-1" data-testid="launch-closed-info"><i className="ri-check-double-line me-1 text-success" />Lançada e fechada no PingWin: <strong>{p.draft!.document}</strong>.
                             {p.close?.closed_at && <span className="text-muted"> Fechada por {p.close.closed_by_name ?? "—"} a {new Date(p.close.closed_at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}.</span>}</p>}
                     <p className="text-muted mb-0">Total {(p.draft!.total).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })} · {p.draft!.store_name ?? "—"} · lançada a {fmtDay(p.draft!.doc_date)}</p>
-                    {p.draft!.docstatus_id === "8001" && closeBlockers.length > 0 && <CloseBlockers blockers={closeBlockers} unitsMissing={unitsMissing} />}
+                    {p.draft!.docstatus_id === "8001" && closeBlockers.length > 0 && <CloseBlockers blockers={closeBlockers} unitsMissing={unitsMissing} back={back} />}
                 </div>
             ) : (
                 <>
@@ -305,7 +319,8 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
                         {p.guards.map((g) => (
                             <li key={g.key} className="d-flex gap-2 mb-1">
                                 <i className={g.ok ? "ri-checkbox-circle-line text-success" : "ri-close-circle-line text-danger"} aria-hidden />
-                                <span>{g.label}{!g.ok && g.message && <span className="text-muted"> · {g.message}</span>}</span>
+                                <span>{g.label}{!g.ok && g.message && <span className="text-muted"> · {g.message}</span>}
+                                    {!g.ok && (g.articles ?? []).length > 0 && <GuideLinks articles={g.articles!} back={back} />}</span>
                             </li>
                         ))}
                     </ul>
@@ -323,7 +338,7 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
                             </label>
                         </div>
                     )}
-                    {p.can_launch && closeBlockers.length > 0 && <CloseBlockers blockers={closeBlockers} unitsMissing={unitsMissing} />}
+                    {p.can_launch && closeBlockers.length > 0 && <CloseBlockers blockers={closeBlockers} unitsMissing={unitsMissing} back={back} />}
                     {(p.discount_warnings ?? []).map((w, i) => (
                         <div key={i} className="fs-13 text-warning mb-1" data-testid="launch-discount-warning"><i className="ri-error-warning-line me-1" />{w}</div>
                     ))}
@@ -352,6 +367,8 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
                                                     onChange={(e) => setUnitDraft((s) => ({ ...s, [l.id]: { ...d, quantity: e.target.value } }))} /></td>
                                                 <td className="text-nowrap">
                                                     <ReasonButton size="sm" color="outline-primary" reason={!d.unit_id ? "Escolha a unidade." : null} disabled={busy} onClick={() => saveUnit(l.id)}>Guardar</ReasonButton>
+                                                    <Link to={unitGuideLink(l.article!.pingwin_id, back)} className="btn btn-link btn-sm py-0" data-testid={`launch-guide-${l.id}`}
+                                                        title="Abre este artigo no Guião de unidades (depois pode voltar à fatura).">Guião</Link>
                                                     <Button size="sm" color="link" className="py-0" disabled={refreshingArticle !== null} data-testid={`launch-refresh-${l.id}`}
                                                         title="Lê o artigo no PingWin agora (as unidades da cópia podem estar desatualizadas)." onClick={() => refreshFromPingwin(l.article!.pingwin_id)}>
                                                         {refreshingArticle === l.article!.pingwin_id ? <Spinner size="sm" /> : "Atualizar do PingWin"}
@@ -427,15 +444,29 @@ export default function LaunchCard({ companyId, invoiceId, onChanged, trigger = 
     );
 }
 
-/** O que falta para "Gravar como fechada" (com a ligação ao Guião de unidades, se forem as unidades). */
-function CloseBlockers({ blockers, unitsMissing }: { blockers: { key: string; label: string; message: string | null }[]; unitsMissing: boolean }) {
+/** As ligações ao Guião de unidades, uma por artigo (cada uma abre o seu artigo e volta à fatura). */
+function GuideLinks({ articles, back }: { articles: OcrGuideArticle[]; back: string }) {
+    return (
+        <span className="d-flex flex-wrap gap-2 mt-1" data-testid="guide-links">
+            {articles.map((a) => (
+                <Link key={a.pingwin_id} to={unitGuideLink(a.pingwin_id, back)}><i className="ri-ruler-line me-1" />Abrir {a.description} no Guião de unidades</Link>
+            ))}
+        </span>
+    );
+}
+
+/** O que falta para "Gravar como fechada" (com a ligação ao Guião de unidades de cada artigo, se forem as unidades). */
+function CloseBlockers({ blockers, unitsMissing, back }: { blockers: { key: string; label: string; message: string | null; articles?: OcrGuideArticle[] }[]; unitsMissing: boolean; back: string }) {
+    const arts = blockers.find((b) => b.key === "unidades_confirmadas")?.articles ?? [];
     return (
         <div className="fs-13 mt-2" data-testid="close-blockers">
             <div className="fw-semibold mb-1">Para gravar como fechada, falta:</div>
             <ul className="mb-0 ps-3">
                 {blockers.map((b) => <li key={b.key}>{b.message ?? b.label}</li>)}
             </ul>
-            {unitsMissing && <Link to={UNIT_GUIDE} className="d-inline-block mt-1"><i className="ri-ruler-line me-1" />Abrir o Guião de unidades</Link>}
+            {unitsMissing && (arts.length > 0
+                ? <GuideLinks articles={arts} back={back} />
+                : <Link to={UNIT_GUIDE} className="d-inline-block mt-1"><i className="ri-ruler-line me-1" />Abrir o Guião de unidades</Link>)}
         </div>
     );
 }

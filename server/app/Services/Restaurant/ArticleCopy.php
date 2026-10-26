@@ -26,7 +26,7 @@ final class ArticleCopy
     /** A cópia local, como o ecrã a mostra (sem ir ao PingWin). */
     public static function present(PingwinCatalogItem $item): array
     {
-        $ids = array_values(array_filter(array_map(fn ($u) => (string) $item->{$u[0]}, self::UNITS)));
+        $ids = array_values(array_filter(array_merge(array_map(fn ($u) => (string) $item->{$u[0]}, self::UNITS), [(string) $item->label_unit_id, (string) $item->volume_unit_id])));
         $names = PingwinUnit::where('company_id', $item->company_id)->whereIn('pingwin_id', $ids)->get(['pingwin_id', 'description', 'shortname'])
             ->mapWithKeys(fn ($u) => [(string) $u->pingwin_id => trim($u->description . ($u->shortname ? " ({$u->shortname})" : ''))]);
         $units = [];
@@ -43,6 +43,14 @@ final class ArticleCopy
             'forsale' => (bool) $item->forsale, 'forpurchase' => (bool) $item->forpurchase,
             'saleprice_cents' => $item->saleprice_cents, 'purchaseprice_cents' => $item->purchaseprice_cents,
             'units' => $units, 'read_at' => $readAt?->toIso8601String(), 'live_read_at' => $item->live_read_at ? \Illuminate\Support\Carbon::parse($item->live_read_at)->toIso8601String() : null,
+            // O formulário do artigo com os valores da cópia (desativado até chegar a leitura ao vivo): ids e nomes.
+            'form' => [
+                'family_id' => $item->family_pingwin_id, 'status_id' => $item->status_id, 'product_type_id' => $item->product_type_id, 'product_type' => $item->product_type,
+                'taxgroup_id' => $item->taxgroup_id, 'taxgroup' => $item->taxgroup, 'stockconfig_id' => $item->stockconfig_id, 'forproduction' => $item->forproduction,
+                'setexpireday' => $item->setexpireday, 'weight' => $item->weight,
+                'label_unit' => ['id' => $item->label_unit_id ? (string) $item->label_unit_id : null, 'name' => $names[(string) $item->label_unit_id] ?? null],
+                'volume_unit' => ['id' => $item->volume_unit_id ? (string) $item->volume_unit_id : null, 'name' => $names[(string) $item->volume_unit_id] ?? null],
+            ],
             // As mudanças recentes da unidade base ou de compra num artigo com histórico (as linhas antigas ficam na anterior).
             'unit_changes' => \App\Models\ArticleUnitChange::recentFor((int) $item->company_id, [(string) $item->pingwin_id])[(string) $item->pingwin_id] ?? [],
         ];

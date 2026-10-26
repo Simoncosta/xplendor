@@ -413,7 +413,7 @@ export default function FaturaValidacaoPage() {
     const isCredit = docType === "NC";
     const noteBlocked = NOTE_BLOCKED[docType] ?? null;
     // Os botões do painel "Fatura validada": os motivos das guardas do lançamento (as mesmas do cartão).
-    const launch = launchPreview ? launchState(launchPreview) : null;
+    const launch = launchPreview ? launchState(launchPreview, false, `/restauracao/faturas/${id}`) : null;
     const checking = "A verificar o que falta para gravar no PingWin…";
     const savedDraftReason = noteBlocked ?? (launch ? launch.draft : checking);
     const savedClosedReason = noteBlocked ?? (launch ? launch.closed : checking);
@@ -594,9 +594,11 @@ export default function FaturaValidacaoPage() {
                             </ReasonButton>
                             <Button size="sm" color="light" onClick={() => navigate("/restauracao/faturas")}>Voltar à lista</Button>
                         </span>
-                        {!noteBlocked && launch && launch.draft && (
+                        {!noteBlocked && launch && (launch.draft || (launch.closed && launch.fixes.length > 0)) && (
                             <div className="w-100 fs-13" data-testid="saved-launch-blocked">
-                                <i className="ri-error-warning-line me-1" />Ainda não se pode gravar no PingWin: {launch.draft}
+                                {launch.draft
+                                    ? <><i className="ri-error-warning-line me-1" />Ainda não se pode gravar no PingWin: {launch.draft}</>
+                                    : <><i className="ri-error-warning-line me-1" />Ainda não se pode gravar como fechada: {launch.closed}</>}
                                 {launch.fixes.length > 0 && (
                                     <span className="d-flex flex-wrap gap-3 mt-1">
                                         {launch.fixes.map((f) => <Link key={f.to} to={f.to}><i className="ri-arrow-right-line me-1" />{f.label}</Link>)}

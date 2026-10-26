@@ -112,6 +112,15 @@ class PingwinArticleRefreshTest extends TestCase
             ->assertJsonPath('data.live_read_at', null);
         $this->assertSame([], $this->reads);
         $this->actingAs($this->user, 'sanctum')->getJson($this->url('999999/copy'))->assertNotFound();
+
+        // O formulário abre logo com os valores da cópia (ids e nomes), sem ir ao PingWin.
+        $this->item->update(['family_pingwin_id' => 'F12', 'family' => 'Família \\ Cozinha', 'status_id' => '1', 'taxgroup_id' => '1003001', 'taxgroup' => 'Normal',
+            'stockconfig_id' => '7501', 'setexpireday' => 3, 'label_unit_id' => '11002', 'forproduction' => false]);
+        $f = $this->actingAs($this->user, 'sanctum')->getJson($this->url('101208/copy'))->assertOk()->json('data.form');
+        $this->assertSame(['F12', '1', '1003001', 'Normal', '7501'], [$f['family_id'], $f['status_id'], $f['taxgroup_id'], $f['taxgroup'], $f['stockconfig_id']]);
+        $this->assertSame(['id' => '11002', 'name' => 'Quilograma (KG)'], $f['label_unit']);
+        $this->assertSame(['id' => null, 'name' => null], $f['volume_unit']);
+        $this->assertSame([], $this->reads);
     }
 
     public function test_refresh_reads_the_article_writes_the_unit_ids_and_names_and_rereads_its_units(): void

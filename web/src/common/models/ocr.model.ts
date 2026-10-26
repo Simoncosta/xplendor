@@ -359,7 +359,11 @@ export interface OcrLaunchGuard {
     ok: boolean;
     label: string;
     message: string | null;
+    /** As linhas assinaladas nas unidades: o artigo de cada uma, para a ligação ao Guião de unidades. */
+    articles?: OcrGuideArticle[];
 }
+/** Um artigo de uma linha da fatura, para a ligação direta ao Guião de unidades. */
+export type OcrGuideArticle = { pingwin_id: string; description: string };
 
 export interface OcrLaunchLine {
     id: number;
@@ -400,7 +404,7 @@ export interface OcrLaunchPreview {
     draft: { docheader_id: string; document: string | null; docstatus_id: string; docstatus_label: string; total: number; store_name: string | null; doc_date: string | null } | null;
     writes: OcrDocWrite[];
     // "Gravar no PingWin como fechada": launch = lança e fecha; draft = fecha o rascunho; null = já fechada.
-    close?: { mode: "launch" | "draft" | null; can_close: boolean; blockers: { key: string; label: string; message: string | null }[];
+    close?: { mode: "launch" | "draft" | null; can_close: boolean; blockers: { key: string; label: string; message: string | null; articles?: OcrGuideArticle[] }[];
         closed_at: string | null; closed_by_name: string | null };
     discount_warnings?: string[];
     /** O que iria para o PingWin (sem escrever nada): as linhas e, com IEC numa coluna à parte, a linha do IEC. */

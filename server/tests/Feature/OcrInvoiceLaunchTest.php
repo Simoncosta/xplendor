@@ -539,7 +539,7 @@ class OcrInvoiceLaunchTest extends TestCase
 
     public function test_decimals_on_an_article_by_the_unit_block_the_launch_and_the_estimate_shows_the_rounding(): void
     {
-        [$inv] = $this->wholeUnitInvoice();
+        [$inv, $staff] = $this->wholeUnitInvoice();
         $p = $this->svc()->preview($inv);
         $g = collect($p['guards'])->keyBy('key');
         $this->assertFalse($g['unidades']['ok']);
@@ -547,6 +547,8 @@ class OcrInvoiceLaunchTest extends TestCase
             . ' Confirme a unidade no Guião de unidades. Se o artigo junta produtos diferentes, marque-o como artigo de agrupamento.',
             explode(' Linha «Carne 1»', $g['unidades']['message'])[0]);
         $this->assertStringContainsString('a linha tem 8,665 kg; o PingWin arredonda para 9.', $g['unidades']['message']);
+        // As linhas que arredondam são do mesmo artigo: uma só ligação ao Guião, a desse artigo.
+        $this->assertSame([['pingwin_id' => (string) $staff->pingwin_id, 'description' => 'COMIDA STAFF 23%']], $g['unidades']['articles']);
         // O total estimado já simula o arredondamento: 9 × 9,19 + 9 × 2,49 + 9 × 7,39 = 171,63 € em vez de 158,55 €.
         $this->assertSame([8271, 2241, 6651, 17410], array_column(array_slice($p['planned']['lines'], 0, 4), 'net_cents'));
         $this->assertSame([42524, 40916, -1608], [$p['estimate']['computed_cents'], $p['estimate']['target_cents'], $p['estimate']['adjustment_cents']]);
@@ -784,6 +786,8 @@ class OcrInvoiceLaunchTest extends TestCase
         $this->assertSame(['unidades_confirmadas'], array_column($p['close']['blockers'], 'key'));
         $this->assertStringContainsString('ARTIGO B', $p['close']['blockers'][0]['message']);
         $this->assertStringNotContainsString('ARTIGO A', $p['close']['blockers'][0]['message']);
+        // O artigo por confirmar, para a ligação direta ao seu artigo no Guião.
+        $this->assertSame([['pingwin_id' => 'PB', 'description' => 'ARTIGO B']], $p['close']['blockers'][0]['articles']);
 
         // "Gravar como fechada" sem as unidades: 422 com o que falta; nada é escrito.
         $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/companies/{$this->yuko->id}/ocr/invoices/{$inv->id}/pingwin-launch", ['close' => true])

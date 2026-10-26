@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import {
-    Card, CardBody, Container, Row, Col, Spinner, Label, Input, Button,
+    Alert, Card, CardBody, Container, Row, Col, Spinner, Label, Input, Button,
     Nav, NavItem, NavLink, TabContent, TabPane, Form,
     Modal, ModalHeader, ModalBody, ModalFooter,
 } from "reactstrap";
@@ -28,8 +28,10 @@ import PageHeader from "Components/Common/PageHeader";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import { confirmAction } from "helpers/swal";
 import Skeleton from "Components/Common/Skeleton";
-import ArticleCopyCard, { ArticleChange, ArticleChanges, ArticleCopy, fmtWhen } from "./ArticleCopyCard";
+import { ArticleChange, ArticleChanges, ArticleCopy, fmtWhen } from "./ArticleCopyCard";
 import UnitChangesAlert from "./units/UnitChangesAlert";
+import { ArticleForm, EMPTY_FORM, changedFields, formFromCopy, formFromLive, lookupsFromCopy } from "./articleCopyForm";
+import { unitGuideLink } from "./units/guideLink";
 
 /**
  * XPLENDOR — Restauração › Artigo (criar / abrir / editar). Mesmo form nos 2 modos.
@@ -40,6 +42,9 @@ import UnitChangesAlert from "./units/UnitChangesAlert";
  * A lista traz ambos; o pingwinId vem no URL e o catalogItemId no location.state.
  * ⚠️ Fallback F5: se o state se perder (recarregar), o catalogItemId vem no próprio
  * readProduct (resolvido no backend pelo pingwin_id).
+ * Ao editar, o formulário completo abre logo com a cópia local, desativado ("Dados de dd/mm às hh:mm,
+ * a atualizar…"); só se ativa com a leitura ao vivo do PingWin, que assinala os campos que mudaram.
+ * Sem resposta, fica desativado com "Tentar de novo": nunca se grava a partir de dados velhos.
  */
 
 type Opt = { value: string; label: string };
@@ -54,19 +59,14 @@ const eurToCents = (s: string): number | null => {
     const n = parseFloat(t);
     return isNaN(n) ? null : Math.round(n * 100);
 };
-/** cêntimos → "12,34" (ou "" se null). */
-const centsToEur = (c: number | null | undefined): string =>
-    c === null || c === undefined ? "" : (Number(c) / 100).toFixed(2).replace(".", ",");
-
-const EMPTY_FORM = {
-    code: "", description: "", status: "1", family_id: "",
-    forsale: true, forpurchase: false, forproduction: false,
-    base_unit_id: "", sale_unit_id: "", purchase_unit_id: "",
-    saleprice: "", change_sale_price: false, purchaseprice: "",
-    product_type: "1", taxgroup_id: "", stockconfig_id: "", setexpireday: "",
-    shortname: "", button_name: "",
-    stock_unit_id: "", label_unit_id: "", volume_unit_id: "", weight: "",
-};
+/** O rótulo de um campo, com a marca "mudou" quando a leitura ao vivo o mudou face à cópia. */
+function FieldLabel({ children, changed, className = "form-label" }: { children: ReactNode; changed?: boolean; className?: string }) {
+    return (
+        <Label className={className}>{children}
+            {changed && <span className="badge bg-info-subtle text-info ms-1" data-testid="field-changed" title="Mudou no PingWin desde a última leitura.">mudou</span>}
+        </Label>
+    );
+}
 
 export default function ArtigoFormPage() {
     const navigate = useNavigate();
@@ -95,7 +95,7 @@ export default function ArtigoFormPage() {
     // preços à carga (para no editar só reenviar o preço se mudou).
     const [loaded, setLoaded] = useState<{ saleprice: string; purchaseprice: string }>({ saleprice: "", purchaseprice: "" });
 
-    const [f, setF] = useState({ ...EMPTY_FORM });
+    const [f, setF] = useState<ArticleForm>({ ...EMPTY_FORM });
     const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
 
     const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -150,15 +150,27 @@ export default function ArtigoFormPage() {
     // ── EDITAR: a cópia local abre logo; a leitura ao vivo (read polling) substitui-a, assinala o que
     // mudou e grava na cópia. "Atualizar do PingWin" volta a ler (com limite de pedidos). ──
     const [copy, setCopy] = useState<ArticleCopy | null>(null);
+    const copyRef = useRef<ArticleCopy | null>(null);
     const [liveError, setLiveError] = useState<string | null>(null);
     const [changes, setChanges] = useState<ArticleChange[]>([]);
+    const [changed, setChanged] = useState<(keyof ArticleForm)[]>([]);
     const [formReady, setFormReady] = useState(false);
+    const live = useRef(false);
     const [reloadKey, setReloadKey] = useState(0);
     const [refreshing, setRefreshing] = useState(false);
     useEffect(() => {
         if (isCreate || !companyId || !pingwinId) return;
         let alive = true;
-        getArticleCopy(companyId, pingwinId).then((r: any) => { if (alive && r?.data) setCopy(r.data); }).catch(() => { /* sem cópia: espera pela leitura */ });
+        getArticleCopy(companyId, pingwinId).then((r: any) => {
+            if (!alive || !r?.data) return;
+            copyRef.current = r.data;
+            setCopy(r.data);
+            // O formulário abre com a cópia (desativado); a leitura ao vivo, se já chegou, manda.
+            if (live.current) return;
+            setF(formFromCopy(r.data));
+            setLookups(lookupsFromCopy(r.data));
+            setCatId((c) => c ?? r.data.catalog_item_id ?? null);
+        }).catch(() => { /* sem cópia: o formulário vazio espera pela leitura */ });
         return () => { alive = false; };
     }, [isCreate, companyId, pingwinId]);
 
@@ -168,45 +180,23 @@ export default function ArtigoFormPage() {
         (async () => {
             setLoading(true);
             setLiveError(null);
-            const start = reloadKey > 0 ? () => refreshArticle(companyId, pingwinId) : () => getArticle(companyId, pingwinId);
+            // "Atualizar do PingWin" e "Tentar de novo" usam a releitura (com limite); sem cópia, a leitura de abrir.
+            const start = reloadKey > 0 && copyRef.current ? () => refreshArticle(companyId, pingwinId) : () => getArticle(companyId, pingwinId);
             const r = await read(start, (t) => getArticleRead(companyId, t));
             if (!alive) return;
             setRefreshing(false);
             if (r.status === "ready") {
                 setChanges(r.data?.changes ?? []);
-                if (r.data?.copy) setCopy(r.data.copy);
-                setFormReady(true);
                 const art = r.data?.article ?? {};
+                const fresh = formFromLive(art);
+                // Os campos que mudaram face à cópia que estava no ecrã ficam assinalados.
+                setChanged(changedFields(copyRef.current, fresh));
+                if (r.data?.copy) { copyRef.current = r.data.copy; setCopy(r.data.copy); }
+                live.current = true;
+                setFormReady(true);
                 setLookups(art.lookups ?? {});
-                const m = art.maindataset ?? {};
-                const saleStr = centsToEur(art.saleprice_cents);
-                const purchStr = centsToEur(art.purchaseprice_cents);
-                setF({
-                    code: String(m.code ?? ""),
-                    description: String(m.description ?? ""),
-                    status: m.status != null ? String(m.status) : "1",
-                    family_id: m.family_id ? String(m.family_id) : "",
-                    forsale: !!Number(m.forsale),
-                    forpurchase: !!Number(m.forpurchase),
-                    forproduction: !!Number(m.forproduction),
-                    base_unit_id: m.base_unit_id ? String(m.base_unit_id) : "",
-                    sale_unit_id: m.default_sale_unit_id ? String(m.default_sale_unit_id) : "",
-                    purchase_unit_id: m.default_purchase_unit_id ? String(m.default_purchase_unit_id) : "",
-                    stock_unit_id: m.default_stock_unit_id ? String(m.default_stock_unit_id) : "",
-                    label_unit_id: m.label_unit_id ? String(m.label_unit_id) : "",
-                    volume_unit_id: m.volume_unit_id ? String(m.volume_unit_id) : "",
-                    product_type: m.product_type != null ? String(m.product_type) : "1",
-                    taxgroup_id: m.taxgroup_id ? String(m.taxgroup_id) : "",
-                    stockconfig_id: m.stockconfig_id ? String(m.stockconfig_id) : "",
-                    setexpireday: m.setexpireday != null && m.setexpireday !== "" ? String(m.setexpireday) : "",
-                    shortname: String(m.shortname ?? ""),
-                    button_name: String(m.button_name ?? ""),
-                    change_sale_price: !!Number(m.change_sale_price),
-                    weight: m.weight != null && m.weight !== "" ? String(m.weight).replace(".", ",") : "",
-                    saleprice: saleStr,
-                    purchaseprice: purchStr,
-                });
-                setLoaded({ saleprice: saleStr, purchaseprice: purchStr });
+                setF(fresh);
+                setLoaded({ saleprice: fresh.saleprice, purchaseprice: fresh.purchaseprice });
                 setCatId((location.state as any)?.catalogItemId ?? art.catalog_item_id ?? null);
                 // Tab Compras (C3): linhas de fornecedor (staging) + tabelas p/ a cascata.
                 compras.setClean(art.supplier_prices ?? []);
@@ -214,7 +204,7 @@ export default function ArtigoFormPage() {
                 // Não auto-preencher por cima dos valores carregados.
                 setTouched({ shortname: true, button_name: true, stock_unit_id: true, label_unit_id: true, volume_unit_id: true });
             } else {
-                // Sem resposta do PingWin: fica a cópia, com o aviso (ou o erro, se não houver cópia).
+                // Sem resposta do PingWin: o formulário fica desativado com a cópia e o aviso (e "Tentar de novo").
                 setLiveError(r.error_message ?? "Não foi possível carregar o artigo do PingWin.");
                 if (reloadKey > 0 && formReady) toast.error(r.error_message ?? "Não foi possível atualizar o artigo.");
             }
@@ -225,6 +215,9 @@ export default function ArtigoFormPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreate, companyId, pingwinId, read, reloadKey]);
     const refreshLive = () => { setRefreshing(true); setReloadKey((n) => n + 1); };
+    // Ao editar, só se escreve depois de uma leitura nova do PingWin: até lá, tudo desativado.
+    const locked = !isCreate && !formReady;
+    const mk = (...keys: (keyof ArticleForm)[]) => keys.some((k) => changed.includes(k));
 
     // Aviso do browser ao fechar/recarregar com alterações de fornecedores por gravar.
     useEffect(() => {
@@ -358,19 +351,22 @@ export default function ArtigoFormPage() {
                     info={isCreate ? "Cria um artigo no PingWin." : "Altera o artigo no PingWin, incluindo o Estado."}
                 />
 
-                {!isCreate && !formReady && copy ? (
-                    // A cópia local abre logo; com o PingWin sem resposta, fica com o aviso.
-                    <ArticleCopyCard copy={copy} error={loading ? null : liveError} onRetry={refreshLive} />
-                ) : (isCreate ? loading : !formReady) ? (
+                {isCreate && loading ? (
                     <div className="card"><div className="card-body">
-                        {liveError && !loading
-                            ? <p className="text-danger fs-13 mb-0" data-testid="article-error">{liveError}</p>
-                            : <><p className="text-muted fs-13 mb-3">A carregar do PingWin…</p><Skeleton variant="lines" lines={8} label="" /></>}
+                        <p className="text-muted fs-13 mb-3">A carregar do PingWin…</p><Skeleton variant="lines" lines={8} label="" />
                     </div></div>
                 ) : (
-                    <Form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+                    <Form onSubmit={(e) => { e.preventDefault(); if (!locked) onSubmit(); }}>
+                        {/* Sem resposta do PingWin: desativado, com a hora dos dados e "Tentar de novo". */}
+                        {locked && liveError && !loading && (
+                            <Alert color="warning" className="py-2 fs-13 d-flex flex-wrap align-items-center gap-2" data-testid="article-copy-error">
+                                <span className="flex-grow-1"><i className="ri-error-warning-line me-1" />{liveError}{" "}
+                                    {copy ? `Estes são os dados guardados de ${fmtWhen(copy.read_at)}.` : ""} Só se pode editar depois de uma leitura nova do PingWin.</span>
+                                <Button size="sm" color="warning" onClick={refreshLive} disabled={refreshing}>{refreshing ? <Spinner size="sm" /> : "Tentar de novo"}</Button>
+                            </Alert>
+                        )}
                         {!isCreate && <ArticleChanges changes={changes} />}
-                        {!isCreate && <UnitChangesAlert changes={copy?.unit_changes ?? []} />}
+                        {!isCreate && <UnitChangesAlert changes={copy?.unit_changes ?? []} guideTo={pingwinId ? unitGuideLink(pingwinId, `/cadastros/artigos/${pingwinId}`) : undefined} />}
                         {created && (
                             <div className="alert alert-success d-flex align-items-center gap-2" role="alert">
                                 <i className="ri-checkbox-circle-line fs-5" />
@@ -382,74 +378,86 @@ export default function ArtigoFormPage() {
                         <PageCard
                             title="Artigo"
                             flush={false}
-                            status={!isCreate && copy?.live_read_at ? <span className="text-muted fs-12" data-testid="article-read-at">Lido do PingWin a {fmtWhen(copy.live_read_at)}</span> : undefined}
+                            status={locked ? (
+                                <span className="text-muted fs-12" data-testid="article-stale">
+                                    {loading && <Spinner size="sm" className="me-1" />}
+                                    {copy ? `Dados de ${fmtWhen(copy.read_at)}${loading ? ", a atualizar…" : ""}` : loading ? "A ler do PingWin…" : "Sem dados do PingWin"}
+                                </span>
+                            ) : !isCreate && copy?.live_read_at ? <span className="text-muted fs-12" data-testid="article-read-at">Lido do PingWin a {fmtWhen(copy.live_read_at)}</span> : undefined}
                             actions={!isCreate ? (<>
-                                <Button size="sm" color="light" onClick={refreshLive} disabled={refreshing || busy} data-testid="article-refresh"
+                                {pingwinId && (
+                                    <Link to={unitGuideLink(pingwinId, `/cadastros/artigos/${pingwinId}`)} className="btn btn-light btn-sm" data-testid="article-guide-link"
+                                        title="Abre este artigo no Guião de unidades (depois pode voltar ao artigo).">
+                                        <i className="ri-ruler-line me-1" />Guião de unidades
+                                    </Link>
+                                )}
+                                <Button size="sm" color="light" onClick={refreshLive} disabled={refreshing || busy || (locked && loading)} data-testid="article-refresh"
                                     title="Lê o artigo de novo no PingWin e atualiza a cópia da XPLENDOR (unidades incluídas).">
                                     {refreshing ? <><Spinner size="sm" className="me-1" />A atualizar…</> : <><i className="ri-refresh-line me-1" />Atualizar do PingWin</>}
                                 </Button>
                                 <ActionsMenu size="sm" label={`Mais ações: ${f.description || "artigo"}`} items={[
                                     {
                                         label: "Anular", icon: "ri-delete-bin-line", danger: true, onClick: () => setAnularOpen(true),
-                                        disabledReason: busy ? "Aguarde: há uma gravação em curso no PingWin." : loading ? "A carregar o artigo." : null,
+                                        disabledReason: busy ? "Aguarde: há uma gravação em curso no PingWin." : loading ? "A carregar o artigo."
+                                            : locked ? "Sem leitura do PingWin: tente de novo." : null,
                                     },
                                 ]} />
                             </>) : undefined}
                         >
                                 <Row className="g-3">
                                     <Col md={2}>
-                                        <Label className="form-label">Código</Label>
+                                        <FieldLabel changed={mk("code")}>Código</FieldLabel>
                                         <Input value={f.code} readOnly disabled title="Atribuído pelo PingWin" />
                                     </Col>
                                     <Col md={6}>
-                                        <Label className="form-label">Descrição *</Label>
-                                        <Input value={f.description} onChange={(e) => onDescription(e.target.value)} maxLength={120} placeholder="Nome do artigo" />
+                                        <FieldLabel changed={mk("description")}>Descrição *</FieldLabel>
+                                        <Input value={f.description} disabled={locked} onChange={(e) => onDescription(e.target.value)} maxLength={120} placeholder="Nome do artigo" />
                                     </Col>
                                     <Col md={4}>
-                                        <Label className="form-label">Estado</Label>
-                                        <XSelect options={statusOptions} value={f.status} onChange={(v) => set("status", v)} searchable={false} />
+                                        <FieldLabel changed={mk("status")}>Estado</FieldLabel>
+                                        <XSelect disabled={locked} options={statusOptions} value={f.status} onChange={(v) => set("status", v)} searchable={false} />
                                     </Col>
 
                                     <Col md={4}>
-                                        <Label className="form-label">Família</Label>
-                                        <XSelect options={familyOptions} value={f.family_id} onChange={(v) => set("family_id", v)} searchable placeholder="Escolher família…" />
+                                        <FieldLabel changed={mk("family_id")}>Família</FieldLabel>
+                                        <XSelect disabled={locked} options={familyOptions} value={f.family_id} onChange={(v) => set("family_id", v)} searchable placeholder="Escolher família…" />
                                     </Col>
                                     <Col md={8}>
-                                        <Label className="form-label d-block">Tipo de artigo</Label>
+                                        <FieldLabel className="form-label d-block" changed={mk("forsale", "forpurchase", "forproduction")}>Tipo de artigo</FieldLabel>
                                         <div className="d-flex gap-4 flex-wrap align-items-center" style={{ minHeight: 38 }}>
-                                            <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-venda" checked={f.forsale} onChange={(e) => set("forsale", e.target.checked)} /><Label className="form-check-label" for="c-venda">Artigo de Venda</Label></div>
-                                            <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-compra" checked={f.forpurchase} onChange={(e) => toggleCompra(e.target.checked)} /><Label className="form-check-label" for="c-compra">Artigo de Compra</Label></div>
-                                            <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-prod" checked={f.forproduction} onChange={(e) => toggleProducao(e.target.checked)} /><Label className="form-check-label" for="c-prod">Artigo de Produção</Label></div>
+                                            <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-venda" disabled={locked} checked={f.forsale} onChange={(e) => set("forsale", e.target.checked)} /><Label className="form-check-label" for="c-venda">Artigo de Venda</Label></div>
+                                            <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-compra" disabled={locked} checked={f.forpurchase} onChange={(e) => toggleCompra(e.target.checked)} /><Label className="form-check-label" for="c-compra">Artigo de Compra</Label></div>
+                                            <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-prod" disabled={locked} checked={f.forproduction} onChange={(e) => toggleProducao(e.target.checked)} /><Label className="form-check-label" for="c-prod">Artigo de Produção</Label></div>
                                         </div>
                                     </Col>
 
                                     <Col md={4}>
-                                        <Label className="form-label">Unidade base</Label>
-                                        <XSelect options={baseUnitOptions} value={f.base_unit_id} onChange={(v) => onBaseUnit(v)} searchable placeholder="Escolher…" />
+                                        <FieldLabel changed={mk("base_unit_id")}>Unidade base</FieldLabel>
+                                        <XSelect disabled={locked} options={baseUnitOptions} value={f.base_unit_id} onChange={(v) => onBaseUnit(v)} searchable placeholder="Escolher…" />
                                     </Col>
                                     {f.forsale && (
                                         <Col md={4}>
-                                            <Label className="form-label">Unidade de venda</Label>
-                                            <XSelect options={saleUnitOptions} value={f.sale_unit_id} onChange={(v) => set("sale_unit_id", v)} searchable placeholder="(usa a base)" />
+                                            <FieldLabel changed={mk("sale_unit_id")}>Unidade de venda</FieldLabel>
+                                            <XSelect disabled={locked} options={saleUnitOptions} value={f.sale_unit_id} onChange={(v) => set("sale_unit_id", v)} searchable placeholder="(usa a base)" />
                                         </Col>
                                     )}
                                     {f.forpurchase && (
                                         <Col md={4}>
-                                            <Label className="form-label">Unidade de compra</Label>
-                                            <XSelect options={purchaseUnitOptions} value={f.purchase_unit_id} onChange={(v) => set("purchase_unit_id", v)} searchable placeholder="(usa a base)" />
+                                            <FieldLabel changed={mk("purchase_unit_id")}>Unidade de compra</FieldLabel>
+                                            <XSelect disabled={locked} options={purchaseUnitOptions} value={f.purchase_unit_id} onChange={(v) => set("purchase_unit_id", v)} searchable placeholder="(usa a base)" />
                                         </Col>
                                     )}
 
                                     <Col md={4}>
-                                        <Label className="form-label">Preço de venda (€)</Label>
-                                        <Input value={f.saleprice} onChange={(e) => set("saleprice", e.target.value)} inputMode="decimal" placeholder="0,00" />
+                                        <FieldLabel changed={mk("saleprice")}>Preço de venda (€)</FieldLabel>
+                                        <Input value={f.saleprice} disabled={locked} onChange={(e) => set("saleprice", e.target.value)} inputMode="decimal" placeholder="0,00" />
                                     </Col>
                                     <Col md={4}>
-                                        <Label className="form-label">Preço de compra (€)</Label>
-                                        <Input value={f.purchaseprice} onChange={(e) => set("purchaseprice", e.target.value)} inputMode="decimal" placeholder="0,00" />
+                                        <FieldLabel changed={mk("purchaseprice")}>Preço de compra (€)</FieldLabel>
+                                        <Input value={f.purchaseprice} disabled={locked} onChange={(e) => set("purchaseprice", e.target.value)} inputMode="decimal" placeholder="0,00" />
                                     </Col>
                                     <Col md={4} className="d-flex align-items-end">
-                                        <div className="form-check mb-2"><Input type="checkbox" className="form-check-input" id="c-varprice" checked={f.change_sale_price} onChange={(e) => set("change_sale_price", e.target.checked)} /><Label className="form-check-label" for="c-varprice">Preço de venda variável</Label></div>
+                                        <div className="form-check mb-2"><Input type="checkbox" className="form-check-input" id="c-varprice" disabled={locked} checked={f.change_sale_price} onChange={(e) => set("change_sale_price", e.target.checked)} /><Label className="form-check-label" for="c-varprice">Preço de venda variável</Label></div>
                                     </Col>
                                 </Row>
                         </PageCard>
@@ -482,38 +490,38 @@ export default function ArtigoFormPage() {
                                 <TabContent activeTab={tab}>
                                     <TabPane tabId="geral">
                                         <Row className="g-3">
-                                            <Col md={3}><Label className="form-label">Tipo de artigo</Label>
-                                                <XSelect options={typeOptions} value={f.product_type} onChange={(v) => set("product_type", v)} searchable={false} /></Col>
-                                            <Col md={3}><Label className="form-label">Taxa (IVA)</Label>
-                                                <XSelect options={taxOptions} value={f.taxgroup_id} onChange={(v) => set("taxgroup_id", v)} searchable={false} /></Col>
-                                            <Col md={3}><Label className="form-label">Stocks</Label>
-                                                <XSelect options={stockOptions} value={f.stockconfig_id} onChange={(v) => set("stockconfig_id", v)} searchable={false} /></Col>
-                                            <Col md={3}><Label className="form-label">Validade (dias)</Label>
-                                                <Input type="number" min={0} value={f.setexpireday} onChange={(e) => set("setexpireday", e.target.value)} placeholder="0" /></Col>
+                                            <Col md={3}><FieldLabel changed={mk("product_type")}>Tipo de artigo</FieldLabel>
+                                                <XSelect disabled={locked} options={typeOptions} value={f.product_type} onChange={(v) => set("product_type", v)} searchable={false} /></Col>
+                                            <Col md={3}><FieldLabel changed={mk("taxgroup_id")}>Taxa (IVA)</FieldLabel>
+                                                <XSelect disabled={locked} options={taxOptions} value={f.taxgroup_id} onChange={(v) => set("taxgroup_id", v)} searchable={false} /></Col>
+                                            <Col md={3}><FieldLabel changed={mk("stockconfig_id")}>Stocks</FieldLabel>
+                                                <XSelect disabled={locked} options={stockOptions} value={f.stockconfig_id} onChange={(v) => set("stockconfig_id", v)} searchable={false} /></Col>
+                                            <Col md={3}><FieldLabel changed={mk("setexpireday")}>Validade (dias)</FieldLabel>
+                                                <Input type="number" min={0} value={f.setexpireday} disabled={locked} onChange={(e) => set("setexpireday", e.target.value)} placeholder="0" /></Col>
                                         </Row>
                                     </TabPane>
 
                                     <TabPane tabId="frontoffice">
                                         <Row className="g-3">
                                             <Col md={4}><Label className="form-label">Nome curto</Label>
-                                                <Input value={f.shortname} onChange={(e) => { mark("shortname"); set("shortname", e.target.value); }} maxLength={SHORTNAME_MAX} placeholder="(da descrição)" />
+                                                <Input value={f.shortname} disabled={locked} onChange={(e) => { mark("shortname"); set("shortname", e.target.value); }} maxLength={SHORTNAME_MAX} placeholder="(da descrição)" />
                                                 <small className="text-muted">Máx. {SHORTNAME_MAX} caracteres.</small></Col>
                                             <Col md={4}><Label className="form-label">Nome do botão</Label>
-                                                <Input value={f.button_name} onChange={(e) => { mark("button_name"); set("button_name", e.target.value); }} maxLength={BUTTON_MAX} placeholder="(da descrição)" />
+                                                <Input value={f.button_name} disabled={locked} onChange={(e) => { mark("button_name"); set("button_name", e.target.value); }} maxLength={BUTTON_MAX} placeholder="(da descrição)" />
                                                 <small className="text-muted">Máx. {BUTTON_MAX} caracteres.</small></Col>
                                         </Row>
                                     </TabPane>
 
                                     <TabPane tabId="unidades">
                                         <Row className="g-3">
-                                            <Col md={4}><Label className="form-label">Stock</Label>
-                                                <XSelect options={baseUnitOptions} value={f.stock_unit_id} onChange={(v) => { mark("stock_unit_id"); set("stock_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
-                                            <Col md={4}><Label className="form-label">Legenda</Label>
-                                                <XSelect options={baseUnitOptions} value={f.label_unit_id} onChange={(v) => { mark("label_unit_id"); set("label_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
-                                            <Col md={4}><Label className="form-label">Volume</Label>
-                                                <XSelect options={baseUnitOptions} value={f.volume_unit_id} onChange={(v) => { mark("volume_unit_id"); set("volume_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
-                                            <Col md={4}><Label className="form-label">Peso</Label>
-                                                <Input value={f.weight} onChange={(e) => set("weight", e.target.value)} inputMode="decimal" placeholder="0,000" /></Col>
+                                            <Col md={4}><FieldLabel changed={mk("stock_unit_id")}>Stock</FieldLabel>
+                                                <XSelect disabled={locked} options={baseUnitOptions} value={f.stock_unit_id} onChange={(v) => { mark("stock_unit_id"); set("stock_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
+                                            <Col md={4}><FieldLabel changed={mk("label_unit_id")}>Legenda</FieldLabel>
+                                                <XSelect disabled={locked} options={baseUnitOptions} value={f.label_unit_id} onChange={(v) => { mark("label_unit_id"); set("label_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
+                                            <Col md={4}><FieldLabel changed={mk("volume_unit_id")}>Volume</FieldLabel>
+                                                <XSelect disabled={locked} options={baseUnitOptions} value={f.volume_unit_id} onChange={(v) => { mark("volume_unit_id"); set("volume_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
+                                            <Col md={4}><FieldLabel changed={mk("weight")}>Peso</FieldLabel>
+                                                <Input value={f.weight} disabled={locked} onChange={(e) => set("weight", e.target.value)} inputMode="decimal" placeholder="0,000" /></Col>
                                         </Row>
                                     </TabPane>
 
@@ -531,6 +539,7 @@ export default function ArtigoFormPage() {
                                     )}
 
                                     <TabPane tabId="compras">
+                                        <fieldset disabled={locked} className="border-0 p-0 m-0" style={{ minWidth: 0 }}>
                                         <ArtigoComprasTab
                                             companyId={companyId}
                                             isCreate={isCreate}
@@ -540,6 +549,7 @@ export default function ArtigoFormPage() {
                                         />
                                         {!isCreate && <ArticleSupplierCodes companyId={companyId} catalogItemId={catId} />}
                                         {!isCreate && <ArticleGroupingSwitch companyId={companyId} catalogItemId={catId} />}
+                                        </fieldset>
                                     </TabPane>
                                 </TabContent>
                             </CardBody>
@@ -558,7 +568,8 @@ export default function ArtigoFormPage() {
                                 ) : tab === "stock" ? (
                                     <span className="text-muted fs-13" data-testid="stock-footer-note">O mínimo e o máximo gravam-se em cada armazém, com "Gravar no PingWin".</span>
                                 ) : (
-                                    <Button type="submit" color="primary" disabled={busy}>
+                                    <Button type="submit" color="primary" disabled={busy || locked} data-testid="article-save"
+                                        title={locked ? "Só se pode gravar depois de uma leitura nova do PingWin." : undefined}>
                                         {busy
                                             ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
                                             : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Guardar"}</>}

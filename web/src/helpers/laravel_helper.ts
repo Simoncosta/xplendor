@@ -1437,7 +1437,9 @@ export const getPriceHistory = (companyId: number, productId: string, products?:
 // Auditoria v2: os euros (em jogo agora, resolvidos) e o Guião de unidades.
 export const getAuditSummary = (companyId: number, area?: string) => api.get(AUD(companyId) + "/summary", { area });
 const UG = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/units/guide`;
-export const getUnitGuideQueue = (companyId: number, fila?: string) => api.get(UG(companyId), { fila });
+/** A fila do Guião; com a pesquisa (nome, código ou fornecedor) e o estado, no servidor, sobre todos os artigos do Guião. */
+export const getUnitGuideQueue = (companyId: number, fila?: string, search?: { q?: string | null; estado?: string | null }) =>
+    api.get(UG(companyId), { fila, ...(search?.q ? { q: search.q } : {}), ...(search?.estado ? { estado: search.estado } : {}) });
 export const getUnitGuide = (companyId: number, productId: string) => api.get(UG(companyId) + `/${productId}`);
 export const previewUnitGuide = (companyId: number, productId: string, answers: Record<string, string | null>) =>
     api.create(UG(companyId) + `/${productId}/preview`, { answers }, JSON_BODY);

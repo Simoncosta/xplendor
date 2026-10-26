@@ -294,6 +294,50 @@ test("painel Fatura validada: com uma guarda do lançamento a falhar, os dois bo
     expect(screen.queryByTestId("launch-modal")).toBeNull();
 });
 
+test("as ligações ao Guião levam ao artigo de cada linha, com o caminho de volta à fatura", async () => {
+    const back = "&voltar=%2Fapp%2Frestauracao%2Ffaturas%2F7";
+    const A = { id: 3, code: "101208", description: "COMIDA STAFF 23%", pingwin_id: "101208" };
+    const B = { id: 4, code: "200300", description: "ÓLEO 5LT", pingwin_id: "200300" };
+    const opts = [{ value: "11001", label: "Unidade (UN)" }, { value: "11002", label: "Quilograma (KG)" }];
+    mockApi.launchGet.mockResolvedValue({ data: preview({
+        can_launch: false,
+        guards: [{ key: "unidades", ok: false, label: "Unidade de cada linha", message: "Escolha a unidade das linhas assinaladas.",
+            articles: [{ pingwin_id: "101208", description: "COMIDA STAFF 23%" }, { pingwin_id: "200300", description: "ÓLEO 5LT" }] }],
+        close: { mode: "launch", can_close: false, closed_at: null, closed_by_name: null, blockers: [
+            { key: "unidades", label: "Unidade de cada linha", message: "Escolha a unidade das linhas assinaladas." },
+            { key: "unidades_confirmadas", label: "Unidades confirmadas no Guião de unidades", message: "Falta confirmar as unidades no Guião de unidades: ÓLEO 5LT.",
+                articles: [{ pingwin_id: "200300", description: "ÓLEO 5LT" }] }] },
+        lines: [
+            { id: 11, position: 0, item: "Carne", ocr_unit: "KG", quantity: 8.09, article: A, unit_options: opts, unit_id: "11001", unit_source: "escolhida", unit_ok: true, unit_rounds: true },
+            { id: 12, position: 1, item: "Óleo", ocr_unit: "UN", quantity: 2, article: B, unit_options: opts, unit_id: null, unit_source: null, unit_ok: false, unit_rounds: false },
+        ],
+    }) });
+    mockApi.update.mockResolvedValue({ data: { invoice: invoice({ status: "validada" }) } });
+    render(<FaturaValidacaoPage />);
+    // No cartão do lançamento: a guarda das unidades, uma ligação por artigo.
+    const guards = await screen.findByTestId("launch-guards");
+    expect(within(guards).getByRole("link", { name: /Abrir COMIDA STAFF 23% no Guião/ })).toHaveAttribute("href", `/restauracao/auditoria/guiao?artigo=101208${back}`);
+    expect(within(guards).getByRole("link", { name: /Abrir ÓLEO 5LT no Guião/ })).toHaveAttribute("href", `/restauracao/auditoria/guiao?artigo=200300${back}`);
+    // Na mensagem de cada linha: o artigo dessa linha.
+    const rows = within(screen.getByTestId("launch-units")).getAllByRole("link", { name: "Guião" });
+    expect(rows.map((a) => a.getAttribute("href"))).toEqual([`/restauracao/auditoria/guiao?artigo=101208${back}`, `/restauracao/auditoria/guiao?artigo=200300${back}`]);
+    // No painel "Fatura validada e guardada": as mesmas ligações, sem a genérica.
+    fireEvent.click(await screen.findByText(/Validar e guardar/));
+    const blocked = await screen.findByTestId("saved-launch-blocked");
+    expect(within(blocked).getByRole("link", { name: /Abrir COMIDA STAFF 23% no Guião/ })).toHaveAttribute("href", `/restauracao/auditoria/guiao?artigo=101208${back}`);
+    expect(within(blocked).getByRole("link", { name: /Abrir ÓLEO 5LT no Guião/ })).toHaveAttribute("href", `/restauracao/auditoria/guiao?artigo=200300${back}`);
+    expect(within(blocked).queryByRole("link", { name: "Abrir o Guião de unidades" })).toBeNull();
+});
+
+test("o que falta para fechar liga ao artigo por confirmar no Guião", async () => {
+    mockApi.launchGet.mockResolvedValue({ data: preview({ close: { mode: "launch", can_close: false, closed_at: null, closed_by_name: null,
+        blockers: [{ key: "unidades_confirmadas", label: "Unidades confirmadas no Guião de unidades", message: "Falta confirmar as unidades no Guião de unidades: ÓLEO 5LT.",
+            articles: [{ pingwin_id: "200300", description: "ÓLEO 5LT" }] }] } }) });
+    render(<FaturaValidacaoPage />);
+    const blockers = await screen.findByTestId("close-blockers");
+    expect(within(blockers).getByRole("link", { name: /Abrir ÓLEO 5LT no Guião/ })).toHaveAttribute("href", "/restauracao/auditoria/guiao?artigo=200300&voltar=%2Fapp%2Frestauracao%2Ffaturas%2F7");
+});
+
 test("painel Fatura validada: só a conferência por aceitar deixa gravar em rascunho (aceita-se no modal), mas não como fechada", async () => {
     mockApi.launchGet.mockResolvedValue({ data: preview({
         can_launch: false,

@@ -344,4 +344,75 @@ class UnitGuideTest extends TestCase
         $this->assertEquals(['key' => null, 'replaces_key' => '00000000', 'component_id' => '9004', 'unit_id' => '11001', 'qnt' => 1],
             array_intersect_key($c['line'], array_flip(['key', 'replaces_key', 'component_id', 'unit_id', 'qnt'])));
     }
+    public function test_search_finds_any_article_of_the_guide_by_name_without_accents_code_or_supplier(): void
+    {
+        // Só os artigos do cenário (os de comparação da família ficam de fora da conta).
+        $ids = fn (array $query) => array_values(array_filter(array_column($this->actingAs($this->admin, 'sanctum')
+            ->getJson($this->url('?' . http_build_query($query)))->assertOk()->json('data.items'), 'product_id'), fn ($id) => str_starts_with($id, '90')));
+        // Parte do nome, sem acentos nem maiúsculas.
+        $this->assertSame(['9002'], $ids(['q' => 'acucar']));
+        $this->assertSame(['9002'], $ids(['q' => 'AÇÚ']));
+        // O código do artigo no PingWin.
+        $this->assertSame(['9001'], $ids(['q' => 'p9001']));
+        // O nome do fornecedor (o açúcar também se compra ao Fornecedor B).
+        $this->assertSame(['9002'], $ids(['q' => 'fornecedor b']));
+        $this->assertEqualsCanonicalizing(['9001', '9002'], $ids(['q' => 'fornecedor a']));
+        $this->assertSame([], $ids(['q' => 'nada disto']));
+        // Cada resultado traz o código, para o ecrã.
+        $this->assertSame('P9001', $this->actingAs($this->admin, 'sanctum')->getJson($this->url('?q=refrig'))->json('data.items.0.code'));
+
+        // Um artigo já confirmado sai da fila, mas a pesquisa encontra-o (qualquer artigo do Guião).
+        ProductUnitProfile::updateOrCreate(['company_id' => $this->c, 'product_pingwin_id' => '9001'], ['state' => 'confirmado', 'confidence' => 0.9]);
+        $this->assertNotContains('9001', $ids([]));
+        $q = $this->actingAs($this->admin, 'sanctum')->getJson($this->url('?q=refrigerante'))->assertOk()->json('data');
+        $this->assertSame(['9001', 'confirmado'], [$q['items'][0]['product_id'], $q['items'][0]['state']]);
+    }
+
+    public function test_the_state_filter_to_confirm_to_review_confirmed_and_unit_changed(): void
+    {
+        // Só os artigos do cenário (os de comparação da família ficam de fora da conta).
+        $ids = fn (array $query) => array_values(array_filter(array_column($this->actingAs($this->admin, 'sanctum')
+            ->getJson($this->url('?' . http_build_query($query)))->assertOk()->json('data.items'), 'product_id'), fn ($id) => str_starts_with($id, '90')));
+        ProductUnitProfile::create(['company_id' => $this->c, 'product_pingwin_id' => '9001', 'state' => 'confirmado', 'confidence' => 0.9]);
+        ProductUnitProfile::create(['company_id' => $this->c, 'product_pingwin_id' => '9002', 'state' => ProductUnitProfile::STATE_REVIEW, 'confidence' => 0.4]);
+        $this->art('9030', 'Óleo alimentar');
+        $this->buy('9030', '2026-09-20', 2, 3000, 'OLEO 5L');
+
+        $this->assertSame(['9030'], $ids(['estado' => 'por_confirmar']));
+        $this->assertSame(['9002'], $ids(['estado' => 'por_rever']));
+        $this->assertSame(['9001'], $ids(['estado' => 'confirmados']));
+        $this->assertSame([], $ids(['estado' => 'unidade_mudou']));
+        // "Todos" é a fila por decidir; com a pesquisa, entram também os decididos.
+        $this->assertEqualsCanonicalizing(['9002', '9030'], $ids(['estado' => 'todos']));
+        $this->assertSame(['9001'], $ids(['estado' => 'confirmados', 'q' => 'lata']));
+        $this->assertSame([], $ids(['estado' => 'por_rever', 'q' => 'oleo']));
+
+        // A unidade mudou num artigo confirmado: aparece no filtro, mesmo decidido.
+        \App\Models\ArticleUnitChange::create(['company_id' => $this->c, 'product_pingwin_id' => '9001', 'field' => 'base', 'from_unit_id' => '11001',
+            'from_name' => 'Unidade', 'to_unit_id' => '11002', 'to_name' => 'Quilograma', 'history_lines' => 3, 'changed_at' => now()]);
+        $this->assertSame(['9001'], $ids(['estado' => 'unidade_mudou']));
+
+        $this->actingAs($this->admin, 'sanctum')->getJson($this->url('?estado=outro'))->assertStatus(422);
+    }
+
+    public function test_another_company_cannot_search_the_guide(): void
+    {
+        $other = \App\Models\Company::create(['nipc' => '500000010', 'fiscal_name' => 'Outra', 'plan_id' => $this->company->plan_id, 'subscription_status' => 'active']);
+        app(\App\Services\CompanyModuleService::class)->applyPreset($other->id, 'restaurant');
+        $stranger = User::factory()->create(['company_id' => $other->id, 'role' => 'admin']);
+        $this->actingAs($stranger, 'sanctum')->getJson($this->url('?q=acucar&estado=todos'))->assertForbidden();
+        $this->actingAs($stranger, 'sanctum')->getJson($this->url('/9002'))->assertForbidden();
+    }
+    public function test_the_direct_link_opens_the_article_or_says_it_is_not_in_the_guide(): void
+    {
+        // Um artigo que não é o primeiro da fila abre-se direto.
+        $this->actingAs($this->admin, 'sanctum')->getJson($this->url('/9002'))->assertOk()->assertJsonPath('data.article.product_id', '9002');
+        // Fora do Guião: 404 com o motivo, para o ecrã o dizer.
+        $this->actingAs($this->admin, 'sanctum')->getJson($this->url('/7777'))->assertNotFound()
+            ->assertJsonPath('message', 'Este artigo não está no Guião de unidades: não tem compras nos últimos 12 meses nem entra em fichas.')
+            ->assertJsonPath('errors.artigo.0', 'fora_do_guiao');
+        \App\Models\ArticleGrouping::create(['company_id' => $this->c, 'product_pingwin_id' => '9001', 'is_grouping' => true]);
+        $this->actingAs($this->admin, 'sanctum')->getJson($this->url('/9001'))->assertNotFound()
+            ->assertJsonPath('message', 'Este artigo não está no Guião de unidades: é um artigo de agrupamento (lança-se sempre com quantidade 1).');
+    }
 }

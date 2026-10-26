@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import UnitGuidePage from "./UnitGuidePage";
 
 const mockQueue = jest.fn();
@@ -10,11 +10,14 @@ const mockAdmin = jest.fn();
 const mockAi = jest.fn();
 const mockAll = jest.fn();
 const mockUndo = jest.fn();
+const mockNavigate = jest.fn();
+let mockInitialSearch = "";
 // O Jest deste projeto não resolve o react-router-dom: os parâmetros do URL ficam num estado local.
 jest.mock("react-router-dom", () => {
     const React = jest.requireActual("react");
     return {
-        useSearchParams: () => { const [p, setP] = React.useState(new URLSearchParams()); return [p, (next: URLSearchParams) => setP(new URLSearchParams(next))]; },
+        useSearchParams: () => { const [p, setP] = React.useState(() => new URLSearchParams(mockInitialSearch)); return [p, (next: URLSearchParams) => setP(new URLSearchParams(next))]; },
+        useNavigate: () => mockNavigate,
         Link: ({ to, children, className }: any) => <a href={to} className={className}>{children}</a>,
     };
 }, { virtual: true });
@@ -66,7 +69,8 @@ const view = (pid: string, over: any = {}) => ({ data: {
 
 describe("UnitGuidePage", () => {
     beforeEach(() => {
-        [mockQueue, mockView, mockPreview, mockConfirm, mockSkip, mockAdmin, mockAi, mockAll, mockUndo].forEach((m) => m.mockReset());
+        [mockQueue, mockView, mockPreview, mockConfirm, mockSkip, mockAdmin, mockAi, mockAll, mockUndo, mockNavigate].forEach((m) => m.mockReset());
+        mockInitialSearch = "";
         localStorage.setItem("xp-unit-guide-help-seen", "1");
         mockQueue.mockResolvedValue(queue);
         mockView.mockImplementation((_c: number, pid: string) => Promise.resolve(view(pid)));
@@ -149,5 +153,65 @@ describe("UnitGuidePage", () => {
         fireEvent.click(screen.getByText("300 · Bife"));
         expect(await screen.findByTestId("guide-nothing-changes")).toHaveTextContent("Nada muda nas fichas, no stock nem nas faturas.");
         expect(screen.getByTestId("guide-verdict")).toHaveTextContent("Está certo: nada a mudar.");
+    });
+
+    it("a pesquisa vai ao servidor (nome sem acentos, código) com o estado, e um resultado abre a ficha", async () => {
+        render(<UnitGuidePage />);
+        await screen.findByTestId("guide-article");
+        const acucar = { ...queue.data.items[1], code: "P200" };
+        mockQueue.mockResolvedValue({ data: { ...queue.data, total: 1, items: [acucar] } });
+        // O nome sem acentos nem maiúsculas: a pesquisa corre no servidor, sobre todo o Guião.
+        fireEvent.change(screen.getByLabelText("Pesquisar no Guião"), { target: { value: "ACUCAR" } });
+        await waitFor(() => expect(mockQueue).toHaveBeenLastCalledWith(5, "todos", { q: "ACUCAR", estado: null }));
+        expect(await screen.findByTestId("guide-count")).toHaveTextContent("1 resultado em todo o Guião");
+        expect(screen.getByTestId("guide-queue")).toHaveTextContent("200 · Açúcar · P200");
+        // O código do PingWin.
+        fireEvent.change(screen.getByLabelText("Pesquisar no Guião"), { target: { value: "P200" } });
+        await waitFor(() => expect(mockQueue).toHaveBeenLastCalledWith(5, "todos", { q: "P200", estado: null }));
+        // O estado, com a pesquisa.
+        fireEvent.change(screen.getByLabelText("Estado"), { target: { value: "por_rever" } });
+        await waitFor(() => expect(mockQueue).toHaveBeenLastCalledWith(5, "todos", { q: "P200", estado: "por_rever" }));
+        // Clicar no resultado abre a ficha desse artigo, com as mesmas perguntas.
+        fireEvent.click(screen.getByRole("button", { name: /200 · Açúcar/ }));
+        await waitFor(() => expect(mockView).toHaveBeenLastCalledWith(5, "200"));
+        expect(await screen.findByText("Precisamos da sua ajuda.")).toBeInTheDocument();
+        // Sem resultados: diz-se, e limpa-se.
+        mockQueue.mockResolvedValue({ data: { ...queue.data, total: 0, items: [] } });
+        fireEvent.change(screen.getByLabelText("Pesquisar no Guião"), { target: { value: "nada disto" } });
+        expect(await screen.findByText("Nenhum artigo do Guião corresponde à pesquisa.")).toBeInTheDocument();
+    });
+
+    it("?artigo= abre esse artigo, não o primeiro por responder", async () => {
+        mockInitialSearch = "artigo=300";
+        render(<UnitGuidePage />);
+        expect(await screen.findByText("Está certo: nada a mudar.")).toBeInTheDocument();
+        expect(mockView).toHaveBeenCalledWith(5, "300");
+        expect(mockView).not.toHaveBeenCalledWith(5, "100");
+        expect(screen.getByTestId("guide-position")).toHaveTextContent("3 de 3");
+    });
+
+    it("?artigo= de um artigo fora do Guião diz porquê e deixa a pesquisa", async () => {
+        mockInitialSearch = "artigo=999";
+        mockView.mockRejectedValue({ __status: 404, message: "Este artigo não está no Guião de unidades: é um artigo de agrupamento (lança-se sempre com quantidade 1)." });
+        render(<UnitGuidePage />);
+        expect(await screen.findByTestId("guide-not-in-guide")).toHaveTextContent("é um artigo de agrupamento");
+        expect(screen.getByTestId("guide-position")).toHaveTextContent("Fora desta lista");
+        expect(screen.getByLabelText("Pesquisar no Guião")).toBeInTheDocument();
+    });
+
+    it("«Voltar à fatura» leva ao caminho interno e recusa os externos", async () => {
+        mockInitialSearch = "artigo=100&voltar=" + encodeURIComponent("/app/restauracao/faturas/12");
+        const { unmount } = render(<UnitGuidePage />);
+        await screen.findByTestId("guide-article");
+        fireEvent.click(within(screen.getByTestId("guide-back")).getByRole("button", { name: /Voltar à fatura/ }));
+        expect(mockNavigate).toHaveBeenCalledWith("/restauracao/faturas/12");
+        unmount();
+        for (const bad of ["https://exemplo.com/app/x", "//exemplo.com/app/", "/app//exemplo.com", "/appx/faturas", "data:text/html,ola", "/restauracao/faturas/12", "/app/\\exemplo.com"]) {
+            mockInitialSearch = "artigo=100&voltar=" + encodeURIComponent(bad);
+            const utils = render(<UnitGuidePage />);
+            await screen.findByTestId("guide-article");
+            expect(screen.queryByTestId("guide-back")).not.toBeInTheDocument();
+            utils.unmount();
+        }
     });
 });

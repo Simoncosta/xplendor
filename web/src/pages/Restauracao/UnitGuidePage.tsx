@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, Badge, Button, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
@@ -9,16 +9,19 @@ import AuditButton from "pages/Auditoria/AuditButton";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { useCan } from "contexts/ModulesContext";
 import { confirmAllUnitGuide, getGlobalUnitGuide, getUnitGuide, getUnitGuideQueue, previewUnitGuide, skipUnitGuide, undoUnitGuideBatch } from "helpers/laravel_helper";
-import { GlobalUnitView, UnitGuideView, UnitQueue, UnitQueueItem, UnitVerdictKey } from "common/models/unitGuide.model";
+import { GlobalUnitView, UnitGuideEstado, UnitGuideView, UnitQueue, UnitQueueItem, UnitVerdictKey } from "common/models/unitGuide.model";
 import UnitGuideArticle from "./units/UnitGuideArticle";
 import "./units/unitGuide.css";
 import GlobalUnitCard from "./units/GlobalUnitCard";
+import { returnLabel, safeReturn } from "./units/guideLink";
 
 /**
  * XPLENDOR — Auditoria v2: o Guião de unidades (Restauração › Auditoria › Guião de unidades). Uma
  * fila pelo Pareto (€ comprado nos últimos 90 dias), artigo a artigo ("1 de N"), com os "Por
  * identificar" e os enviados ao administrador em filtros. Abre-se também de qualquer achado de
- * unidades (?artigo=). No telemóvel, os passos ficam uns por baixo dos outros.
+ * unidades, da fatura e do artigo (?artigo=, com ?voltar= para regressar). A pesquisa (?q=, nome,
+ * código ou fornecedor) e o estado (?estado=) correm no servidor, sobre todos os artigos do Guião.
+ * No telemóvel, os passos ficam uns por baixo dos outros.
  */
 /** Os grupos da fila, por esta ordem; dentro de cada um, pelo € comprado. */
 const GROUPS: { key: UnitVerdictKey; label: string; tone: string }[] = [
@@ -34,13 +37,27 @@ type Fila = "todos" | "por_identificar" | "administrador";
 const FILAS: { value: Fila; label: string }[] = [
     { value: "todos", label: "Por decidir" }, { value: "por_identificar", label: "Por identificar" }, { value: "administrador", label: "Enviados ao administrador" },
 ];
+const ESTADOS: { value: UnitGuideEstado; label: string }[] = [
+    { value: "todos", label: "Todos" }, { value: "por_confirmar", label: "Por confirmar" }, { value: "por_rever", label: "Por rever" },
+    { value: "confirmados", label: "Confirmados" }, { value: "unidade_mudou", label: "A unidade mudou" },
+];
 
 export default function UnitGuidePage() {
     const companyId = useWorkingCompanyId();
     const [canEdit, editReason] = useCan("restauracao.editar");
+    const navigate = useNavigate();
     const [params, setParams] = useSearchParams();
     const fila = (params.get("fila") as Fila) || "todos";
     const artigo = params.get("artigo");
+    const q = (params.get("q") ?? "").trim();
+    const estado = (params.get("estado") as UnitGuideEstado) || "todos";
+    const searching = q !== "" || estado !== "todos";
+    // De onde se veio (a fatura, o artigo): só caminhos internos (/app/…); os outros ignoram-se.
+    const back = safeReturn(params.get("voltar"));
+    const [qInput, setQInput] = useState(q);
+    useEffect(() => { setQInput(q); }, [q]);
+    const [notInGuide, setNotInGuide] = useState<string | null>(null);
+    const [answered, setAnswered] = useState(false);
     // U9: a correção guiada de uma unidade global (a unidade certa, depois os artigos "1 de N").
     const unidade = params.get("unidade");
     const [globalView, setGlobalView] = useState<GlobalUnitView | null>(null);
@@ -77,21 +94,23 @@ export default function UnitGuidePage() {
                 return;
             }
             setGlobalView(null);
-            const res: any = await getUnitGuideQueue(companyId, fila);
+            const res: any = await getUnitGuideQueue(companyId, fila, { q: q || null, estado: estado === "todos" ? null : estado });
             setQueue(res?.data ?? null);
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível abrir o Guião de unidades.");
         }
-    }, [companyId, fila, unidade]);
+    }, [companyId, fila, unidade, q, estado]);
     useEffect(() => { loadQueue(); }, [loadQueue]);
 
     const items = queue?.items ?? [];
+    // A ligação direta (?artigo=) abre esse artigo, esteja ou não na lista carregada.
     const current = artigo ?? items[0]?.product_id ?? null;
     const index = current ? items.findIndex((x) => x.product_id === current) : -1;
 
     const loadView = useCallback(async (pid: string) => {
         if (!companyId) return;
         setLoadingView(true);
+        setNotInGuide(null);
         try {
             const res: any = await getUnitGuide(companyId, pid);
             setView(res?.data ?? null);
@@ -99,12 +118,14 @@ export default function UnitGuidePage() {
             edited.current = false;
         } catch (e: any) {
             setView(null);
-            toast.error(e?.message ?? "Não foi possível abrir o artigo.");
+            // Fora do Guião (404): diz-se no lugar do artigo, com a pesquisa à mão.
+            if (e?.__status === 404) setNotInGuide(e?.message ?? "Este artigo não está no Guião de unidades.");
+            else toast.error(e?.message ?? "Não foi possível abrir o artigo.");
         } finally {
             setLoadingView(false);
         }
     }, [companyId]);
-    useEffect(() => { if (current) loadView(current); }, [current, loadView]);
+    useEffect(() => { setAnswered(false); if (current) loadView(current); }, [current, loadView]);
 
     // As respostas refazem a proposta e o "O que muda" (sem gravar).
     const changeAnswers = (a: Record<string, string | null>) => {
@@ -143,8 +164,26 @@ export default function UnitGuidePage() {
     };
     const changed = (v?: UnitGuideView) => {
         if (v) { setView(v); setAnswers(v.answers ?? {}); } else if (current) loadView(current);
+        setAnswered(true);
         loadQueue();
     };
+    // A pesquisa e o estado vão para a URL (partilháveis; o "voltar" do browser funciona). Enquanto se escreve,
+    // substitui a entrada do histórico; a primeira letra e o limpar acrescentam uma.
+    const setSearch = (next: { q?: string; estado?: UnitGuideEstado }) => {
+        const n = new URLSearchParams(params);
+        const nq = (next.q ?? q).trim();
+        const ne = next.estado ?? estado;
+        if (nq) n.set("q", nq); else n.delete("q");
+        if (ne !== "todos") n.set("estado", ne); else n.delete("estado");
+        setParams(n, { replace: next.q !== undefined && q !== "" && nq !== "" });
+    };
+    const typing = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const onType = (v: string) => {
+        setQInput(v);
+        if (typing.current) clearTimeout(typing.current);
+        typing.current = setTimeout(() => setSearch({ q: v }), 350);
+    };
+    useEffect(() => () => { if (typing.current) clearTimeout(typing.current); }, []);
     const hidden = queue?.financial?.visible === false;
     const certos = items.filter((x) => x.verdict === "certo" && x.state !== "confirmado");
     const openBulk = () => { setBulkPick(Object.fromEntries(certos.map((x) => [x.product_id, true]))); setBulkOpen(true); };
@@ -206,6 +245,32 @@ export default function UnitGuidePage() {
                     </div>
                     <AuditButton companyId={companyId} area="restauracao" origin="unidades" onFinished={() => { loadQueue(); if (current) loadView(current); }} />
                 </div>
+                {!unidade && (
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3" data-testid="guide-search">
+                        <div className="search-box flex-grow-1" style={{ minWidth: 220, maxWidth: 460 }}>
+                            <Input type="search" value={qInput} onChange={(e) => onType(e.target.value)} aria-label="Pesquisar no Guião"
+                                placeholder="Pesquisar por nome, código ou fornecedor" data-testid="guide-search-input" />
+                            <i className="ri-search-line search-icon" aria-hidden />
+                        </div>
+                        <Input type="select" bsSize="sm" value={estado} onChange={(e) => setSearch({ estado: e.target.value as UnitGuideEstado })} aria-label="Estado"
+                            style={{ width: "auto" }} data-testid="guide-estado">
+                            {ESTADOS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                        </Input>
+                        {searching && (
+                            <Button size="sm" color="link" className="px-1" onClick={() => { setQInput(""); const n = new URLSearchParams(params); n.delete("q"); n.delete("estado"); setParams(n); }}>
+                                Limpar a pesquisa
+                            </Button>
+                        )}
+                    </div>
+                )}
+                {back && (
+                    <Alert color={answered ? "success" : "light"} className="d-flex flex-wrap align-items-center gap-2 py-2 fs-13" data-testid="guide-back">
+                        <span className="flex-grow-1">{answered ? "Resposta guardada." : "Veio de outro ecrã: depois de responder, pode voltar."}</span>
+                        <Button size="sm" color={answered ? "success" : "light"} onClick={() => navigate(back)}>
+                            <i className="ri-arrow-left-line me-1" aria-hidden />{returnLabel(back)}
+                        </Button>
+                    </Alert>
+                )}
                 {hidden && <FinancialNote className="mb-3" />}
                 {unidade && globalView && companyId && (
                     <>
@@ -216,14 +281,17 @@ export default function UnitGuidePage() {
                     </>
                 )}
 
-                {!queue ? <Skeleton variant="lines" lines={6} label="A preparar a fila…" /> : items.length === 0 ? (
-                    <Card><CardBody className="text-center py-5 text-muted" data-testid="guide-empty">Não há artigos nesta fila.</CardBody></Card>
+                {!queue ? <Skeleton variant="lines" lines={6} label="A preparar a fila…" /> : items.length === 0 && !current ? (
+                    <Card><CardBody className="text-center py-5 text-muted" data-testid="guide-empty">{searching ? "Nenhum artigo do Guião corresponde à pesquisa." : "Não há artigos nesta fila."}</CardBody></Card>
                 ) : (
                     <Row className="g-3">
                         <Col xs={12} xl={4} className="order-2 order-xl-1">
                             <Card className="mb-0" data-testid="guide-queue">
                                 <CardBody className="p-0">
-                                    <div className="px-3 py-2 border-bottom fs-13 text-muted">{items.length} {items.length === 1 ? "artigo" : "artigos"}; à direita, o € comprado em 90 dias</div>
+                                    <div className="px-3 py-2 border-bottom fs-13 text-muted" data-testid="guide-count">
+                                        {searching ? `${items.length} ${items.length === 1 ? "resultado" : "resultados"} em todo o Guião` : `${items.length} ${items.length === 1 ? "artigo" : "artigos"}`}; à direita, o € comprado em 90 dias
+                                    </div>
+                                    {items.length === 0 && <div className="px-3 py-4 text-center text-muted fs-13" data-testid="guide-empty">{searching ? "Nenhum artigo do Guião corresponde à pesquisa." : "Não há artigos nesta fila."}</div>}
                                     <div style={{ maxHeight: 620, overflowY: "auto" }}>
                                         {GROUPS.map((g) => {
                                             const list = items.filter((x) => x.verdict === g.key);
@@ -246,7 +314,7 @@ export default function UnitGuidePage() {
                                                                 <span className="text-truncate d-flex align-items-start gap-2">
                                                                     <span className={`rounded-circle ${g.tone === "grey" ? "xp-guide-dot-grey" : `bg-${g.tone}`} flex-shrink-0 mt-1`} style={{ width: 8, height: 8 }} aria-hidden />
                                                                     <span className="text-truncate">
-                                                                        <span className="d-block text-truncate">{x.label}</span>
+                                                                        <span className="d-block text-truncate">{x.label}{x.code ? <span className="opacity-75 fs-12"> · {x.code}</span> : null}</span>
                                                                         <span className="fs-12 opacity-75 d-block text-truncate">{unidade ? x.verdict_text : x.state === "confirmado" ? "Confirmado" : x.verdict_text}{x.state === "por_rever" ? " · por rever (a unidade base mudou no PingWin)" : ""}{x.unit_changed ? " · a unidade mudou" : ""}{x.skipped ? " · saltado" : ""}{x.assigned ? " · administrador" : ""}</span>
                                                                     </span>
                                                                 </span>
@@ -267,11 +335,15 @@ export default function UnitGuidePage() {
                         <Col xs={12} xl={8} className="order-1 order-xl-2">
                             <div className="d-flex align-items-center gap-2 mb-3" data-testid="guide-nav">
                                 <Button size="sm" color="light" onClick={() => go(items[index - 1]?.product_id ?? null)} disabled={index <= 0}><i className="ri-arrow-left-line" aria-hidden /> Anterior</Button>
-                                <span className="fs-13" data-testid="guide-position">{index >= 0 ? index + 1 : "?"} de {items.length}</span>
+                                <span className="fs-13" data-testid="guide-position">{index >= 0 ? `${index + 1} de ${items.length}` : "Fora desta lista"}</span>
                                 <Button size="sm" color="light" onClick={goNext} disabled={index >= items.length - 1}>Seguinte <i className="ri-arrow-right-line" aria-hidden /></Button>
                                 {loadingView && <Spinner size="sm" />}
                             </div>
-                            {!view ? <Skeleton variant="lines" lines={8} label="A abrir o artigo…" /> : companyId && (
+                            {notInGuide ? (
+                                <Alert color="warning" className="fs-14" data-testid="guide-not-in-guide">
+                                    <i className="ri-error-warning-line me-1" aria-hidden />{notInGuide} Procure o artigo na pesquisa acima.
+                                </Alert>
+                            ) : !view ? <Skeleton variant="lines" lines={8} label="A abrir o artigo…" /> : companyId && (
                                 <UnitGuideArticle companyId={companyId} view={view} answers={answers} setAnswers={changeAnswers} previewing={previewing}
                                     canEdit={canEdit} editReason={canEdit ? null : editReason} onChanged={changed} onSkip={skip} onNext={goNext} />
                             )}

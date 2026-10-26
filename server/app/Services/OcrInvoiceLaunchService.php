@@ -222,8 +222,8 @@ class OcrInvoiceLaunchService
         $busy = $this->blockingWrite($inv, $writes);
 
         $g = [];
-        $add = function (string $key, bool $ok, string $label, ?string $msg = null) use (&$g): void {
-            $g[] = ['key' => $key, 'ok' => $ok, 'label' => $label, 'message' => $ok ? null : $msg];
+        $add = function (string $key, bool $ok, string $label, ?string $msg = null, array $extra = []) use (&$g): void {
+            $g[] = ['key' => $key, 'ok' => $ok, 'label' => $label, 'message' => $ok ? null : $msg] + ($ok ? [] : $extra);
         };
         $credit = self::isCreditNote($inv);
         // O rótulo é o tipo verdadeiro do documento; só FT, NC e FR se lançam.
@@ -268,7 +268,10 @@ class OcrInvoiceLaunchService
                 : ' Confirme a unidade no Guião de unidades.';
             $unitMsgs[] = $msg . ' Se o artigo junta produtos diferentes, marque-o como artigo de agrupamento.';
         }
-        $add('unidades', $unitMsgs === [], 'Unidade de cada linha', implode(' ', $unitMsgs));
+        // Os artigos das linhas assinaladas (sem unidade ou a arredondar): cada um liga ao seu artigo no Guião.
+        $unitArticles = $lineInfo->filter(fn ($l) => (! $l['unit_ok'] || $l['unit_rounds']) && ($l['article'] ?? null))
+            ->map(fn ($l) => ['pingwin_id' => (string) $l['article']['pingwin_id'], 'description' => $l['article']['description']])->unique('pingwin_id')->values()->all();
+        $add('unidades', $unitMsgs === [], 'Unidade de cada linha', implode(' ', $unitMsgs), ['articles' => $unitArticles]);
         // Artigos de agrupamento: só se juntam linhas com a mesma taxa de IVA.
         $groupRows = collect($estimate['planned'])->where('kind', 'grupo');
         if ($groupRows->isNotEmpty()) {
@@ -344,27 +347,34 @@ class OcrInvoiceLaunchService
         }
         // Os artigos de agrupamento vão com quantidade 1: não precisam das unidades confirmadas.
         if ($missing = $this->unconfirmedUnits($inv, $lines->reject(fn ($l) => isset($grouping[$l->article_id])), $articles)) {
-            $names = array_slice($missing, 0, 5);
+            $names = array_slice(array_column($missing, 'description'), 0, 5);
             $blockers[] = ['key' => 'unidades_confirmadas', 'label' => 'Unidades confirmadas no Guião de unidades',
                 'message' => 'Falta confirmar as unidades no Guião de unidades: ' . implode(', ', $names)
-                    . (count($missing) > 5 ? sprintf(' e mais %d', count($missing) - 5) : '') . '.'];
+                    . (count($missing) > 5 ? sprintf(' e mais %d', count($missing) - 5) : '') . '.',
+                // Cada artigo por confirmar, para a ligação ao seu artigo no Guião (as linhas sem artigo não têm).
+                'articles' => array_values(array_filter($missing, fn ($a) => $a['pingwin_id'] !== null))];
         }
 
         return ['mode' => $mode, 'can_close' => $blockers === [], 'blockers' => $blockers, 'closed_at' => null, 'closed_by_name' => null];
     }
 
-    /** Os artigos das linhas cujas unidades ainda não foram confirmadas (confirmado ou aplicado no PingWin). */
+    /**
+     * Os artigos das linhas cujas unidades ainda não foram confirmadas (confirmado ou aplicado no PingWin).
+     *
+     * @return list<array{pingwin_id: ?string, description: string}>
+     */
     private function unconfirmedUnits(OcrInvoice $inv, Collection $lines, Collection $articles): array
     {
         $ids = $lines->pluck('article_id')->filter()->unique()->map(fn ($id) => $articles[$id] ?? null)->filter();
         $confirmed = ProductUnitProfile::where('company_id', $inv->company_id)
             ->whereIn('product_pingwin_id', $ids->pluck('pingwin_id')->map(fn ($v) => (string) $v)->all())
             ->whereIn('state', ['confirmado', 'aplicado_no_pingwin'])->pluck('product_pingwin_id')->map(fn ($v) => (string) $v)->flip();
-        $missing = $ids->reject(fn ($a) => isset($confirmed[(string) $a->pingwin_id]))->map(fn ($a) => (string) $a->description);
+        $missing = $ids->reject(fn ($a) => isset($confirmed[(string) $a->pingwin_id]))
+            ->map(fn ($a) => ['pingwin_id' => (string) $a->pingwin_id, 'description' => (string) $a->description]);
         // Linha sem artigo: também falta (o guarda "artigos" já o diz; aqui conta como unidade por confirmar).
-        $noArticle = $lines->whereNull('article_id')->map(fn ($l) => (string) ($l->item ?? 'linha sem artigo'));
+        $noArticle = $lines->whereNull('article_id')->map(fn ($l) => ['pingwin_id' => null, 'description' => (string) ($l->item ?? 'linha sem artigo')]);
 
-        return $missing->merge($noArticle)->unique()->values()->all();
+        return $missing->merge($noArticle)->unique('description')->values()->all();
     }
 
     private static function eur(int $cents): string

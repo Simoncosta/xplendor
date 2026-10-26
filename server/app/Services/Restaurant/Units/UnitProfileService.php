@@ -97,13 +97,19 @@ final class UnitProfileService
     /**
      * A fila do Guião pelo Pareto (€ comprado em 90 dias): os artigos de stock com achados de unidades
      * abertos ou por decidir. "fila": todos | por_identificar | administrador. Os saltados vão para o fim.
+     * A pesquisa ($search: parte do nome sem acentos nem maiúsculas, o código do PingWin ou o fornecedor) e
+     * o estado ($estado: ver ESTADOS) correm aqui, sobre todos os artigos do Guião (também os decididos).
      */
-    public function queue(string $filter = 'todos'): array
+    public function queue(string $filter = 'todos', ?string $search = null, ?string $estado = null): array
     {
         $open = $this->openFindingsByArticle();
         // Os artigos de agrupamento lançam-se sempre com quantidade 1: não entram no Guião.
         $grouping = \App\Models\ArticleGrouping::pingwinIdsFor($this->companyId);
         $unitChanges = \App\Models\ArticleUnitChange::recentFor($this->companyId);
+        $needle = self::normalize((string) $search);
+        $estado = $estado === 'todos' ? null : $estado;
+        // Pesquisar, ver os confirmados ou os que mudaram de unidade inclui os artigos já decididos.
+        $withDecided = $filter === 'decididos' || $needle !== '' || in_array($estado, ['confirmados', 'unidade_mudou'], true);
         $items = [];
         foreach ($this->evidence()->all() as $pid => $e) {
             $pid = (string) $pid;
@@ -111,11 +117,15 @@ final class UnitProfileService
                 continue;
             }
             $state = $e['profile']['state'] ?? null;
-            if (in_array($state, ['confirmado', 'aplicado_no_pingwin', 'nao_se_aplica'], true) && $filter !== 'decididos') {
+            $decided = in_array($state, ['confirmado', 'aplicado_no_pingwin', 'nao_se_aplica'], true);
+            if ($decided && ! $withDecided) {
                 continue;
             }
             $findings = $open[$pid] ?? [];
-            if (! $findings && $e['spend_90d_eur'] <= 0) {
+            if (! $findings && $e['spend_90d_eur'] <= 0 && ! ($withDecided && $this->profileModel($pid))) {
+                continue;
+            }
+            if (($needle !== '' && ! self::matches($e, $pid, $needle)) || ! self::inState($estado, $state, isset($unitChanges[$pid]))) {
                 continue;
             }
             $proposal = UnitProposal::build($e, (array) ($this->profileModel($pid)?->answers ?? []), $this->learnedFor($e));
@@ -134,7 +144,7 @@ final class UnitProfileService
                 'findings' => count($findings), 'impact_cents' => array_sum(array_column($findings, 'impact_cents')) ?: null,
                 'pending_cents' => array_sum(array_column($findings, 'impact_pending_cents')) ?: null,
                 'assigned' => $assigned, 'skipped' => (bool) $this->profileModel($pid)?->skipped_at,
-                'unit_changed' => isset($unitChanges[$pid]),
+                'unit_changed' => isset($unitChanges[$pid]), 'code' => $e['code'],
             ];
         }
         // Por veredicto (precisa de mudança, por identificar, está certo) e, em cada grupo, pelo € comprado.
@@ -149,6 +159,42 @@ final class UnitProfileService
                 'mudar' => count(array_filter($items, fn ($i) => $i['verdict'] === 'mudar')), 'ajuda' => count(array_filter($items, fn ($i) => $i['verdict'] === 'ajuda')),
                 'certo' => count(array_filter($items, fn ($i) => $i['verdict'] === 'certo'))],
         ];
+    }
+
+    /** O filtro de estado do Guião (por confirmar, por rever, confirmados e "a unidade mudou"). */
+    public const ESTADOS = ['todos', 'por_confirmar', 'por_rever', 'confirmados', 'unidade_mudou'];
+
+    private static function inState(?string $estado, ?string $state, bool $unitChanged): bool
+    {
+        return match ($estado) {
+            'por_confirmar' => $state === null || in_array($state, ['por_identificar', 'sugerido'], true),
+            'por_rever' => $state === ProductUnitProfile::STATE_REVIEW,
+            'confirmados' => in_array($state, ['confirmado', 'aplicado_no_pingwin'], true),
+            'unidade_mudou' => $unitChanged,
+            default => true,
+        };
+    }
+
+    /** Minúsculas e sem acentos, para a pesquisa ("açúcar" encontra "ACUCAR"). */
+    private static function normalize(string $s): string
+    {
+        return mb_strtolower(\Illuminate\Support\Str::ascii(trim($s)));
+    }
+
+    /** Parte do nome (ou da descrição do PingWin), o código do artigo ou o nome de um fornecedor. */
+    private static function matches(array $e, string $pid, string $needle): bool
+    {
+        $code = self::normalize(ltrim((string) ($e['code'] ?? ''), "\u{FEFF}"));
+        if ($pid === $needle || ($code !== '' && str_contains($code, $needle))) {
+            return true;
+        }
+        foreach (array_merge([(string) $e['label'], (string) $e['description']], array_column($e['purchases'] ?? [], 'supplier')) as $text) {
+            if (str_contains(self::normalize((string) $text), $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Guarda o estado sugerido/por identificar dos artigos da fila (os decididos não mudam). */
@@ -216,6 +262,23 @@ final class UnitProfileService
     }
 
     // ── Um artigo ───────────────────────────────────────────────────────────────────────────
+
+    /** Porque é que um artigo não está no Guião (null quando está): para a ligação direta (?artigo=). */
+    public function outOfGuide(string $pid): ?string
+    {
+        $e = $this->evidence()->for($pid);
+        if (! $e) {
+            return 'Este artigo não está no Guião de unidades: não tem compras nos últimos 12 meses nem entra em fichas.';
+        }
+        if (isset(\App\Models\ArticleGrouping::pingwinIdsFor($this->companyId)[$pid])) {
+            return 'Este artigo não está no Guião de unidades: é um artigo de agrupamento (lança-se sempre com quantidade 1).';
+        }
+        if (! ($e['stock_relevant'] ?? true)) {
+            return 'Este artigo não está no Guião de unidades: não conta para o stock.';
+        }
+
+        return null;
+    }
 
     /** A vista do Guião de um artigo (com as respostas dadas, guardadas ou novas). */
     public function view(string $pid, ?array $answers = null, ?User $user = null): array

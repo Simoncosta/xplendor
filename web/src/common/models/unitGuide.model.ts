@@ -14,7 +14,11 @@ export type UnitQueueItem = {
     confidence: number; findings: number; impact_cents: number | null; pending_cents: number | null; assigned: boolean; skipped: boolean;
     /** A unidade base ou de compra mudou há pouco num artigo com histórico de compras. */
     unit_changed?: boolean;
+    /** O código do artigo no PingWin (na pesquisa). */
+    code?: string | null;
 };
+/** O filtro de estado do Guião (na URL: ?estado=). */
+export type UnitGuideEstado = "todos" | "por_confirmar" | "por_rever" | "confirmados" | "unidade_mudou";
 /** Uma mudança de unidade num artigo com histórico: as linhas antigas ficam na unidade anterior. */
 export type ArticleUnitChange = { field: "base" | "purchase"; from: string | null; to: string | null; changed_at: string; history_lines: number; warning: string };
 export type UnitQueue = { items: UnitQueueItem[]; total: number; counts: { por_identificar: number; administrador: number; mudar?: number; ajuda?: number; certo?: number }; financial?: { visible: boolean } };
