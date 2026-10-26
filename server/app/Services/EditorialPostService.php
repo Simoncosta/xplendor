@@ -110,6 +110,10 @@ class EditorialPostService
     /** Valida campos por enum + formato; devolve só as chaves relevantes (com links nulos por omissão). */
     private function validateInput(array $data, ?EditorialPost $post = null): array
     {
+        // Pedidos em formulário (multipart): a caixa "Publicar automaticamente" chega como "true" ou "false".
+        if (in_array($data['auto_publish'] ?? null, ['true', 'false'], true)) {
+            $data['auto_publish'] = $data['auto_publish'] === 'true';
+        }
         $validated = Validator::make($data, [
             'title'         => ['required', 'string', 'max:255'],
             'publish_date'  => ['required', 'date'],

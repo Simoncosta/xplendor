@@ -265,6 +265,9 @@ return [
         'sale_channel'    => 'canal de venda',
         'contact_consent' => 'consentimento de contacto',
         'notes'           => 'notas',
+
+        // ── linha editorial
+        'auto_publish'    => 'publicar automaticamente',
     ],
 
 ];

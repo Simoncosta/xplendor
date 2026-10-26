@@ -614,15 +614,16 @@ export const createEditorialOwnAnchor = (companyId: number, payload: any) =>
     api.create(ED(companyId) + `/anchors`, payload);
 export const deleteEditorialOwnAnchor = (companyId: number, ownAnchorId: number) =>
     api.delete(ED(companyId) + `/own-anchors/${ownAnchorId}`);
+// Os POST vão em multipart por omissão (api_helper), onde true e false viram texto: a Linha Editorial envia JSON.
+const ED_JSON = { headers: { "Content-Type": "application/json" } };
 // P1 — PUBLICAÇÕES (espaço de id distinto das âncoras); devolvem o calendar atualizado.
 export const createEditorialPost = (companyId: number, payload: any) =>
-    api.create(ED(companyId) + `/posts`, payload);
+    api.create(ED(companyId) + `/posts`, payload, ED_JSON);
 export const updateEditorialPost = (companyId: number, postId: number, payload: any) =>
     api.put(ED(companyId) + `/posts/${postId}`, payload);
 export const deleteEditorialPost = (companyId: number, postId: number) =>
     api.delete(ED(companyId) + `/posts/${postId}`);
 // F3a: produção e aprovação (Kanban, versões, comentários, histórico, definições).
-const ED_JSON = { headers: { "Content-Type": "application/json" } };
 export const getEditorialBoard = (companyId: number, month: string) => api.get(ED(companyId) + `/board`, { month });
 export const getPostWorkflow = (companyId: number, postId: number) => api.get(ED(companyId) + `/posts/${postId}/workflow`);
 export const movePostStage = (companyId: number, postId: number, stage: string) => api.create(ED(companyId) + `/posts/${postId}/move`, { stage }, ED_JSON);
