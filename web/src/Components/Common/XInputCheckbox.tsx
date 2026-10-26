@@ -4,6 +4,7 @@ import React, { useEffect, useId, useRef } from "react";
 import { useField } from "formik";
 // Components
 import { Input, Label, FormFeedback } from "reactstrap";
+import { HintIcon } from "./FieldLabelWithHint";
 
 type CheckboxVariant =
     | "primary"
@@ -42,6 +43,9 @@ interface XInputCheckboxProps {
 
     /** callback extra além do Formik */
     onChange?: (checked: boolean) => void;
+
+    /** Ajuda no ícone ⓘ ao lado do rótulo (fora do label: tocar no ícone não marca a caixa). */
+    hint?: string;
 }
 
 const XInputCheckbox: React.FC<XInputCheckboxProps> = ({
@@ -56,6 +60,7 @@ const XInputCheckbox: React.FC<XInputCheckboxProps> = ({
     indeterminate = false,
     id,
     onChange,
+    hint,
 }) => {
     const [field, meta, helpers] = useField<boolean>(name);
 
@@ -109,6 +114,7 @@ const XInputCheckbox: React.FC<XInputCheckboxProps> = ({
                     {label} {required && <span className="text-danger">*</span>}
                 </Label>
             )}
+            {label && hint && <HintIcon label={label} hint={hint} />}
 
             {hasError && <FormFeedback type="invalid">{meta.error}</FormFeedback>}
         </div>

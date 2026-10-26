@@ -1,5 +1,6 @@
 import { useField } from "formik";
-import { FormFeedback, FormText, Input, Label } from "reactstrap";
+import { FormFeedback, Input } from "reactstrap";
+import FieldLabelWithHint from "Components/Common/FieldLabelWithHint";
 
 /**
  * Ficha da viatura (QR): "Endereço da viatura no site", um modelo com {id} (ex.:
@@ -8,6 +9,7 @@ import { FormFeedback, FormText, Input, Label } from "reactstrap";
  */
 export const QR_PARAMS = "origem=qr&utm_source=qr&utm_medium=offline&utm_campaign=ficha_stand";
 const EXAMPLE_ID = "123";
+export const VEHICLE_URL_HINT = "Usado pelo QR Code da ficha da viatura (A4). Escreva {id} no sítio do número da viatura. Sem endereço, a ficha sai sem QR.";
 
 export function vehicleUrlTemplateError(value: string): string | null {
     const t = value.trim();
@@ -28,13 +30,10 @@ export default function VehicleUrlTemplateField() {
 
     return (
         <div className="mb-2" data-testid="vehicle-url-template">
-            <Label htmlFor="vehicle_url_template" className="form-label">Endereço da viatura no site</Label>
+            <FieldLabelWithHint htmlFor="vehicle_url_template" label="Endereço da viatura no site" hint={VEHICLE_URL_HINT} />
             <Input id="vehicle_url_template" name="vehicle_url_template" type="url" placeholder="https://quebom.pt/vehicles/{id}"
                 value={value} onChange={field.onChange} onBlur={field.onBlur} invalid={!!error} />
             {error && <FormFeedback>{error}</FormFeedback>}
-            <FormText>
-                Usado pelo QR Code da ficha da viatura (A4). Escreva {"{id}"} no sítio do número da viatura. Sem endereço, a ficha sai sem QR.
-            </FormText>
             {example && (
                 <div className="small mt-1" data-testid="vehicle-url-preview">
                     <div>Exemplo, viatura {EXAMPLE_ID}: <span className="fw-medium text-break">{example}</span></div>

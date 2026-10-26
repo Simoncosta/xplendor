@@ -23,13 +23,8 @@ interface FieldLabelWithHintProps {
     className?: string;
 }
 
-const FieldLabelWithHint: React.FC<FieldLabelWithHintProps> = ({
-    label,
-    hint,
-    htmlFor,
-    required = false,
-    className = "form-label",
-}) => {
+/** Só o ícone ⓘ com o tooltip (também fora de um label, por exemplo ao lado de uma caixa de seleção). */
+export const HintIcon: React.FC<{ label: string; hint: string }> = ({ label, hint }) => {
     // useId() do React garante id único cross-mount.
     // React 19 produz IDs com ":" (ex: ":r0:") que não são válidos como
     // selectores CSS — Reactstrap usa querySelector internamente com o
@@ -39,19 +34,16 @@ const FieldLabelWithHint: React.FC<FieldLabelWithHintProps> = ({
 
     return (
         <>
-            <Label htmlFor={htmlFor} className={className}>
-                {label}: {required && <span className="text-danger">*</span>}
-                <span
-                    id={tooltipId}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`Ajuda: ${label}`}
-                    className="ms-1 d-inline-flex align-items-center"
-                    style={{ cursor: "help", verticalAlign: "middle" }}
-                >
-                    <i className="ri-information-line text-muted" aria-hidden="true" />
-                </span>
-            </Label>
+            <span
+                id={tooltipId}
+                tabIndex={0}
+                role="button"
+                aria-label={`Ajuda: ${label}`}
+                className="ms-1 d-inline-flex align-items-center"
+                style={{ cursor: "help", verticalAlign: "middle" }}
+            >
+                <i className="ri-information-line text-muted" aria-hidden="true" />
+            </span>
             <UncontrolledTooltip
                 target={tooltipId}
                 trigger="hover focus click"
@@ -62,5 +54,18 @@ const FieldLabelWithHint: React.FC<FieldLabelWithHintProps> = ({
         </>
     );
 };
+
+const FieldLabelWithHint: React.FC<FieldLabelWithHintProps> = ({
+    label,
+    hint,
+    htmlFor,
+    required = false,
+    className = "form-label",
+}) => (
+    <Label htmlFor={htmlFor} className={className}>
+        {label}: {required && <span className="text-danger">*</span>}
+        <HintIcon label={label} hint={hint} />
+    </Label>
+);
 
 export default FieldLabelWithHint;
