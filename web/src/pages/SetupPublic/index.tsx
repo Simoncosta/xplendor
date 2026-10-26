@@ -31,9 +31,10 @@ type Payload = {
 type Page = { id: string; name: string; selected: boolean; instagram: { id: string; username: string | null; name: string | null; selected: boolean } | null };
 type AdAccount = { id: string; name: string; currency: string | null; business: string | null; active: boolean };
 
-const WHAT: Record<SetupStepKey, string> = {
-    social: "Ler as Páginas de Facebook e as contas de Instagram que escolher (seguidores e publicações). A XPLENDOR não publica nem altera nada.",
-    meta_ads: "Ler os resultados dos anúncios da conta que escolher (gasto, alcance e cliques). A XPLENDOR não cria nem altera anúncios.",
+// O que cada passo lê, igual ao que se declarou no App Review da Meta (a XPLENDOR não lê publicações nem alcance).
+export const WHAT: Record<SetupStepKey, string> = {
+    social: "Ler as Páginas de Facebook e as contas de Instagram que escolher (seguidores e fotografia do perfil). A XPLENDOR não publica nem altera nada.",
+    meta_ads: "Ler os resultados dos anúncios da conta que escolher (gasto, impressões e cliques). A XPLENDOR não cria nem altera anúncios.",
     ga4: "Ler as visitas do site no Google Analytics, com um acesso de Visualizador (só leitura).",
 };
 
