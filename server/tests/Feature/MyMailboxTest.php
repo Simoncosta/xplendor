@@ -137,6 +137,27 @@ class MyMailboxTest extends TestCase
         $this->putJson($this->url(), $this->cpanel(['password' => '', 'signature' => str_repeat('a', 2001)]))->assertStatus(422);
     }
 
+    public function test_in_dev_the_test_addresses_are_saved_normalised_and_validated(): void
+    {
+        $this->configure($this->owner);
+        $this->getJson($this->url())->assertOk()->assertJsonPath('data.dev', true);
+        $this->putJson($this->url(), $this->cpanel(['password' => '', 'dev_test_addresses' => " Eu.Pessoal@exemplo.invalid; eu.outro@exemplo.invalid, eu.pessoal@exemplo.invalid "]))
+            ->assertOk()->assertJsonPath('data.dev', true)
+            ->assertJsonPath('data.mailbox.dev_test_addresses', 'eu.pessoal@exemplo.invalid, eu.outro@exemplo.invalid');
+        $this->putJson($this->url(), $this->cpanel(['password' => '', 'dev_test_addresses' => 'nao-e-endereco']))->assertStatus(422);
+        $this->putJson($this->url(), $this->cpanel(['password' => '', 'dev_test_addresses' => '']))->assertOk()->assertJsonPath('data.mailbox.dev_test_addresses', null);
+    }
+
+    public function test_in_production_the_test_addresses_are_not_saved_and_the_field_is_not_offered(): void
+    {
+        $this->app['env'] = 'production';
+        $this->configure($this->owner);
+        $this->getJson($this->url())->assertOk()->assertJsonPath('data.dev', false);
+        $this->putJson($this->url(), $this->cpanel(['password' => '', 'dev_test_addresses' => 'eu.pessoal@exemplo.invalid']))->assertOk()
+            ->assertJsonPath('data.mailbox.dev_test_addresses', null);
+        $this->assertNull(Mailbox::first()->dev_test_addresses);
+    }
+
     public function test_validation_only_the_three_account_types_and_internal_hosts_and_other_ports_are_refused(): void
     {
         Sanctum::actingAs($this->owner);

@@ -16,11 +16,12 @@ import {
  * impersonation; o root também, na sua empresa: o backend recusa o resto). Primeiro o tipo de conta; nos
  * modelos basta o endereço e a palavra-passe, e os servidores ficam nas definições avançadas.
  * E-mail 3: "Testar IMAP" (a pasta de Enviados e os não lidos) e o estado da receção. A página
- * /email leva aqui com #mailbox. E-mail 5: a assinatura (texto simples) e "Remover" com o SweetAlert2.
+ * /email leva aqui com #mailbox. E-mail 5: a assinatura (texto simples), "Remover" com o SweetAlert2 e,
+ * só em dev, os endereços de teste (recebem mesmo; o resto vai para a própria caixa).
  */
 
-type Saved = Omit<MailboxForm, "password" | "signature"> & {
-    signature?: string | null;
+type Saved = Omit<MailboxForm, "password" | "signature" | "dev_test_addresses"> & {
+    signature?: string | null; dev_test_addresses?: string | null;
     has_password: boolean; status: "por_testar" | "ativa" | "erro"; last_error: string | null; last_tested_at: string | null;
     imap_status?: "ativa" | "erro" | null; imap_error?: string | null; sent_folder?: string | null; unread_count?: number | null; unread_checked_at?: string | null;
 };
@@ -42,7 +43,7 @@ const errorMessage = (e: any, fallback: string) => {
     return first || e?.message || fallback;
 };
 
-const fromSaved = (m: Saved): MailboxForm => ({ ...EMPTY_FORM, ...m, password: "", signature: m.signature ?? "" });
+const fromSaved = (m: Saved): MailboxForm => ({ ...EMPTY_FORM, ...m, password: "", signature: m.signature ?? "", dev_test_addresses: m.dev_test_addresses ?? "" });
 
 /** As ligações da ajuda abrem num separador novo. */
 const ExternalLink = ({ href }: { href: string }) => (
@@ -57,6 +58,7 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState<"" | "save" | "test" | "imap" | "delete">("");
     const [dirty, setDirty] = useState(false);
+    const [dev, setDev] = useState(false); // E-mail 5: os endereços de teste só existem fora de produção
 
     const load = (m: Saved | null) => {
         setSaved(m);
@@ -70,7 +72,7 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
     useEffect(() => {
         setLoading(true);
         getMyMailbox(companyId)
-            .then((r: any) => load(r?.data?.mailbox ?? null))
+            .then((r: any) => { setDev(r?.data?.dev === true); load(r?.data?.mailbox ?? null); })
             .catch(() => load(null))
             .finally(() => setLoading(false));
     }, [companyId]);
@@ -239,6 +241,15 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
                     onChange={(e) => edit({ ...form, signature: e.target.value })} />
                 <div className="text-muted fs-12 mt-1">Texto simples. Vai no fim das mensagens novas e das respostas que escrever na XPLENDOR.</div>
             </div>
+
+            {dev && (
+                <div className="mb-3" data-testid="mailbox-dev-addresses">
+                    <Label htmlFor="mailbox-dev-addresses" className="form-label">Endereços de teste (só dev)</Label>
+                    <Input id="mailbox-dev-addresses" value={form.dev_test_addresses} placeholder="outro.endereco@exemplo.pt, mais.um@exemplo.pt" autoComplete="off"
+                        onChange={(e) => edit({ ...form, dev_test_addresses: e.target.value })} />
+                    <div className="text-muted fs-12 mt-1">Em dev, as mensagens para estes endereços saem mesmo para eles; tudo o resto vai só para a própria caixa. Em produção, este campo não existe.</div>
+                </div>
+            )}
 
             <button type="button" className="btn btn-link p-0 mb-2 text-decoration-none" aria-expanded={advanced} aria-controls="mailbox-advanced" onClick={() => setAdvanced(!advanced)}>
                 <i className={`ri-arrow-${advanced ? "down" : "right"}-s-line me-1`} />Definições avançadas

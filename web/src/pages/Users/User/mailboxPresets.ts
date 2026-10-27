@@ -22,6 +22,8 @@ export type MailboxForm = {
     mark_seen_on_server: boolean;
     /** E-mail 5 · Assinatura opcional, em texto simples, no fim das mensagens novas e das respostas. */
     signature: string;
+    /** E-mail 5 · Só em dev: endereços que recebem mesmo (o resto vai para a própria caixa). */
+    dev_test_addresses: string;
 };
 
 /** Os campos das definições avançadas (os que o modelo preenche). */
@@ -40,7 +42,7 @@ export const GMAIL_APP_PASSWORD_HELP = "https://support.google.com/accounts/answ
 
 export const EMPTY_FORM: MailboxForm = {
     account_type: "cpanel", email: "", password: "", smtp_host: "", smtp_port: 465, smtp_encryption: "ssl",
-    imap_host: "", imap_port: 993, imap_encryption: "ssl", username: "", save_to_sent: true, mark_seen_on_server: true, signature: "",
+    imap_host: "", imap_port: 993, imap_encryption: "ssl", username: "", save_to_sent: true, mark_seen_on_server: true, signature: "", dev_test_addresses: "",
 };
 
 const domainOf = (email: string): string => {

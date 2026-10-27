@@ -177,6 +177,58 @@ class MailboxComposeTest extends TestCase
         $this->assertCount(1, FakeMailboxClient::$sent);
     }
 
+    public function test_replying_in_the_thread_to_a_customer_who_wrote_needs_no_consent_but_a_new_message_does(): void
+    {
+        $this->customer->forceFill(['contact_consent' => false])->save();
+        Customer::create(['company_id' => $this->company->id, 'name' => 'Rui Cliente', 'email' => 'rui@cliente.invalid', 'contact_consent' => false]);
+        $uid = FakeMailboxImap::put('INBOX', str_replace('From: Boletim <boletim@novidades.invalid>', 'From: Joana Cliente <joana@cliente.invalid>', $this->eml()));
+        Sanctum::actingAs($this->owner);
+        $reply = ['to' => 'joana@cliente.invalid', 'subject' => 'Re: As novidades da semana', 'body' => '<p>Com certeza.</p>', 'reply_to' => ['folder' => 'INBOX', 'uid' => $uid]];
+
+        // Outro cliente sem consentimento no Cc: recusado, mesmo na resposta.
+        $this->send($reply + ['cc' => 'rui@cliente.invalid'])->assertStatus(422)
+            ->assertJsonPath('message', 'O cliente rui@cliente.invalid não deu consentimento para contacto (RGPD): não se pode escrever-lhe.');
+        // Responder a quem escreveu, no mesmo fio: permitido.
+        $this->send($reply)->assertOk();
+        $this->assertSame('<boletim-99@novidades.invalid>', MailMessage::sole()->in_reply_to);
+        // Uma mensagem nova (sem o fio) continua a exigir o consentimento.
+        $this->send(['to' => 'joana@cliente.invalid', 'subject' => 'Promoção', 'body' => '<p>Olá</p>'])->assertStatus(422);
+        $this->send(['to' => 'joana@cliente.invalid', 'subject' => 'Promoção', 'body' => '<p>Olá</p>', 'customer_id' => $this->customer->id])
+            ->assertStatus(422)->assertJsonPath('message', 'O cliente não deu consentimento para contacto (RGPD): não se pode escrever-lhe.');
+        $this->assertSame(1, MailMessage::count());
+    }
+
+    public function test_in_dev_the_test_addresses_really_receive_and_everything_else_goes_to_the_own_mailbox(): void
+    {
+        $this->mailbox->forceFill(['dev_test_addresses' => 'eu.pessoal@exemplo.invalid, eu.outro@exemplo.invalid'])->save();
+        Sanctum::actingAs($this->owner);
+
+        // Só endereços de teste: saem como estão, sem "[dev …]".
+        $this->send(['to' => 'EU.pessoal@exemplo.invalid', 'cc' => 'eu.outro@exemplo.invalid', 'subject' => 'Teste', 'body' => '<p>Olá</p>'])->assertOk();
+        $sent = FakeMailboxClient::$sent[0];
+        $this->assertSame('EU.pessoal@exemplo.invalid', $sent['to']);
+        $this->assertSame(['eu.outro@exemplo.invalid'], $sent['cc']);
+        $this->assertSame('Teste', $sent['subject']);
+
+        // Misturado: os de teste saem, os outros vão para a própria caixa e ficam no assunto.
+        $this->send(['to' => 'eu.pessoal@exemplo.invalid, fornecedor@exemplo.invalid', 'cc' => 'colega@exemplo.invalid', 'subject' => 'Peças', 'body' => '<p>Olá</p>'])->assertOk();
+        $sent = FakeMailboxClient::$sent[1];
+        $this->assertSame('eu.pessoal@exemplo.invalid, matilde@exemplo.pt', $sent['to']);
+        $this->assertSame([], $sent['cc']);
+        $this->assertSame('[dev, para: fornecedor@exemplo.invalid; cc: colega@exemplo.invalid] Peças', $sent['subject']);
+    }
+
+    public function test_in_production_the_test_addresses_have_no_effect(): void
+    {
+        $this->app['env'] = 'production';
+        $this->mailbox->forceFill(['dev_test_addresses' => 'eu.pessoal@exemplo.invalid'])->save();
+        Sanctum::actingAs($this->owner);
+        $this->send(['to' => 'fornecedor@exemplo.invalid', 'subject' => 'Peças', 'body' => '<p>Olá</p>'])->assertOk();
+        $sent = FakeMailboxClient::$sent[0];
+        $this->assertSame('fornecedor@exemplo.invalid', $sent['to']);
+        $this->assertSame('Peças', $sent['subject']);
+    }
+
     public function test_writing_from_the_sale_links_customer_sale_and_lead_and_respects_its_consent(): void
     {
         Sanctum::actingAs($this->owner);

@@ -141,4 +141,21 @@ describe("A minha caixa de correio", () => {
         expect(native).not.toHaveBeenCalled();
         native.mockRestore();
     });
+
+    it("E-mail 5: em dev, os endereços de teste aparecem e vão no que se guarda; em produção, o campo não existe", async () => {
+        (getMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: { ...SAVED, dev_test_addresses: "eu.pessoal@exemplo.invalid" }, dev: true } });
+        (saveMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: SAVED, dev: true } });
+        const { unmount } = render(<MyMailboxCard companyId={7} />);
+        const field = await screen.findByLabelText("Endereços de teste (só dev)");
+        expect(field).toHaveValue("eu.pessoal@exemplo.invalid");
+        fireEvent.change(field, { target: { value: "eu.pessoal@exemplo.invalid, eu.outro@exemplo.invalid" } });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Guardar/ })); });
+        expect((saveMyMailbox as jest.Mock).mock.calls[0][1]).toMatchObject({ dev_test_addresses: "eu.pessoal@exemplo.invalid, eu.outro@exemplo.invalid" });
+        unmount();
+
+        (getMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: SAVED, dev: false } });
+        render(<MyMailboxCard companyId={7} />);
+        await screen.findByLabelText(/Assinatura/);
+        expect(screen.queryByTestId("mailbox-dev-addresses")).not.toBeInTheDocument();
+    });
 });

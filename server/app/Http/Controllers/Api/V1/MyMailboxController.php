@@ -8,6 +8,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\MyMailboxRequest;
 use App\Models\Mailbox;
+use App\Services\Mailbox\DevRecipientGuard;
 use App\Services\Mailbox\MailboxClient;
 use App\Services\Mailbox\MailboxImap;
 use App\Services\Mailbox\OutgoingMail;
@@ -31,7 +32,7 @@ class MyMailboxController extends Controller
     {
         $mailbox = Mailbox::personal($companyId, (int) $request->user()->id)->first();
 
-        return ApiResponse::success(['mailbox' => $mailbox?->toApiArray()]);
+        return ApiResponse::success(['mailbox' => $mailbox?->toApiArray(), 'dev' => DevRecipientGuard::active()]);
     }
 
     public function update(MyMailboxRequest $request, int $companyId)
@@ -46,6 +47,13 @@ class MyMailboxController extends Controller
         $data['save_to_sent'] = strtolower($data['smtp_host']) === 'smtp.gmail.com' ? false : (bool) ($data['save_to_sent'] ?? true);
         // E-mail 4: só o Gmail escolhe se abrir na XPLENDOR marca como lida no servidor; nos outros, marca sempre.
         $data['mark_seen_on_server'] = $data['account_type'] === 'gmail' ? (bool) ($data['mark_seen_on_server'] ?? true) : true;
+        // E-mail 5: os endereços de teste só existem em dev; em produção não se gravam nem têm efeito.
+        if (! DevRecipientGuard::active()) {
+            unset($data['dev_test_addresses']);
+        } elseif (array_key_exists('dev_test_addresses', $data)) {
+            $list = array_values(array_unique(array_map('strtolower', OutgoingMail::split((string) $data['dev_test_addresses']))));
+            $data['dev_test_addresses'] = $list ? implode(', ', $list) : null;
+        }
         if (array_key_exists('signature', $data)) {
             $data['signature'] = trim((string) $data['signature']) === '' ? null : rtrim((string) $data['signature']);
         }
@@ -60,7 +68,7 @@ class MyMailboxController extends Controller
         }
         $mailbox->save();
 
-        return ApiResponse::success(['mailbox' => $mailbox->fresh()->toApiArray()], 'Caixa de correio guardada.');
+        return ApiResponse::success(['mailbox' => $mailbox->fresh()->toApiArray(), 'dev' => DevRecipientGuard::active()], 'Caixa de correio guardada.');
     }
 
     public function destroy(Request $request, int $companyId)

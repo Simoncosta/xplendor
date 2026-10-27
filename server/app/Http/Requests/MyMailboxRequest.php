@@ -54,6 +54,20 @@ class MyMailboxRequest extends FormRequest
             'save_to_sent' => ['sometimes', 'boolean'],
             'mark_seen_on_server' => ['sometimes', 'boolean'], // só conta no Gmail (E-mail 4)
             'signature' => ['nullable', 'string', 'max:2000'], // E-mail 5: texto simples, no fim das mensagens
+            // E-mail 5: endereços de teste, só em dev (em produção o controller ignora-os).
+            'dev_test_addresses' => ['nullable', 'string', 'max:1000', function (string $attribute, mixed $value, Closure $fail) {
+                $list = \App\Services\Mailbox\OutgoingMail::split((string) $value);
+                if (count($list) > 10) {
+                    $fail('No máximo 10 endereços de teste.');
+                }
+                foreach ($list as $address) {
+                    if (! filter_var($address, FILTER_VALIDATE_EMAIL)) {
+                        $fail("O endereço de teste \"{$address}\" não é válido.");
+
+                        return;
+                    }
+                }
+            }],
         ];
     }
 

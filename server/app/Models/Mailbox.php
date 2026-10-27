@@ -24,7 +24,7 @@ class Mailbox extends Model
         'company_id', 'user_id', 'account_type', 'email', 'smtp_host', 'smtp_port', 'smtp_encryption',
         'imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'sent_folder', 'save_to_sent',
         'status', 'last_error', 'last_tested_at', 'last_uid', 'uidvalidity', 'unread_count', 'unread_checked_at',
-        'imap_status', 'imap_error', 'imap_tested_at', 'mark_seen_on_server', 'signature',
+        'imap_status', 'imap_error', 'imap_tested_at', 'mark_seen_on_server', 'signature', 'dev_test_addresses',
     ];
 
     protected $hidden = ['password'];
@@ -64,6 +64,12 @@ class Mailbox extends Model
         return $query->where('company_id', $companyId)->where('user_id', $userId);
     }
 
+    /** E-mail 5 · Os endereços de teste (só em dev: o DevRecipientGuard deixa-os sair), em minúsculas. @return list<string> */
+    public function devTestAddresses(): array
+    {
+        return array_values(array_unique(array_map('strtolower', \App\Services\Mailbox\OutgoingMail::split((string) $this->dev_test_addresses))));
+    }
+
     /** O que a API mostra: sem a palavra-passe, só se existe. */
     public function toApiArray(): array
     {
@@ -81,6 +87,7 @@ class Mailbox extends Model
             'save_to_sent' => $this->save_to_sent,
             'mark_seen_on_server' => $this->marksSeenOnServer(),
             'signature' => $this->signature,
+            'dev_test_addresses' => $this->dev_test_addresses,
             'status' => $this->status,
             'last_error' => $this->last_error,
             'last_tested_at' => $this->last_tested_at?->toIso8601String(),

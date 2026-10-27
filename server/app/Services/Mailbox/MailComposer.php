@@ -18,7 +18,7 @@ use Carbon\Carbon;
  * <nome> escreveu:") e "Escrever ao cliente" (na ficha do cliente e na venda: fica ligado ao cliente,
  * à venda e à lead). A assinatura da caixa vai no fim. O consentimento de contacto é obrigatório para
  * escrever a um cliente final (o da ficha, o da venda, ou um endereço que seja de um cliente da
- * empresa). Sem anexos na versão 1. Os limites, a cópia em Enviados e, em dev, o envio só para a
+ * empresa), exceto ao responder no mesmo fio a uma mensagem que o próprio cliente enviou. Sem anexos na versão 1. Os limites, a cópia em Enviados e, em dev, o envio só para a
  * própria caixa vêm do MailboxSender, do job e do DevRecipientGuard.
  */
 class MailComposer
@@ -85,22 +85,12 @@ class MailComposer
         if (! $context['ok']) {
             return $context;
         }
-        if (! $context['consent']) {
-            return ['ok' => false, 'error' => 'O cliente não deu consentimento para contacto (RGPD): não se pode escrever-lhe.'];
-        }
-        // Um endereço de um cliente da empresa (ou do comprador de uma venda sem ficha) sem consentimento também não.
-        $addresses = array_map('strtolower', [...$to, ...$cc]);
-        $refused = Customer::where('company_id', $mailbox->company_id)->where('contact_consent', false)->whereIn('email', $addresses)->value('email')
-            ?? CarSale::where('company_id', $mailbox->company_id)->whereNull('customer_id')->where('contact_consent', false)->whereIn('buyer_email', $addresses)->value('buyer_email');
-        if ($refused) {
-            return ['ok' => false, 'error' => "O cliente {$refused} não deu consentimento para contacto (RGPD): não se pode escrever-lhe."];
-        }
-
         // A resposta: o fio e o original citado por baixo.
         $thread = ['cc' => $cc];
         $quoteText = '';
         $quoteHtml = '';
         $links = $context['links'];
+        $repliedSender = null;
         if (! empty($input['reply_to'])) {
             $original = $this->inbox->message($mailbox, (string) $input['reply_to']['folder'], (int) $input['reply_to']['uid']);
             if (! $original['ok']) {
@@ -113,6 +103,19 @@ class MailComposer
             }
             [$quoteText, $quoteHtml] = $this->quote($o);
             $links['customer_id'] ??= $o['customer']['id'] ?? null; // responder a uma mensagem ligada mantém o cliente
+            $repliedSender = strtolower(trim((string) ($o['from']['address'] ?? ''))) ?: null;
+        }
+
+        // O consentimento: responder no mesmo fio a quem escreveu é atender um pedido dele (não precisa);
+        // escrever-lhe de novo, ou a outro cliente no Para ou no Cc, precisa.
+        if (! $context['consent'] && strtolower((string) $context['to']) !== $repliedSender) {
+            return ['ok' => false, 'error' => 'O cliente não deu consentimento para contacto (RGPD): não se pode escrever-lhe.'];
+        }
+        $addresses = array_values(array_diff(array_map('strtolower', [...$to, ...$cc]), [$repliedSender]));
+        $refused = $addresses ? (Customer::where('company_id', $mailbox->company_id)->where('contact_consent', false)->whereIn('email', $addresses)->value('email')
+            ?? CarSale::where('company_id', $mailbox->company_id)->whereNull('customer_id')->where('contact_consent', false)->whereIn('buyer_email', $addresses)->value('buyer_email')) : null;
+        if ($refused) {
+            return ['ok' => false, 'error' => "O cliente {$refused} não deu consentimento para contacto (RGPD): não se pode escrever-lhe."];
         }
 
         [$text, $html] = $this->body((string) $input['body'], (string) $mailbox->signature);
