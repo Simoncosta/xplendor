@@ -1,6 +1,6 @@
-import { Spinner } from "reactstrap";
 import { MailSummary, shortDate } from "./types";
 import { MailThread, groupThreads } from "./threads";
+import { ListSkeleton } from "./skeletons";
 
 /**
  * E-mail 4 · A lista da pasta, agrupada por conversa como no Gmail (os remetentes e o número de
@@ -31,7 +31,7 @@ export default function MessageList({ items, myEmail, loading, total, page, perP
                 </div>
                 <div className="message-list-content mx-n4 px-4 message-list-scroll overflow-auto position-relative">
                     {loading ? (
-                        <div className="text-center py-5 text-muted"><Spinner size="sm" className="me-2" />A ler a caixa…</div>
+                        <ListSkeleton />
                     ) : (
                         <ul className="message-list" data-testid="mail-list">
                             {threads.length === 0 ? <li className="text-center text-muted">Não há mensagens nesta pasta.</li> : threads.map((t) => (

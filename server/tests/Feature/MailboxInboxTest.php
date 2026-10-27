@@ -243,6 +243,66 @@ class MailboxInboxTest extends TestCase
         $this->assertSame(1, MailMessage::where('direction', MailMessage::IN)->count());
     }
 
+    public function test_mark_as_read_accepts_the_multipart_request_of_the_app_with_text_booleans(): void
+    {
+        // O axios da app envia os POST em multipart/form-data: o true chega como "true" (antes dava 422).
+        $uid = FakeMailboxImap::put('INBOX', $this->eml('sem-relacao.eml'));
+        Sanctum::actingAs($this->owner);
+        $this->post($this->url("/messages/{$uid}/seen"), ['folder' => 'INBOX', 'seen' => 'true'], ['Accept' => 'application/json'])->assertOk();
+        $this->assertContains('\\Seen', FakeMailboxImap::$messages['INBOX'][$uid]['flags']);
+        $this->post($this->url("/messages/{$uid}/seen"), ['folder' => 'INBOX', 'seen' => 'false'], ['Accept' => 'application/json'])->assertOk();
+        $this->assertNotContains('\\Seen', FakeMailboxImap::$messages['INBOX'][$uid]['flags']);
+        $this->post($this->url("/messages/{$uid}/seen"), ['folder' => 'INBOX', 'seen' => 'talvez'], ['Accept' => 'application/json'])->assertStatus(422)
+            ->assertJsonValidationErrors('seen');
+    }
+
+    public function test_the_conversation_opens_with_one_imap_connection_and_is_marked_read_with_one_more(): void
+    {
+        $a = FakeMailboxImap::put('INBOX', $this->eml('anexos.eml'));
+        $b = FakeMailboxImap::put('INBOX', $this->eml('codificado.eml'));
+        $c = FakeMailboxImap::put('INBOX', $this->eml('sem-relacao.eml'), ['\\Seen']);
+        Sanctum::actingAs($this->owner);
+        app(MailboxInbox::class)->folders($this->mailbox); // as pastas em cache
+        FakeMailboxImap::$calls = [];
+
+        $messages = $this->getJson($this->url("/thread?folder=INBOX&uids={$c},{$b},{$a}"))->assertOk()->json('data.messages');
+        $this->assertSame([$c, $b, $a], array_column($messages, 'uid'));
+        $this->assertSame(['As novidades da semana', 'A avaliação da viatura está pronta', 'Orçamento da reparação'], array_column($messages, 'subject'));
+        $this->assertSame(["messages:INBOX:{$c},{$b},{$a}"], FakeMailboxImap::$calls); // uma só ligação para as três
+
+        // Marcar as duas por ler como lidas: um pedido, uma ligação (com a contagem dos não lidos na mesma).
+        FakeMailboxImap::$calls = [];
+        $this->postJson($this->url('/seen'), ['folder' => 'INBOX', 'uids' => [$b, $a], 'seen' => true])->assertOk()->assertJsonPath('data.unread', 0);
+        $this->assertSame(["seen-many:INBOX:{$b},{$a}:1"], FakeMailboxImap::$calls);
+        $this->assertContains('\\Seen', FakeMailboxImap::$messages['INBOX'][$a]['flags']);
+        $this->assertSame(0, $this->mailbox->fresh()->unread_count);
+
+        // Por ler, de uma vez (também o pedido multipart da app, com "false" em texto).
+        $this->post($this->url('/seen'), ['folder' => 'INBOX', 'uids' => [$a, $b], 'seen' => 'false'], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('data.unread', 2);
+
+        // A conversa reaberta vem da cache curta: nenhuma ligação nova.
+        FakeMailboxImap::$calls = [];
+        $this->getJson($this->url("/thread?folder=INBOX&uids={$c}"))->assertOk();
+        $this->assertSame([], FakeMailboxImap::$calls);
+
+        $this->getJson($this->url('/thread?folder=INBOX&uids=abc'))->assertStatus(422);
+        $this->postJson($this->url('/seen'), ['folder' => 'INBOX', 'uids' => [], 'seen' => true])->assertStatus(422);
+    }
+
+    public function test_gmail_with_the_option_off_marks_the_conversation_read_only_in_xplendor(): void
+    {
+        $this->gmail(false);
+        $a = FakeMailboxImap::put('INBOX', $this->eml('anexos.eml'));
+        $b = FakeMailboxImap::put('INBOX', $this->eml('codificado.eml'));
+        Sanctum::actingAs($this->owner);
+        $this->getJson($this->url("/thread?folder=INBOX&uids={$a},{$b}"))->assertOk();
+        FakeMailboxImap::$calls = [];
+        $this->postJson($this->url('/seen'), ['folder' => 'INBOX', 'uids' => [$a, $b], 'seen' => true])->assertOk()->assertJsonPath('data.unread', 0);
+        $this->assertSame([], array_values(array_filter(FakeMailboxImap::$calls, fn ($x) => str_starts_with($x, 'seen'))));
+        $this->assertSame(2, MailboxOpenedUid::count());
+        $this->assertNotContains('\\Seen', FakeMailboxImap::$messages['INBOX'][$a]['flags']);
+    }
+
     public function test_dangerous_html_is_cleaned_and_external_images_are_blocked(): void
     {
         $uid = FakeMailboxImap::put('INBOX', $this->eml('perigoso.eml'));

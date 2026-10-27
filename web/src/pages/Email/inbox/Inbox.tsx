@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Spinner } from "reactstrap";
+import { Alert } from "reactstrap";
 import { toast } from "react-toastify";
-import { getMailboxFolders, getMailboxMessage, getMailboxMessages, setMailboxSeen } from "helpers/laravel_helper";
+import { getMailboxFolders, getMailboxMessages, getMailboxThread, setMailboxSeenMany } from "helpers/laravel_helper";
 import { adjustMailboxUnread, refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
 import EmailSidebar from "./EmailSidebar";
 import MessageList from "./MessageList";
@@ -75,10 +75,19 @@ export default function Inbox({ companyId, email, profileLink }: { companyId: nu
         }
         let unread: number | null = null;
         try {
-            for (const uid of uids) {
-                const s: any = await setMailboxSeen(companyId, uid, folder, seen);
-                unread = s?.data?.unread ?? unread;
+            // Todas de uma vez: um pedido e uma ligação ao servidor de e-mail (com a contagem na mesma ligação).
+            const s: any = await setMailboxSeenMany(companyId, folder, uids, seen);
+            unread = s?.data?.unread ?? null;
+        } catch (e: any) {
+            // Não ficou marcado no servidor: o ecrã volta atrás e diz porquê (nada de falhas em silêncio).
+            markLocal(uids, !seen);
+            if (folder === inboxPath) {
+                const undo = seen ? uids.length : -uids.length;
+                adjustMailboxUnread(undo);
+                setList((l) => ({ ...l, unread: l.unread === null ? null : Math.max(0, l.unread + undo) }));
             }
+            toast.error(`${seen ? "Não foi possível marcar como lida" : "Não foi possível marcar como por ler"}: ${e?.message || "erro do servidor"}`);
+            throw e;
         } finally {
             if (unread !== null) setList((l) => ({ ...l, unread }));
             refreshMailboxUnread();
@@ -93,11 +102,10 @@ export default function Inbox({ companyId, email, profileLink }: { companyId: nu
         window.history.pushState({ ...(window.history.state || {}), xpMailThread: t.key }, "");
         // As por ler da conversa passam logo a lidas (o número desce no mesmo instante).
         const unseen = list.items.filter((m) => t.uids.includes(m.uid) && !m.seen).map((m) => m.uid);
-        markSeen(unseen, true).catch(() => { /* fica por marcar no servidor; a lista volta a ler */ });
-        Promise.all(t.uids.map((uid) => getMailboxMessage(companyId, uid, folder)))
-            .then(async (rs: any[]) => {
-                setMessages(rs.map((r) => r?.data?.message).filter(Boolean));
-            })
+        markSeen(unseen, true).catch(() => { /* o aviso já apareceu e o ecrã voltou atrás */ });
+        // A conversa toda num só pedido: uma ligação ao servidor de e-mail, seja qual for o número de mensagens.
+        getMailboxThread(companyId, folder, t.uids)
+            .then((r: any) => setMessages(r?.data?.messages ?? []))
             .catch((e: any) => setThreadError(e?.message || "Não foi possível abrir a conversa."))
             .finally(() => setLoadingThread(false));
     };
@@ -113,8 +121,8 @@ export default function Inbox({ companyId, email, profileLink }: { companyId: nu
         try {
             await markSeen(thread.uids, false);
             back();
-        } catch (e: any) {
-            toast.error(e?.message || "Não foi possível marcar como por ler.");
+        } catch {
+            // o aviso já apareceu (markSeen) e a conversa fica aberta
         }
     };
 
@@ -126,7 +134,7 @@ export default function Inbox({ companyId, email, profileLink }: { companyId: nu
         return <Alert color="danger" data-testid="mail-error">{error} <a href={`/app${profileLink}`} className="alert-link ms-1">Rever a caixa no Perfil</a></Alert>;
     }
     if (folders.length === 0) {
-        return <div className="text-center py-5 text-muted"><Spinner size="sm" className="me-2" />A ligar à caixa…</div>;
+        return <InboxSkeleton email={email} profileLink={profileLink} />; // as pastas ainda a chegar
     }
 
     return (
@@ -140,6 +148,16 @@ export default function Inbox({ companyId, email, profileLink }: { companyId: nu
                 <MessageList items={list.items} myEmail={email} loading={loadingList} total={list.total} page={page} perPage={list.perPage}
                     onOpen={open} onPage={setPage} onRefresh={loadList} title={title} />
             )}
+        </div>
+    );
+}
+
+/** E-mail 4b · A caixa a carregar: o mesmo desenho, com o esqueleto das pastas e da lista (em vez de um spinner). */
+export function InboxSkeleton({ email, profileLink }: { email: string; profileLink: string }) {
+    return (
+        <div className="email-wrapper d-lg-flex gap-1 mx-n4 mt-n4 p-1" data-testid="mail-inbox-loading">
+            <EmailSidebar email={email} folders={[]} current="" unread={null} onPick={() => undefined} profileLink={profileLink} loading />
+            <MessageList items={[]} myEmail={email} loading total={0} page={1} perPage={25} onOpen={() => undefined} onPage={() => undefined} onRefresh={() => undefined} title="Entrada" />
         </div>
     );
 }

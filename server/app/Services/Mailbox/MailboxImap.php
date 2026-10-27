@@ -53,4 +53,17 @@ interface MailboxImap
      * os UID). data = {new: array<int, string>, total: int, items: list, unseen: int, unseen_uids: ?list<int>}.
      */
     public function openInbox(Mailbox $mailbox, ?int $afterUid, ?int $knownUidvalidity, int $newLimit, int $perPage, bool $withUnseenUids): ImapResult;
+
+    /**
+     * E-mail 4b · Várias mensagens da mesma pasta numa só ligação (a conversa aberta): data = {messages:
+     * array<int, array{raw: string, flags: list<string>}>}; uidvalidity. Cada comando custa ~0,5 s no
+     * Gmail: uma ligação por mensagem tornava a abertura de uma conversa muito lenta.
+     */
+    public function messages(Mailbox $mailbox, string $folder, array $uids): ImapResult;
+
+    /**
+     * E-mail 4b · Marcar várias como lidas (ou por ler) numa só ligação e, na Entrada, contar logo os
+     * não lidos na mesma ligação: data = {unseen: ?int, unseen_uids: ?list<int>}.
+     */
+    public function seenMany(Mailbox $mailbox, string $folder, array $uids, bool $seen, bool $count): ImapResult;
 }

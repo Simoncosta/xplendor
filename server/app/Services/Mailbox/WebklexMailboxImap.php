@@ -173,6 +173,42 @@ class WebklexMailboxImap implements MailboxImap
         });
     }
 
+    public function messages(Mailbox $mailbox, string $folder, array $uids): ImapResult
+    {
+        return $this->with($mailbox, function (Client $client) use ($folder, $uids) {
+            $conn = $client->getConnection();
+            $selected = (array) $conn->examineFolder($folder)->validatedData();
+            // Um só FETCH para todas, com as marcas e o corpo (BODY.PEEK: ler não marca como lida).
+            $fetched = (array) $conn->fetch(['UID', 'FLAGS', 'BODY.PEEK[]'], array_values(array_map('intval', $uids)))->validatedData();
+            $out = [];
+            foreach ($fetched as $uid => $data) {
+                if (is_string($data['BODY[]'] ?? null) && $data['BODY[]'] !== '') {
+                    $out[(int) $uid] = ['raw' => $data['BODY[]'], 'flags' => (array) ($data['FLAGS'] ?? [])];
+                }
+            }
+
+            return ImapResult::data(['messages' => $out], isset($selected['uidvalidity']) ? (int) $selected['uidvalidity'] : null);
+        });
+    }
+
+    public function seenMany(Mailbox $mailbox, string $folder, array $uids, bool $seen, bool $count): ImapResult
+    {
+        return $this->with($mailbox, function (Client $client) use ($folder, $uids, $seen, $count) {
+            $conn = $client->getConnection();
+            $selected = (array) $conn->selectFolder($folder)->validatedData();
+            // Um só UID STORE para todas (o store() do pacote só aceita intervalos).
+            $set = implode(',', array_map('intval', $uids));
+            $conn->requestAndResponse('UID STORE', [$set, ($seen ? '+' : '-') . 'FLAGS.SILENT', '(\\Seen)'], true)->validatedData();
+            if (! $count) {
+                return ImapResult::data(['unseen' => null, 'unseen_uids' => null], isset($selected['uidvalidity']) ? (int) $selected['uidvalidity'] : null);
+            }
+            // Os não lidos da Entrada na mesma ligação (a pasta selecionada é a Entrada).
+            $unseen = array_map('intval', (array) $conn->search(['UNSEEN'])->validatedData());
+
+            return ImapResult::data(['unseen' => count($unseen), 'unseen_uids' => $unseen], isset($selected['uidvalidity']) ? (int) $selected['uidvalidity'] : null);
+        });
+    }
+
     /** @param callable(Client): ImapResult $work */
     private function with(Mailbox $mailbox, callable $work): ImapResult
     {

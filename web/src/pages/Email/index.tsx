@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
+import { Card, CardBody, Col, Container, Row } from "reactstrap";
 import PageHeader from "Components/Common/PageHeader";
 import { getMyMailbox } from "helpers/laravel_helper";
 import { isImpersonating } from "helpers/impersonation";
 import { isRootRole, sessionUser } from "helpers/roles";
 import { useWorkingCompany } from "contexts/WorkingCompanyContext";
-import Inbox from "./inbox/Inbox";
+import Inbox, { InboxSkeleton } from "./inbox/Inbox";
 
 /**
  * E-mail 3 · /email. A caixa é sempre a da própria pessoa, na sua empresa. Sem caixa: o que é e
@@ -45,7 +45,9 @@ export default function EmailPage() {
             <div className="page-content">
                 <Container fluid>
                     <PageHeader title="E-mail" breadcrumbs={[{ label: "Comunicação" }]} info="A sua caixa de correio na XPLENDOR. Só a própria pessoa a vê." />
-                    {!unavailable && !loading && mailbox && me?.company_id ? (
+                    {!unavailable && loading ? (
+                        <InboxSkeleton email="" profileLink={profile} />
+                    ) : !unavailable && mailbox && me?.company_id ? (
                         <Inbox companyId={Number(me.company_id)} email={mailbox.email} profileLink={profile} />
                     ) : (
                     <Row className="justify-content-center">
@@ -60,8 +62,6 @@ export default function EmailPage() {
                                                 A caixa de correio é pessoal: só a própria pessoa a vê, na sua empresa. Durante uma sessão como cliente, ou a trabalhar noutra empresa, não se mostra a caixa de ninguém.
                                             </p>
                                         </div>
-                                    ) : loading ? (
-                                        <div className="text-center py-5 text-muted"><Spinner size="sm" className="me-2" />A carregar…</div>
                                     ) : !mailbox ? (
                                         <div className="text-center py-4" data-testid="email-empty">
                                             <i className="ri-mail-add-line display-5 text-primary" />

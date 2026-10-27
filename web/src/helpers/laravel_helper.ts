@@ -362,18 +362,25 @@ export const getMyAccess = (companyId: number) => api.get(url.GET_COMPANIES + `/
 export const getMyMailbox = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox`);
 export const saveMyMailbox = (companyId: number, data: Record<string, unknown>) => api.put(url.GET_COMPANIES + `/${companyId}/my-mailbox`, data);
 export const deleteMyMailbox = (companyId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/my-mailbox`);
-export const testMyMailbox = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/test`, {});
+// Os POST da caixa de correio vão em JSON (JSON_BODY, mais acima): por omissão o axios desta app envia
+// multipart/form-data, e aí um true chega como o texto "true" (o servidor recusava o "marcar como lida" com 422).
+export const testMyMailbox = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/test`, {}, JSON_BODY);
 // E-mail 3: testar o IMAP (pasta de Enviados e não lidos) e o número de não lidos (cabeçalho e menu).
-export const testMyMailboxImap = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/test-imap`, {});
+export const testMyMailboxImap = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/test-imap`, {}, JSON_BODY);
 export const getMyMailboxUnread = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/unread`);
 // E-mail 4: a caixa de entrada (ao vivo do servidor de e-mail) e a "Conversa" da ficha e da venda.
 export const getMailboxFolders = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/folders`);
 export const getMailboxMessages = (companyId: number, folder: string, page = 1) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages`, { folder, page });
 export const getMailboxMessage = (companyId: number, uid: number, folder: string) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}`, { folder });
 export const setMailboxSeen = (companyId: number, uid: number, folder: string, seen: boolean) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/seen`, { folder, seen });
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/seen`, { folder, seen }, JSON_BODY);
+// E-mail 4b: a conversa toda num só pedido (uma ligação IMAP) e marcar várias de uma vez.
+export const getMailboxThread = (companyId: number, folder: string, uids: number[]) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/thread`, { folder, uids: uids.join(",") });
+export const setMailboxSeenMany = (companyId: number, folder: string, uids: number[], seen: boolean) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/seen`, { folder, uids, seen }, JSON_BODY);
 export const linkMailboxMessage = (companyId: number, uid: number, folder: string, customerId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/link`, { folder, customer_id: customerId });
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/link`, { folder, customer_id: customerId }, JSON_BODY);
 export const mailboxAttachmentPath = (companyId: number, uid: number, folder: string, index: number, inline: boolean) =>
     `/companies/${companyId}/my-mailbox/messages/${uid}/attachments/${index}?folder=${encodeURIComponent(folder)}${inline ? "&inline=1" : ""}`;
 export const getCustomerMailMessages = (companyId: number, customerId: number) => api.get(url.GET_COMPANIES + `/${companyId}/customers/${customerId}/mail-messages`);

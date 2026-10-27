@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Card, CardBody, Spinner } from "reactstrap";
+import { Card, CardBody } from "reactstrap";
 import { getCarMailMessages, getCustomerMailMessages } from "helpers/laravel_helper";
 import MessageFrame from "pages/Email/inbox/MessageFrame";
+import { ConversationSkeleton } from "pages/Email/inbox/skeletons";
 
 /**
  * E-mail 4 · A secção "Conversa": as mensagens guardadas porque se ligam ao cliente ou à venda (as
@@ -31,7 +32,7 @@ export default function MailConversation({ companyId, customerId, carId }: { com
             <CardBody>
                 <h5 className="card-title mb-3"><i className="ri-mail-line me-1" />Conversa</h5>
                 {messages === null ? (
-                    <div className="text-muted fs-13"><Spinner size="sm" className="me-2" />A carregar…</div>
+                    <ConversationSkeleton />
                 ) : messages.length === 0 ? (
                     <div className="text-muted fs-13">Ainda não há e-mails ligados. As mensagens enviadas pela XPLENDOR, as respostas e as que ligar na caixa de entrada aparecem aqui.</div>
                 ) : (

@@ -335,6 +335,9 @@ Route::prefix('v1')->group(function () {
                     Route::post('/my-mailbox/messages/{uid}/seen', [$inbox, 'seen'])->whereNumber('uid');
                     Route::get('/my-mailbox/messages/{uid}/attachments/{index}', [$inbox, 'attachment'])->whereNumber(['uid', 'index']);
                     Route::post('/my-mailbox/messages/{uid}/link', [$inbox, 'link'])->whereNumber('uid');
+                    // E-mail 4b: a conversa numa só ligação IMAP, e marcar várias de uma vez.
+                    Route::get('/my-mailbox/thread', [$inbox, 'thread']);
+                    Route::post('/my-mailbox/seen', [$inbox, 'seenMany'])->middleware('throttle:120,1');
                 });
                 // Auditoria (Fatia 2, plataforma): a página central, a coluna "Auditoria" das listas, as
                 // corridas e os estados. Correr e mudar o estado são rotas por área (a ACL de cada área).

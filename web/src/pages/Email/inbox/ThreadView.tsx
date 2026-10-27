@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Alert, Button, Col, Modal, ModalBody, ModalHeader, Row, Spinner } from "reactstrap";
+import { Alert, Button, Col, Modal, ModalBody, ModalHeader, Row } from "reactstrap";
 import { toast } from "react-toastify";
 import { mailboxAttachmentPath } from "helpers/laravel_helper";
 import { downloadGet, fetchBlob } from "helpers/download_helper";
 import MessageFrame from "./MessageFrame";
+import { ThreadSkeleton } from "./skeletons";
 import LinkCustomerModal from "./LinkCustomerModal";
 import { MailAttachment, MailFull, fileSize, who } from "./types";
 
@@ -56,7 +57,7 @@ export default function ThreadView({ companyId, myEmail, messages, loading, erro
                 </div>
 
                 {loading ? (
-                    <div className="text-center py-5 text-muted"><Spinner size="sm" className="me-2" />A abrir a conversa…</div>
+                    <ThreadSkeleton />
                 ) : error ? (
                     <Alert color="danger" className="mt-3">{error}</Alert>
                 ) : latest ? (

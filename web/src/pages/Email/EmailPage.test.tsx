@@ -6,7 +6,8 @@ import { isImpersonating } from "helpers/impersonation";
 jest.mock("react-router-dom", () => ({ Link: ({ to, children, ...rest }: any) => <a href={to} {...rest}>{children}</a> }), { virtual: true });
 jest.mock("Components/Common/PageHeader", () => ({ title }: any) => <h4>{title}</h4>);
 jest.mock("helpers/laravel_helper", () => ({ getMyMailbox: jest.fn() }));
-jest.mock("./inbox/Inbox", () => ({ email, profileLink, companyId }: any) => <div data-testid="mail-inbox">{email} {profileLink} {companyId}</div>);
+jest.mock("./inbox/Inbox", () => ({ __esModule: true, default: ({ email, profileLink, companyId }: any) => <div data-testid="mail-inbox">{email} {profileLink} {companyId}</div>,
+    InboxSkeleton: () => <div data-testid="mail-inbox-loading" /> }));
 jest.mock("helpers/impersonation", () => ({ isImpersonating: jest.fn() }));
 let mockMe: any = { id: 4, company_id: 9, role: "user" };
 let mockAway = false;
@@ -56,5 +57,12 @@ describe("A página /email (E-mail 3)", () => {
         render(<EmailPage />);
         expect(await screen.findByTestId("email-empty")).toBeInTheDocument();
         expect(getMyMailbox).toHaveBeenCalledWith(2);
+    });
+
+    it("enquanto procura a caixa: o esqueleto da caixa de entrada (sem spinner)", () => {
+        (getMyMailbox as jest.Mock).mockImplementation(() => new Promise(() => undefined));
+        render(<EmailPage />);
+        expect(screen.getByTestId("mail-inbox-loading")).toBeInTheDocument();
+        expect(document.querySelector(".spinner-border")).toBeNull();
     });
 });

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { toast } from "react-toastify";
 import Inbox from "./Inbox";
-import { getCustomers, getMailboxFolders, getMailboxMessage, getMailboxMessages, linkMailboxMessage, setMailboxSeen } from "helpers/laravel_helper";
+import { getCustomers, getMailboxFolders, getMailboxMessages, getMailboxThread, linkMailboxMessage, setMailboxSeenMany } from "helpers/laravel_helper";
 import { downloadGet, fetchBlob } from "helpers/download_helper";
 import { adjustMailboxUnread, refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
 
@@ -9,7 +10,7 @@ jest.mock("react-toastify", () => ({ toast: { success: jest.fn(), error: jest.fn
 jest.mock("Components/Common/mailbox/useMailboxUnread", () => ({ refreshMailboxUnread: jest.fn(), adjustMailboxUnread: jest.fn() }));
 jest.mock("helpers/download_helper", () => ({ fetchBlob: jest.fn(), downloadGet: jest.fn() }));
 jest.mock("helpers/laravel_helper", () => ({
-    getMailboxFolders: jest.fn(), getMailboxMessages: jest.fn(), getMailboxMessage: jest.fn(), setMailboxSeen: jest.fn(), linkMailboxMessage: jest.fn(),
+    getMailboxFolders: jest.fn(), getMailboxMessages: jest.fn(), getMailboxThread: jest.fn(), setMailboxSeenMany: jest.fn(), linkMailboxMessage: jest.fn(),
     getCustomers: jest.fn(),
     mailboxAttachmentPath: (c: number, u: number, f: string, i: number, inline: boolean) => `/companies/${c}/my-mailbox/messages/${u}/attachments/${i}?folder=${f}${inline ? "&inline=1" : ""}`,
 }));
@@ -42,8 +43,8 @@ describe("A caixa de entrada (E-mail 4)", () => {
         jest.clearAllMocks();
         (getMailboxFolders as jest.Mock).mockResolvedValue({ data: { folders } });
         (getMailboxMessages as jest.Mock).mockResolvedValue({ data: { items, total: 3, per_page: 25, unread: 1 } });
-        (getMailboxMessage as jest.Mock).mockImplementation((_c: number, uid: number) => Promise.resolve({ data: { message: uid === 8 ? reply : full(uid) } }));
-        (setMailboxSeen as jest.Mock).mockResolvedValue({ data: { unread: 0 } });
+        (getMailboxThread as jest.Mock).mockImplementation((_c: number, _f: string, uids: number[]) => Promise.resolve({ data: { messages: uids.map((uid) => (uid === 8 ? reply : full(uid))) } }));
+        (setMailboxSeenMany as jest.Mock).mockResolvedValue({ data: { unread: 0 } });
         (global as any).URL.createObjectURL = jest.fn(() => "blob:pre-visualizacao");
         (global as any).URL.revokeObjectURL = jest.fn();
     });
@@ -69,8 +70,8 @@ describe("A caixa de entrada (E-mail 4)", () => {
         const msgs = await screen.findAllByTestId("mail-message");
         expect(msgs[0]).toHaveTextContent("Oficina Exemplo"); // da mais antiga para a mais recente
         expect(msgs[1]).toHaveTextContent("Eu");
-        await waitFor(() => expect(setMailboxSeen).toHaveBeenCalledWith(5, 7, "INBOX", true));
-        expect(setMailboxSeen).not.toHaveBeenCalledWith(5, 8, "INBOX", true); // já estava lida
+        await waitFor(() => expect(setMailboxSeenMany).toHaveBeenCalledWith(5, "INBOX", [7], true)); // só a por ler (a 8 já estava lida), num só pedido
+        expect(getMailboxThread).toHaveBeenCalledWith(5, "INBOX", [8, 7]); // a conversa toda num só pedido
         fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
         expect(await screen.findByTestId("mail-list")).toBeInTheDocument();
     });
@@ -85,8 +86,7 @@ describe("A caixa de entrada (E-mail 4)", () => {
         await openThread();
         await screen.findAllByTestId("mail-message");
         await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Marcar como por ler/ })); });
-        expect(setMailboxSeen).toHaveBeenCalledWith(5, 8, "INBOX", false);
-        expect(setMailboxSeen).toHaveBeenCalledWith(5, 7, "INBOX", false);
+        expect(setMailboxSeenMany).toHaveBeenLastCalledWith(5, "INBOX", [8, 7], false); // a conversa toda, num só pedido
         expect(await screen.findByTestId("mail-list")).toBeInTheDocument();
     });
 
@@ -129,7 +129,7 @@ describe("A caixa de entrada (E-mail 4)", () => {
 
     it("abrir uma conversa por ler tira logo do número (antes da resposta do servidor) e depois acerta", async () => {
         let release: (v: any) => void = () => undefined;
-        (setMailboxSeen as jest.Mock).mockImplementation(() => new Promise((r) => { release = r; }));
+        (setMailboxSeenMany as jest.Mock).mockImplementation(() => new Promise((r) => { release = r; }));
         render(<Inbox companyId={5} email="matilde@exemplo.pt" profileLink="/users/4#mailbox" />);
         const rows = await screen.findAllByTestId("mail-thread");
         (refreshMailboxUnread as jest.Mock).mockClear();
@@ -138,7 +138,7 @@ describe("A caixa de entrada (E-mail 4)", () => {
         expect(within(screen.getByTestId("mail-folders")).getAllByRole("link")[0]).toHaveTextContent(/^Entrada$/); // de 1 para 0, já
         expect(refreshMailboxUnread).not.toHaveBeenCalled(); // ainda à espera do servidor
         await act(async () => { release({ data: { unread: 0 } }); });
-        expect(setMailboxSeen).toHaveBeenCalledWith(5, 7, "INBOX", true);
+        expect(setMailboxSeenMany).toHaveBeenCalledWith(5, "INBOX", [7], true);
         await waitFor(() => expect(refreshMailboxUnread).toHaveBeenCalled());
     });
 
@@ -148,5 +148,17 @@ describe("A caixa de entrada (E-mail 4)", () => {
         (adjustMailboxUnread as jest.Mock).mockClear();
         await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Marcar como por ler/ })); });
         expect(adjustMailboxUnread).toHaveBeenCalledWith(2); // as duas mensagens da conversa
+    });
+
+    it("se o servidor recusar \"marcar como lida\", o ecrã volta atrás e diz porquê", async () => {
+        (setMailboxSeenMany as jest.Mock).mockRejectedValue({ message: "Indique se a mensagem fica lida ou por ler." });
+        render(<Inbox companyId={5} email="matilde@exemplo.pt" profileLink="/users/4#mailbox" />);
+        const rows = await screen.findAllByTestId("mail-thread");
+        fireEvent.click(rows[0]);
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Não foi possível marcar como lida: Indique se a mensagem fica lida ou por ler."));
+        expect(adjustMailboxUnread).toHaveBeenNthCalledWith(1, -1);
+        expect(adjustMailboxUnread).toHaveBeenLastCalledWith(1); // volta atrás
+        fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+        expect((await screen.findAllByTestId("mail-thread"))[0]).toHaveClass("unread");
     });
 });

@@ -54,6 +54,8 @@ final class RoutePermissions
         'POST {id}/my-mailbox/messages/{uid}/seen' => 'empresa.ver',
         'GET {id}/my-mailbox/messages/{uid}/attachments/{index}' => 'empresa.ver',
         'POST {id}/my-mailbox/messages/{uid}/link' => 'empresa.ver',
+        'GET {id}/my-mailbox/thread' => 'empresa.ver',
+        'POST {id}/my-mailbox/seen' => 'empresa.ver',
         // E-mail 4: a secção "Conversa" (as mensagens ligadas ao cliente ou à venda; MAIL_CONTENT).
         'GET {id}/customers/{customer}/mail-messages' => 'financas.ver',
         'GET {id}/cars/{carId}/mail-messages' => 'automovel.ver',
@@ -953,6 +955,8 @@ final class RoutePermissions
         'POST {id}/my-mailbox/messages/{uid}/seen',
         'GET {id}/my-mailbox/messages/{uid}/attachments/{index}',
         'POST {id}/my-mailbox/messages/{uid}/link',
+        'GET {id}/my-mailbox/thread',
+        'POST {id}/my-mailbox/seen',
     ];
 
     /**

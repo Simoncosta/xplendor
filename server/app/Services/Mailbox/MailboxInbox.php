@@ -111,6 +111,90 @@ class MailboxInbox
         if (isset($parsed['error'])) {
             return ['ok' => false, 'error' => $parsed['error']];
         }
+
+        return ['ok' => true, 'message' => $this->decorate($mailbox, $folder, $uid, $parsed)];
+    }
+
+    /**
+     * E-mail 4b · A conversa aberta: todas as mensagens numa só ligação IMAP (as que não estão na cache
+     * curta), pela ordem pedida. @param list<int> $uids
+     */
+    public function thread(Mailbox $mailbox, string $folder, array $uids): array
+    {
+        $parsed = [];
+        $missing = [];
+        foreach ($uids as $uid) {
+            $cached = Cache::get($this->key($mailbox, "message:{$folder}:{$uid}"));
+            is_array($cached) ? $parsed[$uid] = $cached : $missing[] = $uid;
+        }
+        if ($missing) {
+            $result = $this->imap->messages($mailbox, $folder, $missing);
+            if (! $result->ok) {
+                return ['ok' => false, 'error' => (string) $result->error];
+            }
+            foreach ((array) $result->data['messages'] as $uid => $m) {
+                $full = MailParser::full((string) $m['raw'], (array) $m['flags']);
+                if ($full) {
+                    $full['uidvalidity'] = $result->uidvalidity;
+                    Cache::put($this->key($mailbox, "message:{$folder}:{$uid}"), $full, 60);
+                    $parsed[(int) $uid] = $full;
+                }
+            }
+        }
+        $messages = [];
+        foreach ($uids as $uid) {
+            if (isset($parsed[$uid])) {
+                $messages[] = $this->decorate($mailbox, $folder, $uid, $parsed[$uid]);
+            }
+        }
+
+        return $messages ? ['ok' => true, 'messages' => $messages] : ['ok' => false, 'error' => 'As mensagens já não existem na caixa.'];
+    }
+
+    /**
+     * E-mail 4b · Marcar várias como lidas (ou por ler) de uma vez: uma ligação IMAP para marcar e,
+     * na Entrada, contar os não lidos (no Gmail com a opção desligada, guarda só os UID abertos).
+     * @param list<int> $uids
+     */
+    public function seenMany(Mailbox $mailbox, string $folder, array $uids, bool $seen): array
+    {
+        $inbox = strtoupper($folder) === 'INBOX';
+        if ($seen && ! $mailbox->marksSeenOnServer()) {
+            $thread = $this->thread($mailbox, $folder, $uids); // da cache: a conversa acabou de abrir
+            if (! $thread['ok']) {
+                return $thread;
+            }
+            foreach ($uids as $uid) {
+                $uidvalidity = Cache::get($this->key($mailbox, "message:{$folder}:{$uid}"))['uidvalidity'] ?? null;
+                if ($uidvalidity !== null) {
+                    MailboxOpenedUid::firstOrCreate(['mailbox_id' => $mailbox->id, 'folder' => $folder, 'uidvalidity' => (int) $uidvalidity, 'uid' => $uid]);
+                }
+            }
+            if ($inbox) {
+                $this->counter->refresh($mailbox);
+            }
+        } else {
+            $result = $this->imap->seenMany($mailbox, $folder, $uids, $seen, $inbox);
+            if (! $result->ok) {
+                return ['ok' => false, 'error' => (string) $result->error];
+            }
+            if (! $seen) {
+                MailboxOpenedUid::where('mailbox_id', $mailbox->id)->where('folder', $folder)->whereIn('uid', $uids)->delete();
+            }
+            if ($inbox && $result->data['unseen'] !== null) {
+                $mailbox->forceFill(['unread_count' => $this->counter->fromServer($mailbox, (int) $result->data['unseen'], $result->data['unseen_uids'], $result->uidvalidity),
+                    'unread_checked_at' => now()])->save();
+            }
+            $this->markCached($mailbox, $folder, $uids, $seen);
+        }
+        $this->forget($mailbox);
+
+        return ['ok' => true, 'unread' => $mailbox->fresh()->unread_count];
+    }
+
+    /** O que o ecrã recebe de uma mensagem: lida conforme a opção do Gmail e o cliente a que está ligada. */
+    private function decorate(Mailbox $mailbox, string $folder, int $uid, array $parsed): array
+    {
         if (! $mailbox->marksSeenOnServer() && isset(MailboxOpenedUid::set($mailbox, $folder, $parsed['uidvalidity'] ?? null)[$uid])) {
             $parsed['seen'] = true;
         }
@@ -120,8 +204,7 @@ class MailboxInbox
         $customer = $linked ? Customer::where('company_id', $mailbox->company_id)->find($linked->customer_id) : null;
         unset($parsed['uidvalidity']);
 
-        return ['ok' => true, 'message' => $parsed + ['uid' => $uid, 'folder' => $folder,
-            'customer' => $customer ? ['id' => $customer->id, 'name' => $customer->name] : null]];
+        return $parsed + ['uid' => $uid, 'folder' => $folder, 'customer' => $customer ? ['id' => $customer->id, 'name' => $customer->name] : null];
     }
 
     /**
@@ -147,6 +230,7 @@ class MailboxInbox
             if (! $seen) {
                 MailboxOpenedUid::where('mailbox_id', $mailbox->id)->where('folder', $folder)->where('uid', $uid)->delete();
             }
+            $this->markCached($mailbox, $folder, [$uid], $seen);
         }
         $this->forget($mailbox);
         if (strtoupper($folder) === 'INBOX') {
@@ -231,9 +315,13 @@ class MailboxInbox
         return $parsed;
     }
 
+    /**
+     * As chaves da cache curta. Só as listas mudam com "lida/por ler" (forget muda-lhes a versão): as
+     * pastas ficam (5 min) e as mensagens guardadas têm a marca de lida atualizada no momento (markCached).
+     */
     private function key(Mailbox $mailbox, string $what): string
     {
-        $version = (int) Cache::get("mailbox:{$mailbox->id}:v", 0);
+        $version = str_starts_with($what, 'list:') ? (int) Cache::get("mailbox:{$mailbox->id}:v", 0) : 'f';
 
         return "mailbox:{$mailbox->id}:{$version}:" . md5($what);
     }
@@ -241,5 +329,17 @@ class MailboxInbox
     private function forget(Mailbox $mailbox): void
     {
         Cache::put("mailbox:{$mailbox->id}:v", (int) Cache::get("mailbox:{$mailbox->id}:v", 0) + 1, 3600);
+    }
+
+    /** @param list<int> $uids */
+    private function markCached(Mailbox $mailbox, string $folder, array $uids, bool $seen): void
+    {
+        foreach ($uids as $uid) {
+            $key = $this->key($mailbox, "message:{$folder}:{$uid}");
+            $cached = Cache::get($key);
+            if (is_array($cached)) {
+                Cache::put($key, ['seen' => $seen] + $cached, 60);
+            }
+        }
     }
 }

@@ -175,6 +175,47 @@ class FakeMailboxImap implements MailboxImap
             'unseen' => self::$unseen, 'unseen_uids' => $uids], self::$uidvalidity);
     }
 
+    public function messages(Mailbox $mailbox, string $folder, array $uids): ImapResult
+    {
+        self::$calls[] = "messages:{$folder}:" . implode(',', $uids);
+        if (self::$failWith !== null) {
+            return ImapResult::failed(self::$failWith);
+        }
+        $out = [];
+        foreach ($uids as $uid) {
+            if (isset(self::$messages[$folder][$uid])) {
+                $out[(int) $uid] = self::$messages[$folder][$uid];
+            }
+        }
+
+        return ImapResult::data(['messages' => $out], self::$uidvalidity);
+    }
+
+    public function seenMany(Mailbox $mailbox, string $folder, array $uids, bool $seen, bool $count): ImapResult
+    {
+        self::$calls[] = "seen-many:{$folder}:" . implode(',', $uids) . ':' . ($seen ? '1' : '0');
+        if (self::$failWith !== null) {
+            return ImapResult::failed(self::$failWith);
+        }
+        foreach ($uids as $uid) {
+            if (isset(self::$messages[$folder][$uid])) {
+                $flags = array_values(array_diff(self::$messages[$folder][$uid]['flags'], ['\\Seen']));
+                self::$messages[$folder][$uid]['flags'] = $seen ? [...$flags, '\\Seen'] : $flags;
+            }
+        }
+        if (! $count) {
+            return ImapResult::data(['unseen' => null, 'unseen_uids' => null], self::$uidvalidity);
+        }
+        $unseen = [];
+        foreach (self::$messages['INBOX'] ?? [] as $uid => $m) {
+            if (! in_array('\\Seen', $m['flags'], true)) {
+                $unseen[] = $uid;
+            }
+        }
+
+        return ImapResult::data(['unseen' => count($unseen), 'unseen_uids' => $unseen], self::$uidvalidity);
+    }
+
     private static function header(string $raw): string
     {
         $parts = preg_split("/\r?\n\r?\n/", $raw, 2);

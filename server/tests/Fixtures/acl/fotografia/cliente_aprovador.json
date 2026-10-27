@@ -1,6 +1,6 @@
 {
     "ator": "cliente_aprovador",
-    "rotas": 637,
+    "rotas": 639,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -442,6 +442,7 @@
         "GET api/v1/companies/{id}/my-mailbox/messages": 422,
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}": 422,
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}": 422,
+        "GET api/v1/companies/{id}/my-mailbox/thread": 422,
         "GET api/v1/companies/{id}/my-mailbox/unread": 200,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 200,
@@ -697,6 +698,7 @@
         "POST api/v1/companies/{id}/marketing/radar/unmute": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen": 422,
+        "POST api/v1/companies/{id}/my-mailbox/seen": 422,
         "POST api/v1/companies/{id}/my-mailbox/test": 422,
         "POST api/v1/companies/{id}/my-mailbox/test-imap": 422,
         "POST api/v1/companies/{id}/ocr/invoices": 422,

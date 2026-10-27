@@ -22,6 +22,8 @@ use Illuminate\Validation\Rule;
  *   POST /companies/{id}/my-mailbox/messages/{uid}/seen            {folder, seen}
  *   GET  /companies/{id}/my-mailbox/messages/{uid}/attachments/{index}?folder=&inline=1
  *   POST /companies/{id}/my-mailbox/messages/{uid}/link            {folder, customer_id}
+ *   GET  /companies/{id}/my-mailbox/thread?folder=&uids=1,2,3        (E-mail 4b: a conversa numa só ligação)
+ *   POST /companies/{id}/my-mailbox/seen                            {folder, uids, seen} (E-mail 4b: várias de uma vez)
  */
 class MyMailboxInboxController extends Controller
 {
@@ -65,9 +67,50 @@ class MyMailboxInboxController extends Controller
         return $result['ok'] ? ApiResponse::success(['message' => $result['message']]) : ApiResponse::error($result['error'], 422);
     }
 
+    public function thread(Request $request, int $companyId)
+    {
+        $uids = $this->uids($request->input('uids'));
+        if ($uids === null) {
+            return ApiResponse::error('Indique as mensagens da conversa.', 422);
+        }
+        [$mailbox, $folder, $error] = $this->resolve($request, $companyId);
+        if ($error) {
+            return $error;
+        }
+        $result = $this->inbox->thread($mailbox, $folder, $uids);
+
+        return $result['ok'] ? ApiResponse::success(['messages' => $result['messages']]) : ApiResponse::error($result['error'], 422);
+    }
+
+    public function seenMany(Request $request, int $companyId)
+    {
+        $request->validate(['seen' => ['required', Rule::in([true, false, 1, 0, '1', '0', 'true', 'false'])]], ['seen.in' => 'Indique se as mensagens ficam lidas ou por ler.']);
+        $uids = $this->uids($request->input('uids'));
+        if ($uids === null) {
+            return ApiResponse::error('Indique as mensagens a marcar.', 422);
+        }
+        [$mailbox, $folder, $error] = $this->resolve($request, $companyId);
+        if ($error) {
+            return $error;
+        }
+        $result = $this->inbox->seenMany($mailbox, $folder, $uids, $request->boolean('seen'));
+
+        return $result['ok'] ? ApiResponse::success(['unread' => $result['unread']]) : ApiResponse::error($result['error'], 422);
+    }
+
+    /** Os UID (lista ou "1,2,3"): só números, até 50. @return list<int>|null */
+    private function uids(mixed $value): ?array
+    {
+        $list = is_array($value) ? $value : explode(',', (string) $value);
+        $uids = array_values(array_unique(array_filter(array_map(fn ($u) => ctype_digit(trim((string) $u)) ? (int) trim((string) $u) : 0, $list))));
+
+        return $uids && count($uids) <= 50 ? $uids : null;
+    }
+
     public function seen(Request $request, int $companyId, int $uid)
     {
-        $request->validate(['seen' => ['required', 'boolean']]);
+        // Também "true"/"false" em texto (um pedido multipart traz os booleanos assim).
+        $request->validate(['seen' => ['required', Rule::in([true, false, 1, 0, '1', '0', 'true', 'false'])]], ['seen.in' => 'Indique se a mensagem fica lida ou por ler.']);
         [$mailbox, $folder, $error] = $this->resolve($request, $companyId);
         if ($error) {
             return $error;
