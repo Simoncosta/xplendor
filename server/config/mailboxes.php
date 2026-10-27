@@ -27,4 +27,13 @@ return [
     // As portas aceites (as dos servidores de e-mail: nada de apontar a caixa para outros serviços).
     'smtp_ports' => [465, 587, 25, 2525],
     'imap_ports' => [993, 143],
+
+    // E-mail 5b: os anexos no envio. Ficam só temporariamente, em privado, até ao envio (apagam-se
+    // depois de enviar, ou ao fim de 24 horas se a mensagem nunca for enviada).
+    'attachments' => [
+        'disk' => 'local',
+        'max_files' => 10,
+        'max_bytes' => 20 * 1024 * 1024, // no total, por mensagem
+        'keep_hours' => 24,
+    ],
 ];

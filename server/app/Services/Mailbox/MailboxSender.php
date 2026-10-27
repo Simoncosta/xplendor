@@ -38,8 +38,9 @@ class MailboxSender
     /**
      * @param  array{customer_id?: ?int, car_sale_id?: ?int, car_lead_id?: ?int, satisfaction_report_id?: ?int}  $links
      * @param  array{cc?: list<string>, in_reply_to?: ?string, references?: list<string>}  $thread  E-mail 5: o Cc e o fio das respostas
+     * @param  ?\Illuminate\Support\Collection  $uploads  E-mail 5b: os anexos (MailAttachments::forSend)
      */
-    public function queue(Mailbox $mailbox, User $sender, string $to, string $subject, string $text, ?string $html, array $links = [], array $thread = []): MailMessage
+    public function queue(Mailbox $mailbox, User $sender, string $to, string $subject, string $text, ?string $html, array $links = [], array $thread = [], ?\Illuminate\Support\Collection $uploads = null): MailMessage
     {
         $domain = Str::after($mailbox->email, '@') ?: 'xplendor.pt';
         $message = MailMessage::create([
@@ -58,6 +59,9 @@ class MailboxSender
             'body_html' => $html,
             'status' => MailMessage::STATUS_QUEUED,
         ] + array_intersect_key($links, array_flip(['customer_id', 'car_sale_id', 'car_lead_id', 'satisfaction_report_id'])));
+        if ($uploads && $uploads->isNotEmpty()) {
+            app(MailAttachments::class)->attach($message, $uploads); // E-mail 5b: antes de ir para a fila
+        }
         SendMailboxMessageJob::dispatch($message->id, (string) $sender->name);
 
         return $message;

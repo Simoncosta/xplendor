@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getMailboxComposeContext, importMailboxAttachment, getMailboxThread, linkMailboxMessage, sendMailboxMessage, setMailboxSeen, setMailboxSeenMany, testMyMailbox, testMyMailboxImap } from "./laravel_helper";
+import { attachMailboxFile, getMailboxComposeContext, importMailboxAttachment, uploadMailboxAttachment, getMailboxThread, linkMailboxMessage, sendMailboxMessage, setMailboxSeen, setMailboxSeenMany, testMyMailbox, testMyMailboxImap } from "./laravel_helper";
 
 jest.mock("axios", () => {
     const fn = () => jest.fn(() => Promise.resolve({ data: {} }));
@@ -51,5 +51,23 @@ describe("Pedidos da caixa de correio", () => {
         expect(path).toMatch(/\/companies\/5\/my-mailbox\/messages\/7\/attachments\/1\/import-invoice$/);
         expect(body).toEqual({ folder: "INBOX" });
         expect(config).toEqual({ headers: { "Content-Type": "application/json" } });
+    });
+
+    it("E-mail 5b: o anexo do computador vai em multipart (com o progresso); o dos Ficheiros em JSON", async () => {
+        (axios.post as jest.Mock).mockClear();
+        const progress = jest.fn();
+        await uploadMailboxAttachment(5, new File(["x"], "a.pdf"), progress);
+        const [path, body, config] = (axios.post as jest.Mock).mock.calls[0];
+        expect(path).toMatch(/\/companies\/5\/my-mailbox\/attachments$/);
+        expect(body).toBeInstanceOf(FormData);
+        expect((body as FormData).get("file")).toBeInstanceOf(File);
+        expect(config.headers).toEqual({ "Content-Type": "multipart/form-data" });
+        config.onUploadProgress({ loaded: 50, total: 200 });
+        expect(progress).toHaveBeenCalledWith(25);
+        await attachMailboxFile(5, 77);
+        const [path2, body2, config2] = (axios.post as jest.Mock).mock.calls[1];
+        expect(path2).toMatch(/\/my-mailbox\/attachments\/from-files$/);
+        expect(body2).toEqual({ file_id: 77 });
+        expect(config2).toEqual({ headers: { "Content-Type": "application/json" } });
     });
 });

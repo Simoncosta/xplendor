@@ -25,12 +25,13 @@ class MailMessage extends Model
     protected $fillable = [
         'company_id', 'mailbox_id', 'user_id', 'direction', 'message_id', 'in_reply_to', 'references', 'from_address', 'to_address', 'cc_address',
         'subject', 'body_text', 'body_html', 'status', 'error', 'sent_at', 'received_at', 'customer_id', 'car_sale_id', 'car_lead_id',
-        'satisfaction_report_id',
+        'satisfaction_report_id', 'attachments',
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
         'received_at' => 'datetime',
+        'attachments' => 'array', // E-mail 5b: só o nome e o tamanho de cada anexo
     ];
 
     public function mailbox(): BelongsTo
@@ -51,6 +52,7 @@ class MailMessage extends Model
             'text' => $this->body_text,
             'html' => $this->body_html,
             'status' => $this->status,
+            'attachments' => $this->attachments ?? [],
         ];
     }
 }

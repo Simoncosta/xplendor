@@ -48,6 +48,10 @@ class SmtpMailboxClient implements MailboxClient
             if ($mail->html !== null) {
                 $email->html($mail->html);
             }
+            // E-mail 5b: os anexos (vão também na cópia em Enviados, que é esta mensagem inteira).
+            foreach ($mail->attachments as $a) {
+                $email->attach($a['content'], $a['name'], $a['mime']);
+            }
             // O Message-ID é sempre o nosso (o SentMessage::getMessageId() pode ser o "queued as" do servidor).
             $messageId = trim($mail->messageId ?? (Str::uuid() . '@' . (Str::after($mailbox->email, '@') ?: 'xplendor.pt')), '<>');
             $email->getHeaders()->addIdHeader('Message-ID', $messageId);

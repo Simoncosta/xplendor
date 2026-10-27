@@ -38,7 +38,15 @@ class MyMailboxComposeController extends Controller
             'to' => $context['to'], 'name' => $context['name'], 'consent' => $context['consent'],
             'mailbox' => $mailbox ? ['email' => $mailbox->email, 'signature' => $mailbox->signature] : null,
             'blocked' => $mailbox ? $this->sender->blockedReason($mailbox) : 'Ligue primeiro a sua caixa de correio no Perfil.',
+            'attachments' => self::attachmentLimits(),
         ]);
+    }
+
+    /** E-mail 5b: os limites dos anexos, para o ecrã verificar antes de carregar. */
+    public static function attachmentLimits(): array
+    {
+        return ['max_files' => \App\Services\Mailbox\MailAttachments::maxFiles(), 'max_bytes' => \App\Services\Mailbox\MailAttachments::maxBytes(),
+            'max_file_bytes' => MyMailboxAttachmentController::maxFileBytes()];
     }
 
     public function send(Request $request, int $companyId, MailboxInbox $inbox)
@@ -53,7 +61,10 @@ class MyMailboxComposeController extends Controller
             'reply_to.uid' => ['required_with:reply_to', 'integer', 'min:1'],
             'customer_id' => ['nullable', 'integer'],
             'car_id' => ['nullable', 'integer'],
+            'attachments' => ['nullable', 'array', 'max:' . \App\Services\Mailbox\MailAttachments::maxFiles()], // E-mail 5b: os uuid dos anexos carregados
+            'attachments.*' => ['string', 'uuid'],
         ], [
+            'attachments.max' => 'No máximo ' . \App\Services\Mailbox\MailAttachments::maxFiles() . ' anexos por mensagem.',
             'to.required' => 'Indique pelo menos um destinatário.',
             'body.required' => 'Escreva a mensagem.',
         ]);

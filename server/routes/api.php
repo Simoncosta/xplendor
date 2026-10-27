@@ -341,6 +341,11 @@ Route::prefix('v1')->group(function () {
                     // E-mail 5: escrever e responder (da caixa, da ficha do cliente e da venda).
                     Route::get('/my-mailbox/compose-context', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'context']);
                     Route::post('/my-mailbox/send', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'send'])->middleware('throttle:20,1');
+                    // E-mail 5b: os anexos no envio (o carregamento em multipart; o resto em JSON).
+                    $att = \App\Http\Controllers\Api\V1\MyMailboxAttachmentController::class;
+                    Route::post('/my-mailbox/attachments', [$att, 'store'])->middleware('throttle:60,1');
+                    Route::post('/my-mailbox/attachments/from-files', [$att, 'fromFiles'])->middleware('throttle:60,1');
+                    Route::delete('/my-mailbox/attachments/{uuid}', [$att, 'destroy'])->whereUuid('uuid');
                     // E-mail 7: um anexo para as Faturas (a permissão e o módulo do carregamento manual).
                     Route::post('/my-mailbox/messages/{uid}/attachments/{index}/import-invoice', [$inbox, 'importInvoice'])
                         ->whereNumber(['uid', 'index'])->middleware(['ensure_module:pingwin', 'throttle:30,1']);

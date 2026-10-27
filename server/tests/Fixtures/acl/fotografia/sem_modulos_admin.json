@@ -1,6 +1,6 @@
 {
     "ator": "sem_modulos_admin",
-    "rotas": 642,
+    "rotas": 645,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -973,6 +973,7 @@
         "DELETE api/v1/companies/{id}/integrations/social/publishing": 200,
         "DELETE api/v1/companies/{id}/management": 422,
         "DELETE api/v1/companies/{id}/my-mailbox": 200,
+        "DELETE api/v1/companies/{id}/my-mailbox/attachments/{uuid}": 200,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}": 403,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 403,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 403,
@@ -1425,6 +1426,8 @@
         "POST api/v1/companies/{id}/marketing/radar/mute": 403,
         "POST api/v1/companies/{id}/marketing/radar/react": 403,
         "POST api/v1/companies/{id}/marketing/radar/unmute": 403,
+        "POST api/v1/companies/{id}/my-mailbox/attachments": 422,
+        "POST api/v1/companies/{id}/my-mailbox/attachments/from-files": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice": 403,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen": 422,

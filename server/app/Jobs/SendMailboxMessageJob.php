@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\MailMessage;
+use App\Services\Mailbox\MailAttachments;
 use App\Services\Mailbox\MailboxClient;
 use App\Services\Mailbox\OutgoingMail;
 use App\Services\Mailbox\SentCopy;
@@ -19,7 +20,8 @@ use Illuminate\Queue\SerializesModels;
  * fila só vai o id: as credenciais decifram-se aqui, no worker (o Mail do Laravel não serve, porque
  * o transporte de cada caixa não sobrevive à fila). Uma só tentativa: repetir um envio SMTP pode
  * mandar a mensagem duas vezes; o erro fica na mensagem, com o motivo. Na fila própria mail (E-mail 3),
- * com o seu worker; depois do envio, a cópia em Enviados (SentCopy).
+ * com o seu worker; depois do envio, a cópia em Enviados (SentCopy). E-mail 5b: com os anexos, cujos
+ * ficheiros se apagam no fim (na mensagem fica só o nome e o tamanho).
  */
 class SendMailboxMessageJob implements ShouldQueue
 {
@@ -27,14 +29,14 @@ class SendMailboxMessageJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 60;
+    public int $timeout = 180; // E-mail 5b: com anexos (até 20 MB), o envio e a cópia em Enviados demoram mais
 
     public function __construct(public readonly int $messageId, public readonly string $fromName = '')
     {
         $this->onQueue('mail');
     }
 
-    public function handle(MailboxClient $client, SentCopy $sentCopy): void
+    public function handle(MailboxClient $client, SentCopy $sentCopy, MailAttachments $attachments): void
     {
         $message = MailMessage::with('mailbox')->find($this->messageId);
         if (! $message || $message->status !== MailMessage::STATUS_QUEUED) {
@@ -42,10 +44,21 @@ class SendMailboxMessageJob implements ShouldQueue
         }
         if (! $message->mailbox) {
             $message->forceFill(['status' => MailMessage::STATUS_ERROR, 'error' => 'A caixa de correio foi removida antes do envio.'])->save();
+            $attachments->purgeFor($message);
 
             return;
         }
 
+        try {
+            $this->deliver($message, $client, $sentCopy, $attachments->contents($message));
+        } finally {
+            // E-mail 5b: os ficheiros dos anexos apagam-se depois do envio (bem ou mal; uma só tentativa).
+            $attachments->purgeFor($message);
+        }
+    }
+
+    private function deliver(MailMessage $message, MailboxClient $client, SentCopy $sentCopy, array $files): void
+    {
         $result = $client->send($message->mailbox, new OutgoingMail(
             to: $message->to_address,
             subject: $message->subject,
@@ -56,6 +69,7 @@ class SendMailboxMessageJob implements ShouldQueue
             cc: OutgoingMail::split((string) $message->cc_address),
             inReplyTo: $message->in_reply_to,
             references: array_values(array_filter(explode(' ', (string) $message->references))),
+            attachments: $files,
         ));
 
         if (! $result->ok) {

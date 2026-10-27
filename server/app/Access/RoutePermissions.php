@@ -58,6 +58,10 @@ final class RoutePermissions
         'POST {id}/my-mailbox/seen' => 'empresa.ver',
         'GET {id}/my-mailbox/compose-context' => 'empresa.ver',
         'POST {id}/my-mailbox/send' => 'empresa.ver',
+        // E-mail 5b: os anexos no envio (os dos Ficheiros pedem também ficheiros.ver, no controlador).
+        'POST {id}/my-mailbox/attachments' => 'empresa.ver',
+        'POST {id}/my-mailbox/attachments/from-files' => 'empresa.ver',
+        'DELETE {id}/my-mailbox/attachments/{uuid}' => 'empresa.ver',
         // E-mail 7: a mesma permissão do carregamento manual das Faturas (POST {id}/ocr/invoices).
         'POST {id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice' => 'restauracao.criar',
         // E-mail 4: a secção "Conversa" (as mensagens ligadas ao cliente ou à venda; MAIL_CONTENT).
@@ -965,6 +969,9 @@ final class RoutePermissions
         'GET {id}/my-mailbox/compose-context',
         'POST {id}/my-mailbox/send',
         'POST {id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice',
+        'POST {id}/my-mailbox/attachments',
+        'POST {id}/my-mailbox/attachments/from-files',
+        'DELETE {id}/my-mailbox/attachments/{uuid}',
     ];
 
     /**

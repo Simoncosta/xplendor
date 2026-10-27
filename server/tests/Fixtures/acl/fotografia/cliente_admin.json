@@ -1,6 +1,6 @@
 {
     "ator": "cliente_admin",
-    "rotas": 642,
+    "rotas": 645,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "POST api/v1/companies/{id}/management/first-admin",
@@ -55,6 +55,7 @@
         "DELETE api/v1/companies/{id}/integrations/social/publishing": 200,
         "DELETE api/v1/companies/{id}/management": 200,
         "DELETE api/v1/companies/{id}/my-mailbox": 200,
+        "DELETE api/v1/companies/{id}/my-mailbox/attachments/{uuid}": 200,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
@@ -507,6 +508,8 @@
         "POST api/v1/companies/{id}/marketing/radar/mute": 422,
         "POST api/v1/companies/{id}/marketing/radar/react": 422,
         "POST api/v1/companies/{id}/marketing/radar/unmute": 422,
+        "POST api/v1/companies/{id}/my-mailbox/attachments": 422,
+        "POST api/v1/companies/{id}/my-mailbox/attachments/from-files": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen": 422,

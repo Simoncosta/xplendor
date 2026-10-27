@@ -52,6 +52,7 @@ class DevRecipientGuard implements MailboxClient
             cc: array_values(array_filter($cc, $ok)), // o Cc só sai para os endereços de teste
             inReplyTo: $mail->inReplyTo,
             references: $mail->references,
+            attachments: $mail->attachments,
         );
     }
 }

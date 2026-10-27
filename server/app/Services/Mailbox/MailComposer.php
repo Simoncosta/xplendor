@@ -58,7 +58,7 @@ class MailComposer
     }
 
     /**
-     * @param  array{to: string, cc?: ?string, subject: string, body: string, reply_to?: ?array{folder: string, uid: int}, customer_id?: ?int, car_id?: ?int}  $input
+     * @param  array{to: string, cc?: ?string, subject: string, body: string, reply_to?: ?array{folder: string, uid: int}, customer_id?: ?int, car_id?: ?int, attachments?: list<string>}  $input
      * @return array{ok: bool, error?: string, message?: MailMessage}
      */
     public function send(Mailbox $mailbox, User $user, array $input): array
@@ -118,9 +118,15 @@ class MailComposer
             return ['ok' => false, 'error' => "O cliente {$refused} não deu consentimento para contacto (RGPD): não se pode escrever-lhe."];
         }
 
+        // E-mail 5b: os anexos (da própria caixa, por enviar, até 10 e 20 MB no total).
+        $files = app(MailAttachments::class)->forSend($mailbox, $user, (array) ($input['attachments'] ?? []));
+        if (! $files['ok']) {
+            return ['ok' => false, 'error' => $files['error']];
+        }
+
         [$text, $html] = $this->body((string) $input['body'], (string) $mailbox->signature);
         $message = $this->sender->queue($mailbox, $user, implode(', ', $to), mb_substr(trim((string) $input['subject']), 0, 500),
-            $text . $quoteText, $html . $quoteHtml, array_filter($links, fn ($v) => $v !== null), $thread);
+            $text . $quoteText, $html . $quoteHtml, array_filter($links, fn ($v) => $v !== null), $thread, $files['uploads']);
 
         return ['ok' => true, 'message' => $message->fresh()];
     }

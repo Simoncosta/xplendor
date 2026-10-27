@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import MailConversation from "./MailConversation";
 import { getCarMailMessages, getCustomerMailMessages, getMailboxComposeContext, sendMailboxMessage } from "helpers/laravel_helper";
 
-jest.mock("helpers/laravel_helper", () => ({ getCustomerMailMessages: jest.fn(), getCarMailMessages: jest.fn(), getMailboxComposeContext: jest.fn(), sendMailboxMessage: jest.fn() }));
+jest.mock("helpers/laravel_helper", () => ({ getCustomerMailMessages: jest.fn(), getCarMailMessages: jest.fn(), getMailboxComposeContext: jest.fn(), sendMailboxMessage: jest.fn(),
+    uploadMailboxAttachment: jest.fn(), attachMailboxFile: jest.fn(), deleteMailboxAttachment: jest.fn(() => Promise.resolve({})) }));
 jest.mock("react-toastify", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock("Components/Common/XInputTextareaQuill", () => function QuillStub({ name }: { name: string }) {
     const { useField } = jest.requireActual("formik");
@@ -59,5 +60,14 @@ describe("A secção Conversa (E-mail 4)", () => {
         fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "<p>Olá</p>" } });
         expect(screen.getByRole("button", { name: /Enviar/ })).toBeDisabled();
         expect(getMailboxComposeContext).toHaveBeenCalledWith(5, { customerId: undefined, carId: 9 });
+    });
+
+    it("E-mail 5b: a mensagem enviada mostra os anexos (só o nome e o tamanho)", async () => {
+        (getCustomerMailMessages as jest.Mock).mockResolvedValue({ data: { messages: [
+            { id: 1, direction: "out", from: "m@exemplo.pt", to: "joana@cliente.invalid", subject: "Proposta", date: "2026-10-27T12:00:00Z", text: "Segue.", html: null, status: "enviada",
+                attachments: [{ name: "proposta.pdf", size: 204800 }, { name: "foto.jpg", size: 512 }] },
+        ] } });
+        render(<MailConversation companyId={5} customerId={12} />);
+        expect(await screen.findByTestId("mail-conversation-attachments")).toHaveTextContent("proposta.pdf (200 KB), foto.jpg (512 B)");
     });
 });

@@ -634,6 +634,13 @@ Schedule::job(new \App\Jobs\DispatchMailboxUnreadCountsJob())
     ->name('mailboxes-unread-count')
     ->withoutOverlapping();
 
+// De hora a hora — E-mail 5b: os anexos de e-mail temporários com mais de 24 horas (mensagens nunca
+// enviadas). Interna: só apaga ficheiros privados da XPLENDOR.
+Schedule::command('mailbox:purge-attachments')
+    ->hourly()
+    ->name('mailbox-attachments-purge')
+    ->withoutOverlapping();
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

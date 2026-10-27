@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  */
 class FakeMailboxClient implements MailboxClient
 {
-    /** @var list<array{mailbox_id: int, from: string, from_name: ?string, to: string, cc: list<string>, subject: string, text: string, html: ?string, message_id: string, in_reply_to: ?string, references: list<string>}> */
+    /** @var list<array{mailbox_id: int, from: string, from_name: ?string, to: string, cc: list<string>, subject: string, text: string, html: ?string, message_id: string, in_reply_to: ?string, references: list<string>, attachments: list<array{name: string, mime: string, size: int}>}> */
     public static array $sent = [];
 
     public static ?string $failWith = null;
@@ -32,9 +32,19 @@ class FakeMailboxClient implements MailboxClient
         $messageId = $mail->messageId ?? '<' . Str::uuid() . '@xplendor.invalid>';
         self::$sent[] = ['mailbox_id' => $mailbox->id, 'from' => $mailbox->email, 'from_name' => $mail->fromName, 'to' => $mail->to, 'cc' => $mail->cc,
             'subject' => $mail->subject, 'text' => $mail->text, 'html' => $mail->html, 'message_id' => $messageId, 'in_reply_to' => $mail->inReplyTo,
-            'references' => $mail->references];
+            'references' => $mail->references,
+            'attachments' => array_map(fn ($a) => ['name' => $a['name'], 'mime' => $a['mime'], 'size' => strlen($a['content'])], $mail->attachments)];
 
         $raw = "Message-ID: {$messageId}\r\nFrom: {$mailbox->email}\r\nTo: {$mail->to}\r\nSubject: {$mail->subject}\r\n\r\n{$mail->text}";
+        if ($mail->attachments) {
+            // E-mail 5b: com anexos, a mensagem inteira em MIME (é o que vai para a cópia em Enviados).
+            $email = (new \Symfony\Component\Mime\Email())->from($mailbox->email)->to(...$mail->toList())->subject($mail->subject)->text($mail->text);
+            foreach ($mail->attachments as $a) {
+                $email->attach($a['content'], $a['name'], $a['mime']);
+            }
+            $email->getHeaders()->addIdHeader('Message-ID', trim($messageId, '<>'));
+            $raw = $email->toString();
+        }
 
         return MailboxSendResult::sent($messageId, $raw);
     }

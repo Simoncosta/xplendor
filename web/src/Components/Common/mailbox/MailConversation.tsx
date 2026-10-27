@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Card, CardBody, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { getCarMailMessages, getCustomerMailMessages, getMailboxComposeContext } from "helpers/laravel_helper";
-import ComposeModal from "./ComposeModal";
+import ComposeModal, { AttachmentLimits, fmtSize } from "./ComposeModal";
 import MessageFrame from "pages/Email/inbox/MessageFrame";
 import { ConversationSkeleton } from "pages/Email/inbox/skeletons";
 
@@ -13,10 +13,12 @@ import { ConversationSkeleton } from "pages/Email/inbox/skeletons";
  * E-mail 5: "Escrever ao cliente", pela minha caixa; a mensagem fica ligada ao cliente (e à venda).
  * Sem consentimento de contacto, a janela abre com o aviso e não deixa enviar.
  */
-type Context = { to: string | null; name: string | null; consent: boolean; blocked: string | null; mailbox: { email: string; signature: string | null } | null };
+type Context = { to: string | null; name: string | null; consent: boolean; blocked: string | null; mailbox: { email: string; signature: string | null } | null; attachments?: AttachmentLimits };
 export const NO_CONSENT = "O cliente não deu consentimento para contacto (RGPD): não se pode escrever-lhe.";
 
-type Msg = { id: number; direction: "in" | "out"; from: string; to: string; subject: string; date: string | null; text: string | null; html: string | null; status: string };
+type Msg = { id: number; direction: "in" | "out"; from: string; to: string; subject: string; date: string | null; text: string | null; html: string | null; status: string;
+    /** E-mail 5b: só o nome e o tamanho (o ficheiro vive na pasta Enviados da caixa). */
+    attachments?: { name: string; size: number }[] };
 
 export default function MailConversation({ companyId, customerId, carId }: { companyId: number; customerId?: number; carId?: number }) {
     const [messages, setMessages] = useState<Msg[] | null>(null);
@@ -75,6 +77,11 @@ export default function MailConversation({ companyId, customerId, carId }: { com
                                         <small className="text-muted flex-shrink-0">{m.date ? new Date(m.date).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" }) : ""}</small>
                                     </div>
                                     <small className="text-muted d-block">{m.direction === "in" ? `De ${m.from}` : `Para ${m.to}`}{m.status === "erro" ? " · não enviada" : ""}</small>
+                                    {!!m.attachments?.length && (
+                                        <small className="text-muted d-block text-truncate" data-testid="mail-conversation-attachments">
+                                            <i className="ri-attachment-2 me-1" />{m.attachments.map((a) => `${a.name} (${fmtSize(a.size)})`).join(", ")}
+                                        </small>
+                                    )}
                                 </button>
                                 {open === m.id && (
                                     <div className="mt-2">
@@ -90,7 +97,7 @@ export default function MailConversation({ companyId, customerId, carId }: { com
             {context && (
                 <ComposeModal isOpen toggle={() => setContext(null)} companyId={companyId} title={context.name ? `Escrever a ${context.name}` : "Escrever ao cliente"}
                     initial={{ to: context.to ?? "" }} customerId={customerId} carId={carId} signature={context.mailbox?.signature ?? null}
-                    blocked={!context.consent ? NO_CONSENT : context.blocked} onSent={() => setReload((n) => n + 1)} />
+                    blocked={!context.consent ? NO_CONSENT : context.blocked} limits={context.attachments} onSent={() => setReload((n) => n + 1)} />
             )}
         </Card>
     );

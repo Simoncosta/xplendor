@@ -6,10 +6,13 @@ import { FileFolderDto, FilesPayload, KIND_META, StoredFileDto, SYSTEM_ICON, fil
 /**
  * "Escolher dos Ficheiros" (Linha Editorial): navegar pelas pastas a que a pessoa tem acesso e
  * escolher uma imagem ou um vídeo. O ficheiro não é copiado: a publicação usa a mesma media.
+ * E-mail 5b: mode="attachment" escolhe qualquer ficheiro para anexar a um e-mail (sem os documentos
+ * de financiamento nem as fotografias das retomas, que não saem por e-mail).
  */
-export default function FilePickerModal({ isOpen, companyId, busy, onClose, onPick }: {
-    isOpen: boolean; companyId: number; busy: boolean; onClose: () => void; onPick: (file: StoredFileDto) => void;
+export default function FilePickerModal({ isOpen, companyId, busy, onClose, onPick, mode = "media" }: {
+    isOpen: boolean; companyId: number; busy: boolean; onClose: () => void; onPick: (file: StoredFileDto) => void; mode?: "media" | "attachment";
 }) {
+    const attachment = mode === "attachment";
     const [folderId, setFolderId] = useState<number | null>(null);
     const [q, setQ] = useState("");
     const [search, setSearch] = useState("");
@@ -27,7 +30,9 @@ export default function FilePickerModal({ isOpen, companyId, busy, onClose, onPi
         return () => { alive = false; };
     }, [isOpen, companyId, folderId, search]);
 
-    const files = useMemo(() => [...(data?.files ?? []), ...(data?.shortcuts ?? [])].filter((f) => f.kind === "imagem" || f.kind === "video"), [data]);
+    const files = useMemo(() => [...(data?.files ?? []), ...(data?.shortcuts ?? [])].filter((f) => (attachment
+        ? f.source !== "financiamento" && f.source !== "retoma"
+        : f.kind === "imagem" || f.kind === "video")), [data, attachment]);
     const folders: FileFolderDto[] = search ? [] : data?.folders ?? [];
     const path = data?.folder?.path ?? [];
 
@@ -64,9 +69,11 @@ export default function FilePickerModal({ isOpen, companyId, busy, onClose, onPi
                             </button>
                         </div>
                     ))}
-                    {!loading && folders.length === 0 && files.length === 0 && <p className="text-muted fs-13 mb-0">{search ? `Nenhuma imagem ou vídeo com "${search}".` : "Sem imagens nem vídeos nesta pasta."}</p>}
+                    {!loading && folders.length === 0 && files.length === 0 && <p className="text-muted fs-13 mb-0">{attachment ? (search ? `Nenhum ficheiro com "${search}".` : "Sem ficheiros nesta pasta.") : search ? `Nenhuma imagem ou vídeo com "${search}".` : "Sem imagens nem vídeos nesta pasta."}</p>}
                 </div>
-                <p className="text-muted fs-12 mt-3 mb-0">Só imagens (JPEG, PNG, WebP) e vídeos (MP4, MOV). O ficheiro não é copiado: a publicação usa o mesmo ficheiro, e ele passa a mostrar que está em uso.</p>
+                <p className="text-muted fs-12 mt-3 mb-0">{attachment
+                    ? "O ficheiro é anexado à mensagem (uma cópia temporária, apagada depois do envio). O original fica nos Ficheiros."
+                    : "Só imagens (JPEG, PNG, WebP) e vídeos (MP4, MOV). O ficheiro não é copiado: a publicação usa o mesmo ficheiro, e ele passa a mostrar que está em uso."}</p>
             </ModalBody>
             <ModalFooter>
                 <Button color="light" disabled={busy} onClick={onClose}>{busy ? <Spinner size="sm" /> : "Cancelar"}</Button>

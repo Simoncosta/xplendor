@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { toast } from "react-toastify";
 import Inbox from "./Inbox";
-import { getCustomers, getMailboxFolders, getMailboxMessages, getMailboxThread, importMailboxAttachment, linkMailboxMessage, sendMailboxMessage, setMailboxSeenMany } from "helpers/laravel_helper";
+import { getCustomers, getMailboxFolders, getMailboxMessages, getMailboxThread, importMailboxAttachment, linkMailboxMessage, sendMailboxMessage, setMailboxSeenMany, getMailboxComposeContext, deleteMailboxAttachment } from "helpers/laravel_helper";
 import { downloadGet, fetchBlob } from "helpers/download_helper";
 import { adjustMailboxUnread, refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
 
@@ -22,6 +22,7 @@ jest.mock("helpers/download_helper", () => ({ fetchBlob: jest.fn(), downloadGet:
 jest.mock("helpers/laravel_helper", () => ({
     getMailboxFolders: jest.fn(), getMailboxMessages: jest.fn(), getMailboxThread: jest.fn(), setMailboxSeenMany: jest.fn(), linkMailboxMessage: jest.fn(),
     getCustomers: jest.fn(), sendMailboxMessage: jest.fn(), importMailboxAttachment: jest.fn(),
+    getMailboxComposeContext: jest.fn(() => Promise.resolve({ data: {} })), uploadMailboxAttachment: jest.fn(), attachMailboxFile: jest.fn(), deleteMailboxAttachment: jest.fn(() => Promise.resolve({})),
     mailboxAttachmentPath: (c: number, u: number, f: string, i: number, inline: boolean) => `/companies/${c}/my-mailbox/messages/${u}/attachments/${i}?folder=${f}${inline ? "&inline=1" : ""}`,
 }));
 
@@ -55,6 +56,8 @@ describe("A caixa de entrada (E-mail 4)", () => {
         (getMailboxMessages as jest.Mock).mockResolvedValue({ data: { items, total: 3, per_page: 25, unread: 1 } });
         (getMailboxThread as jest.Mock).mockImplementation((_c: number, _f: string, uids: number[]) => Promise.resolve({ data: { messages: uids.map((uid) => (uid === 8 ? reply : full(uid))) } }));
         (setMailboxSeenMany as jest.Mock).mockResolvedValue({ data: { unread: 0 } });
+        (getMailboxComposeContext as jest.Mock).mockResolvedValue({ data: {} });
+        (deleteMailboxAttachment as jest.Mock).mockResolvedValue({});
         (global as any).URL.createObjectURL = jest.fn(() => "blob:pre-visualizacao");
         (global as any).URL.revokeObjectURL = jest.fn();
     });

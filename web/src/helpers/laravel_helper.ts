@@ -392,9 +392,23 @@ export const getCarMailMessages = (companyId: number, carId: number) => api.get(
 export type MailboxSendPayload = {
     to: string; cc: string; subject: string; body: string;
     reply_to?: { folder: string; uid: number } | null; customer_id?: number | null; car_id?: number | null;
+    /** E-mail 5b: os identificadores dos anexos já carregados. */
+    attachments?: string[];
 };
 export const getMailboxComposeContext = (companyId: number, target: { customerId?: number; carId?: number } = {}) =>
     api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/compose-context`, { customer_id: target.customerId, car_id: target.carId });
+// E-mail 5b: os anexos. O carregamento vai em multipart (tem o ficheiro), com o progresso; o resto em JSON.
+export const uploadMailboxAttachment = (companyId: number, file: File, onProgress?: (percent: number) => void) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/attachments`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (e: any) => { if (onProgress && e?.total) onProgress(Math.round((e.loaded / e.total) * 100)); },
+    });
+};
+export const attachMailboxFile = (companyId: number, fileId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/attachments/from-files`, { file_id: fileId }, JSON_BODY);
+export const deleteMailboxAttachment = (companyId: number, id: string) => api.delete(url.GET_COMPANIES + `/${companyId}/my-mailbox/attachments/${id}`);
 export const sendMailboxMessage = (companyId: number, data: MailboxSendPayload) =>
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/send`, data, JSON_BODY);
 // ACL (F5): Utilizadores › Perfis e o teto da agência gestora.
