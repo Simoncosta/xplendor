@@ -14,7 +14,8 @@ import { useEffect } from "react";
  *    encosta ao item); se não cabe de nenhum lado, fica entre a barra de topo e o fundo da janela, com
  *    max-height e scroll dentro do painel;
  *  · recalcula no resize e no scroll (da página ou da sidebar);
- *  · teclado: Tab abre (o foco entra no item), Esc fecha e devolve o foco ao item;
+ *  · teclado: Tab abre (o foco entra no item), Esc fecha e devolve o foco ao item; o foco que vem de um
+ *    clique não abre (depois de carregar em "Tickets", o painel fechava com o rato e ficava aberto pelo foco);
  *  · sidebar expandida: ao abrir um grupo, rola só a sidebar (o mais perto possível) para o grupo ficar visível.
  */
 
@@ -37,7 +38,9 @@ export function placeFlyout(p: { naturalTop: number; height: number; upBottom: n
     const floor = p.viewportHeight - m;
     const ceil = Math.max(0, p.ceiling) + m;
     if (p.naturalTop + p.height <= floor) return { mode: "down", top: null, maxHeight: null };
-    if (p.upBottom - p.height >= ceil) return { mode: "up", top: Math.round(p.upBottom - p.height - p.itemTop), maxHeight: null };
+    // Para cima, arredonda para baixo do fundo (ceil): com alturas fracionárias, o round deixava o painel
+    // acabar uns décimos de píxel acima do rótulo e via-se uma linha entre os dois.
+    if (p.upBottom - p.height >= ceil) return { mode: "up", top: Math.ceil(p.upBottom - p.height - p.itemTop), maxHeight: null };
     // Não cabe de nenhum lado: ocupa a janela entre a barra de topo e o fundo, com scroll por dentro.
     return { mode: "clamp", top: Math.round(ceil - p.itemTop), maxHeight: Math.max(80, Math.floor(floor - ceil)) };
 }
@@ -125,6 +128,7 @@ export default function useSidebarFlyout() {
         if (!nav) return;
         const hovered = new Set<HTMLElement>();
         let frame = 0;
+        let pointerFocus = false; // o próximo foco no menu vem do rato (ou do toque), não do teclado
 
         const all = () => Array.from(nav.querySelectorAll<HTMLElement>("li.nav-item")).filter((li) => dropdownOf(li));
         const cleanupAll = () => all().forEach((li) => { reset(li); li.classList.remove(OPEN, SUPPRESSED); });
@@ -152,8 +156,10 @@ export default function useSidebarFlyout() {
             hovered.forEach((li) => { li.classList.remove(SUPPRESSED); if (!li.classList.contains(OPEN)) reset(li); });
             hovered.clear();
         };
+        const onPointerDown = () => { pointerFocus = true; };
+        const onAnyKey = () => { pointerFocus = false; };
         const onFocusIn = (e: FocusEvent) => {
-            if (!isFlyoutMode()) return;
+            if (!isFlyoutMode() || pointerFocus) return;
             const chain = chainOf(e.target as Element, nav);
             nav.querySelectorAll<HTMLElement>(`li.${OPEN}`).forEach((li) => { if (!chain.includes(li)) { li.classList.remove(OPEN); if (!hovered.has(li)) reset(li); } });
             nav.querySelectorAll<HTMLElement>(`li.${SUPPRESSED}`).forEach((li) => { if (!chain.includes(li)) li.classList.remove(SUPPRESSED); });
@@ -189,6 +195,8 @@ export default function useSidebarFlyout() {
         const onMode = () => { if (!isFlyoutMode()) { hovered.clear(); cleanupAll(); } else placeAll(); };
 
         nav.addEventListener("mouseover", onOver);
+        nav.addEventListener("mousedown", onPointerDown);
+        document.addEventListener("keydown", onAnyKey, true);
         nav.addEventListener("mouseleave", onLeave);
         nav.addEventListener("focusin", onFocusIn);
         nav.addEventListener("focusout", onFocusOut);
@@ -201,6 +209,8 @@ export default function useSidebarFlyout() {
         return () => {
             cancelAnimationFrame(frame);
             nav.removeEventListener("mouseover", onOver);
+            nav.removeEventListener("mousedown", onPointerDown);
+            document.removeEventListener("keydown", onAnyKey, true);
             nav.removeEventListener("mouseleave", onLeave);
             nav.removeEventListener("focusin", onFocusIn);
             nav.removeEventListener("focusout", onFocusOut);

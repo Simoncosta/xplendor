@@ -1,4 +1,5 @@
-import { placeFlyout, revealInSidebar } from "./useSidebarFlyout";
+import { fireEvent, render } from "@testing-library/react";
+import useSidebarFlyout, { placeFlyout, revealInSidebar } from "./useSidebarFlyout";
 
 // Os casos medidos no root em 1366×768 (barra de topo até 70 px).
 describe("placeFlyout", () => {
@@ -13,6 +14,12 @@ describe("placeFlyout", () => {
         expect(p.mode).toBe("up");
         expect(p.top).toBe(603 - 324 - 603);       // relativo ao item
         expect(603 + (p.top as number) + 324).toBe(603);   // o fundo do painel fica no item
+    });
+
+    it("para cima, com uma altura fracionária, o painel não fica acima do rótulo (Configurações: 152,78 px)", () => {
+        const pl = placeFlyout({ itemTop: 533.59, upBottom: 533.59, ceiling: 70, viewportHeight: 640, naturalTop: 586.59, height: 152.78 });
+        expect(pl.mode).toBe("up");
+        expect(533.59 + (pl.top as number) + 152.78).toBeGreaterThanOrEqual(533.59);
     });
 
     it("não cabe de nenhum lado: fica entre a barra de topo e o fundo, com scroll por dentro", () => {
@@ -66,5 +73,39 @@ describe("revealInSidebar", () => {
         const { scroller, li } = build(200, 500);
         revealInSidebar(li);
         expect(scroller.scrollTop).toBe(0);
+    });
+});
+
+// Barra recolhida, grupo "Administração" com "Tickets" (o painel abre pelo rato ou pelo teclado).
+describe("useSidebarFlyout: abrir pelo foco", () => {
+    const Host = () => { useSidebarFlyout(); return null; };
+    let li: HTMLElement, group: HTMLAnchorElement, tickets: HTMLAnchorElement;
+    beforeEach(() => {
+        document.documentElement.setAttribute("data-layout", "vertical");
+        document.documentElement.setAttribute("data-sidebar-size", "sm");
+        document.body.innerHTML = `<ul id="navbar-nav"><li class="nav-item"><a href="#" class="nav-link menu-link" id="g">Administração</a>
+            <div class="menu-dropdown"><ul class="nav nav-sm"><li class="nav-item"><a href="/admin" class="nav-link" id="t">Tickets</a></li></ul></div></li></ul>`;
+        li = document.querySelector("li.nav-item") as HTMLElement;
+        group = document.getElementById("g") as HTMLAnchorElement;
+        tickets = document.getElementById("t") as HTMLAnchorElement;
+    });
+    afterEach(() => { document.body.innerHTML = ""; document.documentElement.removeAttribute("data-sidebar-size"); });
+
+    it("com o teclado (Tab), o foco no item abre o painel", () => {
+        render(<Host />);
+        fireEvent.keyDown(document.body, { key: "Tab" });
+        group.focus();
+        expect(li).toHaveClass("xp-flyout-open");
+    });
+
+    it("depois de carregar em Tickets, o foco do clique não deixa o painel aberto", () => {
+        render(<Host />);
+        fireEvent.mouseDown(tickets);
+        tickets.focus();
+        expect(li).not.toHaveClass("xp-flyout-open");
+        // e o teclado volta a abrir
+        fireEvent.keyDown(tickets, { key: "Tab" });
+        group.focus();
+        expect(li).toHaveClass("xp-flyout-open");
     });
 });

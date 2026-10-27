@@ -209,8 +209,17 @@
       left: var(--#{$prefix}vertical-menu-width-sm);
       border-radius: 0 0 3px 0;
       box-shadow: 0 3px 4px -1px rgba(15, 34, 58, 0.12); // a sombra do painel, sem passar para cima
+      // Com o grupo aberto (aria-expanded, por exemplo em Tickets), o Velzon pinta o ::before com a
+      // cor ativa (é o traço do item ativo): aqui cobria a linha e tapava "Administração" de azul.
+      background: none;
       pointer-events: none;
     }
+  }
+
+  // No painel, o rótulo do grupo é um título: sem a seta do Velzon (branca no :hover, só se via
+  // sobre o fundo pintado ou no tema escuro). O item ativo vê-se pelo texto realçado.
+  .nav-item:is(:hover, .xp-flyout-open) > a.menu-link::after {
+    display: none;
   }
 
   .menu-dropdown.xp-flyout-scroll {
