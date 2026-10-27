@@ -40,6 +40,9 @@ final class RoutePermissions
         'POST {id}/management/requests/{requestId}/decline' => 'empresa.aprovar',
         'GET {id}/my-modules' => 'empresa.ver',
         'GET {id}/my-access' => 'empresa.ver',
+        // E-mail 8: o prazo de retenção (muda só o administrador da própria empresa ou o root, no controlador).
+        'GET {id}/mail-settings' => 'empresa.ver',
+        'PUT {id}/mail-settings' => 'empresa.editar',
         // E-mail 1: a minha caixa de correio (só o próprio: OWN_ONLY; sensíveis: nunca em impersonation).
         'GET {id}/my-mailbox' => 'empresa.ver',
         'PUT {id}/my-mailbox' => 'empresa.ver',

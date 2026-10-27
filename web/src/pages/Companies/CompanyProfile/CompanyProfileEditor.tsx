@@ -14,6 +14,7 @@ import AgencyCreateFields from './components/AgencyCreateFields';
 import ManagingAgencyCard from './components/ManagingAgencyCard';
 import AgencyManagementPanel from 'pages/Companies/components/AgencyManagementPanel';
 import IntegrationsSettings from './IntegrationsSettings';
+import MailSettingsCard from './MailSettingsCard';
 import EditorialSectorSettings from 'pages/Editorial/EditorialSectorSettings';
 import { getCompanyManagement, getMyModules } from 'helpers/laravel_helper';
 import { Button, Card, CardBody, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
@@ -322,6 +323,14 @@ export default function CompanyProfileEditor({
                                                 </NavLink>
                                             </NavItem>
                                         )}
+                                        {/* E-mail 8: o prazo de retenção das mensagens guardadas. */}
+                                        {isEdit && (
+                                            <NavItem>
+                                                <NavLink className={classnames("text-body", { active: activeTab === "5" })} onClick={() => tabChange("5")}>
+                                                    Correio
+                                                </NavLink>
+                                            </NavItem>
+                                        )}
                                     </Nav>
                                     <TabContent activeTab={activeTab}>
                                         <TabPane tabId="1">
@@ -374,6 +383,11 @@ export default function CompanyProfileEditor({
                                             />
                                           </PageCard>
                                         </TabPane>
+                                        {isEdit && companyId > 0 && (
+                                            <TabPane tabId="5">
+                                                {activeTab === "5" && <MailSettingsCard companyId={companyId} />}
+                                            </TabPane>
+                                        )}
                                         {showEditorial && (
                                             <TabPane tabId="4">
                                               <PageCard title="Linha Editorial" flush={false} bodyClassName="p-4">

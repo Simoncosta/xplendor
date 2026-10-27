@@ -137,6 +137,7 @@ class AgencyTenancySweepTest extends TestCase
         'GET api/v1/companies/{id}/my-mailbox/compose-context',
         'POST api/v1/companies/{id}/my-mailbox/send',
         'POST api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice',
+        'PUT api/v1/companies/{id}/mail-settings', // E-mail 8: o prazo de retenção é do administrador da própria empresa
         'POST api/v1/companies/{id}/my-mailbox/attachments',
         'POST api/v1/companies/{id}/my-mailbox/attachments/from-files',
         'DELETE api/v1/companies/{id}/my-mailbox/attachments/{uuid}',

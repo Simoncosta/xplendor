@@ -386,6 +386,10 @@ export const importMailboxAttachment = (companyId: number, uid: number, folder: 
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/attachments/${index}/import-invoice`, { folder }, JSON_BODY);
 export const mailboxAttachmentPath = (companyId: number, uid: number, folder: string, index: number, inline: boolean) =>
     `/companies/${companyId}/my-mailbox/messages/${uid}/attachments/${index}?folder=${encodeURIComponent(folder)}${inline ? "&inline=1" : ""}`;
+// E-mail 8: Perfil da empresa › Correio (o prazo de retenção das mensagens guardadas), em JSON.
+export const getMailSettings = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/mail-settings`);
+export const saveMailSettings = (companyId: number, retentionMonths: number) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/mail-settings`, { retention_months: retentionMonths }); // o PUT já vai em JSON
 export const getCustomerMailMessages = (companyId: number, customerId: number) => api.get(url.GET_COMPANIES + `/${companyId}/customers/${customerId}/mail-messages`);
 export const getCarMailMessages = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}/cars/${carId}/mail-messages`);
 // E-mail 5: escrever e responder pela minha caixa (em JSON, como os outros POST da caixa).

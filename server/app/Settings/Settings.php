@@ -195,6 +195,7 @@ final class Settings
         return match ($def['type']) {
             'bool' => is_string($v) ? filter_var($v, FILTER_VALIDATE_BOOLEAN) : (bool) $v,
             'pct', 'eur', 'number' => (float) $v,
+            'months' => (int) $v,
             'family_pct' => array_map('floatval', (array) $v),
             default => (string) ($v ?? ''),
         };
@@ -219,6 +220,12 @@ final class Settings
                 }
 
                 return round((float) $v, 4);
+            case 'months': // E-mail 8: um número inteiro de meses, entre o mínimo e o máximo
+                if (filter_var($v, FILTER_VALIDATE_INT) === false || (int) $v < (int) $def['min'] || (int) $v > (int) $def['max']) {
+                    $fail(sprintf('%s: indique um número inteiro de meses entre %d e %d.', $def['label'], $def['min'], $def['max']));
+                }
+
+                return (int) $v;
             case 'family_pct':
                 $out = [];
                 foreach ((array) $v as $family => $pct) {

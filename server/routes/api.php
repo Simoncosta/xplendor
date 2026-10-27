@@ -318,6 +318,9 @@ Route::prefix('v1')->group(function () {
                 // Módulos ativos da empresa do utilizador (Fase 2 — esconder secções).
                 Route::get('/my-modules', [CompanyModuleController::class, 'active']);
                 Route::get('/my-access', [\App\Http\Controllers\Api\V1\AccessController::class, 'show']); // ACL (F4)
+                // E-mail 8: Perfil da empresa › Correio (o prazo de retenção das mensagens guardadas).
+                Route::get('/mail-settings', [\App\Http\Controllers\Api\V1\CompanyMailSettingsController::class, 'show']);
+                Route::put('/mail-settings', [\App\Http\Controllers\Api\V1\CompanyMailSettingsController::class, 'update']);
                 // E-mail 1: a minha caixa de correio. Só o próprio (RoutePermissions::OWN_ONLY), nunca em impersonation.
                 Route::middleware('block_when_impersonating')->group(function () {
                     Route::get('/my-mailbox', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'show']);

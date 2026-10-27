@@ -641,6 +641,14 @@ Schedule::command('mailbox:purge-attachments')
     ->name('mailbox-attachments-purge')
     ->withoutOverlapping();
 
+// Todas as noites às 04:50 (Lisboa) — E-mail 8: a retenção das mensagens guardadas (o prazo de cada
+// empresa, 12 meses por omissão). Interna: as mensagens no servidor de e-mail não são tocadas.
+Schedule::command('mailbox:purge-retention')
+    ->dailyAt('04:50')
+    ->timezone('Europe/Lisbon')
+    ->name('mailbox-retention-purge')
+    ->withoutOverlapping(60);
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

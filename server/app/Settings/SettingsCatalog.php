@@ -19,6 +19,8 @@ final class SettingsCatalog
     public const COMPANY_ROOT = 'empresa_root';
     /** Definições da plataforma (todas as empresas), só root. */
     public const PLATFORM = 'plataforma';
+    /** E-mail 8 · Definições do correio da empresa (Perfil da empresa › Correio): o administrador da própria empresa ou o root. */
+    public const COMPANY_MAIL = 'empresa_correio';
 
     public const SECTIONS = [
         'menu' => 'Engenharia de menu',
@@ -113,6 +115,13 @@ final class SettingsCatalog
                 'level' => self::COMPANY, 'section' => 'calendario', 'type' => 'month_day', 'default' => '', 'config' => null, 'env' => null,
                 'label' => 'Feriado municipal',
                 'info' => 'O dia do feriado do concelho (por exemplo, 24/06 no Porto). Aparece no Calendário e a previsão avisa que é um dia atípico.',
+            ],
+
+            // ── Empresa, correio (Perfil da empresa › Correio) ───────────────────────────────
+            'mail.retention_months' => [
+                'level' => self::COMPANY_MAIL, 'type' => 'months', 'default' => 12, 'min' => 3, 'max' => 24, 'config' => null, 'env' => null,
+                'label' => 'Retenção das mensagens guardadas',
+                'info' => 'Ao fim deste prazo, as mensagens que a XPLENDOR guardou (as ligadas a clientes, vendas e leads, e as enviadas pela XPLENDOR) apagam-se, de noite. As mensagens no servidor de e-mail de cada pessoa não são tocadas.',
             ],
 
             // ── Empresa, só root (a integração PingWin da empresa) ────────────────────────────
