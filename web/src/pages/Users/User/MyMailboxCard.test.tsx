@@ -1,9 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import MyMailboxCard from "./MyMailboxCard";
-import { getMyMailbox, saveMyMailbox } from "helpers/laravel_helper";
+import { deleteMyMailbox, getMyMailbox, saveMyMailbox } from "helpers/laravel_helper";
+import { confirmDelete } from "helpers/swal";
 
 jest.mock("helpers/laravel_helper", () => ({ getMyMailbox: jest.fn(), saveMyMailbox: jest.fn(), deleteMyMailbox: jest.fn(), testMyMailbox: jest.fn() }));
 jest.mock("react-toastify", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock("helpers/swal", () => ({ confirmDelete: jest.fn() }));
+jest.mock("Components/Common/mailbox/useMailboxUnread", () => ({ refreshMailboxUnread: jest.fn() }));
+
+const SAVED = { account_type: "cpanel", email: "matilde@quebom.pt", smtp_host: "mail.quebom.pt", smtp_port: 465, smtp_encryption: "ssl", imap_host: "mail.quebom.pt",
+    imap_port: 993, imap_encryption: "ssl", username: "matilde@quebom.pt", save_to_sent: true, has_password: true, status: "ativa", last_error: null, last_tested_at: null };
 
 const openTypeMenu = () => {
     const input = document.getElementById("mailbox-type") as HTMLInputElement;
@@ -107,5 +113,32 @@ describe("A minha caixa de correio", () => {
         fireEvent.change(screen.getByLabelText("Palavra-passe de app"), { target: { value: "abcdabcdabcdabcd" } });
         await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Guardar/ })); });
         expect((saveMyMailbox as jest.Mock).mock.calls[0][1]).toMatchObject({ account_type: "gmail", mark_seen_on_server: false });
+    });
+
+    it("E-mail 5: a assinatura (texto simples) aparece gravada, muda e vai no que se guarda", async () => {
+        (getMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: { ...SAVED, signature: "Matilde" } } });
+        (saveMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: { ...SAVED, signature: "Matilde\nQuebom" } } });
+        render(<MyMailboxCard companyId={7} />);
+        const field = await screen.findByLabelText(/Assinatura/);
+        expect(field).toHaveValue("Matilde");
+        fireEvent.change(field, { target: { value: "Matilde\nQuebom" } });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Guardar/ })); });
+        expect((saveMyMailbox as jest.Mock).mock.calls[0][1]).toMatchObject({ signature: "Matilde\nQuebom" });
+    });
+
+    it("E-mail 5: Remover pergunta com o SweetAlert2 (nunca o confirm do navegador) e só remove se confirmar", async () => {
+        const native = jest.spyOn(window, "confirm");
+        (getMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: SAVED } });
+        (deleteMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: null } });
+        (confirmDelete as jest.Mock).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+        render(<MyMailboxCard companyId={7} />);
+        const remove = await screen.findByRole("button", { name: "Remover" });
+        await act(async () => { fireEvent.click(remove); });
+        expect(confirmDelete).toHaveBeenCalledWith("Os e-mails continuam no seu servidor de e-mail.", "Remover a caixa de correio da XPLENDOR?");
+        expect(deleteMyMailbox).not.toHaveBeenCalled();
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Remover" })); });
+        await waitFor(() => expect(deleteMyMailbox).toHaveBeenCalledWith(7));
+        expect(native).not.toHaveBeenCalled();
+        native.mockRestore();
     });
 });

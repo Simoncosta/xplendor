@@ -385,6 +385,15 @@ export const mailboxAttachmentPath = (companyId: number, uid: number, folder: st
     `/companies/${companyId}/my-mailbox/messages/${uid}/attachments/${index}?folder=${encodeURIComponent(folder)}${inline ? "&inline=1" : ""}`;
 export const getCustomerMailMessages = (companyId: number, customerId: number) => api.get(url.GET_COMPANIES + `/${companyId}/customers/${customerId}/mail-messages`);
 export const getCarMailMessages = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}/cars/${carId}/mail-messages`);
+// E-mail 5: escrever e responder pela minha caixa (em JSON, como os outros POST da caixa).
+export type MailboxSendPayload = {
+    to: string; cc: string; subject: string; body: string;
+    reply_to?: { folder: string; uid: number } | null; customer_id?: number | null; car_id?: number | null;
+};
+export const getMailboxComposeContext = (companyId: number, target: { customerId?: number; carId?: number } = {}) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/compose-context`, { customer_id: target.customerId, car_id: target.carId });
+export const sendMailboxMessage = (companyId: number, data: MailboxSendPayload) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/send`, data, JSON_BODY);
 // ACL (F5): Utilizadores › Perfis e o teto da agência gestora.
 export const getPermissionProfiles = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/permission-profiles`);
 export const createPermissionProfile = (companyId: number, data: { name: string; description?: string | null; side: string; permissions: string[]; from_profile_id?: number | null }) =>

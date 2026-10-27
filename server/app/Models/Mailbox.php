@@ -24,7 +24,7 @@ class Mailbox extends Model
         'company_id', 'user_id', 'account_type', 'email', 'smtp_host', 'smtp_port', 'smtp_encryption',
         'imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'sent_folder', 'save_to_sent',
         'status', 'last_error', 'last_tested_at', 'last_uid', 'uidvalidity', 'unread_count', 'unread_checked_at',
-        'imap_status', 'imap_error', 'imap_tested_at', 'mark_seen_on_server',
+        'imap_status', 'imap_error', 'imap_tested_at', 'mark_seen_on_server', 'signature',
     ];
 
     protected $hidden = ['password'];
@@ -80,6 +80,7 @@ class Mailbox extends Model
             'has_password' => (string) $this->getRawOriginal('password') !== '',
             'save_to_sent' => $this->save_to_sent,
             'mark_seen_on_server' => $this->marksSeenOnServer(),
+            'signature' => $this->signature,
             'status' => $this->status,
             'last_error' => $this->last_error,
             'last_tested_at' => $this->last_tested_at?->toIso8601String(),

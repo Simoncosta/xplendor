@@ -3,11 +3,12 @@ import { FOLDER_ICON, MailFolder } from "./types";
 import { FoldersSkeleton } from "./skeletons";
 
 /**
- * E-mail 4 · As pastas da caixa (do LIST), no formato do EmailSidebar do modelo. Sem "Escrever"
- * nem etiquetas: responder e escrever chegam com o E-mail 5.
+ * E-mail 4 · As pastas da caixa (do LIST), no formato do EmailSidebar do modelo, sem etiquetas.
+ * E-mail 5: "Escrever" em cima.
  */
-export default function EmailSidebar({ email, folders, current, unread, onPick, profileLink, loading = false }: {
+export default function EmailSidebar({ email, folders, current, unread, onPick, profileLink, loading = false, onCompose }: {
     email: string; folders: MailFolder[]; current: string; unread: number | null; onPick: (path: string) => void; profileLink: string; loading?: boolean;
+    onCompose?: () => void;
 }) {
     return (
         <div className="email-menu-sidebar">
@@ -16,6 +17,9 @@ export default function EmailSidebar({ email, folders, current, unread, onPick, 
                     <div className="text-muted fs-12 text-uppercase">A minha caixa</div>
                     {email ? <div className="fw-semibold text-truncate" title={email}>{email}</div>
                         : <div className="placeholder-glow"><span className="placeholder xp-skeleton-bar" style={{ width: "70%", height: 12 }} /></div>}
+                    <button type="button" className="btn btn-primary w-100 mt-3" onClick={onCompose} disabled={!onCompose || loading} data-testid="mail-compose-open">
+                        <i className="ri-edit-2-line me-1" />Escrever
+                    </button>
                 </div>
                 <div className="mx-n4 px-4 email-menu-sidebar-scroll overflow-auto">
                     {loading ? <FoldersSkeleton /> : <div className="mail-list mt-3" data-testid="mail-folders">

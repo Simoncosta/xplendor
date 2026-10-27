@@ -53,6 +53,9 @@ class SendMailboxMessageJob implements ShouldQueue
             html: $message->body_html,
             fromName: $this->fromName,
             messageId: $message->message_id,
+            cc: OutgoingMail::split((string) $message->cc_address),
+            inReplyTo: $message->in_reply_to,
+            references: array_values(array_filter(explode(' ', (string) $message->references))),
         ));
 
         if (! $result->ok) {

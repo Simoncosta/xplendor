@@ -1,6 +1,6 @@
 {
     "ator": "cliente_admin",
-    "rotas": 639,
+    "rotas": 641,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "POST api/v1/companies/{id}/management/first-admin",
@@ -248,6 +248,7 @@
         "GET api/v1/companies/{id}/marketing/radar/settings": 200,
         "GET api/v1/companies/{id}/my-access": 200,
         "GET api/v1/companies/{id}/my-mailbox": 200,
+        "GET api/v1/companies/{id}/my-mailbox/compose-context": 200,
         "GET api/v1/companies/{id}/my-mailbox/folders": 422,
         "GET api/v1/companies/{id}/my-mailbox/messages": 422,
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}": 422,
@@ -509,6 +510,7 @@
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen": 422,
         "POST api/v1/companies/{id}/my-mailbox/seen": 422,
+        "POST api/v1/companies/{id}/my-mailbox/send": 422,
         "POST api/v1/companies/{id}/my-mailbox/test": 422,
         "POST api/v1/companies/{id}/my-mailbox/test-imap": 422,
         "POST api/v1/companies/{id}/ocr/invoices": 422,

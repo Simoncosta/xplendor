@@ -46,8 +46,12 @@ class MyMailboxController extends Controller
         $data['save_to_sent'] = strtolower($data['smtp_host']) === 'smtp.gmail.com' ? false : (bool) ($data['save_to_sent'] ?? true);
         // E-mail 4: só o Gmail escolhe se abrir na XPLENDOR marca como lida no servidor; nos outros, marca sempre.
         $data['mark_seen_on_server'] = $data['account_type'] === 'gmail' ? (bool) ($data['mark_seen_on_server'] ?? true) : true;
+        if (array_key_exists('signature', $data)) {
+            $data['signature'] = trim((string) $data['signature']) === '' ? null : rtrim((string) $data['signature']);
+        }
         $mailbox->fill($data);
-        if ($mailbox->isDirty()) {
+        // Só a ligação obriga a testar de novo (a assinatura e as opções de leitura não).
+        if ($mailbox->isDirty(['account_type', 'email', 'smtp_host', 'smtp_port', 'smtp_encryption', 'imap_host', 'imap_port', 'imap_encryption', 'username', 'password'])) {
             // Mudou: tem de voltar a ser testada (o envio e o IMAP; a pasta de Enviados volta a ser procurada).
             $mailbox->fill(['status' => Mailbox::STATUS_PENDING, 'last_error' => null]);
             if ($mailbox->isDirty(['imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'email'])) {

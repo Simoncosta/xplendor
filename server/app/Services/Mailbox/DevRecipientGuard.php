@@ -28,17 +28,22 @@ class DevRecipientGuard implements MailboxClient
 
     public static function redirect(Mailbox $mailbox, OutgoingMail $mail): OutgoingMail
     {
-        if (strcasecmp(trim($mail->to), trim($mailbox->email)) === 0) {
-            return $mail; // já é para a própria caixa (o "Testar envio")
+        $to = $mail->toList();
+        if (! $mail->cc && count($to) === 1 && strcasecmp($to[0], trim($mailbox->email)) === 0) {
+            return $mail; // já é só para a própria caixa (o "Testar envio")
         }
+        $who = implode(', ', $to) . ($mail->cc ? '; cc: ' . implode(', ', $mail->cc) : '');
 
         return new OutgoingMail(
             to: $mailbox->email,
-            subject: "[dev, para: {$mail->to}] {$mail->subject}",
+            subject: "[dev, para: {$who}] {$mail->subject}",
             text: $mail->text,
             html: $mail->html,
             fromName: $mail->fromName,
             messageId: $mail->messageId,
+            cc: [], // o Cc também nunca sai do dev
+            inReplyTo: $mail->inReplyTo,
+            references: $mail->references,
         );
     }
 }

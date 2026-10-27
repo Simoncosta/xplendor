@@ -37,8 +37,9 @@ class MailboxSender
 
     /**
      * @param  array{customer_id?: ?int, car_sale_id?: ?int, car_lead_id?: ?int, satisfaction_report_id?: ?int}  $links
+     * @param  array{cc?: list<string>, in_reply_to?: ?string, references?: list<string>}  $thread  E-mail 5: o Cc e o fio das respostas
      */
-    public function queue(Mailbox $mailbox, User $sender, string $to, string $subject, string $text, ?string $html, array $links = []): MailMessage
+    public function queue(Mailbox $mailbox, User $sender, string $to, string $subject, string $text, ?string $html, array $links = [], array $thread = []): MailMessage
     {
         $domain = Str::after($mailbox->email, '@') ?: 'xplendor.pt';
         $message = MailMessage::create([
@@ -49,6 +50,9 @@ class MailboxSender
             'message_id' => '<' . Str::uuid() . '@' . $domain . '>',
             'from_address' => $mailbox->email,
             'to_address' => $to,
+            'cc_address' => ($thread['cc'] ?? []) ? implode(', ', $thread['cc']) : null,
+            'in_reply_to' => $thread['in_reply_to'] ?? null,
+            'references' => ($thread['references'] ?? []) ? implode(' ', $thread['references']) : null,
             'subject' => $subject,
             'body_text' => $text,
             'body_html' => $html,

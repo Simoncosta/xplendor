@@ -14,11 +14,14 @@ import { MailAttachment, MailFull, fileSize, who } from "./types";
  * umas por baixo das outras (da mais antiga para a mais recente). A mais recente e as por ler vêm
  * abertas; as outras mostram só quem enviou e o início do texto, e abrem com um clique. Em cada
  * mensagem: o HTML limpo num iframe isolado (as imagens externas só com "Mostrar imagens"), os
- * anexos ("Ver", ao vivo e sem guardar, e "Descarregar") e "Ligar a um cliente".
+ * anexos ("Ver", ao vivo e sem guardar, e "Descarregar") e "Ligar a um cliente". E-mail 5:
+ * "Responder" em cada mensagem aberta e no fim da conversa (à mais recente).
  */
-export default function ThreadView({ companyId, myEmail, messages, loading, error, onBack, onUnread, onLinked }: {
+export default function ThreadView({ companyId, myEmail, messages, loading, error, onBack, onUnread, onLinked, onReply }: {
     companyId: number; myEmail: string; messages: MailFull[]; loading: boolean; error: string | null;
     onBack: () => void; onUnread: () => void; onLinked: (uid: number, customer: { id: number; name: string }) => void;
+    /** E-mail 5: "Responder" a uma mensagem da conversa (no mesmo fio). */
+    onReply?: (message: MailFull) => void;
 }) {
     const ordered = [...messages].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
     const latest = ordered[ordered.length - 1];
@@ -93,6 +96,7 @@ export default function ThreadView({ companyId, myEmail, messages, loading, erro
                                     {expanded && (
                                         <div className="mt-3" style={{ paddingLeft: 44 }}>
                                             <div className="d-flex gap-2 mb-2">
+                                                {onReply && <button type="button" className="btn btn-sm btn-ghost-primary px-1 py-0" onClick={() => onReply(m)} data-testid="mail-reply"><i className="ri-reply-line me-1" />Responder</button>}
                                                 {m.customer
                                                     ? <span className="badge bg-primary-subtle text-primary" data-testid="mail-customer"><i className="ri-user-line me-1" />Ligada a <Link to={`/customers/${m.customer.id}`}>{m.customer.name}</Link></span>
                                                     : <button type="button" className="btn btn-sm btn-ghost-primary px-1 py-0" onClick={() => setLinking(m)}><i className="ri-user-shared-line me-1" />Ligar a um cliente</button>}
@@ -124,6 +128,11 @@ export default function ThreadView({ companyId, myEmail, messages, loading, erro
                                 </div>
                             );
                         })}
+                        {onReply && (
+                            <div className="pt-3">
+                                <Button color="outline-primary" size="sm" onClick={() => onReply(latest)} data-testid="mail-reply-latest"><i className="ri-reply-line me-1" />Responder</Button>
+                            </div>
+                        )}
                     </>
                 ) : null}
             </div>

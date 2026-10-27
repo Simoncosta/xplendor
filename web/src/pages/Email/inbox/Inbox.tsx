@@ -3,6 +3,7 @@ import { Alert } from "reactstrap";
 import { toast } from "react-toastify";
 import { getMailboxFolders, getMailboxMessages, getMailboxThread, setMailboxSeenMany } from "helpers/laravel_helper";
 import { adjustMailboxUnread, refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
+import ComposeModal, { ComposeValues, quoteHeaderFor, replySubject } from "Components/Common/mailbox/ComposeModal";
 import EmailSidebar from "./EmailSidebar";
 import MessageList from "./MessageList";
 import ThreadView from "./ThreadView";
@@ -14,8 +15,11 @@ import { MailFolder, MailFull, MailSummary } from "./types";
  * Gmail: a lista agrupada por conversa e, ao abrir, a conversa ocupa o lugar da lista ("Voltar" e o
  * "Retroceder" do navegador regressam à lista). Abrir marca as mensagens como lidas; abrir a Entrada
  * liga as respostas novas e atualiza os não lidos (o envelope e o menu acompanham).
+ * E-mail 5: "Escrever" e "Responder" (no mesmo fio, com o original citado por baixo).
  */
-export default function Inbox({ companyId, email, profileLink }: { companyId: number; email: string; profileLink: string }) {
+type Compose = { title: string; initial: Partial<ComposeValues>; replyTo?: { folder: string; uid: number }; quoteHeader?: string };
+
+export default function Inbox({ companyId, email, signature = null, profileLink }: { companyId: number; email: string; signature?: string | null; profileLink: string }) {
     const [folders, setFolders] = useState<MailFolder[]>([]);
     const [folder, setFolder] = useState<string>("INBOX");
     const [page, setPage] = useState(1);
@@ -26,6 +30,7 @@ export default function Inbox({ companyId, email, profileLink }: { companyId: nu
     const [messages, setMessages] = useState<MailFull[]>([]);
     const [loadingThread, setLoadingThread] = useState(false);
     const [threadError, setThreadError] = useState<string | null>(null);
+    const [compose, setCompose] = useState<Compose | null>(null);
 
     useEffect(() => {
         getMailboxFolders(companyId)
@@ -126,6 +131,15 @@ export default function Inbox({ companyId, email, profileLink }: { companyId: nu
         }
     };
 
+    /** Responder: a quem enviou (ou, se fui eu, a quem a mandei), "Re: " uma vez e o original citado pelo servidor. */
+    const reply = (m: MailFull) => {
+        const mine = !!m.from.address && m.from.address.toLowerCase() === email.toLowerCase();
+        const to = mine ? m.to.map((a) => a.address).filter(Boolean).join(", ") : (m.from.address ?? "");
+        setCompose({ title: "Responder", initial: { to, subject: replySubject(m.subject) }, replyTo: { folder: m.folder, uid: m.uid }, quoteHeader: quoteHeaderFor(m.date, m.from) });
+    };
+    // Depois de enviar, a pasta de Enviados mostra a cópia (se for a que está aberta).
+    const sent = () => { if (folders.find((f) => f.path === folder)?.special === "sent" && !thread) loadList(); };
+
     const inboxPath = folders.find((f) => f.special === "inbox")?.path ?? "INBOX";
     const pickFolder = (path: string) => { setFolder(path); setPage(1); setThread(null); setMessages([]); };
     const title = folders.find((f) => f.path === folder)?.name ?? folder;
@@ -139,15 +153,18 @@ export default function Inbox({ companyId, email, profileLink }: { companyId: nu
 
     return (
         <div className="email-wrapper d-lg-flex gap-1 mx-n4 mt-n4 p-1" data-testid="mail-inbox">
-            <EmailSidebar email={email} folders={folders} current={folder} unread={list.unread} onPick={pickFolder} profileLink={profileLink} />
+            <EmailSidebar email={email} folders={folders} current={folder} unread={list.unread} onPick={pickFolder} profileLink={profileLink}
+                onCompose={() => setCompose({ title: "Nova mensagem", initial: {} })} />
             {thread ? (
                 <ThreadView companyId={companyId} myEmail={email} messages={messages} loading={loadingThread} error={threadError}
-                    onBack={back} onUnread={unread}
+                    onBack={back} onUnread={unread} onReply={reply}
                     onLinked={(uid, c) => setMessages((ms) => ms.map((m) => (m.uid === uid ? { ...m, customer: c } : m)))} />
             ) : error ? <div className="email-content p-4"><Alert color="danger">{error}</Alert></div> : (
                 <MessageList items={list.items} myEmail={email} loading={loadingList} total={list.total} page={page} perPage={list.perPage}
                     onOpen={open} onPage={setPage} onRefresh={loadList} title={title} />
             )}
+            {compose && <ComposeModal isOpen toggle={() => setCompose(null)} companyId={companyId} title={compose.title} initial={compose.initial}
+                replyTo={compose.replyTo ?? null} quoteHeader={compose.quoteHeader} signature={signature} onSent={sent} />}
         </div>
     );
 }

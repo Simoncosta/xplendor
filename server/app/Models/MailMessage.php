@@ -23,7 +23,7 @@ class MailMessage extends Model
     public const STATUS_RECEIVED = 'recebida'; // E-mail 4: uma resposta ligada pelo fio, ou ligada à mão
 
     protected $fillable = [
-        'company_id', 'mailbox_id', 'user_id', 'direction', 'message_id', 'in_reply_to', 'references', 'from_address', 'to_address',
+        'company_id', 'mailbox_id', 'user_id', 'direction', 'message_id', 'in_reply_to', 'references', 'from_address', 'to_address', 'cc_address',
         'subject', 'body_text', 'body_html', 'status', 'error', 'sent_at', 'received_at', 'customer_id', 'car_sale_id', 'car_lead_id',
         'satisfaction_report_id',
     ];

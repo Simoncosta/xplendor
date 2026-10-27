@@ -125,6 +125,18 @@ class MyMailboxTest extends TestCase
         $this->assertSame(587, $mailbox->fresh()->smtp_port);
     }
 
+    public function test_the_signature_is_saved_without_asking_for_a_new_test_and_empty_clears_it(): void
+    {
+        $mailbox = $this->configure($this->owner);
+        $mailbox->forceFill(['status' => Mailbox::STATUS_ACTIVE])->save();
+
+        $this->putJson($this->url(), $this->cpanel(['password' => '', 'signature' => "Matilde Exemplo\nQuebom Exemplo Lda  \n"]))->assertOk()
+            ->assertJsonPath('data.mailbox.signature', "Matilde Exemplo\nQuebom Exemplo Lda")
+            ->assertJsonPath('data.mailbox.status', Mailbox::STATUS_ACTIVE); // a assinatura não obriga a testar de novo
+        $this->putJson($this->url(), $this->cpanel(['password' => '', 'signature' => '   ']))->assertOk()->assertJsonPath('data.mailbox.signature', null);
+        $this->putJson($this->url(), $this->cpanel(['password' => '', 'signature' => str_repeat('a', 2001)]))->assertStatus(422);
+    }
+
     public function test_validation_only_the_three_account_types_and_internal_hosts_and_other_ports_are_refused(): void
     {
         Sanctum::actingAs($this->owner);

@@ -15,7 +15,7 @@ import Inbox, { InboxSkeleton } from "./inbox/Inbox";
  * noutra empresa, a caixa não está disponível aqui (e não se pede nada ao servidor).
  */
 
-type Saved = { email: string; status: string };
+type Saved = { email: string; status: string; signature?: string | null };
 
 export default function EmailPage() {
     document.title = "E-mail | Xplendor";
@@ -48,7 +48,7 @@ export default function EmailPage() {
                     {!unavailable && loading ? (
                         <InboxSkeleton email="" profileLink={profile} />
                     ) : !unavailable && mailbox && me?.company_id ? (
-                        <Inbox companyId={Number(me.company_id)} email={mailbox.email} profileLink={profile} />
+                        <Inbox companyId={Number(me.company_id)} email={mailbox.email} signature={mailbox.signature ?? null} profileLink={profile} />
                     ) : (
                     <Row className="justify-content-center">
                         <Col xxl={8} xl={10}>

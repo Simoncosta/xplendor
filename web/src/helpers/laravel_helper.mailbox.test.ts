@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getMailboxThread, linkMailboxMessage, setMailboxSeen, setMailboxSeenMany, testMyMailbox, testMyMailboxImap } from "./laravel_helper";
+import { getMailboxComposeContext, getMailboxThread, linkMailboxMessage, sendMailboxMessage, setMailboxSeen, setMailboxSeenMany, testMyMailbox, testMyMailboxImap } from "./laravel_helper";
 
 jest.mock("axios", () => {
     const fn = () => jest.fn(() => Promise.resolve({ data: {} }));
@@ -27,5 +27,20 @@ describe("Pedidos da caixa de correio", () => {
     it("a conversa pede-se toda de uma vez (os UID numa só lista)", async () => {
         await getMailboxThread(5, "INBOX", [8, 7]);
         expect((axios.get as jest.Mock).mock.calls[0][0]).toMatch(/\/companies\/5\/my-mailbox\/thread\?folder=INBOX&uids=8,7$/);
+    });
+
+    it("E-mail 5: enviar vai em JSON, com a resposta (pasta e UID) e as ligações como números", async () => {
+        (axios.post as jest.Mock).mockClear();
+        await sendMailboxMessage(5, { to: "a@exemplo.invalid", cc: "", subject: "Re: Olá", body: "<p>Olá</p>", reply_to: { folder: "INBOX", uid: 7 }, customer_id: 12 });
+        const [path, body, config] = (axios.post as jest.Mock).mock.calls[0];
+        expect(path).toMatch(/\/companies\/5\/my-mailbox\/send$/);
+        expect(body).toEqual({ to: "a@exemplo.invalid", cc: "", subject: "Re: Olá", body: "<p>Olá</p>", reply_to: { folder: "INBOX", uid: 7 }, customer_id: 12 });
+        expect(config).toEqual({ headers: { "Content-Type": "application/json" } });
+    });
+
+    it("E-mail 5: o contexto de escrever ao cliente pede só o que existe", async () => {
+        (axios.get as jest.Mock).mockClear();
+        await getMailboxComposeContext(5, { carId: 9 });
+        expect((axios.get as jest.Mock).mock.calls[0][0]).toMatch(/\/companies\/5\/my-mailbox\/compose-context\?car_id=9$/);
     });
 });

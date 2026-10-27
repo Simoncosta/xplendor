@@ -1,17 +1,22 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { toast } from "react-toastify";
 import Inbox from "./Inbox";
-import { getCustomers, getMailboxFolders, getMailboxMessages, getMailboxThread, linkMailboxMessage, setMailboxSeenMany } from "helpers/laravel_helper";
+import { getCustomers, getMailboxFolders, getMailboxMessages, getMailboxThread, linkMailboxMessage, sendMailboxMessage, setMailboxSeenMany } from "helpers/laravel_helper";
 import { downloadGet, fetchBlob } from "helpers/download_helper";
 import { adjustMailboxUnread, refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
 
 jest.mock("react-router-dom", () => ({ Link: ({ to, children, ...rest }: any) => <a href={to} {...rest}>{children}</a> }), { virtual: true });
 jest.mock("react-toastify", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock("Components/Common/mailbox/useMailboxUnread", () => ({ refreshMailboxUnread: jest.fn(), adjustMailboxUnread: jest.fn() }));
+jest.mock("Components/Common/XInputTextareaQuill", () => function QuillStub({ name }: { name: string }) {
+    const { useField } = jest.requireActual("formik");
+    const [field, , helpers] = useField(name);
+    return <textarea aria-label="Mensagem" value={field.value} onChange={(e: any) => helpers.setValue(e.target.value)} />;
+});
 jest.mock("helpers/download_helper", () => ({ fetchBlob: jest.fn(), downloadGet: jest.fn() }));
 jest.mock("helpers/laravel_helper", () => ({
     getMailboxFolders: jest.fn(), getMailboxMessages: jest.fn(), getMailboxThread: jest.fn(), setMailboxSeenMany: jest.fn(), linkMailboxMessage: jest.fn(),
-    getCustomers: jest.fn(),
+    getCustomers: jest.fn(), sendMailboxMessage: jest.fn(),
     mailboxAttachmentPath: (c: number, u: number, f: string, i: number, inline: boolean) => `/companies/${c}/my-mailbox/messages/${u}/attachments/${i}?folder=${f}${inline ? "&inline=1" : ""}`,
 }));
 
@@ -160,5 +165,39 @@ describe("A caixa de entrada (E-mail 4)", () => {
         expect(adjustMailboxUnread).toHaveBeenLastCalledWith(1); // volta atrás
         fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
         expect((await screen.findAllByTestId("mail-thread"))[0]).toHaveClass("unread");
+    });
+
+    it("E-mail 5: \"Escrever\" abre uma mensagem nova, com a assinatura da caixa", async () => {
+        (sendMailboxMessage as jest.Mock).mockResolvedValue({ message: "ok", data: { message: { id: 1 } } });
+        render(<Inbox companyId={5} email="matilde@exemplo.pt" signature="Matilde" profileLink="/users/4#mailbox" />);
+        await screen.findAllByTestId("mail-thread");
+        fireEvent.click(screen.getByTestId("mail-compose-open"));
+        expect(await screen.findByText("Nova mensagem")).toBeInTheDocument();
+        expect(screen.getByLabelText("Para")).toHaveValue("");
+        expect(screen.getByTestId("mail-compose-signature")).toHaveTextContent("Matilde");
+        expect(screen.queryByTestId("mail-compose-quote")).not.toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText("Para"), { target: { value: "a@exemplo.invalid" } });
+        fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "<p>Olá</p>" } });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Enviar/ })); });
+        expect((sendMailboxMessage as jest.Mock).mock.calls[0][1]).toMatchObject({ to: "a@exemplo.invalid", reply_to: null });
+    });
+
+    it("E-mail 5: \"Responder\" responde a quem enviou, com \"Re:\" e no mesmo fio; à minha própria mensagem, responde a quem a mandei", async () => {
+        (sendMailboxMessage as jest.Mock).mockResolvedValue({ message: "ok", data: { message: { id: 1 } } });
+        await openThread();
+        const replies = await screen.findAllByTestId("mail-reply");
+        fireEvent.click(replies[0]); // a da oficina (a mais antiga, por ler: aberta)
+        expect(await screen.findByText("Responder", { selector: ".modal-title" })).toBeInTheDocument();
+        expect(screen.getByLabelText("Para")).toHaveValue("oficina@fornecedor.invalid");
+        expect(screen.getByLabelText("Assunto")).toHaveValue("Re: Orçamento da reparação");
+        expect(screen.getByTestId("mail-compose-quote")).toHaveTextContent("Oficina Exemplo escreveu:");
+        fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "<p>Obrigada</p>" } });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Enviar/ })); });
+        expect((sendMailboxMessage as jest.Mock).mock.calls[0][1]).toMatchObject({ reply_to: { folder: "INBOX", uid: 7 }, to: "oficina@fornecedor.invalid" });
+
+        // A mais recente é minha ("RES: ..."): o assunto fica, e responde à oficina.
+        fireEvent.click(screen.getByTestId("mail-reply-latest"));
+        expect(await screen.findByLabelText("Assunto")).toHaveValue("RES: Orçamento da reparação");
+        expect(screen.getByLabelText("Para")).toHaveValue("oficina@fornecedor.invalid");
     });
 });

@@ -5,6 +5,7 @@ import PageCard from "Components/Common/PageCard";
 import XSelect from "Components/Common/Select";
 import { deleteMyMailbox, getMyMailbox, saveMyMailbox, testMyMailbox, testMyMailboxImap } from "helpers/laravel_helper";
 import { refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
+import { confirmDelete } from "helpers/swal";
 import {
     ACCOUNT_TYPE_OPTIONS, AccountType, AdvancedField, EMPTY_FORM, GMAIL_APP_PASSWORD_HELP, GOOGLE_APP_PASSWORDS, GOOGLE_SECURITY, MailboxForm,
     applyPreset, changeEmail, changeType, touchedFromSaved,
@@ -15,10 +16,11 @@ import {
  * impersonation; o root também, na sua empresa: o backend recusa o resto). Primeiro o tipo de conta; nos
  * modelos basta o endereço e a palavra-passe, e os servidores ficam nas definições avançadas.
  * E-mail 3: "Testar IMAP" (a pasta de Enviados e os não lidos) e o estado da receção. A página
- * /email leva aqui com #mailbox.
+ * /email leva aqui com #mailbox. E-mail 5: a assinatura (texto simples) e "Remover" com o SweetAlert2.
  */
 
-type Saved = Omit<MailboxForm, "password"> & {
+type Saved = Omit<MailboxForm, "password" | "signature"> & {
+    signature?: string | null;
     has_password: boolean; status: "por_testar" | "ativa" | "erro"; last_error: string | null; last_tested_at: string | null;
     imap_status?: "ativa" | "erro" | null; imap_error?: string | null; sent_folder?: string | null; unread_count?: number | null; unread_checked_at?: string | null;
 };
@@ -40,7 +42,7 @@ const errorMessage = (e: any, fallback: string) => {
     return first || e?.message || fallback;
 };
 
-const fromSaved = (m: Saved): MailboxForm => ({ ...EMPTY_FORM, ...m, password: "" });
+const fromSaved = (m: Saved): MailboxForm => ({ ...EMPTY_FORM, ...m, password: "", signature: m.signature ?? "" });
 
 /** As ligações da ajuda abrem num separador novo. */
 const ExternalLink = ({ href }: { href: string }) => (
@@ -96,9 +98,11 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
         try {
             const { password, ...rest } = form;
             const r: any = await saveMyMailbox(companyId, password ? { ...rest, password } : rest);
-            load(r?.data?.mailbox ?? null);
+            const m: Saved | null = r?.data?.mailbox ?? null;
+            load(m);
             refreshMailboxUnread();
-            toast.success("Caixa de correio guardada. Falta testar o envio.");
+            // Só a ligação obriga a testar de novo (a assinatura e as opções de leitura não).
+            toast.success(m?.status === "ativa" ? "Caixa de correio guardada." : "Caixa de correio guardada. Falta testar o envio.");
         } catch (e: any) {
             toast.error(errorMessage(e, "Não foi possível guardar a caixa de correio."));
         } finally {
@@ -136,7 +140,7 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
     };
 
     const remove = async () => {
-        if (!window.confirm("Remover a caixa de correio da XPLENDOR? Os e-mails continuam no seu servidor de e-mail.")) return;
+        if (!(await confirmDelete("Os e-mails continuam no seu servidor de e-mail.", "Remover a caixa de correio da XPLENDOR?"))) return;
         setBusy("delete");
         try {
             await deleteMyMailbox(companyId);
@@ -228,6 +232,13 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
                     {!form.mark_seen_on_server && <div className="text-muted fs-12">No Gmail continua por ler; na XPLENDOR fica lida e deixa de contar no número de não lidos.</div>}
                 </div>
             )}
+
+            <div className="mb-3">
+                <Label htmlFor="mailbox-signature" className="form-label">Assinatura <span className="text-muted fw-normal">(opcional)</span></Label>
+                <Input id="mailbox-signature" type="textarea" rows={3} maxLength={2000} value={form.signature} placeholder={"Nome\nCargo · Empresa\nTelefone"}
+                    onChange={(e) => edit({ ...form, signature: e.target.value })} />
+                <div className="text-muted fs-12 mt-1">Texto simples. Vai no fim das mensagens novas e das respostas que escrever na XPLENDOR.</div>
+            </div>
 
             <button type="button" className="btn btn-link p-0 mb-2 text-decoration-none" aria-expanded={advanced} aria-controls="mailbox-advanced" onClick={() => setAdvanced(!advanced)}>
                 <i className={`ri-arrow-${advanced ? "down" : "right"}-s-line me-1`} />Definições avançadas

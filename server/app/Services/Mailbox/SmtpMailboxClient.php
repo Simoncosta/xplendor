@@ -32,9 +32,19 @@ class SmtpMailboxClient implements MailboxClient
             }
             $email = (new Email())
                 ->from(new Address($mailbox->email, (string) $mail->fromName))
-                ->to($mail->to)
+                ->to(...$mail->toList())
                 ->subject($mail->subject)
                 ->text($mail->text);
+            if ($mail->cc) {
+                $email->cc(...$mail->cc);
+            }
+            // E-mail 5: a resposta fica no mesmo fio (In-Reply-To e References).
+            if ($mail->inReplyTo) {
+                $email->getHeaders()->addIdHeader('In-Reply-To', trim($mail->inReplyTo, '<>'));
+            }
+            if ($mail->references) {
+                $email->getHeaders()->addIdHeader('References', array_map(fn ($r) => trim($r, '<>'), $mail->references));
+            }
             if ($mail->html !== null) {
                 $email->html($mail->html);
             }

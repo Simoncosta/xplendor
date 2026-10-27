@@ -338,6 +338,9 @@ Route::prefix('v1')->group(function () {
                     // E-mail 4b: a conversa numa só ligação IMAP, e marcar várias de uma vez.
                     Route::get('/my-mailbox/thread', [$inbox, 'thread']);
                     Route::post('/my-mailbox/seen', [$inbox, 'seenMany'])->middleware('throttle:120,1');
+                    // E-mail 5: escrever e responder (da caixa, da ficha do cliente e da venda).
+                    Route::get('/my-mailbox/compose-context', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'context']);
+                    Route::post('/my-mailbox/send', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'send'])->middleware('throttle:20,1');
                 });
                 // Auditoria (Fatia 2, plataforma): a página central, a coluna "Auditoria" das listas, as
                 // corridas e os estados. Correr e mudar o estado são rotas por área (a ACL de cada área).

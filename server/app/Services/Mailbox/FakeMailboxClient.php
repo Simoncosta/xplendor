@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  */
 class FakeMailboxClient implements MailboxClient
 {
-    /** @var list<array{mailbox_id: int, from: string, from_name: ?string, to: string, subject: string, text: string, html: ?string, message_id: string}> */
+    /** @var list<array{mailbox_id: int, from: string, from_name: ?string, to: string, cc: list<string>, subject: string, text: string, html: ?string, message_id: string, in_reply_to: ?string, references: list<string>}> */
     public static array $sent = [];
 
     public static ?string $failWith = null;
@@ -30,8 +30,9 @@ class FakeMailboxClient implements MailboxClient
             return MailboxSendResult::failed(self::$failWith);
         }
         $messageId = $mail->messageId ?? '<' . Str::uuid() . '@xplendor.invalid>';
-        self::$sent[] = ['mailbox_id' => $mailbox->id, 'from' => $mailbox->email, 'from_name' => $mail->fromName, 'to' => $mail->to, 'subject' => $mail->subject,
-            'text' => $mail->text, 'html' => $mail->html, 'message_id' => $messageId];
+        self::$sent[] = ['mailbox_id' => $mailbox->id, 'from' => $mailbox->email, 'from_name' => $mail->fromName, 'to' => $mail->to, 'cc' => $mail->cc,
+            'subject' => $mail->subject, 'text' => $mail->text, 'html' => $mail->html, 'message_id' => $messageId, 'in_reply_to' => $mail->inReplyTo,
+            'references' => $mail->references];
 
         $raw = "Message-ID: {$messageId}\r\nFrom: {$mailbox->email}\r\nTo: {$mail->to}\r\nSubject: {$mail->subject}\r\n\r\n{$mail->text}";
 
