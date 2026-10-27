@@ -216,11 +216,12 @@ class MailboxImapTest extends TestCase
         $this->withHeaders($headers)->postJson($this->url('/test-imap'))->assertStatus(403);
     }
 
-    public function test_dev_guard_the_real_imap_never_connects_outside_production(): void
+    public function test_the_real_imap_never_reaches_an_internal_server(): void
     {
-        config(['mailboxes.real_send' => false]);
-        $result = app(WebklexMailboxImap::class)->check($this->mailbox());
-        $this->assertFalse($result->ok);
-        $this->assertSame('Em dev, a XPLENDOR não liga ao servidor de e-mail por IMAP.', $result->error);
+        foreach (['10.0.0.5', 'db', 'mail.empresa.local'] as $host) {
+            $result = app(WebklexMailboxImap::class)->check($this->mailbox(['imap_host' => $host, 'user_id' => User::factory()->create(['company_id' => $this->company->id])->id]));
+            $this->assertFalse($result->ok);
+            $this->assertSame("O servidor {$host} não foi encontrado ou não é um servidor de e-mail público.", $result->error);
+        }
     }
 }

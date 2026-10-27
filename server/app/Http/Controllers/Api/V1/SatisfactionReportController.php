@@ -161,7 +161,9 @@ class SatisfactionReportController extends Controller
                 'sent_at' => optional($report->sent_at)->toIso8601String(),
                 'sent_channel' => 'email',
                 'via' => 'mailbox',
-            ], "Email enviado pela sua caixa ({$mailbox->email}).");
+            ], \App\Services\Mailbox\DevRecipientGuard::active()
+                ? "Em dev, a mensagem foi só para a sua própria caixa ({$mailbox->email}), com o cliente no assunto."
+                : "Email enviado pela sua caixa ({$mailbox->email}).");
         }
 
         try {

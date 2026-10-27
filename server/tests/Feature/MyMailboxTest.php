@@ -252,20 +252,20 @@ class MyMailboxTest extends TestCase
         $this->getJson($this->url($this->b))->assertOk()->assertJsonPath('data.mailbox', null);
     }
 
-    public function test_hosts_rules_and_the_dev_guard(): void
+    public function test_hosts_rules_and_the_real_client_never_reaches_an_internal_server(): void
     {
         $this->assertTrue(MailboxHosts::acceptable('mail.quebom.pt'));
         $this->assertTrue(MailboxHosts::acceptable('smtp.gmail.com'));
         foreach (['db', 'redis', 'localhost', '192.168.1.10', '::1', 'mail.local', 'x.internal', ''] as $host) {
             $this->assertFalse(MailboxHosts::acceptable($host), $host);
         }
-        // Fora de produção e sem MAILBOX_REAL_SEND, o cliente real envia para o Mailpit (nunca para o servidor da caixa).
-        config(['mailboxes.driver' => 'smtp', 'mailboxes.real_send' => false, 'mailboxes.dev_smtp.host' => '127.0.0.1', 'mailboxes.dev_smtp.port' => 1, 'mailboxes.timeout' => 1]);
-        $this->assertInstanceOf(SmtpMailboxClient::class, app(MailboxClient::class));
+        // O cliente real (também em dev) recusa um servidor interno antes de ligar (sem ir à rede: um IP escrito à mão).
+        config(['mailboxes.driver' => 'smtp']);
         $mailbox = $this->configure($this->owner);
+        $mailbox->forceFill(['smtp_host' => '10.0.0.5'])->save(); // como se tivesse passado a validação
         $res = $this->postJson($this->url(suffix: '/test'))->assertStatus(422);
-        $this->assertStringContainsString('Mailpit', (string) $res->json('message'));
-        $this->assertStringNotContainsString('mail.exemplo.pt', (string) $res->json('message'));
+        $this->assertSame('O servidor 10.0.0.5 não foi encontrado ou não é um servidor de e-mail público.', $res->json('message'));
         $this->assertSame(Mailbox::STATUS_ERROR, $mailbox->fresh()->status);
+        $this->assertInstanceOf(SmtpMailboxClient::class, (fn () => $this->inner)->call(app(MailboxClient::class)));
     }
 }

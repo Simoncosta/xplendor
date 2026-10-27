@@ -15,8 +15,8 @@ use Symfony\Component\Mime\Email;
 
 /**
  * O envio real por SMTP, com o servidor, a porta e a palavra-passe da caixa (o transporte é montado
- * a cada envio: o Mail do Laravel só conhece o servidor da plataforma). Fora de produção, sem
- * mailboxes.real_send, a mensagem vai para o Mailpit com o mesmo remetente.
+ * a cada envio: o Mail do Laravel só conhece o servidor da plataforma). Também em dev (E-mail 3b);
+ * fora de produção, o DevRecipientGuard (à volta deste cliente) manda tudo para a própria caixa.
  *
  * No envio real liga ao endereço público para onde o nome resolve (MailboxHosts) e verifica o
  * certificado pelo nome: uma caixa não serve para chegar a serviços internos.
@@ -25,9 +25,8 @@ class SmtpMailboxClient implements MailboxClient
 {
     public function send(Mailbox $mailbox, OutgoingMail $mail): MailboxSendResult
     {
-        $real = app()->environment('production') || (bool) config('mailboxes.real_send');
         try {
-            $transport = $real ? $this->realTransport($mailbox) : $this->devTransport();
+            $transport = $this->transport($mailbox);
             if ($transport === null) {
                 return MailboxSendResult::failed("O servidor {$mailbox->smtp_host} não foi encontrado ou não é um servidor de e-mail público.");
             }
@@ -44,15 +43,15 @@ class SmtpMailboxClient implements MailboxClient
             $email->getHeaders()->addIdHeader('Message-ID', $messageId);
             $sent = $transport->send($email);
 
-            return MailboxSendResult::sent('<' . $messageId . '>', $real, $sent?->toString());
+            return MailboxSendResult::sent('<' . $messageId . '>', $sent?->toString());
         } catch (TransportExceptionInterface $e) {
             Log::info('[Caixa de correio] Envio falhou', ['mailbox_id' => $mailbox->id, 'code' => $e->getCode()]);
 
-            return MailboxSendResult::failed($this->describe($e, $mailbox, $real));
+            return MailboxSendResult::failed($this->describe($e, $mailbox));
         }
     }
 
-    private function realTransport(Mailbox $mailbox): ?EsmtpTransport
+    private function transport(Mailbox $mailbox): ?EsmtpTransport
     {
         $ip = MailboxHosts::publicAddress($mailbox->smtp_host);
         if ($ip === null) {
@@ -73,23 +72,11 @@ class SmtpMailboxClient implements MailboxClient
         return $transport;
     }
 
-    private function devTransport(): EsmtpTransport
-    {
-        $transport = new EsmtpTransport((string) config('mailboxes.dev_smtp.host'), (int) config('mailboxes.dev_smtp.port'), false);
-        $transport->setAutoTls(false);
-        $stream = $transport->getStream();
-        if ($stream instanceof SocketStream) {
-            $stream->setTimeout((float) config('mailboxes.timeout'));
-        }
-
-        return $transport;
-    }
-
     /** O motivo em português, sem a palavra-passe nem o texto cru do servidor. */
-    private function describe(TransportExceptionInterface $e, Mailbox $mailbox, bool $real): string
+    private function describe(TransportExceptionInterface $e, Mailbox $mailbox): string
     {
         $message = strtolower($e->getMessage());
-        $where = $real ? "{$mailbox->smtp_host}:{$mailbox->smtp_port}" : 'o Mailpit (dev)';
+        $where = "{$mailbox->smtp_host}:{$mailbox->smtp_port}";
 
         return match (true) {
             str_contains($message, 'authenticate') || str_contains($message, '535') || str_contains($message, '534')

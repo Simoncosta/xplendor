@@ -12,10 +12,8 @@ use Webklex\PHPIMAP\ClientManager;
 
 /**
  * O IMAP real (webklex/php-imap, IMAP em PHP puro). Uma ligação por operação, fechada no fim.
- *
- * Fora de produção, sem mailboxes.real_send, não liga a nenhum servidor (o dev não tem IMAP: o
- * Mailpit só recebe). Em produção, só liga a um nome que resolve para endereços públicos
- * (MailboxHosts), como o envio.
+ * Também em dev (E-mail 3b). Só liga a um nome que resolve para endereços públicos (MailboxHosts),
+ * como o envio.
  */
 class WebklexMailboxImap implements MailboxImap
 {
@@ -49,9 +47,6 @@ class WebklexMailboxImap implements MailboxImap
     /** @param callable(Client): ImapResult $work */
     private function with(Mailbox $mailbox, callable $work): ImapResult
     {
-        if (! app()->environment('production') && ! config('mailboxes.real_send')) {
-            return ImapResult::failed('Em dev, a XPLENDOR não liga ao servidor de e-mail por IMAP.');
-        }
         if (MailboxHosts::publicAddress($mailbox->imap_host) === null) {
             return ImapResult::failed("O servidor {$mailbox->imap_host} não foi encontrado ou não é um servidor de e-mail público.");
         }

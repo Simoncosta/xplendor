@@ -217,7 +217,6 @@ services:
     depends_on:
       - db
       - redis
-      - mailpit
     networks:
       - xplendor
 

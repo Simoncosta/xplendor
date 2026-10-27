@@ -73,6 +73,7 @@ class SatisfactionMailboxSendTest extends TestCase
     {
         $mailbox = $this->mailbox($this->seller);
         Sanctum::actingAs($this->seller);
+        $this->app['env'] = 'production'; // em produção, para o cliente (fora dela, ver o teste do DevRecipientGuard)
         $this->send()->assertOk()->assertJsonPath('data.via', 'mailbox')->assertJsonPath('message', 'Email enviado pela sua caixa (matilde@exemplo.pt).');
 
         $this->assertCount(1, FakeMailboxClient::$sent);
@@ -80,6 +81,7 @@ class SatisfactionMailboxSendTest extends TestCase
         $this->assertSame('matilde@exemplo.pt', $sent['from']);
         $this->assertSame('Matilde Exemplo', $sent['from_name']);
         $this->assertSame('joana@cliente.invalid', $sent['to']);
+        $this->assertSame('A sua nova viatura — Quebom Exemplo Lda', $sent['subject']);
         $link = '/r/' . SatisfactionReport::sole()->public_token;
         $this->assertStringContainsString($link, $sent['text']);
         $this->assertStringContainsString($link, (string) $sent['html']);
@@ -193,17 +195,38 @@ class SatisfactionMailboxSendTest extends TestCase
         $this->assertMatchesRegularExpression('/^<[0-9a-f-]{36}@exemplo\.pt>$/', $message->message_id);
     }
 
-    public function test_dev_guard_the_real_client_outside_production_never_sends_to_the_mailbox_server(): void
+    public function test_outside_production_it_goes_only_to_the_mailbox_itself_with_the_client_in_the_subject(): void
     {
-        // Sem MAILBOX_REAL_SEND, o cliente real vai para o Mailpit (aqui um endereço local que recusa a ligação).
-        config(['mailboxes.driver' => 'smtp', 'mailboxes.real_send' => false, 'mailboxes.dev_smtp.host' => '127.0.0.1', 'mailboxes.dev_smtp.port' => 1, 'mailboxes.timeout' => 1]);
-        $this->assertInstanceOf(SmtpMailboxClient::class, app(MailboxClient::class));
+        $this->assertFalse(app()->environment('production'));
         $this->mailbox($this->seller);
+        Sanctum::actingAs($this->seller);
+        $this->send()->assertOk()->assertJsonPath('message', 'Em dev, a mensagem foi só para a sua própria caixa (matilde@exemplo.pt), com o cliente no assunto.');
+
+        $sent = FakeMailboxClient::$sent[0];
+        $this->assertSame('matilde@exemplo.pt', $sent['to']); // nunca para a cliente
+        $this->assertSame('[dev, para: joana@cliente.invalid] A sua nova viatura — Quebom Exemplo Lda', $sent['subject']);
+        $this->assertSame('matilde@exemplo.pt', $sent['from']);
+        $this->assertSame('joana@cliente.invalid', MailMessage::sole()->to_address); // o registo guarda a quem se destinava
+    }
+
+    public function test_in_production_it_goes_to_the_real_recipient(): void
+    {
+        $this->app['env'] = 'production';
+        $this->mailbox($this->seller);
+        Sanctum::actingAs($this->seller);
+        $this->send()->assertOk();
+        $this->assertSame('joana@cliente.invalid', FakeMailboxClient::$sent[0]['to']);
+        $this->assertStringStartsNotWith('[dev', FakeMailboxClient::$sent[0]['subject']);
+    }
+
+    public function test_the_real_client_never_reaches_an_internal_server(): void
+    {
+        config(['mailboxes.driver' => 'smtp']);
+        $this->mailbox($this->seller, ['smtp_host' => '192.168.1.20']);
         Sanctum::actingAs($this->seller);
         $this->send()->assertOk();
         $message = MailMessage::sole();
         $this->assertSame(MailMessage::STATUS_ERROR, $message->status);
-        $this->assertStringContainsString('Mailpit', (string) $message->error);
-        $this->assertStringNotContainsString('mail.exemplo.pt', (string) $message->error);
+        $this->assertSame('O servidor 192.168.1.20 não foi encontrado ou não é um servidor de e-mail público.', $message->error);
     }
 }

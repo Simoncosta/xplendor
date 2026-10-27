@@ -35,6 +35,6 @@ class FakeMailboxClient implements MailboxClient
 
         $raw = "Message-ID: {$messageId}\r\nFrom: {$mailbox->email}\r\nTo: {$mail->to}\r\nSubject: {$mail->subject}\r\n\r\n{$mail->text}";
 
-        return MailboxSendResult::sent($messageId, true, $raw);
+        return MailboxSendResult::sent($messageId, $raw);
     }
 }

@@ -180,12 +180,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(\App\Services\Social\Publishing\MetaPublishingClient::class, fn ($app) => config('social_publishing.driver') === 'meta'
             ? $app->make(\App\Services\Social\Publishing\MetaGraphPublishingClient::class)
             : $app->make(\App\Services\Social\Publishing\FakeMetaPublishingClient::class));
-        // E-mail 1: quem envia pelas caixas de correio (config/mailboxes.php: smtp, fake ou disabled).
-        $this->app->bind(\App\Services\Mailbox\MailboxClient::class, fn ($app) => match (config('mailboxes.driver')) {
+        // E-mail 1: quem envia pelas caixas de correio (config/mailboxes.php: smtp, fake ou disabled),
+        // sempre por dentro do DevRecipientGuard (E-mail 3b: fora de produção, só para a própria caixa).
+        $this->app->bind(\App\Services\Mailbox\MailboxClient::class, fn ($app) => new \App\Services\Mailbox\DevRecipientGuard(match (config('mailboxes.driver')) {
             'smtp' => $app->make(\App\Services\Mailbox\SmtpMailboxClient::class),
             'fake' => $app->make(\App\Services\Mailbox\FakeMailboxClient::class),
             default => $app->make(\App\Services\Mailbox\DisabledMailboxClient::class),
-        });
+        }));
         // E-mail 3: o IMAP das caixas (o mesmo driver: smtp → webklex, fake ou disabled).
         $this->app->bind(\App\Services\Mailbox\MailboxImap::class, fn ($app) => match (config('mailboxes.driver')) {
             'smtp' => $app->make(\App\Services\Mailbox\WebklexMailboxImap::class),

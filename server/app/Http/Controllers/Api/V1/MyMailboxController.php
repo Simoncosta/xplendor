@@ -86,11 +86,9 @@ class MyMailboxController extends Controller
             return ApiResponse::error($result->error, 422, ['mailbox' => $mailbox->toApiArray()]);
         }
         $copyError = $sentCopy->store($mailbox, $result);
-        $message = $result->delivered
-            ? "Mensagem de teste enviada para {$mailbox->email}." . ($copyError ? " A cópia em Enviados falhou: {$copyError}" : '')
-            : 'Mensagem de teste enviada para o Mailpit (em dev, o envio nunca sai para fora).';
+        $message = "Mensagem de teste enviada para {$mailbox->email}." . ($copyError ? " A cópia em Enviados falhou: {$copyError}" : '');
 
-        return ApiResponse::success(['mailbox' => $mailbox->fresh()->toApiArray(), 'delivered' => $result->delivered, 'sent_copy_error' => $copyError], $message);
+        return ApiResponse::success(['mailbox' => $mailbox->fresh()->toApiArray(), 'sent_copy_error' => $copyError], $message);
     }
 
     public function testImap(Request $request, int $companyId, MailboxImap $imap)
