@@ -12,6 +12,7 @@ import FullScreenDropdown from '../Components/Common/FullScreenDropdown';
 import ProfileDropdown from '../Components/Common/ProfileDropdown';
 import LightDark from '../Components/Common/LightDark';
 import NotificationDropdown from '../Components/Common/NotificationDropdown';
+import EmailHeaderButton from '../Components/Common/mailbox/EmailHeaderButton';
 
 import { changeSidebarVisibility } from '../slices/thunks';
 import { useSelector, useDispatch } from "react-redux";
@@ -140,6 +141,9 @@ const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
                                 layoutMode={layoutModeType}
                                 onChangeLayoutMode={onChangeLayoutMode}
                             />
+
+                            {/* E-mail 3: o envelope, à esquerda do sino */}
+                            <EmailHeaderButton />
 
                             <NotificationDropdown />
 

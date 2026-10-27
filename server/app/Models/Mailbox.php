@@ -24,6 +24,7 @@ class Mailbox extends Model
         'company_id', 'user_id', 'account_type', 'email', 'smtp_host', 'smtp_port', 'smtp_encryption',
         'imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'sent_folder', 'save_to_sent',
         'status', 'last_error', 'last_tested_at', 'last_uid', 'uidvalidity', 'unread_count', 'unread_checked_at',
+        'imap_status', 'imap_error', 'imap_tested_at',
     ];
 
     protected $hidden = ['password'];
@@ -38,7 +39,14 @@ class Mailbox extends Model
         'uidvalidity' => 'integer',
         'unread_count' => 'integer',
         'unread_checked_at' => 'datetime',
+        'imap_tested_at' => 'datetime',
     ];
+
+    /** O Gmail já guarda a cópia em Enviados quando se envia pelo smtp.gmail.com (E-mail 3: sem APPEND). */
+    public function keepsSentCopyItself(): bool
+    {
+        return strtolower((string) $this->smtp_host) === 'smtp.gmail.com';
+    }
 
     /** A caixa pessoal desta pessoa nesta empresa. */
     public function scopePersonal(Builder $query, int $companyId, int $userId): Builder
@@ -64,6 +72,12 @@ class Mailbox extends Model
             'status' => $this->status,
             'last_error' => $this->last_error,
             'last_tested_at' => $this->last_tested_at?->toIso8601String(),
+            'imap_status' => $this->imap_status,
+            'imap_error' => $this->imap_error,
+            'imap_tested_at' => $this->imap_tested_at?->toIso8601String(),
+            'sent_folder' => $this->sent_folder,
+            'unread_count' => $this->unread_count,
+            'unread_checked_at' => $this->unread_checked_at?->toIso8601String(),
         ];
     }
 }

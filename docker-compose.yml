@@ -200,6 +200,27 @@ services:
     networks:
       - xplendor
 
+  # E-mail 3: um segundo worker só para a fila mail (o envio pelas caixas de correio e os não lidos),
+  # para a leitura não ficar atrás dos jobs longos da fila por omissão.
+  worker-mail:
+    build:
+      context: ./docker/php
+    container_name: xplendor-worker-mail
+    restart: unless-stopped
+    working_dir: /var/www/html
+    entrypoint: []
+    command: php artisan queue:work --queue=mail --sleep=3 --tries=1 --max-time=3600
+    volumes:
+      - ./server:/var/www/html:delegated
+      - xplendor_vendor:/var/www/html/vendor
+      - xplendor_composer_cache:/tmp/composer
+    depends_on:
+      - db
+      - redis
+      - mailpit
+    networks:
+      - xplendor
+
   scraper:
     build:
       context: .

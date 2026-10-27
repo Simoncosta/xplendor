@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\MailMessage;
 use App\Services\Mailbox\MailboxClient;
 use App\Services\Mailbox\OutgoingMail;
+use App\Services\Mailbox\SentCopy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -17,7 +18,8 @@ use Illuminate\Queue\SerializesModels;
  * E-mail 2 · Envia uma mensagem gravada (MailMessage) pela caixa de correio de quem a escreveu. Na
  * fila só vai o id: as credenciais decifram-se aqui, no worker (o Mail do Laravel não serve, porque
  * o transporte de cada caixa não sobrevive à fila). Uma só tentativa: repetir um envio SMTP pode
- * mandar a mensagem duas vezes; o erro fica na mensagem, com o motivo.
+ * mandar a mensagem duas vezes; o erro fica na mensagem, com o motivo. Na fila própria mail (E-mail 3),
+ * com o seu worker; depois do envio, a cópia em Enviados (SentCopy).
  */
 class SendMailboxMessageJob implements ShouldQueue
 {
@@ -27,9 +29,12 @@ class SendMailboxMessageJob implements ShouldQueue
 
     public int $timeout = 60;
 
-    public function __construct(public readonly int $messageId, public readonly string $fromName = '') {}
+    public function __construct(public readonly int $messageId, public readonly string $fromName = '')
+    {
+        $this->onQueue('mail');
+    }
 
-    public function handle(MailboxClient $client): void
+    public function handle(MailboxClient $client, SentCopy $sentCopy): void
     {
         $message = MailMessage::with('mailbox')->find($this->messageId);
         if (! $message || $message->status !== MailMessage::STATUS_QUEUED) {
@@ -50,8 +55,13 @@ class SendMailboxMessageJob implements ShouldQueue
             messageId: $message->message_id,
         ));
 
-        $message->forceFill($result->ok
-            ? ['status' => MailMessage::STATUS_SENT, 'sent_at' => now(), 'error' => null]
-            : ['status' => MailMessage::STATUS_ERROR, 'error' => $result->error])->save();
+        if (! $result->ok) {
+            $message->forceFill(['status' => MailMessage::STATUS_ERROR, 'error' => $result->error])->save();
+
+            return;
+        }
+        $copyError = $sentCopy->store($message->mailbox, $result);
+        $message->forceFill(['status' => MailMessage::STATUS_SENT, 'sent_at' => now(),
+            'error' => $copyError ? "Enviada. A cópia em Enviados falhou: {$copyError}" : null])->save();
     }
 }

@@ -9,7 +9,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MyMailboxRequest;
 use App\Models\Mailbox;
 use App\Services\Mailbox\MailboxClient;
+use App\Services\Mailbox\MailboxImap;
 use App\Services\Mailbox\OutgoingMail;
+use App\Services\Mailbox\SentCopy;
 use Illuminate\Http\Request;
 
 /**
@@ -19,7 +21,9 @@ use Illuminate\Http\Request;
  *   GET    /companies/{id}/my-mailbox
  *   PUT    /companies/{id}/my-mailbox
  *   DELETE /companies/{id}/my-mailbox
- *   POST   /companies/{id}/my-mailbox/test   (mensagem de teste para o próprio endereço)
+ *   POST   /companies/{id}/my-mailbox/test        (mensagem de teste para o próprio endereço)
+ *   POST   /companies/{id}/my-mailbox/test-imap   (E-mail 3: liga, lista as pastas e conta os não lidos)
+ *   GET    /companies/{id}/my-mailbox/unread      (E-mail 3: o número para o cabeçalho e o menu)
  */
 class MyMailboxController extends Controller
 {
@@ -42,7 +46,11 @@ class MyMailboxController extends Controller
         $data['save_to_sent'] = strtolower($data['smtp_host']) === 'smtp.gmail.com' ? false : (bool) ($data['save_to_sent'] ?? true);
         $mailbox->fill($data);
         if ($mailbox->isDirty()) {
-            $mailbox->fill(['status' => Mailbox::STATUS_PENDING, 'last_error' => null]); // mudou: tem de voltar a ser testada
+            // Mudou: tem de voltar a ser testada (o envio e o IMAP; a pasta de Enviados volta a ser procurada).
+            $mailbox->fill(['status' => Mailbox::STATUS_PENDING, 'last_error' => null]);
+            if ($mailbox->isDirty(['imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'email'])) {
+                $mailbox->fill(['imap_status' => null, 'imap_error' => null, 'sent_folder' => null, 'unread_count' => null, 'unread_checked_at' => null, 'uidvalidity' => null, 'last_uid' => null]);
+            }
         }
         $mailbox->save();
 
@@ -56,7 +64,7 @@ class MyMailboxController extends Controller
         return ApiResponse::success(['mailbox' => null], 'Caixa de correio removida.');
     }
 
-    public function test(Request $request, int $companyId, MailboxClient $client)
+    public function test(Request $request, int $companyId, MailboxClient $client, SentCopy $sentCopy)
     {
         $mailbox = Mailbox::personal($companyId, (int) $request->user()->id)->first();
         if (! $mailbox) {
@@ -77,10 +85,49 @@ class MyMailboxController extends Controller
         if (! $result->ok) {
             return ApiResponse::error($result->error, 422, ['mailbox' => $mailbox->toApiArray()]);
         }
+        $copyError = $sentCopy->store($mailbox, $result);
         $message = $result->delivered
-            ? "Mensagem de teste enviada para {$mailbox->email}."
+            ? "Mensagem de teste enviada para {$mailbox->email}." . ($copyError ? " A cópia em Enviados falhou: {$copyError}" : '')
             : 'Mensagem de teste enviada para o Mailpit (em dev, o envio nunca sai para fora).';
 
-        return ApiResponse::success(['mailbox' => $mailbox->toApiArray(), 'delivered' => $result->delivered], $message);
+        return ApiResponse::success(['mailbox' => $mailbox->fresh()->toApiArray(), 'delivered' => $result->delivered, 'sent_copy_error' => $copyError], $message);
+    }
+
+    public function testImap(Request $request, int $companyId, MailboxImap $imap)
+    {
+        $mailbox = Mailbox::personal($companyId, (int) $request->user()->id)->first();
+        if (! $mailbox) {
+            return ApiResponse::error('Guarde primeiro a caixa de correio.', 422);
+        }
+        $check = $imap->check($mailbox);
+        $count = $check->ok ? $imap->unseen($mailbox) : $check;
+        $mailbox->forceFill(['imap_status' => $count->ok ? Mailbox::STATUS_ACTIVE : Mailbox::STATUS_ERROR, 'imap_error' => $count->error, 'imap_tested_at' => now()]);
+        if ($check->sentFolder) {
+            $mailbox->sent_folder = $check->sentFolder;
+        }
+        if ($count->ok) {
+            $mailbox->forceFill(['unread_count' => $count->unseen, 'uidvalidity' => $count->uidvalidity ?? $mailbox->uidvalidity, 'unread_checked_at' => now()]);
+        }
+        $mailbox->save();
+
+        if (! $count->ok) {
+            return ApiResponse::error((string) $count->error, 422, ['mailbox' => $mailbox->toApiArray()]);
+        }
+        $sent = $mailbox->keepsSentCopyItself() ? 'O Gmail guarda sozinho a cópia em Enviados.'
+            : ($mailbox->sent_folder ? "Pasta de Enviados: {$mailbox->sent_folder}." : 'Não foi encontrada a pasta de Enviados.');
+
+        return ApiResponse::success(['mailbox' => $mailbox->toApiArray()], "IMAP ligado: {$mailbox->unread_count} por ler na Entrada. {$sent}");
+    }
+
+    /** O número de não lidos (null sem caixa ou ainda sem contagem): o cabeçalho e o menu mostram-no acima de 0. */
+    public function unread(Request $request, int $companyId)
+    {
+        $mailbox = Mailbox::personal($companyId, (int) $request->user()->id)->first();
+
+        return ApiResponse::success([
+            'has_mailbox' => $mailbox !== null,
+            'unread_count' => $mailbox?->unread_count,
+            'checked_at' => $mailbox?->unread_checked_at?->toIso8601String(),
+        ]);
     }
 }

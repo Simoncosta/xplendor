@@ -42,9 +42,9 @@ class SmtpMailboxClient implements MailboxClient
             // O Message-ID é sempre o nosso (o SentMessage::getMessageId() pode ser o "queued as" do servidor).
             $messageId = trim($mail->messageId ?? (Str::uuid() . '@' . (Str::after($mailbox->email, '@') ?: 'xplendor.pt')), '<>');
             $email->getHeaders()->addIdHeader('Message-ID', $messageId);
-            $transport->send($email);
+            $sent = $transport->send($email);
 
-            return MailboxSendResult::sent('<' . $messageId . '>', $real);
+            return MailboxSendResult::sent('<' . $messageId . '>', $real, $sent?->toString());
         } catch (TransportExceptionInterface $e) {
             Log::info('[Caixa de correio] Envio falhou', ['mailbox_id' => $mailbox->id, 'code' => $e->getCode()]);
 

@@ -87,6 +87,7 @@ import ContentReviewPreview from "pages/ContentReview/Preview";
 import QuotePublicPreview from "pages/Admin/QuotePublicPreview";
 import SatisfactionReport from "pages/SatisfactionReport";
 import UserUpdate from "pages/Users/User/UserUpdate";
+import EmailPage from "pages/Email";
 import BrandProfilePage from "pages/BrandProfile";
 
 // Suppliers (DMS 1c.1)
@@ -273,6 +274,8 @@ const authProtectedRoutes = [
     { path: "/users/collaborators/new", component: <RequireModule permission="utilizadores.criar"><CollaboratorEditor /></RequireModule> },
     { path: "/users/collaborators/:id", component: <RequireModule permission="utilizadores.ver"><CollaboratorEditor /></RequireModule> },
     { path: "/users/:id", component: <UserUpdate /> },
+    // E-mail 3: a minha caixa de correio (sempre visível no menu; a página explica como se liga).
+    { path: "/email", component: <EmailPage /> },
     // Perfil da Marca (página própria; antes era um modal no Blog).
     { path: "/brand-profile", component: <RequireModule permission="marca.ver"><BrandProfilePage /></RequireModule> },
 

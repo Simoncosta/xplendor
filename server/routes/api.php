@@ -321,6 +321,9 @@ Route::prefix('v1')->group(function () {
                     Route::put('/my-mailbox', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'update']);
                     Route::delete('/my-mailbox', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'destroy']);
                     Route::post('/my-mailbox/test', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'test'])->middleware('throttle:6,1');
+                    // E-mail 3: testar o IMAP (e descobrir a pasta de Enviados) e o número de não lidos.
+                    Route::post('/my-mailbox/test-imap', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'testImap'])->middleware('throttle:6,1');
+                    Route::get('/my-mailbox/unread', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'unread']);
                 });
                 // Auditoria (Fatia 2, plataforma): a página central, a coluna "Auditoria" das listas, as
                 // corridas e os estados. Correr e mudar o estado são rotas por área (a ACL de cada área).

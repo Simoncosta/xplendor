@@ -186,6 +186,12 @@ class AppServiceProvider extends ServiceProvider
             'fake' => $app->make(\App\Services\Mailbox\FakeMailboxClient::class),
             default => $app->make(\App\Services\Mailbox\DisabledMailboxClient::class),
         });
+        // E-mail 3: o IMAP das caixas (o mesmo driver: smtp → webklex, fake ou disabled).
+        $this->app->bind(\App\Services\Mailbox\MailboxImap::class, fn ($app) => match (config('mailboxes.driver')) {
+            'smtp' => $app->make(\App\Services\Mailbox\WebklexMailboxImap::class),
+            'fake' => $app->make(\App\Services\Mailbox\FakeMailboxImap::class),
+            default => $app->make(\App\Services\Mailbox\DisabledMailboxImap::class),
+        });
         $this->app->bind(CustomerRepositoryInterface::class, CustomerRepository::class);
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);

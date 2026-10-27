@@ -1,6 +1,6 @@
 {
     "ator": "sem_modulos_admin",
-    "rotas": 627,
+    "rotas": 629,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -1160,6 +1160,7 @@
         "GET api/v1/companies/{id}/marketing/radar/settings": 403,
         "GET api/v1/companies/{id}/my-access": 200,
         "GET api/v1/companies/{id}/my-mailbox": 200,
+        "GET api/v1/companies/{id}/my-mailbox/unread": 200,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 403,
         "GET api/v1/companies/{id}/ocr/articles/search": 403,
@@ -1413,6 +1414,7 @@
         "POST api/v1/companies/{id}/marketing/radar/react": 403,
         "POST api/v1/companies/{id}/marketing/radar/unmute": 403,
         "POST api/v1/companies/{id}/my-mailbox/test": 422,
+        "POST api/v1/companies/{id}/my-mailbox/test-imap": 422,
         "POST api/v1/companies/{id}/ocr/invoices": 403,
         "POST api/v1/companies/{id}/ocr/invoices/bulk-delete": 403,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/accept-suggestions": 403,

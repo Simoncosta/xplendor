@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useModules } from "contexts/ModulesContext";
 import { useWorkingCompany } from "contexts/WorkingCompanyContext";
 import { sessionIsPlatformRoot } from "helpers/roles";
+import useMailboxUnread, { unreadLabel } from "Components/Common/mailbox/useMailboxUnread";
 
 const Navdata = () => {
     const history = useNavigate();
@@ -27,6 +28,9 @@ const Navdata = () => {
     const agencyMode = !!wc?.agencyMode;
     const [isFinances, setIsFinances] = useState(false);
     const [isComercial, setIsComercial] = useState(false);
+    const [isComunicacao, setIsComunicacao] = useState(false);
+    const mailbox = useMailboxUnread();
+    const mailUnread = mailbox.hasMailbox ? unreadLabel(mailbox.unread) : null;
     const [isAnalytics, setIsAnalytics] = useState(false);
     const [isRestauracao, setIsRestauracao] = useState(false);
     const [isImobiliario, setIsImobiliario] = useState(false);
@@ -69,6 +73,9 @@ const Navdata = () => {
         }
         if (iscurrentState !== 'Comercial') {
             setIsComercial(false);
+        }
+        if (iscurrentState !== 'Comunicacao') {
+            setIsComunicacao(false);
         }
         if (iscurrentState !== 'Analytics') {
             setIsAnalytics(false);
@@ -182,6 +189,24 @@ const Navdata = () => {
                 { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial", module: "commercial_crm", permission: "automovel.ver" },
                 // Clientes (CRM) — mantém o gate 'finance' (a rota /customers é gated por finance no backend).
                 { id: "customers", label: "Clientes", link: "/customers", parentId: "comercial", module: "finance", permission: "financas.ver" },
+            ],
+        },
+        // ── Comunicação — E-mail 3: o e-mail de cada pessoa (mais tarde, o Chat). Sempre visível;
+        // o número de não lidos só com caixa e acima de 0.
+        {
+            id: "comunicacao",
+            label: "Comunicação",
+            icon: "ri-chat-3-line",
+            link: "/#",
+            stateVariables: isComunicacao,
+            click: function (e: any) {
+                e.preventDefault();
+                setIsComunicacao(!isComunicacao);
+                setIscurrentState('Comunicacao');
+                updateIconSidebar(e);
+            },
+            subItems: [
+                { id: "email", label: "E-mail", link: "/email", parentId: "comunicacao", ...(mailUnread ? { badgeName: mailUnread, badgeColor: "danger" } : {}) },
             ],
         },
         // ── Marketing — TRANSVERSAL (GA4 + Meta + conteúdo). Serve qualquer ramo.
@@ -433,6 +458,7 @@ const Navdata = () => {
     // itens também. A Administração é reorganizada (Empresas → /root/companies).
     const ROOT_KEEP: Record<string, string[] | "all"> = {
         comercial: ["leads", "customers"],
+        comunicacao: "all",
         analytics: "all",
         finances: ["financas-mes", "financas-regras", "financas-habituais", "expenses", "suppliers"],
         equipa: "all",

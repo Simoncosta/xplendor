@@ -12,11 +12,12 @@ final class MailboxSendResult
         public readonly ?string $messageId,
         public readonly ?string $error,
         public readonly bool $delivered, // false quando foi para o Mailpit (dev) em vez do servidor da caixa
+        public readonly ?string $raw = null, // a mensagem MIME tal como saiu (para a cópia em Enviados, E-mail 3)
     ) {}
 
-    public static function sent(?string $messageId, bool $delivered = true): self
+    public static function sent(?string $messageId, bool $delivered = true, ?string $raw = null): self
     {
-        return new self(true, $messageId, null, $delivered);
+        return new self(true, $messageId, null, $delivered, $raw);
     }
 
     public static function failed(string $error): self

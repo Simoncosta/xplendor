@@ -37,6 +37,8 @@ return [
         'project-meta-expenses',
         // Parceiro 5: a verificação dos ativos da Meta das agências (lê a Meta).
         'agency-meta-assets-daily',
+        // E-mail 3: os não lidos das caixas de correio (liga aos servidores de e-mail, por IMAP).
+        'mailboxes-unread-count',
     ],
 
     // As tarefas agendadas que chegam à IA (pelos trabalhos que põem na fila). Todas têm de estar

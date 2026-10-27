@@ -3,7 +3,8 @@ import { Alert, Badge, Button, Col, Collapse, Input, Label, Row, Spinner } from 
 import { toast } from "react-toastify";
 import PageCard from "Components/Common/PageCard";
 import XSelect from "Components/Common/Select";
-import { deleteMyMailbox, getMyMailbox, saveMyMailbox, testMyMailbox } from "helpers/laravel_helper";
+import { deleteMyMailbox, getMyMailbox, saveMyMailbox, testMyMailbox, testMyMailboxImap } from "helpers/laravel_helper";
+import { refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
 import {
     ACCOUNT_TYPE_OPTIONS, AccountType, AdvancedField, EMPTY_FORM, GMAIL_APP_PASSWORD_HELP, GOOGLE_APP_PASSWORDS, GOOGLE_SECURITY, MailboxForm,
     applyPreset, changeEmail, changeType, touchedFromSaved,
@@ -13,9 +14,14 @@ import {
  * E-mail 1 · "A minha caixa de correio", no Perfil do Utilizador (só na própria conta e fora da
  * impersonation; o root também, na sua empresa: o backend recusa o resto). Primeiro o tipo de conta; nos
  * modelos basta o endereço e a palavra-passe, e os servidores ficam nas definições avançadas.
+ * E-mail 3: "Testar IMAP" (a pasta de Enviados e os não lidos) e o estado da receção. A página
+ * /email leva aqui com #mailbox.
  */
 
-type Saved = Omit<MailboxForm, "password"> & { has_password: boolean; status: "por_testar" | "ativa" | "erro"; last_error: string | null; last_tested_at: string | null };
+type Saved = Omit<MailboxForm, "password"> & {
+    has_password: boolean; status: "por_testar" | "ativa" | "erro"; last_error: string | null; last_tested_at: string | null;
+    imap_status?: "ativa" | "erro" | null; imap_error?: string | null; sent_folder?: string | null; unread_count?: number | null; unread_checked_at?: string | null;
+};
 
 const STATUS: Record<Saved["status"], { label: string; color: string }> = {
     por_testar: { label: "Por testar", color: "warning" },
@@ -47,7 +53,7 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
     const [touched, setTouched] = useState<Set<AdvancedField>>(new Set());
     const [advanced, setAdvanced] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [busy, setBusy] = useState<"" | "save" | "test" | "delete">("");
+    const [busy, setBusy] = useState<"" | "save" | "test" | "imap" | "delete">("");
     const [dirty, setDirty] = useState(false);
 
     const load = (m: Saved | null) => {
@@ -66,6 +72,11 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
             .catch(() => load(null))
             .finally(() => setLoading(false));
     }, [companyId]);
+
+    // Vindo de /email ("Ligar a minha caixa"): o quadro fica à vista.
+    useEffect(() => {
+        if (!loading && window.location.hash === "#mailbox") document.getElementById("mailbox")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    }, [loading]);
 
     const edit = (next: MailboxForm) => { setForm(next); setDirty(true); };
     const editAdvanced = (field: AdvancedField, value: any) => {
@@ -86,6 +97,7 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
             const { password, ...rest } = form;
             const r: any = await saveMyMailbox(companyId, password ? { ...rest, password } : rest);
             load(r?.data?.mailbox ?? null);
+            refreshMailboxUnread();
             toast.success("Caixa de correio guardada. Falta testar o envio.");
         } catch (e: any) {
             toast.error(errorMessage(e, "Não foi possível guardar a caixa de correio."));
@@ -99,10 +111,25 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
         try {
             const r: any = await testMyMailbox(companyId);
             setSaved(r?.data?.mailbox ?? saved);
-            toast.success(r?.message || "Mensagem de teste enviada.");
+            if (r?.data?.sent_copy_error) toast.warning(r.message); else toast.success(r?.message || "Mensagem de teste enviada.");
         } catch (e: any) {
             if (e?.errors?.mailbox) setSaved(e.errors.mailbox);
             toast.error(errorMessage(e, "O envio de teste falhou."));
+        } finally {
+            setBusy("");
+        }
+    };
+
+    const testImap = async () => {
+        setBusy("imap");
+        try {
+            const r: any = await testMyMailboxImap(companyId);
+            setSaved(r?.data?.mailbox ?? saved);
+            refreshMailboxUnread();
+            toast.success(r?.message || "IMAP ligado.");
+        } catch (e: any) {
+            if (e?.errors?.mailbox) setSaved(e.errors.mailbox);
+            toast.error(errorMessage(e, "O teste do IMAP falhou."));
         } finally {
             setBusy("");
         }
@@ -114,6 +141,7 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
         try {
             await deleteMyMailbox(companyId);
             load(null);
+            refreshMailboxUnread();
             toast.success("Caixa de correio removida.");
         } catch (e: any) {
             toast.error(errorMessage(e, "Não foi possível remover a caixa de correio."));
@@ -126,6 +154,7 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
     const status = saved ? STATUS[saved.status] : null;
 
     return (
+        <div id="mailbox">
         <PageCard
             title="A minha caixa de correio"
             info="Envie e receba pela XPLENDOR com a sua própria caixa. Só a própria pessoa a vê: nem o administrador, nem a agência, nem a equipa XPLENDOR."
@@ -136,6 +165,9 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
             skeleton={loading ? "lines" : undefined}
             actions={<>
                 {saved && <Button size="sm" color="outline-danger" disabled={!!busy} onClick={remove}>Remover</Button>}
+                {saved && <Button size="sm" color="outline-primary" disabled={!!busy || dirty} onClick={testImap} title={dirty ? "Guarde primeiro as alterações." : undefined}>
+                    {busy === "imap" ? <Spinner size="sm" /> : <><i className="ri-inbox-line me-1" />Testar IMAP</>}
+                </Button>}
                 {saved && <Button size="sm" color="outline-primary" disabled={!!busy || dirty} onClick={test} title={dirty ? "Guarde primeiro as alterações." : undefined}>
                     {busy === "test" ? <Spinner size="sm" /> : <><i className="ri-mail-send-line me-1" />Testar envio</>}
                 </Button>}
@@ -145,6 +177,14 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
             </>}
         >
             {saved?.status === "erro" && saved.last_error && <Alert color="danger" className="py-2" data-testid="mailbox-error">{saved.last_error}</Alert>}
+            {saved?.imap_status === "erro" && saved.imap_error && <Alert color="danger" className="py-2" data-testid="mailbox-imap-error">Receção (IMAP): {saved.imap_error}</Alert>}
+            {saved?.imap_status === "ativa" && (
+                <p className="text-muted fs-13 mb-3" data-testid="mailbox-imap-ok">
+                    <i className="ri-checkbox-circle-line text-success me-1" />Receção (IMAP) ligada
+                    {typeof saved.unread_count === "number" ? ` · ${saved.unread_count} por ler na Entrada` : ""}
+                    {saved.account_type === "gmail" || saved.smtp_host === "smtp.gmail.com" ? " · o Gmail guarda sozinho a cópia em Enviados" : saved.sent_folder ? ` · cópia em Enviados na pasta ${saved.sent_folder}` : ""}
+                </p>
+            )}
             <Row>
                 <Col lg={6} className="mb-3">
                     <Label htmlFor="mailbox-type" className="form-label">Tipo de conta</Label>
@@ -224,5 +264,6 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
                 </Row>
             </Collapse>
         </PageCard>
+        </div>
     );
 }

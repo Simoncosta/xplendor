@@ -4,6 +4,9 @@ import Navdata from "./LayoutMenuData";
 jest.mock("react-router-dom", () => ({ useNavigate: () => jest.fn() }), { virtual: true });
 jest.mock("helpers/roles", () => ({ sessionIsPlatformRoot: () => false }));
 jest.mock("contexts/WorkingCompanyContext", () => ({ useWorkingCompany: () => ({ isWorkingAway: false, workingCompanyId: null, workingAway: false }) }));
+let mockMail = { hasMailbox: false, unread: null as number | null };
+jest.mock("Components/Common/mailbox/useMailboxUnread", () => ({ __esModule: true, default: () => mockMail,
+    unreadLabel: (n: number | null) => (!n || n <= 0 ? null : n > 99 ? "99+" : String(n)) }));
 let mockModules: string[] = [];
 let mockPerms: string[] = [];
 let mockBranch: string | null = null;
@@ -93,5 +96,30 @@ describe("Menu lateral: os fornecedores das Finanças", () => {
         mockBranch = null;
         const fin = menu().find((i) => i.id === "finances").subItems.find((s: any) => s.id === "suppliers");
         expect(fin).toMatchObject({ label: "Fornecedores de despesas", link: "/suppliers" });
+    });
+});
+
+describe("Menu lateral: Comunicação › E-mail (E-mail 3)", () => {
+    const email = () => menu().find((i) => i.id === "comunicacao")?.subItems.find((s: any) => s.id === "email");
+
+    it("aparece sempre, mesmo sem caixa e sem módulos, e leva a /email", () => {
+        mockModules = [];
+        mockPerms = [];
+        mockMail = { hasMailbox: false, unread: 12 };
+        const group = menu().find((i) => i.id === "comunicacao");
+        expect(group).toMatchObject({ label: "Comunicação" });
+        expect(group.subItems.map((s: any) => s.label)).toEqual(["E-mail"]);
+        expect(email()).toMatchObject({ link: "/email" });
+        expect(email().badgeName).toBeUndefined(); // sem caixa, sem número
+    });
+
+    it("o número só com caixa e acima de 0, e 99+ acima de 99", () => {
+        mockMail = { hasMailbox: true, unread: 0 };
+        expect(email().badgeName).toBeUndefined();
+        mockMail = { hasMailbox: true, unread: 7 };
+        expect(email()).toMatchObject({ badgeName: "7", badgeColor: "danger" });
+        mockMail = { hasMailbox: true, unread: 150 };
+        expect(email().badgeName).toBe("99+");
+        mockMail = { hasMailbox: false, unread: null };
     });
 });

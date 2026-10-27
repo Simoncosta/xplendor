@@ -627,6 +627,13 @@ Schedule::command('backup:database')
         \Illuminate\Support\Facades\Log::error('[Cópias] A cópia diária da base de dados falhou no scheduler');
     });
 
+// De 5 em 5 minutos — E-mail 3: os não lidos da Entrada de cada caixa de correio (IMAP, um job por caixa
+// na fila mail). Externa: liga aos servidores de e-mail das pessoas.
+Schedule::job(new \App\Jobs\DispatchMailboxUnreadCountsJob())
+    ->everyFiveMinutes()
+    ->name('mailboxes-unread-count')
+    ->withoutOverlapping();
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

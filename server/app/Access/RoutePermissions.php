@@ -45,6 +45,8 @@ final class RoutePermissions
         'PUT {id}/my-mailbox' => 'empresa.ver',
         'DELETE {id}/my-mailbox' => 'empresa.ver',
         'POST {id}/my-mailbox/test' => 'empresa.ver',
+        'POST {id}/my-mailbox/test-imap' => 'empresa.ver',
+        'GET {id}/my-mailbox/unread' => 'empresa.ver',
         'PUT {id}/management/guest-profile' => 'empresa.aprovar', // F5: o teto da agência é uma decisão do cliente
         // ── utilizadores ──
         'GET {id}/collaborators' => 'utilizadores.ver',
@@ -933,6 +935,8 @@ final class RoutePermissions
         'PUT {id}/my-mailbox',
         'DELETE {id}/my-mailbox',
         'POST {id}/my-mailbox/test',
+        'POST {id}/my-mailbox/test-imap',
+        'GET {id}/my-mailbox/unread',
     ];
 
     /** Rotas sobre a PRÓPRIA conta: a pessoa pode sempre ver e alterar a sua (rota → parâmetro do utilizador). */

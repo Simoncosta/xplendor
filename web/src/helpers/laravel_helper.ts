@@ -363,6 +363,9 @@ export const getMyMailbox = (companyId: number) => api.get(url.GET_COMPANIES + `
 export const saveMyMailbox = (companyId: number, data: Record<string, unknown>) => api.put(url.GET_COMPANIES + `/${companyId}/my-mailbox`, data);
 export const deleteMyMailbox = (companyId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/my-mailbox`);
 export const testMyMailbox = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/test`, {});
+// E-mail 3: testar o IMAP (pasta de Enviados e não lidos) e o número de não lidos (cabeçalho e menu).
+export const testMyMailboxImap = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/test-imap`, {});
+export const getMyMailboxUnread = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/unread`);
 // ACL (F5): Utilizadores › Perfis e o teto da agência gestora.
 export const getPermissionProfiles = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/permission-profiles`);
 export const createPermissionProfile = (companyId: number, data: { name: string; description?: string | null; side: string; permissions: string[]; from_profile_id?: number | null }) =>
