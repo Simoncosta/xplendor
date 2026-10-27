@@ -58,6 +58,8 @@ final class RoutePermissions
         'POST {id}/my-mailbox/seen' => 'empresa.ver',
         'GET {id}/my-mailbox/compose-context' => 'empresa.ver',
         'POST {id}/my-mailbox/send' => 'empresa.ver',
+        // E-mail 7: a mesma permissão do carregamento manual das Faturas (POST {id}/ocr/invoices).
+        'POST {id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice' => 'restauracao.criar',
         // E-mail 4: a secção "Conversa" (as mensagens ligadas ao cliente ou à venda; MAIL_CONTENT).
         'GET {id}/customers/{customer}/mail-messages' => 'financas.ver',
         'GET {id}/cars/{carId}/mail-messages' => 'automovel.ver',
@@ -849,6 +851,7 @@ final class RoutePermissions
         'POST {id}/integrations/pingwin/suppliers/sync' => 'restauracao_fornecedores',
         'GET {id}/ocr/invoices' => 'restauracao_faturas',
         'POST {id}/ocr/invoices' => 'restauracao_faturas',
+        'POST {id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice' => 'restauracao_faturas', // E-mail 7
         'GET {id}/ocr/invoices/{invoiceId}' => 'restauracao_faturas',
         'GET {id}/ocr/invoices/{invoiceId}/guides' => 'restauracao_faturas',
         'GET {id}/ocr/invoices/{invoiceId}/image' => 'restauracao_faturas',
@@ -961,6 +964,7 @@ final class RoutePermissions
         'POST {id}/my-mailbox/seen',
         'GET {id}/my-mailbox/compose-context',
         'POST {id}/my-mailbox/send',
+        'POST {id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice',
     ];
 
     /**

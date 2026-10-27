@@ -45,6 +45,7 @@ class OcrInvoiceDeleteTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
+        $this->app->instance(\App\Services\Financing\Antivirus\VirusScanner::class, new \Tests\Support\FakeVirusScanner()); // E-mail 7: o ClamAV antes de cada carregamento
         $planId = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 999, 'created_at' => now(), 'updated_at' => now()]);
         $this->yuko = Company::create(['nipc' => '514148497', 'fiscal_name' => 'Yuko', 'plan_id' => $planId, 'subscription_status' => 'active']);
         $this->other = Company::create(['nipc' => '500000001', 'fiscal_name' => 'Outra', 'plan_id' => $planId, 'subscription_status' => 'active']);

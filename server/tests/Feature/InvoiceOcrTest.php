@@ -37,6 +37,7 @@ class InvoiceOcrTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
+        $this->app->instance(\App\Services\Financing\Antivirus\VirusScanner::class, new \Tests\Support\FakeVirusScanner()); // E-mail 7: o ClamAV antes de cada carregamento
         $planId = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 999, 'created_at' => now(), 'updated_at' => now()]);
         $this->resto = Company::create(['nipc' => '500013100', 'fiscal_name' => 'Resto', 'plan_id' => $planId, 'subscription_status' => 'active']);
         $this->auto = Company::create(['nipc' => '500013101', 'fiscal_name' => 'Auto', 'plan_id' => $planId, 'subscription_status' => 'active']);

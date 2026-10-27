@@ -8,6 +8,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Mailbox;
+use App\Services\Mailbox\AttachmentInvoiceImport;
 use App\Services\Mailbox\MailboxInbox;
 use App\Services\Mailbox\MailParser;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ use Illuminate\Validation\Rule;
  *   POST /companies/{id}/my-mailbox/messages/{uid}/link            {folder, customer_id}
  *   GET  /companies/{id}/my-mailbox/thread?folder=&uids=1,2,3        (E-mail 4b: a conversa numa só ligação)
  *   POST /companies/{id}/my-mailbox/seen                            {folder, uids, seen} (E-mail 4b: várias de uma vez)
+ *   POST /companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice  {folder} (E-mail 7: para as Faturas)
  */
 class MyMailboxInboxController extends Controller
 {
@@ -142,6 +144,28 @@ class MyMailboxInboxController extends Controller
             'Content-Security-Policy' => "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
             'Cache-Control' => 'no-store, private',
         ]);
+    }
+
+    /**
+     * E-mail 7 · "Importar para as Faturas": só quem pode carregar faturas (restauracao.criar e o
+     * módulo das Faturas, como o carregamento manual). O anexo passa pelo ClamAV e entra no fluxo do
+     * carregamento manual; o duplicado devolve 409 com a fatura que já existe.
+     */
+    public function importInvoice(Request $request, int $companyId, int $uid, int $index, AttachmentInvoiceImport $import)
+    {
+        [$mailbox, $folder, $error] = $this->resolve($request, $companyId);
+        if ($error) {
+            return $error;
+        }
+        $result = $import->import($mailbox, $folder, $uid, $index);
+        if ($result['status'] === 'refused') {
+            return ApiResponse::error($result['error'], $result['code']);
+        }
+        if ($result['status'] === 'created') {
+            return ApiResponse::success(['id' => $result['invoice']->id, 'status' => $result['invoice']->status], 'Fatura criada. A leitura corre agora; recebe um aviso quando terminar.');
+        }
+
+        return CompanyInvoiceOcrController::intakeResponse($result);
     }
 
     public function link(Request $request, int $companyId, int $uid)

@@ -96,6 +96,9 @@ export interface OcrInvoiceSummary {
 
 export interface OcrInvoiceDetail {
     id: number;
+    /** E-mail 7: de onde veio ("upload" à mão ou "email" da caixa de correio) e o endereço da caixa. */
+    origin?: "upload" | "email" | null;
+    origin_mailbox_email?: string | null;
     status: OcrInvoiceStatus;
     confidence: number;
     model: string | null;

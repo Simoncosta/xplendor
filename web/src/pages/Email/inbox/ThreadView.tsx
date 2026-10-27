@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Alert, Button, Col, Modal, ModalBody, ModalHeader, Row } from "reactstrap";
+import { Alert, Button, Col, Modal, ModalBody, ModalHeader, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import { mailboxAttachmentPath } from "helpers/laravel_helper";
+import { importMailboxAttachment, mailboxAttachmentPath } from "helpers/laravel_helper";
+import { useAccess } from "contexts/ModulesContext";
 import { downloadGet, fetchBlob } from "helpers/download_helper";
 import MessageFrame from "./MessageFrame";
 import { ThreadSkeleton } from "./skeletons";
@@ -15,8 +16,14 @@ import { MailAttachment, MailFull, fileSize, who } from "./types";
  * abertas; as outras mostram só quem enviou e o início do texto, e abrem com um clique. Em cada
  * mensagem: o HTML limpo num iframe isolado (as imagens externas só com "Mostrar imagens"), os
  * anexos ("Ver", ao vivo e sem guardar, e "Descarregar") e "Ligar a um cliente". E-mail 5:
- * "Responder" em cada mensagem aberta e no fim da conversa (à mais recente).
+ * "Responder" em cada mensagem aberta e no fim da conversa (à mais recente). E-mail 7: "Importar
+ * para as Faturas" nos anexos PDF e imagem, só para quem pode carregar faturas (o resultado fica
+ * no próprio anexo: "Fatura criada" ou "Já existe", com a ligação).
  */
+
+/** Os anexos que se podem importar para as Faturas (os mesmos tipos do carregamento manual). */
+export const INVOICE_MIMES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+type Imported = { busy?: boolean; status?: "created" | "exists"; id?: number };
 export default function ThreadView({ companyId, myEmail, messages, loading, error, onBack, onUnread, onLinked, onReply }: {
     companyId: number; myEmail: string; messages: MailFull[]; loading: boolean; error: string | null;
     onBack: () => void; onUnread: () => void; onLinked: (uid: number, customer: { id: number; name: string }) => void;
@@ -28,6 +35,9 @@ export default function ThreadView({ companyId, myEmail, messages, loading, erro
     const [open, setOpen] = useState<Set<number>>(new Set());
     const [preview, setPreview] = useState<{ name: string; mime: string; url: string } | null>(null);
     const [linking, setLinking] = useState<MailFull | null>(null);
+    const [imported, setImported] = useState<Record<string, Imported>>({});
+    const access = useAccess();
+    const canImport = access.has("restauracao_faturas") && access.can("restauracao.criar");
 
     useEffect(() => {
         setOpen(new Set(ordered.filter((m, i) => i === ordered.length - 1 || !m.seen).map((m) => m.uid)));
@@ -44,6 +54,22 @@ export default function ThreadView({ companyId, myEmail, messages, loading, erro
     const download = async (m: MailFull, a: MailAttachment) => {
         const r = await downloadGet(mailboxAttachmentPath(companyId, m.uid, m.folder, a.index, false), a.name);
         if (!r.ok) toast.error(r.body?.message || "Não foi possível descarregar o anexo.");
+    };
+    const importInvoice = async (m: MailFull, a: MailAttachment) => {
+        const key = `${m.folder}:${m.uid}:${a.index}`;
+        setImported((s) => ({ ...s, [key]: { busy: true } }));
+        try {
+            const r: any = await importMailboxAttachment(companyId, m.uid, m.folder, a.index);
+            setImported((s) => ({ ...s, [key]: { status: "created", id: r?.data?.id } }));
+            toast.success(r?.message || "Fatura criada.");
+        } catch (e: any) {
+            if (e?.__status === 409 && e?.errors?.code === "ficheiro_duplicado") {
+                setImported((s) => ({ ...s, [key]: { status: "exists", id: e.errors.existing_id } }));
+                return;
+            }
+            setImported((s) => ({ ...s, [key]: {} }));
+            toast.error(e?.message || "Não foi possível importar o anexo.");
+        }
     };
     const mine = (m: MailFull) => !!m.from.address && m.from.address.toLowerCase() === myEmail.toLowerCase();
     const recipients = (m: MailFull) => {
@@ -113,9 +139,12 @@ export default function ThreadView({ companyId, myEmail, messages, loading, erro
                                                                         <i className={`fs-24 ${a.mime === "application/pdf" ? "ri-file-pdf-2-line text-danger" : a.mime.startsWith("image/") ? "ri-image-line text-info" : "ri-file-line text-muted"}`} />
                                                                         <div className="overflow-hidden"><div className="text-truncate fs-13" title={a.name}>{a.name}</div><small className="text-muted">{fileSize(a.size)}</small></div>
                                                                     </div>
-                                                                    <div className="d-flex gap-1 mt-auto">
+                                                                    <div className="d-flex flex-wrap gap-1 mt-auto">
                                                                         {a.previewable && <Button size="sm" color="outline-primary" onClick={() => view(m, a)}><i className="ri-eye-line me-1" />Ver</Button>}
                                                                         <Button size="sm" color="outline-secondary" onClick={() => download(m, a)}><i className="ri-download-2-line me-1" />Descarregar</Button>
+                                                                        {canImport && INVOICE_MIMES.includes(a.mime) && (
+                                                                            <InvoiceImport state={imported[`${m.folder}:${m.uid}:${a.index}`]} onImport={() => importInvoice(m, a)} />
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </Col>
@@ -149,6 +178,22 @@ export default function ThreadView({ companyId, myEmail, messages, loading, erro
             {linking && <LinkCustomerModal isOpen toggle={() => setLinking(null)} companyId={companyId} uid={linking.uid} folder={linking.folder}
                 onLinked={(c) => { onLinked(linking.uid, c); setLinking(null); }} />}
         </div>
+    );
+}
+
+/** "Importar para as Faturas" e, depois, o resultado com a ligação à fatura. */
+function InvoiceImport({ state, onImport }: { state?: Imported; onImport: () => void }) {
+    if (state?.status && state.id) {
+        return (
+            <span className={`badge align-self-center ${state.status === "created" ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning"}`} data-testid="mail-invoice-result">
+                {state.status === "created" ? "Fatura criada" : "Já existe"}: <Link to={`/restauracao/faturas/${state.id}`}>abrir a fatura #{state.id}</Link>
+            </span>
+        );
+    }
+    return (
+        <Button size="sm" color="outline-success" onClick={onImport} disabled={state?.busy} data-testid="mail-invoice-import">
+            {state?.busy ? <Spinner size="sm" /> : <><i className="ri-file-list-3-line me-1" />Importar para as Faturas</>}
+        </Button>
     );
 }
 

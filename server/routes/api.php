@@ -341,6 +341,9 @@ Route::prefix('v1')->group(function () {
                     // E-mail 5: escrever e responder (da caixa, da ficha do cliente e da venda).
                     Route::get('/my-mailbox/compose-context', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'context']);
                     Route::post('/my-mailbox/send', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'send'])->middleware('throttle:20,1');
+                    // E-mail 7: um anexo para as Faturas (a permissão e o módulo do carregamento manual).
+                    Route::post('/my-mailbox/messages/{uid}/attachments/{index}/import-invoice', [$inbox, 'importInvoice'])
+                        ->whereNumber(['uid', 'index'])->middleware(['ensure_module:pingwin', 'throttle:30,1']);
                 });
                 // Auditoria (Fatia 2, plataforma): a página central, a coluna "Auditoria" das listas, as
                 // corridas e os estados. Correr e mudar o estado são rotas por área (a ACL de cada área).

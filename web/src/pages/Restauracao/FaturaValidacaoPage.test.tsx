@@ -501,3 +501,14 @@ test("fatura normal: sem o aviso do IVA incluído nem notas", async () => {
     expect(screen.queryByTestId("line-vat-included-0")).toBeNull();
     expect(screen.queryByTestId("handwritten-notes")).toBeNull();
 });
+
+test("E-mail 7: a fatura importada da caixa mostra \"Veio do e-mail\" com o endereço; a carregada à mão não mostra nada", async () => {
+    mockApi.get.mockResolvedValue({ data: { invoice: invoice({ origin: "email", origin_mailbox_email: "adriana@exemplo.pt" }), pingwin: null, suppliers: [] } });
+    const { unmount } = render(<FaturaValidacaoPage />);
+    expect(await screen.findByTestId("invoice-from-email")).toHaveTextContent("Veio do e-mail · adriana@exemplo.pt");
+    unmount();
+    mockApi.get.mockResolvedValue({ data: { invoice: invoice({ origin: "upload", origin_mailbox_email: null }), pingwin: null, suppliers: [] } });
+    render(<FaturaValidacaoPage />);
+    await screen.findByTestId("doc-type");
+    expect(screen.queryByTestId("invoice-from-email")).not.toBeInTheDocument();
+});

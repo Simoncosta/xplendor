@@ -38,6 +38,8 @@ class OcrInvoice extends Model
         'vat_table', 'ignored_lines', 'read_snapshot', 'reread_keep', 'closed_by', 'closed_at',
         // F2c
         'deleted_by', 'file_purged_at', 'file_sha256',
+        // E-mail 7: de onde veio (carregamento manual ou anexo da caixa de correio, com a caixa e o Message-ID)
+        'origin', 'origin_mailbox_id', 'origin_mailbox_email', 'origin_message_id',
     ];
 
     protected $casts = [

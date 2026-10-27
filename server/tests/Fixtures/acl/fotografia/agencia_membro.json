@@ -1,6 +1,6 @@
 {
     "ator": "agencia_membro",
-    "rotas": 641,
+    "rotas": 642,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -85,6 +85,7 @@
         "POST api/v1/companies/{id}/management/connections",
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept",
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline",
+        "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice",
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link",
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen",
         "POST api/v1/companies/{id}/my-mailbox/seen",
@@ -198,6 +199,7 @@
         "POST api/v1/companies/{id}/management/connections": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
+        "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
         "POST api/v1/companies/{id}/my-mailbox/seen": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
@@ -723,6 +725,7 @@
         "POST api/v1/companies/{id}/marketing/radar/mute": 422,
         "POST api/v1/companies/{id}/marketing/radar/react": 422,
         "POST api/v1/companies/{id}/marketing/radar/unmute": 422,
+        "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice": 403,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link": 403,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen": 403,
         "POST api/v1/companies/{id}/my-mailbox/seen": 403,

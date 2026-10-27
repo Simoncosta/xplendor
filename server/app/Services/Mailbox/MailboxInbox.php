@@ -247,9 +247,11 @@ class MailboxInbox
         if (! $result->ok) {
             return ['ok' => false, 'error' => (string) $result->error];
         }
-        $file = MailParser::attachment((string) ($result->data['raw'] ?? ''), $index);
+        $raw = (string) ($result->data['raw'] ?? '');
+        $file = MailParser::attachment($raw, $index);
 
-        return $file ? ['ok' => true, 'file' => $file] : ['ok' => false, 'error' => 'O anexo já não existe na mensagem.'];
+        // E-mail 7: o Message-ID vai junto (a fatura importada guarda de onde veio).
+        return $file ? ['ok' => true, 'file' => $file, 'message_id' => MailParser::thread($raw)['message_id']] : ['ok' => false, 'error' => 'O anexo já não existe na mensagem.'];
     }
 
     /** "Ligar a um cliente": a mensagem fica guardada (texto e HTML limpo, sem anexos), ligada ao cliente. */

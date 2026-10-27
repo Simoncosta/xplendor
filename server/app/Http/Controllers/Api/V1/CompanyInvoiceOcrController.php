@@ -14,6 +14,7 @@ use App\Models\PingwinSupplier;
 use App\Jobs\LinkOcrInvoiceJob;
 use App\Services\InvoiceOcrService;
 use App\Services\OcrInvoiceDeleteService;
+use App\Services\OcrInvoiceIntake;
 use App\Services\OcrInvoiceLaunchService;
 use App\Services\OcrInvoiceRereadService;
 use App\Services\OcrLineArticleService;
@@ -92,7 +93,9 @@ class CompanyInvoiceOcrController extends Controller
             'restore_block' => $inv->trashed() ? $deleter->restoreBlockReason($inv) : null,
         ]);
 
-        return ApiResponse::success(['invoices' => $page, 'monthly_cap' => $this->monthlyCap(), 'used_this_month' => $this->usedThisMonth($companyId)], 'Faturas carregadas.');
+        $intake = app(OcrInvoiceIntake::class);
+
+        return ApiResponse::success(['invoices' => $page, 'monthly_cap' => $intake->monthlyCap(), 'used_this_month' => $intake->usedThisMonth($companyId)], 'Faturas carregadas.');
     }
 
     /**
@@ -110,30 +113,29 @@ class CompanyInvoiceOcrController extends Controller
             'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:12288'], // 12 MB
         ]);
 
-        // F2c: o mesmo ficheiro já carregado (e não apagado) → recusa ANTES da IA e do teto.
-        $sha256 = hash_file('sha256', $request->file('file')->getRealPath());
-        if ($same = app(OcrInvoiceDeleteService::class)->sameFile($companyId, $sha256)) {
+        // F2c: o mesmo ficheiro já carregado (e não apagado) → recusa ANTES da IA e do teto. E-mail 7: a
+        // mesma entrada serve o anexo importado da caixa de correio (OcrInvoiceIntake).
+        $file = $request->file('file');
+        $result = app(OcrInvoiceIntake::class)->accept($companyId, (string) file_get_contents($file->getRealPath()), $file->getClientMimeType(), ['origin' => 'upload'], $file->getClientOriginalName());
+
+        return self::intakeResponse($result);
+    }
+
+    /** A resposta da entrada de uma fatura (carregamento manual e anexo da caixa de correio). */
+    public static function intakeResponse(array $result)
+    {
+        if ($result['status'] === 'refused') {
+            return ApiResponse::error($result['error'], $result['code']); // o antivírus (vírus, em baixo ou por configurar)
+        }
+        if ($result['status'] === 'duplicate') {
+            $same = $result['invoice'];
+
             return ApiResponse::error("Já carregada: abrir a fatura #{$same->id}.", 409, ['code' => 'ficheiro_duplicado', 'existing_id' => $same->id, 'existing_number' => $same->number]);
         }
-
-        if ($this->usedThisMonth($companyId) >= $this->monthlyCap()) {
-            return ApiResponse::error('Limite mensal de leituras de faturas atingido (' . $this->monthlyCap() . '). Contacta o suporte para aumentar.', 429);
+        if ($result['status'] === 'cap') {
+            return ApiResponse::error('Limite mensal de leituras de faturas atingido (' . $result['cap'] . '). Contacta o suporte para aumentar.', 429);
         }
-
-        $file = $request->file('file');
-        $path = $file->store("ocr-invoices/{$companyId}", $this->disk());
-
-        $invoice = OcrInvoice::create([
-            'company_id'    => $companyId,
-            'image_path'    => $path,
-            'image_size_bytes' => (int) $file->getSize(),
-            'image_mime'    => $file->getClientMimeType(),
-            'file_sha256'   => $sha256,
-            'status'        => 'processing',
-            'synced_to_pingwin' => false,
-        ]);
-
-        ProcessInvoiceOcrJob::dispatch($companyId, $invoice->id);
+        $invoice = $result['invoice'];
 
         return ApiResponse::success(['id' => $invoice->id, 'status' => $invoice->status], 'A ler a fatura… serás notificado quando terminar.');
     }
@@ -547,6 +549,9 @@ class CompanyInvoiceOcrController extends Controller
 
         return [
             'id'                => $inv->id,
+            // E-mail 7: o selo "Veio do e-mail" (com o endereço da caixa); as carregadas à mão não mostram nada.
+            'origin'            => $inv->origin,
+            'origin_mailbox_email' => $inv->origin === 'email' ? $inv->origin_mailbox_email : null,
             'lines_total'       => $linesTotal, // soma calculada das linhas (referência)
             'status'            => $inv->status,
             'confidence'        => $inv->confidence,
@@ -646,19 +651,6 @@ class CompanyInvoiceOcrController extends Controller
                 OcrPingwinLinkService::LAUNCHED, OcrPingwinLinkService::LAUNCHED_GUIDES, OcrPingwinLinkService::DUPLICATE]));
 
         return $q()->where('id', '<', $inv->id)->orderByDesc('id')->value('id') ?? $q()->orderByDesc('id')->value('id');
-    }
-
-    private function monthlyCap(): int
-    {
-        return (int) config('services.openai.ocr_monthly_cap', 200);
-    }
-
-    /** Leituras do mês (as apagadas CONTAM: apagar não devolve a leitura ao teto). */
-    private function usedThisMonth(int $companyId): int
-    {
-        return OcrInvoice::withTrashed()->where('company_id', $companyId)
-            ->where('created_at', '>=', now()->startOfMonth())
-            ->count();
     }
 
     /** € (número) → cêntimos inteiros (0 se null/não numérico). */

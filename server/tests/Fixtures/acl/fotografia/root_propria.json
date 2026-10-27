@@ -1,6 +1,6 @@
 {
     "ator": "root_propria",
-    "rotas": 641,
+    "rotas": 642,
     "proibidas": [],
     "motivos": [],
     "estados": {
@@ -499,6 +499,7 @@
         "POST api/v1/companies/{id}/marketing/radar/mute": 422,
         "POST api/v1/companies/{id}/marketing/radar/react": 422,
         "POST api/v1/companies/{id}/marketing/radar/unmute": 422,
+        "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link": 422,
         "POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen": 422,
         "POST api/v1/companies/{id}/my-mailbox/seen": 422,

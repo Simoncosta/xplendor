@@ -381,6 +381,9 @@ export const setMailboxSeenMany = (companyId: number, folder: string, uids: numb
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/seen`, { folder, uids, seen }, JSON_BODY);
 export const linkMailboxMessage = (companyId: number, uid: number, folder: string, customerId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/link`, { folder, customer_id: customerId }, JSON_BODY);
+// E-mail 7: um anexo (PDF ou imagem) para as Faturas, em JSON.
+export const importMailboxAttachment = (companyId: number, uid: number, folder: string, index: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/attachments/${index}/import-invoice`, { folder }, JSON_BODY);
 export const mailboxAttachmentPath = (companyId: number, uid: number, folder: string, index: number, inline: boolean) =>
     `/companies/${companyId}/my-mailbox/messages/${uid}/attachments/${index}?folder=${encodeURIComponent(folder)}${inline ? "&inline=1" : ""}`;
 export const getCustomerMailMessages = (companyId: number, customerId: number) => api.get(url.GET_COMPANIES + `/${companyId}/customers/${customerId}/mail-messages`);

@@ -543,6 +543,11 @@ export default function FaturaValidacaoPage() {
                     title="Fatura"
                     status={<>
                         {docLabel && <span className={`badge me-2 ${isCredit ? "bg-primary text-white" : "bg-light text-body"}`} data-testid="doc-type">{docLabel}</span>}
+                        {inv?.origin === "email" && (
+                            <span className="badge bg-primary-subtle text-primary me-2" data-testid="invoice-from-email" title="Importada de um anexo na caixa de correio">
+                                <i className="ri-mail-download-line me-1" />Veio do e-mail{inv.origin_mailbox_email ? ` · ${inv.origin_mailbox_email}` : ""}
+                            </span>
+                        )}
                         <span className="badge bg-info-subtle text-info me-2"><i className="ri-scan-2-line me-1" />Lida automaticamente: verifique os dados</span>
                         {inv?.qr_ok !== null && inv?.qr_ok !== undefined && (
                             inv.qr_ok

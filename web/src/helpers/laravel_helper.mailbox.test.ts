@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getMailboxComposeContext, getMailboxThread, linkMailboxMessage, sendMailboxMessage, setMailboxSeen, setMailboxSeenMany, testMyMailbox, testMyMailboxImap } from "./laravel_helper";
+import { getMailboxComposeContext, importMailboxAttachment, getMailboxThread, linkMailboxMessage, sendMailboxMessage, setMailboxSeen, setMailboxSeenMany, testMyMailbox, testMyMailboxImap } from "./laravel_helper";
 
 jest.mock("axios", () => {
     const fn = () => jest.fn(() => Promise.resolve({ data: {} }));
@@ -42,5 +42,14 @@ describe("Pedidos da caixa de correio", () => {
         (axios.get as jest.Mock).mockClear();
         await getMailboxComposeContext(5, { carId: 9 });
         expect((axios.get as jest.Mock).mock.calls[0][0]).toMatch(/\/companies\/5\/my-mailbox\/compose-context\?car_id=9$/);
+    });
+
+    it("E-mail 7: importar um anexo para as Faturas vai em JSON, com a pasta", async () => {
+        (axios.post as jest.Mock).mockClear();
+        await importMailboxAttachment(5, 7, "INBOX", 1);
+        const [path, body, config] = (axios.post as jest.Mock).mock.calls[0];
+        expect(path).toMatch(/\/companies\/5\/my-mailbox\/messages\/7\/attachments\/1\/import-invoice$/);
+        expect(body).toEqual({ folder: "INBOX" });
+        expect(config).toEqual({ headers: { "Content-Type": "application/json" } });
     });
 });

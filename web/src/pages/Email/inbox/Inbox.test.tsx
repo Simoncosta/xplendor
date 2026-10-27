@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { toast } from "react-toastify";
 import Inbox from "./Inbox";
-import { getCustomers, getMailboxFolders, getMailboxMessages, getMailboxThread, linkMailboxMessage, sendMailboxMessage, setMailboxSeenMany } from "helpers/laravel_helper";
+import { getCustomers, getMailboxFolders, getMailboxMessages, getMailboxThread, importMailboxAttachment, linkMailboxMessage, sendMailboxMessage, setMailboxSeenMany } from "helpers/laravel_helper";
 import { downloadGet, fetchBlob } from "helpers/download_helper";
 import { adjustMailboxUnread, refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
 
@@ -13,10 +13,15 @@ jest.mock("Components/Common/XInputTextareaQuill", () => function QuillStub({ na
     const [field, , helpers] = useField(name);
     return <textarea aria-label="Mensagem" value={field.value} onChange={(e: any) => helpers.setValue(e.target.value)} />;
 });
+// E-mail 7: quem pode carregar faturas (o módulo das Faturas e restauracao.criar); por omissão, ninguém.
+let mockAccess = { faturas: false, criar: false };
+jest.mock("contexts/ModulesContext", () => ({
+    useAccess: () => ({ has: (m: string) => m === "restauracao_faturas" && mockAccess.faturas, can: (p: string) => p === "restauracao.criar" && mockAccess.criar }),
+}));
 jest.mock("helpers/download_helper", () => ({ fetchBlob: jest.fn(), downloadGet: jest.fn() }));
 jest.mock("helpers/laravel_helper", () => ({
     getMailboxFolders: jest.fn(), getMailboxMessages: jest.fn(), getMailboxThread: jest.fn(), setMailboxSeenMany: jest.fn(), linkMailboxMessage: jest.fn(),
-    getCustomers: jest.fn(), sendMailboxMessage: jest.fn(),
+    getCustomers: jest.fn(), sendMailboxMessage: jest.fn(), importMailboxAttachment: jest.fn(),
     mailboxAttachmentPath: (c: number, u: number, f: string, i: number, inline: boolean) => `/companies/${c}/my-mailbox/messages/${u}/attachments/${i}?folder=${f}${inline ? "&inline=1" : ""}`,
 }));
 
@@ -199,5 +204,33 @@ describe("A caixa de entrada (E-mail 4)", () => {
         fireEvent.click(screen.getByTestId("mail-reply-latest"));
         expect(await screen.findByLabelText("Assunto")).toHaveValue("RES: Orçamento da reparação");
         expect(screen.getByLabelText("Para")).toHaveValue("oficina@fornecedor.invalid");
+    });
+
+    it("E-mail 7: sem a permissão de carregar faturas, o botão não existe", async () => {
+        mockAccess = { faturas: true, criar: false };
+        await openThread();
+        expect(await screen.findAllByTestId("mail-attachments")).not.toHaveLength(0);
+        expect(screen.queryByTestId("mail-invoice-import")).not.toBeInTheDocument();
+    });
+
+    it("E-mail 7: \"Importar para as Faturas\" só no PDF e nas imagens, e o resultado fica no anexo com a ligação", async () => {
+        mockAccess = { faturas: true, criar: true };
+        (getMailboxThread as jest.Mock).mockResolvedValue({ data: { messages: [full(7, {
+            attachments: [{ index: 1, name: "fatura.pdf", mime: "application/pdf", size: 2048, previewable: true }, { index: 2, name: "talao.png", mime: "image/png", size: 900, previewable: true },
+                { index: 3, name: "desenho.svg", mime: "image/svg+xml", size: 89, previewable: false }] })] } });
+        (importMailboxAttachment as jest.Mock)
+            .mockResolvedValueOnce({ message: "Fatura criada.", data: { id: 41, status: "processing" } })
+            .mockRejectedValueOnce({ __status: 409, message: "Já carregada: abrir a fatura #12.", errors: { code: "ficheiro_duplicado", existing_id: 12 } });
+        await openThread();
+        const buttons = await screen.findAllByTestId("mail-invoice-import");
+        expect(buttons).toHaveLength(2); // o SVG não
+        fireEvent.click(buttons[0]);
+        expect(await screen.findByText(/Fatura criada/)).toBeInTheDocument();
+        expect(importMailboxAttachment).toHaveBeenCalledWith(5, 7, "INBOX", 1);
+        expect(screen.getByRole("link", { name: "abrir a fatura #41" })).toHaveAttribute("href", "/restauracao/faturas/41");
+        fireEvent.click(screen.getByTestId("mail-invoice-import"));
+        expect(await screen.findByText(/Já existe/)).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "abrir a fatura #12" })).toHaveAttribute("href", "/restauracao/faturas/12");
+        mockAccess = { faturas: false, criar: false };
     });
 });
