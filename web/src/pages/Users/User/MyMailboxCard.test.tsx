@@ -44,15 +44,12 @@ describe("A minha caixa de correio", () => {
         expect(screen.getByRole("button", { name: /Definições avançadas/ })).toHaveAttribute("aria-expanded", "false");
     });
 
-    it("o Outlook / Microsoft 365 aparece desativado, com \"em breve\", e não se pode escolher", async () => {
+    it("a lista dos tipos tem só Gmail, Domínio próprio (cPanel) e Outro (manual)", async () => {
         render(<MyMailboxCard companyId={7} />);
         await screen.findByLabelText("Endereço de e-mail");
         openTypeMenu();
-        const outlook = await screen.findByText("Outlook / Microsoft 365 (em breve)");
-        expect(outlook).toHaveAttribute("aria-disabled", "true");
-        fireEvent.click(outlook);
-        expect(screen.queryByTestId("mailbox-gmail-help")).not.toBeInTheDocument();
-        expect(screen.getAllByText("Domínio próprio (cPanel)").length).toBeGreaterThan(0);
+        expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Gmail", "Domínio próprio (cPanel)", "Outro (manual)"]);
+        expect(screen.queryByText(/Outlook|em breve/)).not.toBeInTheDocument();
     });
 
     it("Outro (manual) abre as definições para preencher à mão", async () => {

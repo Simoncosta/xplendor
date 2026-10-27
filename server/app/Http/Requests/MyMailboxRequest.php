@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 /**
  * E-mail 1 · A minha caixa de correio. Os modelos (Gmail, domínio próprio) preenchem os servidores
  * no ecrã; aqui valida-se o que chega. A palavra-passe só é obrigatória na primeira vez (depois,
- * vazia mantém a gravada). O Outlook / Microsoft 365 ainda não existe (OAuth, mais tarde).
+ * vazia mantém a gravada).
  */
 class MyMailboxRequest extends FormRequest
 {
@@ -58,7 +58,7 @@ class MyMailboxRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'account_type.in' => 'Escolha Gmail, Domínio próprio (cPanel) ou Outro (manual). O Outlook / Microsoft 365 chega em breve.',
+            'account_type.in' => 'Escolha Gmail, Domínio próprio (cPanel) ou Outro (manual).',
             'smtp_port.in' => 'A porta SMTP tem de ser 465, 587, 25 ou 2525.',
             'imap_port.in' => 'A porta IMAP tem de ser 993 ou 143.',
             'password.required' => 'Indique a palavra-passe da caixa.',

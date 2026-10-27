@@ -26,10 +26,8 @@ describe("Caixa de correio: os modelos de preenchimento", () => {
         expect(changeEmail(EMPTY_FORM, "matilde@exemplo.pt", none).account_type).toBe("cpanel");
     });
 
-    it("o Outlook / Microsoft 365 não se pode escolher (em breve)", () => {
-        expect(ACCOUNT_TYPE_OPTIONS.find((o) => o.value === "outlook")).toMatchObject({ isDisabled: true, label: "Outlook / Microsoft 365 (em breve)" });
-        const f = changeEmail(EMPTY_FORM, "matilde@exemplo.pt", none);
-        expect(changeType(f, "outlook", none)).toBe(f);
+    it("os tipos de conta são Gmail, Domínio próprio (cPanel) e Outro (manual)", () => {
+        expect(ACCOUNT_TYPE_OPTIONS.map((o) => o.label)).toEqual(["Gmail", "Domínio próprio (cPanel)", "Outro (manual)"]);
     });
 
     it("o modelo não sobrepõe o que a pessoa mudou nas definições avançadas", () => {

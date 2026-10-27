@@ -4,7 +4,7 @@
  * avançadas". O que a pessoa mudou lá (touched) nunca é sobreposto pelo modelo.
  */
 
-export type AccountType = "gmail" | "cpanel" | "manual" | "outlook";
+export type AccountType = "gmail" | "cpanel" | "manual";
 
 export type MailboxForm = {
     account_type: AccountType;
@@ -24,11 +24,10 @@ export type MailboxForm = {
 export const ADVANCED_FIELDS = ["smtp_host", "smtp_port", "smtp_encryption", "imap_host", "imap_port", "imap_encryption", "username", "save_to_sent"] as const;
 export type AdvancedField = (typeof ADVANCED_FIELDS)[number];
 
-export const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string; isDisabled?: boolean }[] = [
+export const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
     { value: "gmail", label: "Gmail" },
     { value: "cpanel", label: "Domínio próprio (cPanel)" },
     { value: "manual", label: "Outro (manual)" },
-    { value: "outlook", label: "Outlook / Microsoft 365 (em breve)", isDisabled: true },
 ];
 
 export const GOOGLE_SECURITY = "https://myaccount.google.com/security";
@@ -79,9 +78,8 @@ export function changeEmail(form: MailboxForm, email: string, touched: ReadonlyS
     return applyPreset({ ...form, email, account_type }, touched);
 }
 
-/** Ao mudar o tipo: o Outlook não se escolhe (ainda não existe). */
+/** Ao mudar o tipo: aplica o modelo do tipo novo. */
 export function changeType(form: MailboxForm, type: AccountType, touched: ReadonlySet<AdvancedField>): MailboxForm {
-    if (type === "outlook") return form;
     return applyPreset({ ...form, account_type: type }, touched);
 }
 

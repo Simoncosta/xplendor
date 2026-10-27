@@ -125,7 +125,7 @@ class MyMailboxTest extends TestCase
         $this->assertSame(587, $mailbox->fresh()->smtp_port);
     }
 
-    public function test_validation_outlook_is_not_yet_available_and_internal_hosts_and_other_ports_are_refused(): void
+    public function test_validation_only_the_three_account_types_and_internal_hosts_and_other_ports_are_refused(): void
     {
         Sanctum::actingAs($this->owner);
         $this->putJson($this->url(), $this->cpanel(['account_type' => 'outlook']))->assertStatus(422)->assertJsonValidationErrors('account_type');

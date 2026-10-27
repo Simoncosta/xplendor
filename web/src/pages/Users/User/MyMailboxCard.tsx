@@ -76,7 +76,6 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
     };
     const pickType = (type: AccountType) => {
         const next = changeType(form, type, touched);
-        if (next === form) return;
         if (type === "manual") setAdvanced(true);
         edit(next);
     };
