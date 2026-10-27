@@ -18,6 +18,8 @@ export type MailboxForm = {
     imap_encryption: "ssl" | "starttls";
     username: string;
     save_to_sent: boolean;
+    /** E-mail 4 · Só no Gmail: abrir na XPLENDOR marca também como lida no Gmail (ligada por omissão). */
+    mark_seen_on_server: boolean;
 };
 
 /** Os campos das definições avançadas (os que o modelo preenche). */
@@ -36,7 +38,7 @@ export const GMAIL_APP_PASSWORD_HELP = "https://support.google.com/accounts/answ
 
 export const EMPTY_FORM: MailboxForm = {
     account_type: "cpanel", email: "", password: "", smtp_host: "", smtp_port: 465, smtp_encryption: "ssl",
-    imap_host: "", imap_port: 993, imap_encryption: "ssl", username: "", save_to_sent: true,
+    imap_host: "", imap_port: 993, imap_encryption: "ssl", username: "", save_to_sent: true, mark_seen_on_server: true,
 };
 
 const domainOf = (email: string): string => {

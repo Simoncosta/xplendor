@@ -5,6 +5,7 @@ import PageHeader from "Components/Common/PageHeader";
 import { getCustomerHub } from "helpers/laravel_helper";
 import { LEAD_STATUS_META, LeadStatus } from "common/models/lead.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import MailConversation from "Components/Common/mailbox/MailConversation";
 
 /**
  * XPLENDOR — Fase 3: ficha-HUB do cliente. Junta num só sítio tudo o que se liga
@@ -182,6 +183,11 @@ const CustomerHub = () => {
                                 </ul>
                             )}
                         </CardBody></Card>
+                    </Col>
+
+                    {/* E-mail 4: a Conversa (os e-mails ligados ao cliente) */}
+                    <Col xs={12} className="mt-3">
+                        <MailConversation companyId={companyId} customerId={Number(id)} />
                     </Col>
                 </Row>
             </Container>

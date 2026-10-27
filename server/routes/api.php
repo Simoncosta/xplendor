@@ -139,6 +139,9 @@ Route::prefix('v1')->group(function () {
                 // Envio do link ao cliente (email via queue) + registo de envio (WhatsApp).
                 Route::post('/cars/{carId}/satisfaction-report/send-email', [SatisfactionReportController::class, 'sendEmail'])->middleware('ensure_module:aftersales');
                 Route::post('/cars/{carId}/satisfaction-report/mark-sent', [SatisfactionReportController::class, 'markSent'])->middleware('ensure_module:aftersales');
+                // E-mail 4: a "Conversa" da viatura vendida (nunca em impersonation; nunca o root fora da sua empresa).
+                Route::get('/cars/{carId}/mail-messages', [\App\Http\Controllers\Api\V1\MailConversationController::class, 'car'])
+                    ->whereNumber('carId')->middleware('block_when_impersonating');
                 // Ficha de impressão A4 (2026-06-27) — payload dedicado.
                 Route::get('/cars/{carId}/print-sheet', [CarController::class, 'printSheet']);
                 Route::get('/cars/{carId}/decision', [CarDecisionController::class, 'show']);
@@ -324,6 +327,14 @@ Route::prefix('v1')->group(function () {
                     // E-mail 3: testar o IMAP (e descobrir a pasta de Enviados) e o número de não lidos.
                     Route::post('/my-mailbox/test-imap', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'testImap'])->middleware('throttle:6,1');
                     Route::get('/my-mailbox/unread', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'unread']);
+                    // E-mail 4: a caixa de entrada, ao vivo do servidor de e-mail.
+                    $inbox = \App\Http\Controllers\Api\V1\MyMailboxInboxController::class;
+                    Route::get('/my-mailbox/folders', [$inbox, 'folders']);
+                    Route::get('/my-mailbox/messages', [$inbox, 'messages']);
+                    Route::get('/my-mailbox/messages/{uid}', [$inbox, 'show'])->whereNumber('uid');
+                    Route::post('/my-mailbox/messages/{uid}/seen', [$inbox, 'seen'])->whereNumber('uid');
+                    Route::get('/my-mailbox/messages/{uid}/attachments/{index}', [$inbox, 'attachment'])->whereNumber(['uid', 'index']);
+                    Route::post('/my-mailbox/messages/{uid}/link', [$inbox, 'link'])->whereNumber('uid');
                 });
                 // Auditoria (Fatia 2, plataforma): a página central, a coluna "Auditoria" das listas, as
                 // corridas e os estados. Correr e mudar o estado são rotas por área (a ACL de cada área).
@@ -909,6 +920,9 @@ Route::prefix('v1')->group(function () {
                 });
                 // ── Módulo FINANÇAS — Clientes (+ ficha-hub) ──
                 Route::middleware('ensure_module:finance')->group(function () {
+                    // E-mail 4: a "Conversa" da ficha do cliente (nunca em impersonation; nunca o root fora da sua empresa).
+                    Route::get('/customers/{customer}/mail-messages', [\App\Http\Controllers\Api\V1\MailConversationController::class, 'customer'])
+                        ->whereNumber('customer')->middleware('block_when_impersonating');
                     Route::get('/customers/{customer}/hub', [CustomerController::class, 'hub']);
                     Route::apiResource('/customers', CustomerController::class);
                 });

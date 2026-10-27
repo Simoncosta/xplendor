@@ -8,6 +8,7 @@ import { fetchCarSpecs } from "helpers/carSpecs_helper";
 import { fmtDate, ipsClassBadge } from "./helpers/CarAnalyticsData";
 import type { CarSpecs } from "types/api";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import MailConversation from "Components/Common/mailbox/MailConversation";
 
 /**
  * DMS Fase 3 — tab "Documentos": o lar de tudo o que é imprimível desta viatura
@@ -100,6 +101,8 @@ export default function CarDocumentsPage() {
                         hasSale={Boolean(specs.sale)}
                     />
                 )}
+                {/* E-mail 4: a Conversa da venda (o pós-venda enviado e as respostas) */}
+                {!loading && specs?.sale && companyId > 0 && id && <MailConversation companyId={companyId} carId={Number(id)} />}
             </Container>
         </div>
     );

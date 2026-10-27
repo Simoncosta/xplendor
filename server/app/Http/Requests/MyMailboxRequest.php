@@ -52,6 +52,7 @@ class MyMailboxRequest extends FormRequest
             'username' => ['required', 'string', 'max:255'],
             'password' => [$hasPassword ? 'nullable' : 'required', 'string', 'max:255'],
             'save_to_sent' => ['sometimes', 'boolean'],
+            'mark_seen_on_server' => ['sometimes', 'boolean'], // só conta no Gmail (E-mail 4)
         ];
     }
 

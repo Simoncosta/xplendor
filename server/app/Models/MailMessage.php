@@ -20,6 +20,7 @@ class MailMessage extends Model
     public const STATUS_QUEUED = 'a_enviar';
     public const STATUS_SENT = 'enviada';
     public const STATUS_ERROR = 'erro';
+    public const STATUS_RECEIVED = 'recebida'; // E-mail 4: uma resposta ligada pelo fio, ou ligada à mão
 
     protected $fillable = [
         'company_id', 'mailbox_id', 'user_id', 'direction', 'message_id', 'in_reply_to', 'references', 'from_address', 'to_address',
@@ -35,5 +36,21 @@ class MailMessage extends Model
     public function mailbox(): BelongsTo
     {
         return $this->belongsTo(Mailbox::class);
+    }
+
+    /** E-mail 4 · O que a secção "Conversa" mostra (sem ids internos de outras tabelas). */
+    public function toConversationArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'direction' => $this->direction,
+            'from' => $this->from_address,
+            'to' => $this->to_address,
+            'subject' => $this->subject,
+            'date' => ($this->direction === self::IN ? ($this->received_at ?? $this->created_at) : ($this->sent_at ?? $this->created_at))?->toIso8601String(),
+            'text' => $this->body_text,
+            'html' => $this->body_html,
+            'status' => $this->status,
+        ];
     }
 }

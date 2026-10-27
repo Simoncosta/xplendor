@@ -93,4 +93,19 @@ describe("A minha caixa de correio", () => {
         await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Guardar/ })); });
         expect((saveMyMailbox as jest.Mock).mock.calls[0][1]).not.toHaveProperty("password");
     });
+
+    it("só no Gmail: \"marcar também como lida no Gmail\", ligada por omissão, e vai no que se guarda", async () => {
+        (saveMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: null } });
+        render(<MyMailboxCard companyId={7} />);
+        const email = await screen.findByLabelText("Endereço de e-mail");
+        expect(screen.queryByTestId("mailbox-gmail-seen")).not.toBeInTheDocument(); // cPanel: sem opção
+        fireEvent.change(email, { target: { value: "matilde.exemplo@gmail.com" } });
+        const toggle = screen.getByLabelText("Ao abrir uma mensagem na XPLENDOR, marcá-la também como lida no Gmail");
+        expect(toggle).toBeChecked();
+        fireEvent.click(toggle);
+        expect(screen.getByTestId("mailbox-gmail-seen")).toHaveTextContent("No Gmail continua por ler");
+        fireEvent.change(screen.getByLabelText("Palavra-passe de app"), { target: { value: "abcdabcdabcdabcd" } });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Guardar/ })); });
+        expect((saveMyMailbox as jest.Mock).mock.calls[0][1]).toMatchObject({ account_type: "gmail", mark_seen_on_server: false });
+    });
 });

@@ -6,6 +6,7 @@ import { isImpersonating } from "helpers/impersonation";
 jest.mock("react-router-dom", () => ({ Link: ({ to, children, ...rest }: any) => <a href={to} {...rest}>{children}</a> }), { virtual: true });
 jest.mock("Components/Common/PageHeader", () => ({ title }: any) => <h4>{title}</h4>);
 jest.mock("helpers/laravel_helper", () => ({ getMyMailbox: jest.fn() }));
+jest.mock("./inbox/Inbox", () => ({ email, profileLink, companyId }: any) => <div data-testid="mail-inbox">{email} {profileLink} {companyId}</div>);
 jest.mock("helpers/impersonation", () => ({ isImpersonating: jest.fn() }));
 let mockMe: any = { id: 4, company_id: 9, role: "user" };
 let mockAway = false;
@@ -29,12 +30,10 @@ describe("A página /email (E-mail 3)", () => {
         expect(document.body).not.toHaveTextContent(/em breve/i);
     });
 
-    it("com caixa: o endereço e os não lidos", async () => {
-        (getMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: { email: "matilde@exemplo.pt", status: "ativa", imap_status: "ativa", imap_error: null,
-            unread_count: 3, unread_checked_at: "2026-10-27T18:00:00Z" } } });
+    it("com caixa: a caixa de entrada da própria pessoa, na sua empresa", async () => {
+        (getMyMailbox as jest.Mock).mockResolvedValue({ data: { mailbox: { email: "matilde@exemplo.pt", status: "ativa" } } });
         render(<EmailPage />);
-        expect(await screen.findByTestId("email-connected")).toHaveTextContent("matilde@exemplo.pt");
-        expect(screen.getByTestId("email-unread")).toHaveTextContent("3 por ler na Entrada.");
+        expect(await screen.findByTestId("mail-inbox")).toHaveTextContent("matilde@exemplo.pt /users/4#mailbox 9");
     });
 
     it("durante a impersonation: não disponível, sem pedir nada", () => {

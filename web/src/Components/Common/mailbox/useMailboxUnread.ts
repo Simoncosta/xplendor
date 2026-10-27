@@ -28,6 +28,15 @@ const publish = (next: MailboxUnread) => {
     listeners.forEach((l) => l(next));
 };
 
+/**
+ * E-mail 4 · Muda o número no mesmo instante (abrir uma por ler: -1; "Marcar como por ler": +1), sem
+ * esperar pela contagem seguinte; quem chama acerta depois com refreshMailboxUnread().
+ */
+export function adjustMailboxUnread(delta: number): void {
+    if (!current.hasMailbox || current.unread === null || delta === 0) return;
+    publish({ ...current, unread: Math.max(0, current.unread + delta) });
+}
+
 export async function refreshMailboxUnread(): Promise<void> {
     const me = sessionUser();
     if (!me?.company_id || isImpersonating()) {

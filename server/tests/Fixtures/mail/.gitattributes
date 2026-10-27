@@ -1,0 +1,2 @@
+# As mensagens de teste ficam tal como chegam (fim de linha CRLF, como manda o RFC 5322).
+*.eml -text

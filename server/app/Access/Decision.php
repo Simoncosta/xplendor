@@ -18,6 +18,7 @@ final class Decision
     public const UNKNOWN = 'permissao_desconhecida';
     public const ADMIN_ONLY = 'so_administrador';
     public const OWN_ONLY = 'so_o_proprio';
+    public const MAIL_CONTENT = 'conteudo_do_email';
 
     private function __construct(
         public readonly bool $allowed,

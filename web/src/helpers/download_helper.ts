@@ -61,6 +61,22 @@ async function request(method: "get" | "post", path: string, fallbackName: strin
 }
 
 export const downloadGet = (path: string, fallbackName = "documento.docx") => request("get", path, fallbackName);
+
+/** E-mail 4: um ficheiro da API como Blob (para "Ver" um anexo numa pré-visualização, sem o guardar). */
+export async function fetchBlob(path: string): Promise<{ ok: true; blob: Blob; filename: string } | { ok: false; status: number; body: any }> {
+    const client = axios.create({ baseURL: API_URL });
+    try {
+        const res = await client.get(path, { responseType: "blob", headers: authHeaders() });
+        return { ok: true, blob: res.data as Blob, filename: filenameFrom(res.headers, "anexo") };
+    } catch (err: any) {
+        let body: any = null;
+        const blob = err?.response?.data;
+        if (blob && typeof blob.text === "function") {
+            try { body = JSON.parse(await blob.text()); } catch { /* não é JSON */ }
+        }
+        return { ok: false, status: err?.response?.status ?? 0, body };
+    }
+}
 export const downloadPost = (path: string, fallbackName = "documento.docx") => request("post", path, fallbackName);
 
 type FetchDocResult =

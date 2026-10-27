@@ -126,6 +126,12 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/my-mailbox/test',
         'POST api/v1/companies/{id}/my-mailbox/test-imap',
         'GET api/v1/companies/{id}/my-mailbox/unread',
+        'GET api/v1/companies/{id}/my-mailbox/folders',
+        'GET api/v1/companies/{id}/my-mailbox/messages',
+        'GET api/v1/companies/{id}/my-mailbox/messages/{uid}',
+        'POST api/v1/companies/{id}/my-mailbox/messages/{uid}/seen',
+        'GET api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}',
+        'POST api/v1/companies/{id}/my-mailbox/messages/{uid}/link',
     ];
 
     /** Ficheiros: o teto "Agência convidada (como hoje)" dá ver, criar e editar (mudar o nome e mover), sem apagar nem restaurar. */

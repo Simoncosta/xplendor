@@ -25,4 +25,39 @@ class DisabledMailboxImap implements MailboxImap
     {
         return ImapResult::failed(self::OFF);
     }
+
+    public function folders(Mailbox $mailbox): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function page(Mailbox $mailbox, string $folder, int $page, int $perPage): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function message(Mailbox $mailbox, string $folder, int $uid): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function seen(Mailbox $mailbox, string $folder, int $uid, bool $seen): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function newInInbox(Mailbox $mailbox, ?int $afterUid, ?int $knownUidvalidity, int $limit): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function unseenUids(Mailbox $mailbox): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function openInbox(Mailbox $mailbox, ?int $afterUid, ?int $knownUidvalidity, int $newLimit, int $perPage, bool $withUnseenUids): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
 }

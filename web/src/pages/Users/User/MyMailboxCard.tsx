@@ -220,6 +220,15 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
                 </Col>
             </Row>
 
+            {form.account_type === "gmail" && (
+                <div className="form-check form-switch mb-3" data-testid="mailbox-gmail-seen">
+                    <Input type="checkbox" role="switch" className="form-check-input" id="mailbox-mark-seen" checked={form.mark_seen_on_server}
+                        onChange={(e) => edit({ ...form, mark_seen_on_server: e.target.checked })} />
+                    <Label className="form-check-label" for="mailbox-mark-seen">Ao abrir uma mensagem na XPLENDOR, marcá-la também como lida no Gmail</Label>
+                    {!form.mark_seen_on_server && <div className="text-muted fs-12">No Gmail continua por ler; na XPLENDOR fica lida e deixa de contar no número de não lidos.</div>}
+                </div>
+            )}
+
             <button type="button" className="btn btn-link p-0 mb-2 text-decoration-none" aria-expanded={advanced} aria-controls="mailbox-advanced" onClick={() => setAdvanced(!advanced)}>
                 <i className={`ri-arrow-${advanced ? "down" : "right"}-s-line me-1`} />Definições avançadas
                 {preset && !advanced && <span className="text-muted ms-1">(preenchidas pelo modelo)</span>}

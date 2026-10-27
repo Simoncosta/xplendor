@@ -6,6 +6,8 @@ namespace App\Jobs;
 
 use App\Models\Mailbox;
 use App\Services\Mailbox\MailboxImap;
+use App\Services\Mailbox\ReplyLinker;
+use App\Services\Mailbox\UnreadCounter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,7 +17,7 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * E-mail 3 · Conta os não lidos da Entrada de uma caixa (STATUS INBOX UNSEEN) e guarda o número, o
- * UIDVALIDITY e a hora. Um job por caixa, na fila própria mail; único por caixa (não se acumulam
+ * UIDVALIDITY e a hora. E-mail 4: antes, liga as respostas novas (ReplyLinker). Um job por caixa, na fila própria mail; único por caixa (não se acumulam
  * se o servidor estiver lento). O erro fica no estado do IMAP da caixa, com o motivo.
  */
 class CountMailboxUnreadJob implements ShouldQueue, ShouldBeUnique
@@ -38,16 +40,15 @@ class CountMailboxUnreadJob implements ShouldQueue, ShouldBeUnique
         return (string) $this->mailboxId;
     }
 
-    public function handle(MailboxImap $imap): void
+    public function handle(MailboxImap $imap, ?ReplyLinker $linker = null): void
     {
         $mailbox = Mailbox::find($this->mailboxId);
         if (! $mailbox) {
             return;
         }
-        $result = $imap->unseen($mailbox);
-        $mailbox->forceFill($result->ok
-            ? ['unread_count' => $result->unseen, 'uidvalidity' => $result->uidvalidity ?? $mailbox->uidvalidity, 'unread_checked_at' => now(),
-                'imap_status' => Mailbox::STATUS_ACTIVE, 'imap_error' => null]
-            : ['imap_status' => Mailbox::STATUS_ERROR, 'imap_error' => $result->error])->save();
+        // E-mail 4: as respostas novas às conversas começadas na XPLENDOR ficam ligadas ao cliente.
+        ($linker ?? app(ReplyLinker::class))->run($mailbox);
+        // O número (E-mail 4: no Gmail com a opção desligada, sem as mensagens já abertas na XPLENDOR).
+        (new UnreadCounter($imap))->refresh($mailbox->fresh());
     }
 }

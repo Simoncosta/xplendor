@@ -54,6 +54,7 @@ class CheckPermission
                 'modules' => $modules,
                 'sensitive' => in_array('block_when_impersonating', $middleware, true) || in_array($key, RoutePermissions::SENSITIVE, true),
                 'own_only' => in_array($key, RoutePermissions::OWN_ONLY, true),
+                'mail_content' => in_array($key, RoutePermissions::MAIL_CONTENT, true),
                 'self' => isset(RoutePermissions::SELF[$key]) && (int) $route->parameter(RoutePermissions::SELF[$key]) === (int) $request->user()?->id,
             ]);
         }

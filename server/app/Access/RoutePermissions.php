@@ -47,6 +47,16 @@ final class RoutePermissions
         'POST {id}/my-mailbox/test' => 'empresa.ver',
         'POST {id}/my-mailbox/test-imap' => 'empresa.ver',
         'GET {id}/my-mailbox/unread' => 'empresa.ver',
+        // E-mail 4: a minha caixa de entrada (ao vivo do servidor de e-mail; só o próprio).
+        'GET {id}/my-mailbox/folders' => 'empresa.ver',
+        'GET {id}/my-mailbox/messages' => 'empresa.ver',
+        'GET {id}/my-mailbox/messages/{uid}' => 'empresa.ver',
+        'POST {id}/my-mailbox/messages/{uid}/seen' => 'empresa.ver',
+        'GET {id}/my-mailbox/messages/{uid}/attachments/{index}' => 'empresa.ver',
+        'POST {id}/my-mailbox/messages/{uid}/link' => 'empresa.ver',
+        // E-mail 4: a secção "Conversa" (as mensagens ligadas ao cliente ou à venda; MAIL_CONTENT).
+        'GET {id}/customers/{customer}/mail-messages' => 'financas.ver',
+        'GET {id}/cars/{carId}/mail-messages' => 'automovel.ver',
         'PUT {id}/management/guest-profile' => 'empresa.aprovar', // F5: o teto da agência é uma decisão do cliente
         // ── utilizadores ──
         'GET {id}/collaborators' => 'utilizadores.ver',
@@ -937,6 +947,21 @@ final class RoutePermissions
         'POST {id}/my-mailbox/test',
         'POST {id}/my-mailbox/test-imap',
         'GET {id}/my-mailbox/unread',
+        'GET {id}/my-mailbox/folders',
+        'GET {id}/my-mailbox/messages',
+        'GET {id}/my-mailbox/messages/{uid}',
+        'POST {id}/my-mailbox/messages/{uid}/seen',
+        'GET {id}/my-mailbox/messages/{uid}/attachments/{index}',
+        'POST {id}/my-mailbox/messages/{uid}/link',
+    ];
+
+    /**
+     * E-mail 4 · Rotas com o CONTEÚDO de e-mails (a secção "Conversa"): quem tem a permissão da ficha
+     * vê-as, mas o root fora da própria empresa nunca (a impersonation também não: são sensíveis).
+     */
+    public const MAIL_CONTENT = [
+        'GET {id}/customers/{customer}/mail-messages',
+        'GET {id}/cars/{carId}/mail-messages',
     ];
 
     /** Rotas sobre a PRÓPRIA conta: a pessoa pode sempre ver e alterar a sua (rota → parâmetro do utilizador). */

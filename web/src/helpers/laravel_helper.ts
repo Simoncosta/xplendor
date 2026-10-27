@@ -366,6 +366,18 @@ export const testMyMailbox = (companyId: number) => api.create(url.GET_COMPANIES
 // E-mail 3: testar o IMAP (pasta de Enviados e não lidos) e o número de não lidos (cabeçalho e menu).
 export const testMyMailboxImap = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/test-imap`, {});
 export const getMyMailboxUnread = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/unread`);
+// E-mail 4: a caixa de entrada (ao vivo do servidor de e-mail) e a "Conversa" da ficha e da venda.
+export const getMailboxFolders = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/folders`);
+export const getMailboxMessages = (companyId: number, folder: string, page = 1) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages`, { folder, page });
+export const getMailboxMessage = (companyId: number, uid: number, folder: string) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}`, { folder });
+export const setMailboxSeen = (companyId: number, uid: number, folder: string, seen: boolean) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/seen`, { folder, seen });
+export const linkMailboxMessage = (companyId: number, uid: number, folder: string, customerId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/link`, { folder, customer_id: customerId });
+export const mailboxAttachmentPath = (companyId: number, uid: number, folder: string, index: number, inline: boolean) =>
+    `/companies/${companyId}/my-mailbox/messages/${uid}/attachments/${index}?folder=${encodeURIComponent(folder)}${inline ? "&inline=1" : ""}`;
+export const getCustomerMailMessages = (companyId: number, customerId: number) => api.get(url.GET_COMPANIES + `/${companyId}/customers/${customerId}/mail-messages`);
+export const getCarMailMessages = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}/cars/${carId}/mail-messages`);
 // ACL (F5): Utilizadores › Perfis e o teto da agência gestora.
 export const getPermissionProfiles = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/permission-profiles`);
 export const createPermissionProfile = (companyId: number, data: { name: string; description?: string | null; side: string; permissions: string[]; from_profile_id?: number | null }) =>

@@ -44,6 +44,8 @@ class MyMailboxController extends Controller
         }
         // O Gmail já guarda a cópia em Enviados quando se envia pelo smtp.gmail.com.
         $data['save_to_sent'] = strtolower($data['smtp_host']) === 'smtp.gmail.com' ? false : (bool) ($data['save_to_sent'] ?? true);
+        // E-mail 4: só o Gmail escolhe se abrir na XPLENDOR marca como lida no servidor; nos outros, marca sempre.
+        $data['mark_seen_on_server'] = $data['account_type'] === 'gmail' ? (bool) ($data['mark_seen_on_server'] ?? true) : true;
         $mailbox->fill($data);
         if ($mailbox->isDirty()) {
             // Mudou: tem de voltar a ser testada (o envio e o IMAP; a pasta de Enviados volta a ser procurada).
@@ -91,26 +93,26 @@ class MyMailboxController extends Controller
         return ApiResponse::success(['mailbox' => $mailbox->fresh()->toApiArray(), 'sent_copy_error' => $copyError], $message);
     }
 
-    public function testImap(Request $request, int $companyId, MailboxImap $imap)
+    public function testImap(Request $request, int $companyId, MailboxImap $imap, \App\Services\Mailbox\UnreadCounter $counter)
     {
         $mailbox = Mailbox::personal($companyId, (int) $request->user()->id)->first();
         if (! $mailbox) {
             return ApiResponse::error('Guarde primeiro a caixa de correio.', 422);
         }
         $check = $imap->check($mailbox);
-        $count = $check->ok ? $imap->unseen($mailbox) : $check;
-        $mailbox->forceFill(['imap_status' => $count->ok ? Mailbox::STATUS_ACTIVE : Mailbox::STATUS_ERROR, 'imap_error' => $count->error, 'imap_tested_at' => now()]);
         if ($check->sentFolder) {
             $mailbox->sent_folder = $check->sentFolder;
         }
-        if ($count->ok) {
-            $mailbox->forceFill(['unread_count' => $count->unseen, 'uidvalidity' => $count->uidvalidity ?? $mailbox->uidvalidity, 'unread_checked_at' => now()]);
-        }
-        $mailbox->save();
+        $error = $check->ok ? null : $check->error;
+        $mailbox->forceFill(['imap_tested_at' => now()])->save();
+        // O número de não lidos (E-mail 4: no Gmail com a opção desligada, sem as já abertas na XPLENDOR).
+        $error ??= $counter->refresh($mailbox);
+        if ($error !== null) {
+            $mailbox->forceFill(['imap_status' => Mailbox::STATUS_ERROR, 'imap_error' => $error])->save();
 
-        if (! $count->ok) {
-            return ApiResponse::error((string) $count->error, 422, ['mailbox' => $mailbox->toApiArray()]);
+            return ApiResponse::error((string) $error, 422, ['mailbox' => $mailbox->toApiArray()]);
         }
+        $mailbox->refresh();
         $sent = $mailbox->keepsSentCopyItself() ? 'O Gmail guarda sozinho a cópia em Enviados.'
             : ($mailbox->sent_folder ? "Pasta de Enviados: {$mailbox->sent_folder}." : 'Não foi encontrada a pasta de Enviados.');
 

@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import EmailHeaderButton from "./EmailHeaderButton";
 import { getMyMailboxUnread } from "helpers/laravel_helper";
 import { isImpersonating } from "helpers/impersonation";
-import { unreadLabel } from "./useMailboxUnread";
+import { adjustMailboxUnread, unreadLabel } from "./useMailboxUnread";
 
 jest.mock("react-router-dom", () => ({ Link: ({ to, children, ...rest }: any) => <a href={to} {...rest}>{children}</a> }), { virtual: true });
 jest.mock("helpers/laravel_helper", () => ({ getMyMailboxUnread: jest.fn() }));
@@ -41,6 +41,19 @@ describe("O envelope do cabeçalho (E-mail 3)", () => {
         expect(screen.getByTestId("header-email")).toBeInTheDocument();
         await new Promise((r) => setTimeout(r, 0));
         expect(getMyMailboxUnread).not.toHaveBeenCalled();
+        expect(screen.queryByTestId("header-email-badge")).not.toBeInTheDocument();
+        unmount();
+    });
+
+    it("o número muda no mesmo instante: -1 ao abrir, +1 ao marcar como por ler (nunca abaixo de 0)", async () => {
+        (getMyMailboxUnread as jest.Mock).mockResolvedValue({ data: { has_mailbox: true, unread_count: 4 } });
+        const { unmount } = render(<EmailHeaderButton />);
+        expect(await screen.findByTestId("header-email-badge")).toHaveTextContent("4");
+        act(() => adjustMailboxUnread(-1));
+        expect(screen.getByTestId("header-email-badge")).toHaveTextContent("3");
+        act(() => adjustMailboxUnread(+1));
+        expect(screen.getByTestId("header-email-badge")).toHaveTextContent("4");
+        act(() => adjustMailboxUnread(-10));
         expect(screen.queryByTestId("header-email-badge")).not.toBeInTheDocument();
         unmount();
     });

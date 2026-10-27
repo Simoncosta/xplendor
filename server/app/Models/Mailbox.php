@@ -24,7 +24,7 @@ class Mailbox extends Model
         'company_id', 'user_id', 'account_type', 'email', 'smtp_host', 'smtp_port', 'smtp_encryption',
         'imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'sent_folder', 'save_to_sent',
         'status', 'last_error', 'last_tested_at', 'last_uid', 'uidvalidity', 'unread_count', 'unread_checked_at',
-        'imap_status', 'imap_error', 'imap_tested_at',
+        'imap_status', 'imap_error', 'imap_tested_at', 'mark_seen_on_server',
     ];
 
     protected $hidden = ['password'];
@@ -40,7 +40,17 @@ class Mailbox extends Model
         'unread_count' => 'integer',
         'unread_checked_at' => 'datetime',
         'imap_tested_at' => 'datetime',
+        'mark_seen_on_server' => 'boolean',
     ];
+
+    /**
+     * Abrir uma mensagem na XPLENDOR marca-a como lida no servidor? Sempre no cPanel e no Outro; no
+     * Gmail, só com a opção ligada (E-mail 4). Desligada, a XPLENDOR guarda só os UID que a pessoa abriu.
+     */
+    public function marksSeenOnServer(): bool
+    {
+        return $this->account_type !== 'gmail' || $this->mark_seen_on_server !== false;
+    }
 
     /** O Gmail já guarda a cópia em Enviados quando se envia pelo smtp.gmail.com (E-mail 3: sem APPEND). */
     public function keepsSentCopyItself(): bool
@@ -69,6 +79,7 @@ class Mailbox extends Model
             'username' => $this->username,
             'has_password' => (string) $this->getRawOriginal('password') !== '',
             'save_to_sent' => $this->save_to_sent,
+            'mark_seen_on_server' => $this->marksSeenOnServer(),
             'status' => $this->status,
             'last_error' => $this->last_error,
             'last_tested_at' => $this->last_tested_at?->toIso8601String(),
