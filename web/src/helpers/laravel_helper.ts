@@ -358,6 +358,11 @@ export const getMyModules = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/my-modules`);
 /** ACL: os módulos e as permissões efetivas da pessoa na empresa, com os motivos das recusas. */
 export const getMyAccess = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-access`);
+// E-mail 1: a minha caixa de correio (só o próprio; a palavra-passe nunca volta, só "has_password").
+export const getMyMailbox = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox`);
+export const saveMyMailbox = (companyId: number, data: Record<string, unknown>) => api.put(url.GET_COMPANIES + `/${companyId}/my-mailbox`, data);
+export const deleteMyMailbox = (companyId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/my-mailbox`);
+export const testMyMailbox = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/test`, {});
 // ACL (F5): Utilizadores › Perfis e o teto da agência gestora.
 export const getPermissionProfiles = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/permission-profiles`);
 export const createPermissionProfile = (companyId: number, data: { name: string; description?: string | null; side: string; permissions: string[]; from_profile_id?: number | null }) =>

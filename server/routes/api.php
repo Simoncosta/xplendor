@@ -315,6 +315,13 @@ Route::prefix('v1')->group(function () {
                 // Módulos ativos da empresa do utilizador (Fase 2 — esconder secções).
                 Route::get('/my-modules', [CompanyModuleController::class, 'active']);
                 Route::get('/my-access', [\App\Http\Controllers\Api\V1\AccessController::class, 'show']); // ACL (F4)
+                // E-mail 1: a minha caixa de correio. Só o próprio (RoutePermissions::OWN_ONLY), nunca em impersonation.
+                Route::middleware('block_when_impersonating')->group(function () {
+                    Route::get('/my-mailbox', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'show']);
+                    Route::put('/my-mailbox', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'update']);
+                    Route::delete('/my-mailbox', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'destroy']);
+                    Route::post('/my-mailbox/test', [\App\Http\Controllers\Api\V1\MyMailboxController::class, 'test'])->middleware('throttle:6,1');
+                });
                 // Auditoria (Fatia 2, plataforma): a página central, a coluna "Auditoria" das listas, as
                 // corridas e os estados. Correr e mudar o estado são rotas por área (a ACL de cada área).
                 Route::get('/audit/meta', [\App\Http\Controllers\Api\V1\CompanyAuditController::class, 'meta']);

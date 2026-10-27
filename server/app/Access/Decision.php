@@ -17,6 +17,7 @@ final class Decision
     public const ROOT = 'root';
     public const UNKNOWN = 'permissao_desconhecida';
     public const ADMIN_ONLY = 'so_administrador';
+    public const OWN_ONLY = 'so_o_proprio';
 
     private function __construct(
         public readonly bool $allowed,

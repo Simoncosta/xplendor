@@ -19,6 +19,8 @@ use App\Services\Tenancy\CompanyAccess;
  *   2. plataforma: só o root;
  *   3. módulos: os módulos pedidos (os do ensure_module da rota) têm de estar ativos;
  *   4. impersonation: as rotas sensíveis (block_when_impersonating) ficam recusadas;
+ *   4b. só o próprio (RoutePermissions::OWN_ONLY, a caixa de correio pessoal): só quem trabalha na
+ *      própria empresa (o root também, só na sua); nas outras empresas nunca, nem o root nem a agência;
  *   5. root (D1): passa em todas as permissões; noutras empresas, as decisões do cliente
  *      (aprovar conteúdos, aceitar orçamentos, aceitar ou terminar a gestão) exigem uma pessoa
  *      do próprio cliente, e a faturação da XPLENDOR é só do Administrador da empresa (o root
@@ -31,7 +33,7 @@ use App\Services\Tenancy\CompanyAccess;
  *      gravado, vale o perfil de compatibilidade do papel (o mesmo que a migração F2 dá).
  *
  * Contexto (opcional): route ("MÉTODO api/v1/companies/…"), modules (string[]),
- * sensitive (bool), self (bool: a rota é sobre a própria conta). Sem pedido HTTP (jobs, comandos), não há Access: os serviços não podem
+ * sensitive (bool), self (bool: a rota é sobre a própria conta), own_only (bool: só o próprio, ver 4b). Sem pedido HTTP (jobs, comandos), não há Access: os serviços não podem
  * depender do utilizador autenticado.
  */
 class Access
@@ -71,6 +73,9 @@ class Access
         }
         if (($context['sensitive'] ?? false) && ImpersonationSession::activeFor($user)) {
             return Decision::deny('Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.', Decision::IMPERSONATION);
+        }
+        if (($context['own_only'] ?? false) && $kind !== CompanyAccess::OWN) {
+            return Decision::deny('Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.', Decision::OWN_ONLY);
         }
 
         if ($user->role === 'root') {

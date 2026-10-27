@@ -1,0 +1,229 @@
+import { useEffect, useState } from "react";
+import { Alert, Badge, Button, Col, Collapse, Input, Label, Row, Spinner } from "reactstrap";
+import { toast } from "react-toastify";
+import PageCard from "Components/Common/PageCard";
+import XSelect from "Components/Common/Select";
+import { deleteMyMailbox, getMyMailbox, saveMyMailbox, testMyMailbox } from "helpers/laravel_helper";
+import {
+    ACCOUNT_TYPE_OPTIONS, AccountType, AdvancedField, EMPTY_FORM, GMAIL_APP_PASSWORD_HELP, GOOGLE_APP_PASSWORDS, GOOGLE_SECURITY, MailboxForm,
+    applyPreset, changeEmail, changeType, touchedFromSaved,
+} from "./mailboxPresets";
+
+/**
+ * E-mail 1 · "A minha caixa de correio", no Perfil do Utilizador (só na própria conta e fora da
+ * impersonation; o root também, na sua empresa: o backend recusa o resto). Primeiro o tipo de conta; nos
+ * modelos basta o endereço e a palavra-passe, e os servidores ficam nas definições avançadas.
+ */
+
+type Saved = Omit<MailboxForm, "password"> & { has_password: boolean; status: "por_testar" | "ativa" | "erro"; last_error: string | null; last_tested_at: string | null };
+
+const STATUS: Record<Saved["status"], { label: string; color: string }> = {
+    por_testar: { label: "Por testar", color: "warning" },
+    ativa: { label: "Ativa", color: "success" },
+    erro: { label: "Com erro", color: "danger" },
+};
+
+const ENCRYPTION_OPTIONS = [
+    { value: "ssl" as const, label: "SSL/TLS" },
+    { value: "starttls" as const, label: "STARTTLS" },
+];
+
+const errorMessage = (e: any, fallback: string) => {
+    const lists = e?.errors && typeof e.errors === "object" ? Object.values(e.errors).filter(Array.isArray) : [];
+    const first = (lists.flat()[0] as string | undefined) ?? null;
+    return first || e?.message || fallback;
+};
+
+const fromSaved = (m: Saved): MailboxForm => ({ ...EMPTY_FORM, ...m, password: "" });
+
+/** As ligações da ajuda abrem num separador novo. */
+const ExternalLink = ({ href }: { href: string }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer">{href.replace(/^https:\/\//, "")}</a>
+);
+
+export default function MyMailboxCard({ companyId }: { companyId: number }) {
+    const [saved, setSaved] = useState<Saved | null>(null);
+    const [form, setForm] = useState<MailboxForm>(EMPTY_FORM);
+    const [touched, setTouched] = useState<Set<AdvancedField>>(new Set());
+    const [advanced, setAdvanced] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [busy, setBusy] = useState<"" | "save" | "test" | "delete">("");
+    const [dirty, setDirty] = useState(false);
+
+    const load = (m: Saved | null) => {
+        setSaved(m);
+        const f = m ? fromSaved(m) : EMPTY_FORM;
+        setForm(m ? f : applyPreset(f, new Set()));
+        setTouched(m ? touchedFromSaved(f) : new Set());
+        setAdvanced(f.account_type === "manual");
+        setDirty(false);
+    };
+
+    useEffect(() => {
+        setLoading(true);
+        getMyMailbox(companyId)
+            .then((r: any) => load(r?.data?.mailbox ?? null))
+            .catch(() => load(null))
+            .finally(() => setLoading(false));
+    }, [companyId]);
+
+    const edit = (next: MailboxForm) => { setForm(next); setDirty(true); };
+    const editAdvanced = (field: AdvancedField, value: any) => {
+        const t = new Set(touched);
+        t.add(field);
+        setTouched(t);
+        edit({ ...form, [field]: value } as MailboxForm);
+    };
+    const pickType = (type: AccountType) => {
+        const next = changeType(form, type, touched);
+        if (next === form) return;
+        if (type === "manual") setAdvanced(true);
+        edit(next);
+    };
+
+    const save = async () => {
+        setBusy("save");
+        try {
+            const { password, ...rest } = form;
+            const r: any = await saveMyMailbox(companyId, password ? { ...rest, password } : rest);
+            load(r?.data?.mailbox ?? null);
+            toast.success("Caixa de correio guardada. Falta testar o envio.");
+        } catch (e: any) {
+            toast.error(errorMessage(e, "Não foi possível guardar a caixa de correio."));
+        } finally {
+            setBusy("");
+        }
+    };
+
+    const test = async () => {
+        setBusy("test");
+        try {
+            const r: any = await testMyMailbox(companyId);
+            setSaved(r?.data?.mailbox ?? saved);
+            toast.success(r?.message || "Mensagem de teste enviada.");
+        } catch (e: any) {
+            if (e?.errors?.mailbox) setSaved(e.errors.mailbox);
+            toast.error(errorMessage(e, "O envio de teste falhou."));
+        } finally {
+            setBusy("");
+        }
+    };
+
+    const remove = async () => {
+        if (!window.confirm("Remover a caixa de correio da XPLENDOR? Os e-mails continuam no seu servidor de e-mail.")) return;
+        setBusy("delete");
+        try {
+            await deleteMyMailbox(companyId);
+            load(null);
+            toast.success("Caixa de correio removida.");
+        } catch (e: any) {
+            toast.error(errorMessage(e, "Não foi possível remover a caixa de correio."));
+        } finally {
+            setBusy("");
+        }
+    };
+
+    const preset = form.account_type !== "manual";
+    const status = saved ? STATUS[saved.status] : null;
+
+    return (
+        <PageCard
+            title="A minha caixa de correio"
+            info="Envie e receba pela XPLENDOR com a sua própria caixa. Só a própria pessoa a vê: nem o administrador, nem a agência, nem a equipa XPLENDOR."
+            status={status ? <Badge color={status.color} className="fs-11" data-testid="mailbox-status">{status.label}</Badge> : "Ainda sem caixa ligada."}
+            flush={false}
+            bodyClassName="p-4"
+            loading={loading}
+            skeleton={loading ? "lines" : undefined}
+            actions={<>
+                {saved && <Button size="sm" color="outline-danger" disabled={!!busy} onClick={remove}>Remover</Button>}
+                {saved && <Button size="sm" color="outline-primary" disabled={!!busy || dirty} onClick={test} title={dirty ? "Guarde primeiro as alterações." : undefined}>
+                    {busy === "test" ? <Spinner size="sm" /> : <><i className="ri-mail-send-line me-1" />Testar envio</>}
+                </Button>}
+                <Button size="sm" color="primary" disabled={!!busy || !dirty} onClick={save}>
+                    {busy === "save" ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar</>}
+                </Button>
+            </>}
+        >
+            {saved?.status === "erro" && saved.last_error && <Alert color="danger" className="py-2" data-testid="mailbox-error">{saved.last_error}</Alert>}
+            <Row>
+                <Col lg={6} className="mb-3">
+                    <Label htmlFor="mailbox-type" className="form-label">Tipo de conta</Label>
+                    <XSelect id="mailbox-type" ariaLabel="Tipo de conta" options={ACCOUNT_TYPE_OPTIONS} value={form.account_type} onChange={(v) => pickType(v as AccountType)} />
+                </Col>
+            </Row>
+            {form.account_type === "gmail" && (
+                <Alert color="info" className="py-2" data-testid="mailbox-gmail-help">
+                    <p className="mb-1">No Gmail, entre com uma <strong>palavra-passe de app</strong>:</p>
+                    <ol className="mb-1 ps-3">
+                        <li>Ative a verificação em dois passos em <ExternalLink href={GOOGLE_SECURITY} /> (Segurança › Verificação em dois passos).</li>
+                        <li>Crie uma palavra-passe de app com o nome XPLENDOR em <ExternalLink href={GOOGLE_APP_PASSWORDS} />.</li>
+                        <li>Copie os 16 carateres, sem espaços, para o campo Palavra-passe.</li>
+                    </ol>
+                    <p className="mb-1">Se a opção não aparecer (conta de trabalho ou de escola, só chaves de segurança, ou Proteção Avançada), esta conta ainda não pode ser ligada.</p>
+                    <p className="mb-0">Ajuda da Google: <ExternalLink href={GMAIL_APP_PASSWORD_HELP} /></p>
+                </Alert>
+            )}
+            {form.account_type === "cpanel" && (
+                <p className="text-muted mb-3" data-testid="mailbox-cpanel-help">Use o endereço e a palavra-passe com que entra no webmail.</p>
+            )}
+            <Row>
+                <Col lg={6} className="mb-3">
+                    <Label htmlFor="mailbox-email" className="form-label">Endereço de e-mail</Label>
+                    <Input id="mailbox-email" type="email" autoComplete="off" value={form.email} placeholder="nome@oseudominio.pt"
+                        onChange={(e) => edit(changeEmail(form, e.target.value, touched))} />
+                </Col>
+                <Col lg={6} className="mb-3">
+                    <Label htmlFor="mailbox-password" className="form-label">{form.account_type === "gmail" ? "Palavra-passe de app" : "Palavra-passe"}</Label>
+                    <Input id="mailbox-password" type="password" autoComplete="new-password" value={form.password}
+                        placeholder={saved?.has_password ? "Gravada. Deixe em branco para a manter." : ""}
+                        onChange={(e) => edit({ ...form, password: e.target.value })} />
+                </Col>
+            </Row>
+
+            <button type="button" className="btn btn-link p-0 mb-2 text-decoration-none" aria-expanded={advanced} aria-controls="mailbox-advanced" onClick={() => setAdvanced(!advanced)}>
+                <i className={`ri-arrow-${advanced ? "down" : "right"}-s-line me-1`} />Definições avançadas
+                {preset && !advanced && <span className="text-muted ms-1">(preenchidas pelo modelo)</span>}
+            </button>
+            <Collapse isOpen={advanced} id="mailbox-advanced">
+                <Row className="pt-2">
+                    <Col lg={6} className="mb-3">
+                        <Label htmlFor="mailbox-smtp-host" className="form-label">Servidor SMTP (envio)</Label>
+                        <Input id="mailbox-smtp-host" value={form.smtp_host} onChange={(e) => editAdvanced("smtp_host", e.target.value.trim())} />
+                    </Col>
+                    <Col lg={3} className="mb-3">
+                        <Label htmlFor="mailbox-smtp-port" className="form-label">Porta SMTP</Label>
+                        <Input id="mailbox-smtp-port" type="number" value={form.smtp_port} onChange={(e) => editAdvanced("smtp_port", e.target.value === "" ? "" : Number(e.target.value))} />
+                    </Col>
+                    <Col lg={3} className="mb-3">
+                        <Label htmlFor="mailbox-smtp-enc" className="form-label">Segurança SMTP</Label>
+                        <XSelect id="mailbox-smtp-enc" ariaLabel="Segurança SMTP" options={ENCRYPTION_OPTIONS} value={form.smtp_encryption} onChange={(v) => editAdvanced("smtp_encryption", v)} />
+                    </Col>
+                    <Col lg={6} className="mb-3">
+                        <Label htmlFor="mailbox-imap-host" className="form-label">Servidor IMAP (receção)</Label>
+                        <Input id="mailbox-imap-host" value={form.imap_host} onChange={(e) => editAdvanced("imap_host", e.target.value.trim())} />
+                    </Col>
+                    <Col lg={3} className="mb-3">
+                        <Label htmlFor="mailbox-imap-port" className="form-label">Porta IMAP</Label>
+                        <Input id="mailbox-imap-port" type="number" value={form.imap_port} onChange={(e) => editAdvanced("imap_port", e.target.value === "" ? "" : Number(e.target.value))} />
+                    </Col>
+                    <Col lg={3} className="mb-3">
+                        <Label htmlFor="mailbox-imap-enc" className="form-label">Segurança IMAP</Label>
+                        <XSelect id="mailbox-imap-enc" ariaLabel="Segurança IMAP" options={ENCRYPTION_OPTIONS} value={form.imap_encryption} onChange={(v) => editAdvanced("imap_encryption", v)} />
+                    </Col>
+                    <Col lg={6} className="mb-3">
+                        <Label htmlFor="mailbox-username" className="form-label">Utilizador</Label>
+                        <Input id="mailbox-username" autoComplete="off" value={form.username} onChange={(e) => editAdvanced("username", e.target.value)} />
+                    </Col>
+                    <Col lg={6} className="mb-3 d-flex align-items-end">
+                        <div className="form-check form-switch mb-2">
+                            <Input type="checkbox" role="switch" className="form-check-input" id="mailbox-save-sent" checked={form.save_to_sent}
+                                disabled={form.smtp_host.toLowerCase() === "smtp.gmail.com"} onChange={(e) => editAdvanced("save_to_sent", e.target.checked)} />
+                            <Label className="form-check-label" for="mailbox-save-sent">Guardar cópia em Enviados</Label>
+                        </div>
+                    </Col>
+                </Row>
+            </Collapse>
+        </PageCard>
+    );
+}

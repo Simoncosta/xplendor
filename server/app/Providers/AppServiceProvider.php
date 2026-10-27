@@ -180,6 +180,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(\App\Services\Social\Publishing\MetaPublishingClient::class, fn ($app) => config('social_publishing.driver') === 'meta'
             ? $app->make(\App\Services\Social\Publishing\MetaGraphPublishingClient::class)
             : $app->make(\App\Services\Social\Publishing\FakeMetaPublishingClient::class));
+        // E-mail 1: quem envia pelas caixas de correio (config/mailboxes.php: smtp, fake ou disabled).
+        $this->app->bind(\App\Services\Mailbox\MailboxClient::class, fn ($app) => match (config('mailboxes.driver')) {
+            'smtp' => $app->make(\App\Services\Mailbox\SmtpMailboxClient::class),
+            'fake' => $app->make(\App\Services\Mailbox\FakeMailboxClient::class),
+            default => $app->make(\App\Services\Mailbox\DisabledMailboxClient::class),
+        });
         $this->app->bind(CustomerRepositoryInterface::class, CustomerRepository::class);
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);

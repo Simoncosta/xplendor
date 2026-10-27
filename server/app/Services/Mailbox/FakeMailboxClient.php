@@ -1,0 +1,38 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Mailbox;
+
+use App\Models\Mailbox;
+use Illuminate\Support\Str;
+
+/**
+ * O cliente simulado (driver fake, nos testes): guarda as mensagens em memória e nunca liga a
+ * nenhum servidor. failWith simula um erro do servidor (já com o texto que a pessoa vê).
+ */
+class FakeMailboxClient implements MailboxClient
+{
+    /** @var list<array{mailbox_id: int, from: string, to: string, subject: string, text: string, message_id: string}> */
+    public static array $sent = [];
+
+    public static ?string $failWith = null;
+
+    public static function reset(): void
+    {
+        self::$sent = [];
+        self::$failWith = null;
+    }
+
+    public function send(Mailbox $mailbox, OutgoingMail $mail): MailboxSendResult
+    {
+        if (self::$failWith !== null) {
+            return MailboxSendResult::failed(self::$failWith);
+        }
+        $messageId = '<' . Str::uuid() . '@xplendor.invalid>';
+        self::$sent[] = ['mailbox_id' => $mailbox->id, 'from' => $mailbox->email, 'to' => $mail->to, 'subject' => $mail->subject,
+            'text' => $mail->text, 'message_id' => $messageId];
+
+        return MailboxSendResult::sent($messageId);
+    }
+}

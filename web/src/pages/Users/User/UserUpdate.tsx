@@ -6,6 +6,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 // Components
 import UserEditor from "./UserEditor";
+import MyMailboxCard from "./MyMailboxCard";
+import { sessionUser } from "helpers/roles";
 // Slices
 import { USER_CREATE_DEFAULTS } from "slices/users/user.defaults";
 import { showUser, updateUser } from "slices/thunks";
@@ -45,6 +47,10 @@ export default function UserUpdate() {
     }, [dispatch, id]);
 
     if (loadingShow) return null;
+
+    // E-mail 1: a caixa de correio só aparece na própria conta e fora da impersonation (o root também, na sua empresa).
+    const me = sessionUser();
+    const ownMailbox = !!me?.id && me.id === Number(id) && !me.impersonating && !!me.company_id;
 
     return (
         <>
@@ -97,7 +103,9 @@ export default function UserUpdate() {
                     toast("Colaborador atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                 }}
                 onCancel={() => navigate("/users")}
-            />
+            >
+                {ownMailbox && <MyMailboxCard companyId={Number(me!.company_id)} />}
+            </UserEditor>
         </>
     );
 }

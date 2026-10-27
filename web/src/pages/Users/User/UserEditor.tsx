@@ -20,6 +20,8 @@ type UserEditorProps = {
     onSubmit: (data: IUser) => void;
     onCancel: () => void;
     loading?: boolean;
+    /** Quadros por baixo de "Conta" (a minha caixa de correio, só na própria conta). */
+    children?: React.ReactNode;
 };
 
 const genderOptions = [
@@ -32,7 +34,7 @@ const roleOptions = [
     { value: "admin", label: "Administrador" },
 ];
 
-export default function UserEditor({ data, onSubmit, onCancel, loading = false }: UserEditorProps) {
+export default function UserEditor({ data, onSubmit, onCancel, loading = false, children }: UserEditorProps) {
     const isEdit = Boolean((data as IUser)?.id);
 
     const [logoPreview, setLogoPreview] = useState<string | null>(
@@ -228,6 +230,7 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
                                         </form>
                                     </FormikProvider>
                             </PageCard>
+                            {children}
                         </Col>
                     </Row>
                 </Container>

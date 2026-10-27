@@ -40,6 +40,11 @@ final class RoutePermissions
         'POST {id}/management/requests/{requestId}/decline' => 'empresa.aprovar',
         'GET {id}/my-modules' => 'empresa.ver',
         'GET {id}/my-access' => 'empresa.ver',
+        // E-mail 1: a minha caixa de correio (só o próprio: OWN_ONLY; sensíveis: nunca em impersonation).
+        'GET {id}/my-mailbox' => 'empresa.ver',
+        'PUT {id}/my-mailbox' => 'empresa.ver',
+        'DELETE {id}/my-mailbox' => 'empresa.ver',
+        'POST {id}/my-mailbox/test' => 'empresa.ver',
         'PUT {id}/management/guest-profile' => 'empresa.aprovar', // F5: o teto da agência é uma decisão do cliente
         // ── utilizadores ──
         'GET {id}/collaborators' => 'utilizadores.ver',
@@ -916,6 +921,18 @@ final class RoutePermissions
         'PUT {id}/tasks/{task}' => 'support_tasks',
         'PATCH {id}/tasks/{task}/move' => 'support_tasks',
         'DELETE {id}/tasks/{task}' => 'support_tasks',
+    ];
+
+    /**
+     * Rotas só do PRÓPRIO, na própria empresa: noutras empresas, o root (que passa em todas as
+     * permissões) e a agência recebem 403, e a impersonation também (são sensíveis). O root tem a
+     * sua caixa só na própria empresa. É a caixa de correio pessoal: nem quem gere a empresa a vê.
+     */
+    public const OWN_ONLY = [
+        'GET {id}/my-mailbox',
+        'PUT {id}/my-mailbox',
+        'DELETE {id}/my-mailbox',
+        'POST {id}/my-mailbox/test',
     ];
 
     /** Rotas sobre a PRÓPRIA conta: a pessoa pode sempre ver e alterar a sua (rota → parâmetro do utilizador). */

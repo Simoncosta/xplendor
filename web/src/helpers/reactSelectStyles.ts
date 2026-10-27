@@ -46,11 +46,13 @@ export const reactSelectTheme = {
         ...base,
         backgroundColor: state.isSelected
             ? "var(--vz-primary)"
-            : state.isFocused
+            : state.isFocused && !state.isDisabled
                 ? "var(--vz-tertiary-bg)"
                 : "transparent",
-        color: state.isSelected ? "#fff" : "var(--vz-body-color)",
-        "&:active": { backgroundColor: "var(--vz-tertiary-bg)" },
+        // As opções desativadas (por exemplo "em breve") veem-se esbatidas, nos dois temas.
+        color: state.isSelected ? "#fff" : state.isDisabled ? "var(--vz-secondary-color)" : "var(--vz-body-color)",
+        cursor: state.isDisabled ? "not-allowed" : base.cursor,
+        "&:active": { backgroundColor: state.isDisabled ? "transparent" : "var(--vz-tertiary-bg)" },
     }),
     // Chips (isMulti): fundo subtil + texto legível em ambos os temas.
     multiValue: (base: any) => ({ ...base, backgroundColor: "var(--vz-primary-bg-subtle)" }),

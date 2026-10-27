@@ -119,6 +119,11 @@ class AgencyTenancySweepTest extends TestCase
         'GET api/v1/companies/{id}/xplendor-charges',
         'GET api/v1/companies/{id}/xplendor-charges/{chargeId}/invoice',
         'POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid',
+        // E-mail 1: a caixa de correio pessoal é só do próprio (RoutePermissions::OWN_ONLY).
+        'GET api/v1/companies/{id}/my-mailbox',
+        'PUT api/v1/companies/{id}/my-mailbox',
+        'DELETE api/v1/companies/{id}/my-mailbox',
+        'POST api/v1/companies/{id}/my-mailbox/test',
     ];
 
     /** Ficheiros: o teto "Agência convidada (como hoje)" dá ver, criar e editar (mudar o nome e mover), sem apagar nem restaurar. */
