@@ -6,6 +6,7 @@ namespace App\Services\Mailbox;
 
 use App\Models\Mailbox;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 use Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream;
@@ -38,9 +39,12 @@ class SmtpMailboxClient implements MailboxClient
             if ($mail->html !== null) {
                 $email->html($mail->html);
             }
-            $sent = $transport->send($email);
+            // O Message-ID é sempre o nosso (o SentMessage::getMessageId() pode ser o "queued as" do servidor).
+            $messageId = trim($mail->messageId ?? (Str::uuid() . '@' . (Str::after($mailbox->email, '@') ?: 'xplendor.pt')), '<>');
+            $email->getHeaders()->addIdHeader('Message-ID', $messageId);
+            $transport->send($email);
 
-            return MailboxSendResult::sent($sent?->getMessageId() ? '<' . trim($sent->getMessageId(), '<>') . '>' : null, $real);
+            return MailboxSendResult::sent('<' . $messageId . '>', $real);
         } catch (TransportExceptionInterface $e) {
             Log::info('[Caixa de correio] Envio falhou', ['mailbox_id' => $mailbox->id, 'code' => $e->getCode()]);
 

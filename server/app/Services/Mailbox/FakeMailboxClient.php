@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  */
 class FakeMailboxClient implements MailboxClient
 {
-    /** @var list<array{mailbox_id: int, from: string, to: string, subject: string, text: string, message_id: string}> */
+    /** @var list<array{mailbox_id: int, from: string, from_name: ?string, to: string, subject: string, text: string, html: ?string, message_id: string}> */
     public static array $sent = [];
 
     public static ?string $failWith = null;
@@ -29,9 +29,9 @@ class FakeMailboxClient implements MailboxClient
         if (self::$failWith !== null) {
             return MailboxSendResult::failed(self::$failWith);
         }
-        $messageId = '<' . Str::uuid() . '@xplendor.invalid>';
-        self::$sent[] = ['mailbox_id' => $mailbox->id, 'from' => $mailbox->email, 'to' => $mail->to, 'subject' => $mail->subject,
-            'text' => $mail->text, 'message_id' => $messageId];
+        $messageId = $mail->messageId ?? '<' . Str::uuid() . '@xplendor.invalid>';
+        self::$sent[] = ['mailbox_id' => $mailbox->id, 'from' => $mailbox->email, 'from_name' => $mail->fromName, 'to' => $mail->to, 'subject' => $mail->subject,
+            'text' => $mail->text, 'html' => $mail->html, 'message_id' => $messageId];
 
         return MailboxSendResult::sent($messageId);
     }

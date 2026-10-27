@@ -9,7 +9,10 @@ use App\Http\Controllers\Controller;
 use App\Mail\SatisfactionReportMail;
 use App\Models\Car;
 use App\Models\CarSale;
+use App\Models\ImpersonationSession;
+use App\Models\Mailbox;
 use App\Models\SatisfactionReport;
+use App\Services\Mailbox\MailboxSender;
 use App\Support\SatisfactionMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -97,8 +100,14 @@ class SatisfactionReportController extends Controller
      * corre no worker (retries da fila) — o endpoint confirma que foi posto a
      * caminho, não bloqueia a interface.
      */
-    public function sendEmail(int $companyId, int $carId): JsonResponse
+    /**
+     * Envia o link ao cliente por email. Com via=mailbox (E-mail 2), sai pela caixa de correio de quem
+     * envia (a sua, nesta empresa, já testada), com o Message-ID gravado em mail_messages; sem isso,
+     * pelo servidor da plataforma, como até aqui. O consentimento de contacto conta nos dois.
+     */
+    public function sendEmail(Request $request, int $companyId, int $carId, MailboxSender $sender): JsonResponse
     {
+        $viaMailbox = $request->input('via') === 'mailbox';
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
@@ -127,6 +136,33 @@ class SatisfactionReportController extends Controller
         $logoUrl = $car->company?->logo_path
             ? rtrim((string) config('app.url'), '/') . $car->company->logo_path
             : null;
+
+        if ($viaMailbox) {
+            $user = $request->user();
+            if (ImpersonationSession::activeFor($user)) {
+                return ApiResponse::error('Durante a impersonation não se envia pela caixa de correio da pessoa. Envie pela XPLENDOR.', 422);
+            }
+            $mailbox = Mailbox::personal($companyId, (int) $user->id)->first();
+            if (! $mailbox) {
+                return ApiResponse::error('Ligue primeiro a sua caixa de correio no Perfil.', 422);
+            }
+            if ($reason = $sender->blockedReason($mailbox)) {
+                return ApiResponse::error($reason, 422);
+            }
+            $message = SatisfactionMessage::build($contact['name'], $link);
+            $sender->queue($mailbox, $user, $contact['email'], 'A sua nova viatura — ' . $companyName,
+                $message . "\n\n" . $link,
+                view('emails.satisfaction.report', ['customerName' => $contact['name'], 'companyName' => $companyName, 'message' => $message,
+                    'link' => $link, 'logoUrl' => $logoUrl])->render(),
+                ['customer_id' => $car->sale->customer_id, 'car_sale_id' => $car->sale->id, 'car_lead_id' => $car->sale->lead_id, 'satisfaction_report_id' => $report->id]);
+            $report->forceFill(['sent_at' => now(), 'sent_channel' => 'email'])->save();
+
+            return ApiResponse::success([
+                'sent_at' => optional($report->sent_at)->toIso8601String(),
+                'sent_channel' => 'email',
+                'via' => 'mailbox',
+            ], "Email enviado pela sua caixa ({$mailbox->email}).");
+        }
 
         try {
             Mail::to($contact['email'])->queue(new SatisfactionReportMail(

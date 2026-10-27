@@ -25,6 +25,12 @@ return [
     // Segundos à espera do servidor de e-mail antes de desistir.
     'timeout' => 15,
 
+    // E-mail 2: limite por caixa (envios um a um; as mensagens em erro também contam).
+    'limits' => [
+        'per_hour' => (int) env('MAILBOX_LIMIT_PER_HOUR', 30),
+        'per_day' => (int) env('MAILBOX_LIMIT_PER_DAY', 200),
+    ],
+
     // As portas aceites (as dos servidores de e-mail: nada de apontar a caixa para outros serviços).
     'smtp_ports' => [465, 587, 25, 2525],
     'imap_ports' => [993, 143],

@@ -7,7 +7,8 @@ import { toast } from "react-toastify";
 import mammoth from "mammoth";
 // Molde
 import { SALE_DOCUMENTS } from "../documents/registry";
-import { getDocumentTemplates, getDocumentTemplateVariables } from "helpers/laravel_helper";
+import { getDocumentTemplates, getDocumentTemplateVariables, getMyMailbox } from "helpers/laravel_helper";
+import { isImpersonating } from "helpers/impersonation";
 import { postDocx, saveBlob } from "helpers/download_helper";
 import { IDocumentTemplate, IDocumentVariable } from "common/models/documentTemplate.model";
 
@@ -252,12 +253,30 @@ const waNumber = (phone: string): string => {
  * por WhatsApp (abre o wa.me com a mensagem pronta — manual) ou por email (o
  * XPLENDOR envia via queue). Os botões de envio só aparecem se houver
  * telefone/email do cliente (e o email respeita o consentimento no servidor).
+ * E-mail 2: com a caixa de correio ligada (e testada), o email pode sair pela caixa de quem envia.
  */
-function SatisfactionLinkBox({ companyId, carId }: { companyId: number; carId: number }) {
+export function SatisfactionLinkBox({ companyId, carId }: { companyId: number; carId: number }) {
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
     const [box, setBox] = useState<ReportBox | null>(null);
     const [emailState, setEmailState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+    const [mailbox, setMailbox] = useState<{ email: string; status: string } | null>(null);
+    const [viaMailbox, setViaMailbox] = useState(false);
+
+    // E-mail 2: a caixa de correio de quem envia (nesta empresa). Durante a impersonation não se usa.
+    useEffect(() => {
+        if (isImpersonating()) return;
+        let alive = true;
+        getMyMailbox(companyId)
+            .then((r: any) => {
+                if (!alive) return;
+                const m = r?.data?.mailbox ?? null;
+                setMailbox(m);
+                setViaMailbox(m?.status === "ativa");
+            })
+            .catch(() => { if (alive) setMailbox(null); });
+        return () => { alive = false; };
+    }, [companyId]);
 
     useEffect(() => {
         let alive = true;
@@ -308,10 +327,10 @@ function SatisfactionLinkBox({ companyId, carId }: { companyId: number; carId: n
         if (!box?.email) return;
         setEmailState("sending");
         try {
-            const res: any = await axios.post(`/companies/${companyId}/cars/${carId}/satisfaction-report/send-email`);
+            const res: any = await axios.post(`/companies/${companyId}/cars/${carId}/satisfaction-report/send-email`, viaMailbox ? { via: "mailbox" } : {});
             setEmailState("sent");
             setBox((b) => (b ? { ...b, sentAt: res?.data?.sent_at ?? new Date().toISOString(), sentChannel: "email" } : b));
-            toast.success("Email enviado ao cliente.");
+            toast.success(viaMailbox ? (res?.message ?? "Email enviado pela sua caixa.") : "Email enviado ao cliente.");
         } catch (err: any) {
             setEmailState("error");
             const status = err?.response?.status ?? err?.__status;
@@ -361,6 +380,16 @@ function SatisfactionLinkBox({ companyId, carId }: { companyId: number; carId: n
                         )}
                         {sentLabel && <span className="badge bg-light text-muted border ms-auto">{sentLabel}</span>}
                     </div>
+                    {box.email && mailbox && (
+                        <div className="form-check form-switch mt-2 mb-0" data-testid="satisfaction-via-mailbox">
+                            <Input type="checkbox" role="switch" className="form-check-input" id={`via-mailbox-${carId}`} checked={viaMailbox}
+                                disabled={mailbox.status !== "ativa"} onChange={(e) => setViaMailbox(e.target.checked)} />
+                            <label className="form-check-label fs-13" htmlFor={`via-mailbox-${carId}`}>
+                                Enviar pela minha caixa ({mailbox.email})
+                                {mailbox.status !== "ativa" && <span className="text-muted"> · teste primeiro a caixa no Perfil</span>}
+                            </label>
+                        </div>
+                    )}
                 </>
             )}
         </div>
