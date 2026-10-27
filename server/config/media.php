@@ -6,7 +6,7 @@
 return [
     'disk' => env('MEDIA_DISK', 'media'),
 
-    // Envio em partes (retomável). Cada parte cabe no upload_max_filesize do PHP (10 MB).
+    // Envio em partes (retomável). Cada parte cabe no upload_max_filesize do PHP (20 MB).
     'chunk_bytes' => 8 * 1024 * 1024,
     'max_image_bytes' => 30 * 1024 * 1024,
     'max_video_bytes' => 300 * 1024 * 1024,
