@@ -291,7 +291,9 @@ class AccountingService
      */
     public function import(int $companyId, string $path, ?int $userId): array
     {
-        $ws = IOFactory::load($path)->getActiveSheet();
+        // Só os leitores de Excel (o ficheiro já foi validado como xlsx ou xls): sem a deteção
+        // automática, uma folha nunca é lida como ODS, XML, HTML ou outro formato.
+        $ws = IOFactory::load($path, 0, [IOFactory::READER_XLSX, IOFactory::READER_XLS])->getActiveSheet();
         $data = $ws->toArray(null, true, false, false);
         $head = null;
         $col = [];

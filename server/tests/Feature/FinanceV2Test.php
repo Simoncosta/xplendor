@@ -299,6 +299,26 @@ class FinanceV2Test extends TestCase
         $this->assertSame(['TF', true, '2026-10-06', 'Email', 'Pago pelo banco', true], [$a['situation'], $a['sent'], $a['sent_on'], $a['send_method_label'], $a['note'], $a['situation_manual']]);
     }
 
+    /**
+     * phpspreadsheet: a importação só lê Excel. Um ODS (o formato do aviso de esgotar a memória) é
+     * recusado na validação; e o serviço, mesmo com outro formato à frente, nunca o lê como ODS ou
+     * XML (sem a deteção automática do formato).
+     */
+    public function test_import_reads_only_excel(): void
+    {
+        $book = new Spreadsheet();
+        $book->getActiveSheet()->fromArray([AccountingService::COLUMNS], null, 'A1');
+        $ods = tempnam(sys_get_temp_dir(), 'imp') . '.ods';
+        (new \PhpOffice\PhpSpreadsheet\Writer\Ods($book))->save($ods);
+
+        $this->actingAs($this->user, 'sanctum')->post("/api/v1/companies/{$this->company->id}/finance/accounting/import",
+            ['file' => new UploadedFile($ods, 'folha.xlsx', 'application/vnd.oasis.opendocument.spreadsheet', null, true)], ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('file');
+
+        $this->expectException(\PhpOffice\PhpSpreadsheet\Reader\Exception::class);
+        app(AccountingService::class)->import($this->company->id, $ods, $this->user->id);
+    }
+
     public function test_prepare_the_zip_with_the_pdfs_and_the_sheet_and_list_what_has_no_file(): void
     {
         Storage::fake('local');
