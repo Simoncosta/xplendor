@@ -5,13 +5,17 @@ import { ToastContainer, toast } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import ReasonButton from "Components/Common/ReasonButton";
 import XSelect from "Components/Common/Select";
+import ConfirmModal from "Components/Common/ConfirmModal";
+import Skeleton from "Components/Common/Skeleton";
 import {
     showAdminTicket, updateAdminTicketStatus, addAdminTicketMessage,
     setAdminTicketQuote, markAdminTicketPaid, markAdminTicketCompleted, updateAdminTicketTask,
+    updateAdminTicketMessage, deleteAdminTicketMessage, deleteAdminTicketScreenshot, uploadAdminTicketInvoice,
+    deleteAdminTicketInvoice, unmarkAdminTicketPaid, deleteAdminTicket,
 } from "helpers/laravel_helper";
 import {
-    ISupportTicket, SupportTicketStatus, SupportTicketType, TICKET_TYPE_META, TICKET_STATUS_META,
-    QUOTE_STATUS_META, formatEuro,
+    ISupportTicket, ISupportTicketMessage, SupportTicketStatus, SupportTicketType, TICKET_TYPE_META, TICKET_STATUS_META,
+    QUOTE_STATUS_META, PAYMENT_STATUS_META, formatEuro,
 } from "common/models/supportTicket.model";
 import { useTicketTypeChange } from "Components/Common/useTicketTypeChange";
 import TicketTasksCard from "Components/Common/TicketTasksCard";
@@ -28,6 +32,13 @@ const TYPES: SupportTicketType[] = ["idea", "improvement", "bug", "suggestion", 
 const fmtDateTime = (s: string | null | undefined) =>
     s ? new Date(s).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("pt-PT") : "—");
+/** A mensagem de um erro da API (o interceptor devolve o corpo: message e errors). */
+const errMsg = (err: any, fallback: string): string => {
+    const first = err?.errors ? Object.values(err.errors as Record<string, string[]>)[0]?.[0] : null;
+    return first || err?.message || fallback;
+};
+
+type Confirm = { title: string; message: string; confirmText: string; variant?: "danger" | "warning"; run: () => Promise<void> };
 
 const AdminTicketDetail = () => {
     document.title = "Administração: ticket | Xplendor";
@@ -47,6 +58,27 @@ const AdminTicketDetail = () => {
     const [hours, setHours] = useState("");
     const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
     const [quoteBusy, setQuoteBusy] = useState(false);
+
+    // Editar uma mensagem na própria thread, e as confirmações (apagar, retirar, anular).
+    const [editing, setEditing] = useState<{ id: number; body: string } | null>(null);
+    const [editBusy, setEditBusy] = useState(false);
+    const [confirm, setConfirm] = useState<Confirm | null>(null);
+    const [confirmBusy, setConfirmBusy] = useState(false);
+    const runConfirm = async () => {
+        if (!confirm) return;
+        setConfirmBusy(true);
+        try { await confirm.run(); setConfirm(null); } finally { setConfirmBusy(false); }
+    };
+    /** Corre uma ação que devolve o ticket, com a mensagem de sucesso ou o erro da API. */
+    const act = async (call: () => Promise<any>, ok: string, fail: string) => {
+        try {
+            const r: any = await call();
+            applyTicket(r?.data);
+            toast.success(ok);
+        } catch (err: any) {
+            toast.error(errMsg(err, fail));
+        }
+    };
 
     // As ações (estado, mensagem, orçamento) devolvem o ticket sem o histórico de tipo:
     // mantém o que já estava carregado.
@@ -106,26 +138,42 @@ const AdminTicketDetail = () => {
             setHours("");
             toast.success("Orçamento enviado ao stand.");
         } catch (err: any) {
-            toast.error(err?.response?.data?.message || "Não foi possível guardar o orçamento.");
+            toast.error(errMsg(err, "Não foi possível guardar o orçamento."));
         } finally {
             setQuoteBusy(false);
         }
     };
 
+    // A fatura é uma ação própria (anexar ou trocar), separada do pagamento.
+    const uploadInvoice = async () => {
+        if (!id || !invoiceFile) return;
+        setQuoteBusy(true);
+        const fd = new FormData();
+        fd.append("invoice", invoiceFile);
+        await act(() => uploadAdminTicketInvoice(Number(id), fd), "Fatura anexada. O Administrador da empresa recebe um e-mail.", "Não foi possível anexar a fatura.");
+        setInvoiceFile(null);
+        setQuoteBusy(false);
+    };
+
     const doMarkPaid = async () => {
         if (!id) return;
         setQuoteBusy(true);
+        await act(() => markAdminTicketPaid(Number(id), new FormData()), "Pagamento marcado.", "Não foi possível marcar como pago.");
+        setQuoteBusy(false);
+    };
+
+    const saveEdit = async () => {
+        if (!id || !editing || !editing.body.trim()) return;
+        setEditBusy(true);
         try {
-            const fd = new FormData();
-            if (invoiceFile) fd.append("invoice", invoiceFile);
-            const r: any = await markAdminTicketPaid(Number(id), fd);
+            const r: any = await updateAdminTicketMessage(Number(id), editing.id, editing.body.trim());
             applyTicket(r?.data);
-            setInvoiceFile(null);
-            toast.success("Marcado como pago.");
+            setEditing(null);
+            toast.success("Mensagem editada.");
         } catch (err: any) {
-            toast.error(err?.response?.data?.errors?.invoice?.[0] || err?.response?.data?.message || "Não foi possível marcar como pago.");
+            toast.error(errMsg(err, "Não foi possível editar a mensagem."));
         } finally {
-            setQuoteBusy(false);
+            setEditBusy(false);
         }
     };
 
@@ -137,7 +185,7 @@ const AdminTicketDetail = () => {
             applyTicket(r?.data);
             toast.success("Pedido concluído.");
         } catch (err: any) {
-            toast.error(err?.response?.data?.message || "Não foi possível concluir.");
+            toast.error(errMsg(err, "Não foi possível concluir."));
         } finally {
             setQuoteBusy(false);
         }
@@ -146,7 +194,16 @@ const AdminTicketDetail = () => {
     const tm = useMemo(() => (ticket ? TICKET_TYPE_META[ticket.type] : null), [ticket]);
     const sm = useMemo(() => (ticket ? TICKET_STATUS_META[ticket.status] : null), [ticket]);
 
-    if (loading) return <div className="page-content"><div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div></div>;
+    if (loading) {
+        return (
+            <div className="page-content"><Container fluid>
+                <Row>
+                    <Col xxl={3}><Card><CardBody><Skeleton variant="lines" lines={8} /></CardBody></Card></Col>
+                    <Col xxl={9}><Card><CardBody><Skeleton variant="block" height={320} /></CardBody></Card></Col>
+                </Row>
+            </Container></div>
+        );
+    }
     if (error || !ticket || !tm || !sm) {
         return (
             <div className="page-content"><Container fluid>
@@ -160,14 +217,26 @@ const AdminTicketDetail = () => {
     }
 
     const shot = absUrl(ticket.screenshot_url);
+    const can = ticket.team?.can ?? null;
+    const deleted = !!ticket.team?.deleted_at;
+    const work = ticket.quote_status === "approved" || ticket.quote_status === "paid" || ticket.quote_status === "completed";
+    const payment = ticket.payment_status ? PAYMENT_STATUS_META[ticket.payment_status] : null;
 
     return (
         <div className="page-content">
             <ToastContainer />
             {typeChangeModal}
+            <ConfirmModal isOpen={!!confirm} title={confirm?.title ?? ""} message={confirm?.message ?? ""} confirmText={confirm?.confirmText}
+                variant={confirm?.variant ?? "danger"} loading={confirmBusy} onConfirm={runConfirm} onCancel={() => setConfirm(null)} />
             <Container fluid>
                 <PageHeader title={`#${ticket.id} ${ticket.title}`} crumbLabel={`#${ticket.id}`}
                     breadcrumbs={[{ label: "Administração" }, { label: "Tickets", to: "/admin" }]} />
+                {deleted && (
+                    <div className="alert alert-secondary d-flex gap-2 align-items-start" data-testid="ticket-deleted">
+                        <i className="ri-delete-bin-line fs-16" />
+                        <span>Pedido apagado em {fmtDateTime(ticket.team?.deleted_at)}{ticket.team?.deleted_by_name ? ` por ${ticket.team.deleted_by_name}` : ""}. A cliente já não o vê; aqui fica só para consulta.</span>
+                    </div>
+                )}
                 <Row>
                     {/* Barra lateral — visual TaskDetails: detalhes (table-card) + orçamento. */}
                     <Col xxl={3}>
@@ -199,7 +268,8 @@ const AdminTicketDetail = () => {
                                             <tr><td className="fw-medium">Tipo</td><td><i className={tm.icon + " me-1"} />{tm.label}</td></tr>
                                             <tr><td className="fw-medium">Estado</td><td><span className={`badge bg-${sm.color}-subtle text-${sm.color}`}>{sm.label}</span></td></tr>
                                             <tr><td className="fw-medium">Empresa</td><td>{ticket.company_name ?? `Empresa #${ticket.company_id}`}</td></tr>
-                                            <tr><td className="fw-medium">Aberto por</td><td>{ticket.author_name ?? "Sem nome"}</td></tr>
+                                            <tr><td className="fw-medium">Aberto por</td><td>{ticket.author_name ?? "Sem nome"}
+                                                {ticket.team?.impersonator_name && <div className="text-muted fs-12">Escrito por {ticket.team.impersonator_name}, na sessão como cliente</div>}</td></tr>
                                             <tr><td className="fw-medium">Criado</td><td>{fmtDate(ticket.created_at)}</td></tr>
                                             {ticket.resolved_at && <tr><td className="fw-medium">Resolvido</td><td>{fmtDate(ticket.resolved_at)}</td></tr>}
                                         </tbody>
@@ -243,35 +313,80 @@ const AdminTicketDetail = () => {
                                         </div>
                                     )}
 
-                                    {/* 2) Aprovado → anexar fatura + marcar pago */}
-                                    {ticket.quote_status === "approved" && (
-                                        <div>
-                                            <Label className="form-label fs-13">Fatura (PDF, opcional)</Label>
-                                            <Input type="file" accept="application/pdf" className="mb-2" onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)} />
-                                            <button type="button" className="btn btn-success w-100" onClick={doMarkPaid} disabled={quoteBusy}>
-                                                {quoteBusy ? <Spinner size="sm" /> : <><i className="ri-bank-card-line me-1" />Marcar como pago</>}
-                                            </button>
-                                        </div>
-                                    )}
+                                    {/* 2) Aprovado: o trabalho, a fatura e o pagamento, cada um à parte. */}
+                                    {work && !deleted && (
+                                        <div className="vstack gap-3" data-testid="admin-billing">
+                                            <div className="d-flex justify-content-between align-items-center fs-13">
+                                                <span className="text-muted">Trabalho</span>
+                                                <span className="fw-medium">{ticket.quote_status === "completed" ? "Concluído" : "Em execução"}</span>
+                                            </div>
+                                            {payment && (
+                                                <div className="d-flex justify-content-between align-items-center fs-13">
+                                                    <span className="text-muted">Pagamento</span>
+                                                    <span className={`badge bg-${payment.color}-subtle text-${payment.color}`}><i className={`${payment.icon} me-1`} />{payment.label}</span>
+                                                </div>
+                                            )}
 
-                                    {/* 3) Pago/em execução → concluir */}
-                                    {ticket.quote_status === "paid" && (
-                                        <button type="button" className="btn btn-primary w-100" onClick={doComplete} disabled={quoteBusy}>
-                                            {quoteBusy ? <Spinner size="sm" /> : <><i className="ri-check-double-line me-1" />Marcar concluído</>}
-                                        </button>
+                                            {/* Fatura: anexar ou trocar (só a que é dele) e retirar. */}
+                                            <div>
+                                                <Label className="form-label fs-13 mb-1">Fatura</Label>
+                                                {ticket.invoice_url && (
+                                                    <div className="d-flex gap-2 mb-2">
+                                                        <a href={absUrl(ticket.invoice_url) ?? "#"} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm flex-grow-1">
+                                                            <i className="ri-file-pdf-line me-1" />Ver fatura
+                                                        </a>
+                                                        {can?.change_invoice && (
+                                                            <button type="button" className="btn btn-outline-danger btn-sm" aria-label="Retirar a fatura" onClick={() => setConfirm({
+                                                                title: "Retirar a fatura", confirmText: "Retirar",
+                                                                message: "A fatura deixa de estar disponível para a cliente e aparece uma mensagem da equipa no pedido. O ficheiro é apagado ao fim de 30 dias. O pagamento não muda.",
+                                                                run: () => act(() => deleteAdminTicketInvoice(ticket.id), "Fatura retirada.", "Não foi possível retirar a fatura."),
+                                                            })}><i className="ri-delete-bin-line" /></button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {ticket.invoiced_at && (
+                                                    <small className="text-muted d-block mb-2">Emitida em {fmtDate(ticket.invoiced_at)}{ticket.team?.invoice_by_name ? ` por ${ticket.team.invoice_by_name}` : ""}</small>
+                                                )}
+                                                {(can?.change_invoice ?? true) ? (
+                                                    <div className="d-flex gap-2">
+                                                        <Input type="file" accept="application/pdf" bsSize="sm" aria-label="Fatura em PDF" onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)} />
+                                                        <ReasonButton color="primary" size="sm" className="flex-shrink-0" onClick={uploadInvoice} disabled={quoteBusy}
+                                                            reason={!invoiceFile ? "Escolha primeiro o PDF da fatura." : null}>
+                                                            {quoteBusy ? <Spinner size="sm" /> : ticket.invoice_url ? "Trocar" : "Anexar"}
+                                                        </ReasonButton>
+                                                    </div>
+                                                ) : (
+                                                    <small className="text-muted">A fatura foi anexada por outra pessoa da equipa: só ela a troca ou retira.</small>
+                                                )}
+                                            </div>
+
+                                            {/* Pagamento: marcar e anular (para corrigir enganos). */}
+                                            {ticket.paid_at ? (
+                                                <div className="d-flex justify-content-between align-items-center gap-2">
+                                                    <small className="text-muted">Pago em {fmtDate(ticket.paid_at)}{ticket.team?.paid_by_name ? ` (${ticket.team.paid_by_name})` : ""}</small>
+                                                    <button type="button" className="btn btn-link btn-sm text-danger p-0" onClick={() => setConfirm({
+                                                        title: "Anular o pagamento", confirmText: "Anular", variant: "warning",
+                                                        message: "O pedido volta a ficar por pagar. A alteração fica registada na auditoria.",
+                                                        run: () => act(() => unmarkAdminTicketPaid(ticket.id), "Pagamento anulado.", "Não foi possível anular o pagamento."),
+                                                    })}>Anular pago</button>
+                                                </div>
+                                            ) : (
+                                                <button type="button" className="btn btn-success w-100" onClick={doMarkPaid} disabled={quoteBusy}>
+                                                    {quoteBusy ? <Spinner size="sm" /> : <><i className="ri-bank-card-line me-1" />Marcar como pago</>}
+                                                </button>
+                                            )}
+
+                                            {/* Concluir: antes ou depois do pagamento. */}
+                                            {ticket.quote_status !== "completed" && (
+                                                <button type="button" className="btn btn-primary w-100" onClick={doComplete} disabled={quoteBusy}>
+                                                    {quoteBusy ? <Spinner size="sm" /> : <><i className="ri-check-double-line me-1" />Marcar concluído</>}
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
 
                                     {ticket.quote_status === "rejected" && (
                                         <p className="text-muted fs-13 mb-0">O stand rejeitou: pedido fechado (sem renegociação).</p>
-                                    )}
-                                    {ticket.quote_status === "completed" && (
-                                        <p className="text-success fs-13 mb-0"><i className="ri-check-double-line me-1" />Trabalho concluído.</p>
-                                    )}
-
-                                    {ticket.invoice_url && (
-                                        <a href={absUrl(ticket.invoice_url) ?? "#"} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm w-100 mt-3">
-                                            <i className="ri-file-pdf-line me-1" />Ver fatura anexada
-                                        </a>
                                     )}
                                 </CardBody>
                             </Card>
@@ -306,6 +421,26 @@ const AdminTicketDetail = () => {
                                 </CardBody>
                             </Card>
                         )}
+
+                        {/* Apagar um pedido criado por engano (só o que é dele, sem mensagens da cliente nem trabalho aprovado). */}
+                        {!deleted && can && (can.delete || can.delete_blocked_by) && (
+                            <ReasonButton color="outline-danger" className="w-100 mb-3" reason={can.delete ? null : can.delete_blocked_by}
+                                onClick={() => setConfirm({
+                                    title: "Apagar o pedido", confirmText: "Apagar",
+                                    message: "O pedido sai das listas e a cliente deixa de o ver. Fica no filtro Apagados, só para consulta.",
+                                    run: async () => {
+                                        try {
+                                            await deleteAdminTicket(ticket.id);
+                                            toast.success("Pedido apagado.");
+                                            navigate("/admin");
+                                        } catch (err: any) {
+                                            toast.error(errMsg(err, "Não foi possível apagar o pedido."));
+                                        }
+                                    },
+                                })}>
+                                <i className="ri-delete-bin-line me-1" />Apagar pedido
+                            </ReasonButton>
+                        )}
                     </Col>
 
                     {/* Coluna principal — descrição (Summary) + thread de conversa. */}
@@ -328,9 +463,20 @@ const AdminTicketDetail = () => {
                                     <p className="mb-3" style={{ whiteSpace: "pre-wrap" }}>{ticket.description}</p>
                                 </div>
                                 {shot && (
-                                    <a href={shot} target="_blank" rel="noopener noreferrer">
-                                        <img src={shot} alt="Print" className="img-fluid rounded border" style={{ maxHeight: 320 }} />
-                                    </a>
+                                    <div>
+                                        <a href={shot} target="_blank" rel="noopener noreferrer">
+                                            <img src={shot} alt="Print" className="img-fluid rounded border" style={{ maxHeight: 320 }} />
+                                        </a>
+                                        {can?.remove_screenshot && !deleted && (
+                                            <div className="mt-2">
+                                                <button type="button" className="btn btn-link btn-sm text-danger p-0" onClick={() => setConfirm({
+                                                    title: "Retirar o anexo", confirmText: "Retirar",
+                                                    message: "O ficheiro é apagado já e aparece uma mensagem da equipa no pedido.",
+                                                    run: () => act(() => deleteAdminTicketScreenshot(ticket.id), "Anexo retirado.", "Não foi possível retirar o anexo."),
+                                                })}><i className="ri-delete-bin-line me-1" />Retirar anexo</button>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </CardBody>
                         </Card>
@@ -359,22 +505,26 @@ const AdminTicketDetail = () => {
                                 ) : (
                                     <div className="d-flex flex-column gap-3 mb-3">
                                         {ticket.messages.map((m) => (
-                                            <div key={m.id} className={"d-flex " + (m.is_staff ? "justify-content-end" : "justify-content-start")}>
-                                                <div className={"p-2 px-3 rounded " + (m.is_staff ? "bg-primary text-white" : "bg-light")} style={{ maxWidth: "80%" }}>
-                                                    <div className="fw-semibold fs-12 mb-1">{m.is_staff ? "Eu (Equipa XPLENDOR)" : (m.author_name || "Stand")}</div>
-                                                    <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
-                                                </div>
-                                            </div>
+                                            <AdminMessage key={m.id} m={m} readOnly={deleted}
+                                                editing={editing?.id === m.id ? editing.body : null} editBusy={editBusy}
+                                                onEdit={() => setEditing({ id: m.id, body: m.body ?? "" })}
+                                                onEditChange={(body) => setEditing({ id: m.id, body })}
+                                                onEditCancel={() => setEditing(null)} onEditSave={saveEdit}
+                                                onDelete={() => setConfirm({
+                                                    title: "Apagar a mensagem", confirmText: "Apagar",
+                                                    message: "A cliente passa a ver \u201cMensagem apagada pela equipa XPLENDOR\u201d, com a data. Os e-mails já enviados não se desenviam.",
+                                                    run: () => act(() => deleteAdminTicketMessage(ticket.id, m.id), "Mensagem apagada.", "Não foi possível apagar a mensagem."),
+                                                })} />
                                         ))}
                                     </div>
                                 )}
-                                <div className="d-flex align-items-end gap-2">
+                                {!deleted && <div className="d-flex align-items-end gap-2">
                                     <Input type="textarea" rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Responder ao stand…" />
                                     <ReasonButton color="outline-primary" className="flex-shrink-0" onClick={reply} disabled={sending} aria-label="Enviar resposta"
                                         reason={!body.trim() ? "Escreva a resposta primeiro." : null}>
                                         {sending ? <Spinner size="sm" /> : <i className="ri-send-plane-2-line" />}
                                     </ReasonButton>
-                                </div>
+                                </div>}
                             </CardBody>
                         </Card>
                     </Col>
@@ -383,5 +533,73 @@ const AdminTicketDetail = () => {
         </div>
     );
 };
+
+/**
+ * Uma mensagem na thread do root: quem escreveu (o nome, e se foi na sessão como cliente), as marcas
+ * "editada" e "apagada", o texto antes de cada edição, e editar ou apagar as que são dele.
+ */
+function AdminMessage({ m, readOnly, editing, editBusy, onEdit, onEditChange, onEditCancel, onEditSave, onDelete }: {
+    m: ISupportTicketMessage; readOnly: boolean; editing: string | null; editBusy: boolean;
+    onEdit: () => void; onEditChange: (body: string) => void; onEditCancel: () => void; onEditSave: () => void; onDelete: () => void;
+}) {
+    const [showVersions, setShowVersions] = useState(false);
+    const versions = m.team?.versions ?? [];
+    const who = m.is_staff
+        ? `Equipa XPLENDOR${m.author_name ? ` · ${m.author_name}` : ""}${m.team?.impersonated ? " (na sessão como cliente)" : ""}`
+        : (m.author_name || "Stand");
+    const canEdit = !readOnly && !!m.team?.can_edit;
+    return (
+        <div className={"d-flex " + (m.is_staff ? "justify-content-end" : "justify-content-start")} data-testid={`admin-message-${m.id}`}>
+            <div className={"p-2 px-3 rounded " + (m.deleted ? "bg-light border" : m.is_staff ? "bg-primary text-white" : "bg-light")} style={{ maxWidth: "80%", minWidth: editing !== null ? "60%" : undefined }}>
+                <div className="d-flex justify-content-between gap-3 fw-semibold fs-12 mb-1">
+                    <span>{who}</span>
+                    {canEdit && editing === null && (
+                        <span className="d-inline-flex gap-2">
+                            <button type="button" className="btn btn-link btn-sm p-0 text-reset" aria-label="Editar a mensagem" onClick={onEdit}><i className="ri-pencil-line" /></button>
+                            <button type="button" className="btn btn-link btn-sm p-0 text-reset" aria-label="Apagar a mensagem" onClick={onDelete}><i className="ri-delete-bin-line" /></button>
+                        </span>
+                    )}
+                </div>
+                {editing !== null ? (
+                    <div>
+                        <Input type="textarea" rows={3} value={editing} onChange={(e) => onEditChange(e.target.value)} aria-label="Texto da mensagem" />
+                        <div className="d-flex justify-content-end gap-2 mt-2">
+                            <button type="button" className="btn btn-light btn-sm" onClick={onEditCancel} disabled={editBusy}>Cancelar</button>
+                            <ReasonButton color="success" size="sm" onClick={onEditSave} disabled={editBusy} reason={!editing.trim() ? "Escreva o texto da mensagem." : null}>
+                                {editBusy ? <Spinner size="sm" /> : "Guardar"}
+                            </ReasonButton>
+                        </div>
+                    </div>
+                ) : m.deleted ? (
+                    <div>
+                        <div className="fst-italic text-muted fs-13">Mensagem apagada pela equipa XPLENDOR, {fmtDateTime(m.deleted_at)}</div>
+                        {m.body && <div className="text-muted text-decoration-line-through fs-13 mt-1" style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>}
+                    </div>
+                ) : (
+                    <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
+                )}
+                <div className={"fs-11 mt-1 " + (m.is_staff && !m.deleted ? "text-white-50" : "text-muted")}>
+                    {fmtDateTime(m.created_at)}
+                    {m.edited_at && !m.deleted && <> · editada {fmtDateTime(m.edited_at)}</>}
+                    {versions.length > 0 && (
+                        <button type="button" className={"btn btn-link btn-sm p-0 ms-2 fs-11 " + (m.is_staff && !m.deleted ? "text-white" : "")} onClick={() => setShowVersions((v) => !v)}>
+                            {showVersions ? "Esconder versões" : `Ver versões anteriores (${versions.length})`}
+                        </button>
+                    )}
+                </div>
+                {showVersions && (
+                    <ul className="list-unstyled mb-0 mt-2 vstack gap-2" data-testid={`message-versions-${m.id}`}>
+                        {versions.map((v, i) => (
+                            <li key={i} className={"p-2 rounded fs-12 " + (m.is_staff && !m.deleted ? "bg-white bg-opacity-10" : "bg-white")}>
+                                <div style={{ whiteSpace: "pre-wrap" }}>{v.body}</div>
+                                <div className="opacity-75 mt-1">Antes da edição de {fmtDateTime(v.created_at)}{v.edited_by_name ? ` · ${v.edited_by_name}` : ""}</div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        </div>
+    );
+}
 
 export default AdminTicketDetail;

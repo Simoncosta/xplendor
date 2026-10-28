@@ -20,8 +20,13 @@ const PIPELINE_CARDS: { key: QuoteStatus; color: string; icon: string }[] = [
     { key: "awaiting_quote", color: "secondary", icon: "ri-hourglass-line" },
     { key: "quoted", color: "warning", icon: "ri-price-tag-3-line" },
     { key: "approved", color: "info", icon: "ri-checkbox-circle-line" },
-    { key: "paid", color: "primary", icon: "ri-money-euro-circle-line" },
     { key: "completed", color: "success", icon: "ri-flag-line" },
+];
+// A fatura e o pagamento dos aprovados, à parte do trabalho.
+const PAYMENT_CARDS: { key: "to_invoice" | "invoiced_unpaid" | "paid"; label: string; color: string; icon: string }[] = [
+    { key: "to_invoice", label: "Por faturar", color: "secondary", icon: "ri-file-list-3-line" },
+    { key: "invoiced_unpaid", label: "Faturado, por pagar", color: "warning", icon: "ri-file-pdf-line" },
+    { key: "paid", label: "Pago", color: "success", icon: "ri-bank-card-line" },
 ];
 
 type ViewMode = "list" | "kanban";
@@ -50,6 +55,8 @@ const AdminTicketsList = () => {
     const [fStatus, setFStatus] = useState("");
     const [fCompany, setFCompany] = useState("");
     const [fType, setFType] = useState("");
+    // "Apagados": os pedidos apagados (só consulta, sempre em lista).
+    const [fDeleted, setFDeleted] = useState(false);
     const [view, setView] = useState<ViewMode>("kanban"); // Kanban por defeito (Simon pode mudar para Lista)
 
     // Muda o estado de um ticket (usado pelo drag do Kanban). Persiste + atualiza
@@ -100,7 +107,7 @@ const AdminTicketsList = () => {
     const [stripOpen, setStripOpen] = useState(false);
 
     // Ao mudar filtros, limpa a seleção (evita somar linhas que já não se veem).
-    useEffect(() => { setSelected(new Set()); }, [fStatus, fCompany, fType, view]);
+    useEffect(() => { setSelected(new Set()); }, [fStatus, fCompany, fType, view, fDeleted]);
 
     const toggleSel = (id: number) => setSelected((prev) => {
         const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
@@ -122,6 +129,7 @@ const AdminTicketsList = () => {
         if (fStatus) params.status = fStatus;
         if (fCompany) params.company_id = Number(fCompany);
         if (fType) params.type = fType;
+        if (fDeleted) params.deleted = 1;
         getAdminTickets(params)
             .then((r: any) => {
                 if (!alive) return;
@@ -131,7 +139,7 @@ const AdminTicketsList = () => {
             .catch(() => { if (alive) setTickets([]); })
             .finally(() => { if (alive) setLoading(false); });
         return () => { alive = false; };
-    }, [fStatus, fCompany, fType]);
+    }, [fStatus, fCompany, fType, fDeleted]);
 
     // Popula as opções de empresa a partir de uma leitura sem filtros (1ª vez).
     useEffect(() => {
@@ -169,6 +177,11 @@ const AdminTicketsList = () => {
                         <span className="fw-medium text-break">
                             {t.title}
                             {isPaid && <span className="badge bg-warning-subtle text-warning ms-2"><i className="ri-money-euro-circle-line me-1" />Pago{t.quoted_amount != null ? ` · ${formatEuro(t.quoted_amount)}` : ""}</span>}
+                            {t.team?.deleted_at && (
+                                <span className="badge bg-secondary-subtle text-secondary ms-2" data-testid="ticket-deleted-badge">
+                                    <i className="ri-delete-bin-line me-1" />Apagado {new Date(t.team.deleted_at).toLocaleDateString("pt-PT")}{t.team.deleted_by_name ? ` · ${t.team.deleted_by_name}` : ""}
+                                </span>
+                            )}
                         </span>
                     </span>
                 );
@@ -189,7 +202,9 @@ const AdminTicketsList = () => {
         },
     ] as DTColumn<ISupportTicket>[]);
 
-    const filterCount = [view === "list" && fStatus, fCompany, fType].filter(Boolean).length;
+    const filterCount = [view === "list" && fStatus, fCompany, fType, fDeleted].filter(Boolean).length;
+    // Os apagados veem-se sempre em lista (no Kanban não se arrastam).
+    const showList = view === "list" || fDeleted;
     const hasSelection = view === "list" && selectedTickets.length > 0;
 
     return (
@@ -245,6 +260,14 @@ const AdminTicketsList = () => {
                                         </span>
                                     );
                                 })}
+                                {pipeline.payment && PAYMENT_CARDS.map((c) => (
+                                    <span key={c.key} className="d-inline-flex flex-wrap align-items-center column-gap-2 fs-13">
+                                        <i className={`${c.icon} text-${c.color}`} />
+                                        <span className="text-muted">{c.label}</span>
+                                        <span className="fw-semibold">{formatEuro(pipeline.payment![c.key].amount)}</span>
+                                        <span className="text-muted">({pipeline.payment![c.key].count})</span>
+                                    </span>
+                                ))}
                             </div>
                         </CardBody>
                     </Card>
@@ -269,13 +292,25 @@ const AdminTicketsList = () => {
                                 </Col>
                             );
                         })}
+                        {pipeline.payment && PAYMENT_CARDS.map((c) => (
+                            <Col key={c.key} xs={6} md>
+                                <Card className="mb-0"><CardBody className="py-2 px-3">
+                                    <div className="d-flex align-items-center gap-2 mb-1">
+                                        <i className={`${c.icon} text-${c.color}`} />
+                                        <small className="text-muted text-truncate">{c.label}</small>
+                                    </div>
+                                    <div className="fs-18 fw-semibold">{formatEuro(pipeline.payment![c.key].amount)}</div>
+                                    <small className="text-muted">{pipeline.payment![c.key].count}</small>
+                                </CardBody></Card>
+                            </Col>
+                        ))}
                     </Row>
                 )}
 
                 {/* Ações em massa no cabeçalho do cartão (já não há barra fixa no fundo). */}
                 <PageCard
                     title="Tickets"
-                    flush={view === "list"}
+                    flush={showList}
                     loading={loading && tickets.length > 0}
                     status={hasSelection
                         ? <><span className="fw-semibold text-body">{selectedTickets.length} selecionado{selectedTickets.length === 1 ? "" : "s"}</span> · Total: <strong className="text-body">{formatEuro(selTotalAmount)}</strong> · {selTotalHours}h (sem IVA)</>
@@ -285,7 +320,7 @@ const AdminTicketsList = () => {
                             <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}><i className="ri-list-check me-1" />Lista</button>
                             <button type="button" role="tab" aria-selected={view === "kanban"} className={view === "kanban" ? "on" : ""} onClick={() => setView("kanban")}><i className="ri-layout-grid-line me-1" />Kanban</button>
                         </div>
-                        {view === "list" && cols.selector}
+                        {showList && cols.selector}
                         {hasSelection && (
                             <>
                                 <button className="btn btn-outline-primary btn-sm" onClick={() => setSelected(new Set())}>Limpar</button>
@@ -295,7 +330,7 @@ const AdminTicketsList = () => {
                     </>}
                     filters={
                         // O filtro de ESTADO só faz sentido na Lista: no Kanban as colunas SÃO os estados.
-                        <RestFilterBar activeCount={filterCount} onClear={() => { setFStatus(""); setFCompany(""); setFType(""); }}>
+                        <RestFilterBar activeCount={filterCount} onClear={() => { setFStatus(""); setFCompany(""); setFType(""); setFDeleted(false); }}>
                             {view === "list" && (
                                 <div style={{ flex: "1 1 180px", minWidth: 0 }}>
                                     <div className={FL}>Estado</div>
@@ -313,10 +348,15 @@ const AdminTicketsList = () => {
                                 <XSelect small value={fType} onChange={setFType} ariaLabel="Filtrar por tipo" searchable={false}
                                     options={[{ value: "", label: "Todos os tipos" }, ...TYPE_OPTIONS.map((t) => ({ value: t, label: TICKET_TYPE_META[t].label }))]} />
                             </div>
+                            <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                                <div className={FL}>Mostrar</div>
+                                <XSelect small value={fDeleted ? "deleted" : ""} onChange={(v) => setFDeleted(v === "deleted")} ariaLabel="Mostrar os ativos ou os apagados" searchable={false}
+                                    options={[{ value: "", label: "Ativos" }, { value: "deleted", label: "Apagados" }]} />
+                            </div>
                         </RestFilterBar>
                     }
                 >
-                    {view === "kanban" ? (
+                    {!showList ? (
                         loading
                             ? <div className="text-muted">A carregar…</div>
                             : <AdminTicketsKanban
@@ -333,7 +373,7 @@ const AdminTicketsList = () => {
                             loading={loading}
                             caption="Tickets"
                             onRowClick={(t) => navigate(`/admin/tickets/${t.id}`)}
-                            empty={{ message: "Sem tickets para os filtros escolhidos." }}
+                            empty={{ message: fDeleted ? "Não há pedidos apagados." : "Sem tickets para os filtros escolhidos." }}
                         />
                     )}
                 </PageCard>

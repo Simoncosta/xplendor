@@ -4,7 +4,8 @@
 export type SupportTicketType = "idea" | "improvement" | "bug" | "suggestion" | "site_change" | "onboarding";
 export type SupportTicketStatus = "open" | "in_review" | "resolved" | "closed";
 
-// Fluxo de orçamento — só em tickets site_change (null nos grátis).
+// Fluxo de orçamento — só em tickets site_change (null nos grátis). Só a aprovação e o trabalho:
+// a fatura e o pagamento vêm à parte (payment_status). "paid" é o valor antigo, já migrado.
 export type QuoteStatus =
     | "awaiting_quote"
     | "quoted"
@@ -15,11 +16,24 @@ export type QuoteStatus =
 
 export interface ISupportTicketMessage {
     id: number;
-    body: string;
+    /** null numa mensagem apagada (a cliente vê só a marca; a equipa continua a ver o texto). */
+    body: string | null;
     is_staff: boolean;
     author_name?: string | null;
+    edited_at?: string | null;
+    deleted?: boolean;
+    deleted_at?: string | null;
     created_at?: string;
+    /** Só a equipa XPLENDOR: escrita na sessão como cliente, se a pode editar e o texto antes de cada edição. */
+    team?: {
+        impersonated: boolean;
+        can_edit: boolean;
+        versions: { body: string; edited_by_name: string | null; created_at: string | null }[];
+    };
 }
+
+/** A fatura e o pagamento, à parte do trabalho: por faturar, fatura emitida (por pagar) ou pago. */
+export type PaymentStatus = "pending" | "invoiced" | "paid";
 
 // Uma mudança de tipo (só no lado admin): tipo anterior e novo e o orçamento que tinha.
 export interface ISupportTicketTypeChange {
@@ -56,6 +70,18 @@ export interface ISupportTicket {
     hourly_rate?: number | null;
     /** O valor, as horas e a fatura do orçamento só vêm a quem vê a faturação da XPLENDOR (o Administrador). */
     billing_visible?: boolean;
+    payment_status?: PaymentStatus | null;
+    invoiced_at?: string | null;
+    paid_at?: string | null;
+    /** Só a equipa XPLENDOR: quem escreveu de facto, a fatura e o pagamento, o apagado, e o que pode fazer. */
+    team?: {
+        impersonator_name: string | null;
+        invoice_by_name: string | null;
+        paid_by_name: string | null;
+        deleted_at: string | null;
+        deleted_by_name: string | null;
+        can: { delete: boolean; delete_blocked_by: string | null; remove_screenshot: boolean; change_invoice: boolean } | null;
+    };
     type_changes?: ISupportTicketTypeChange[]; // só no lado admin
     // Lista de tarefas (ticket de arranque).
     tasks?: ISupportTicketTask[];
@@ -96,8 +122,8 @@ export const TICKET_STATUS_META: Record<SupportTicketStatus, { label: string; co
 export const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; color: string }> = {
     awaiting_quote: { label: "A aguardar orçamento",        color: "secondary" },
     quoted:         { label: "Orçado, a aguardar aprovação", color: "warning" },
-    approved:       { label: "Aprovado, a aguardar pagamento", color: "info" },
-    paid:           { label: "Pago, em execução",            color: "primary" },
+    approved:       { label: "Aprovado, em execução",        color: "info" },
+    paid:           { label: "Aprovado, em execução",        color: "info" },
     completed:      { label: "Concluído",                   color: "success" },
     rejected:       { label: "Rejeitado",                   color: "danger" },
 };
@@ -110,9 +136,18 @@ export const SITE_CHANGE_HOURLY_RATE = 25;
 export const formatEuro = (v: number): string =>
     new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(v);
 
+// A fatura e o pagamento (só com o orçamento aprovado), para o root e o Administrador da cliente.
+export const PAYMENT_STATUS_META: Record<PaymentStatus, { label: string; color: string; icon: string }> = {
+    pending:  { label: "Por faturar",               color: "secondary", icon: "ri-file-list-3-line" },
+    invoiced: { label: "Fatura emitida, por pagar",  color: "warning",   icon: "ri-file-pdf-line" },
+    paid:     { label: "Pago",                       color: "success",   icon: "ri-bank-card-line" },
+};
+
 /** Pipeline de orçamentos-em-tickets (site_change): por estado + total (valores SEM IVA). */
 export interface IQuoteBucket { count: number; amount: number; hours: number; }
 export interface ITicketQuotePipeline {
     by_status: Record<QuoteStatus, IQuoteBucket>;
+    /** A fatura e o pagamento dos aprovados: por faturar, faturado por pagar e pago. */
+    payment?: Record<"to_invoice" | "invoiced_unpaid" | "paid", { count: number; amount: number }>;
     total: IQuoteBucket;
 }

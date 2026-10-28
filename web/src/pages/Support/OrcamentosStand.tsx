@@ -6,7 +6,7 @@ import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ReasonButton from "Components/Common/ReasonButton";
 import { getCompanyTicketQuotes, approveCompanyTicketQuotes } from "helpers/laravel_helper";
-import { ISupportTicket, ITicketQuotePipeline, QUOTE_STATUS_META, formatEuro } from "common/models/supportTicket.model";
+import { ISupportTicket, ITicketQuotePipeline, QUOTE_STATUS_META, PAYMENT_STATUS_META, formatEuro } from "common/models/supportTicket.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
@@ -93,7 +93,6 @@ export default function OrcamentosStand() {
         return [
             mk("quoted", "warning", "ri-hourglass-line"),
             mk("approved", "info", "ri-checkbox-circle-line"),
-            mk("paid", "primary", "ri-money-euro-circle-line"),
             mk("completed", "success", "ri-flag-line"),
         ];
     }, [summary]);
@@ -107,6 +106,11 @@ export default function OrcamentosStand() {
         {
             id: "status", header: "Estado", value: (t) => (t.quote_status ? QUOTE_STATUS_META[t.quote_status].label : ""),
             cell: (t) => { const qm = t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null; return qm ? <Badge color={qm.color}>{qm.label}</Badge> : null; },
+        },
+        // A fatura e o pagamento, à parte do trabalho (só nos aprovados).
+        {
+            id: "payment", header: "Pagamento", value: (t) => (t.payment_status ? PAYMENT_STATUS_META[t.payment_status].label : ""),
+            cell: (t) => { const pm = t.payment_status ? PAYMENT_STATUS_META[t.payment_status] : null; return pm ? <span className={`badge bg-${pm.color}-subtle text-${pm.color}`}>{pm.label}</span> : "—"; },
         },
     ];
     const selectCol: DTColumn<ISupportTicket> = {

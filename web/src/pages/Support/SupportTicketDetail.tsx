@@ -6,6 +6,7 @@ import { ToastContainer, toast } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import ReasonButton from "Components/Common/ReasonButton";
 import { showSupportTicket, addSupportTicketMessage, decideSupportTicketQuote } from "helpers/laravel_helper";
+import Skeleton from "Components/Common/Skeleton";
 import {
     ISupportTicket, TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro,
 } from "common/models/supportTicket.model";
@@ -14,6 +15,8 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
 const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("pt-PT") : "Sem data");
+const fmtDateTime = (s: string | null | undefined) =>
+    s ? new Date(s).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 
 const SupportTicketDetail = () => {
     document.title = "Pedido de suporte | Xplendor";
@@ -69,7 +72,14 @@ const SupportTicketDetail = () => {
     };
 
     if (loading) {
-        return <div className="page-content"><div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div></div>;
+        return (
+            <div className="page-content"><Container fluid>
+                <Row>
+                    <Col xxl={3}><Card><CardBody><Skeleton variant="lines" lines={6} /></CardBody></Card></Col>
+                    <Col xxl={9}><Card><CardBody><Skeleton variant="block" height={280} /></CardBody></Card></Col>
+                </Row>
+            </Container></div>
+        );
     }
     if (error || !ticket) {
         return (
@@ -132,7 +142,7 @@ const SupportTicketDetail = () => {
                                     ) : (
                                         <p className="text-muted fs-13 mb-0">
                                             O teu pedido está a ser analisado. Vais receber aqui o orçamento para aprovar.
-                                            Nenhum trabalho começa sem a tua aprovação e pagamento.
+                                            Nenhum trabalho começa sem a tua aprovação.
                                         </p>
                                     ))}
 
@@ -163,14 +173,24 @@ const SupportTicketDetail = () => {
                                                 </div>
                                             )}
 
-                                            {ticket.quote_status === "approved" && (
-                                                <p className="text-muted fs-13 mb-0">Aprovado. A aguardar a fatura e a confirmação de pagamento.</p>
-                                            )}
-                                            {ticket.quote_status === "paid" && (
-                                                <p className="text-muted fs-13 mb-0">Pagamento confirmado. O trabalho está em execução.</p>
-                                            )}
-                                            {ticket.quote_status === "completed" && (
-                                                <p className="text-success fs-13 mb-0"><i className="ri-check-double-line me-1" />Trabalho concluído.</p>
+                                            {/* O trabalho e o pagamento, em separado: nunca "pago" sem o pagamento marcado. */}
+                                            {(ticket.quote_status === "approved" || ticket.quote_status === "paid" || ticket.quote_status === "completed") && (
+                                                <div className="vstack gap-2" data-testid="quote-progress">
+                                                    {ticket.quote_status === "completed" ? (
+                                                        <p className="text-success fs-13 mb-0"><i className="ri-check-double-line me-1" />Trabalho concluído.</p>
+                                                    ) : (
+                                                        <p className="text-muted fs-13 mb-0"><i className="ri-tools-line me-1" />Em execução.</p>
+                                                    )}
+                                                    {ticket.payment_status === "invoiced" && (
+                                                        <p className="fs-13 mb-0"><i className="ri-file-pdf-line text-warning me-1" />Fatura emitida. A aguardar pagamento.</p>
+                                                    )}
+                                                    {ticket.payment_status === "paid" && (
+                                                        <p className="text-success fs-13 mb-0"><i className="ri-bank-card-line me-1" />Pagamento recebido.</p>
+                                                    )}
+                                                    {ticket.payment_status === "pending" && (
+                                                        <p className="text-muted fs-13 mb-0"><i className="ri-file-list-3-line me-1" />A fatura chega aqui quando for emitida.</p>
+                                                    )}
+                                                </div>
                                             )}
                                             {ticket.quote_status === "rejected" && (
                                                 <p className="text-muted fs-13 mb-0">Orçamento rejeitado: pedido fechado.</p>
@@ -231,7 +251,18 @@ const SupportTicketDetail = () => {
                                                     <div className="fw-semibold fs-12 mb-1">
                                                         {m.is_staff ? "Equipa XPLENDOR" : (m.author_name || "Eu")}
                                                     </div>
-                                                    <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
+                                                    {m.deleted ? (
+                                                        <div className="fst-italic text-muted fs-13" data-testid="message-deleted">
+                                                            Mensagem apagada pela equipa XPLENDOR, {fmtDateTime(m.deleted_at)}
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
+                                                    )}
+                                                    {m.edited_at && !m.deleted && (
+                                                        <div className={"fs-11 mt-1 " + (m.is_staff ? "text-muted" : "text-white-50")} data-testid="message-edited">
+                                                            (editada, {fmtDateTime(m.edited_at)})
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}

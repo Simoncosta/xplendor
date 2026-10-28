@@ -264,7 +264,7 @@ export const deleteDocumentTemplate = (companyId: number, id: number) =>
 export const getAdminPing = () => api.get(url.GET_ADMIN + `/ping`);
 
 // DMS — Tickets de suporte, LADO ADMIN (transversal, só root, atrás do portão).
-export const getAdminTickets = (params?: { status?: string; company_id?: number; type?: string }) =>
+export const getAdminTickets = (params?: { status?: string; company_id?: number; type?: string; deleted?: 1 }) =>
     api.get(url.GET_ADMIN + `/tickets`, params);
 export const getAdminTicketsSummary = () => api.get(url.GET_ADMIN + `/tickets/summary`);
 export const showAdminTicket = (id: number) => api.get(url.GET_ADMIN + `/tickets/${id}`);
@@ -283,6 +283,18 @@ export const markAdminTicketPaid = (id: number, data: FormData) =>
     api.create(url.GET_ADMIN + `/tickets/${id}/mark-paid`, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const markAdminTicketCompleted = (id: number) =>
     api.update(url.GET_ADMIN + `/tickets/${id}/complete`, {});
+// Editar e apagar (só o root, e só o que é dele) e a fatura separada do pagamento.
+export const updateAdminTicketMessage = (id: number, messageId: number, body: string) =>
+    api.update(url.GET_ADMIN + `/tickets/${id}/messages/${messageId}`, { body });
+export const deleteAdminTicketMessage = (id: number, messageId: number) =>
+    api.delete(url.GET_ADMIN + `/tickets/${id}/messages/${messageId}`);
+export const deleteAdminTicketScreenshot = (id: number) => api.delete(url.GET_ADMIN + `/tickets/${id}/screenshot`);
+/** Anexar ou trocar a fatura (multipart: só o ficheiro). */
+export const uploadAdminTicketInvoice = (id: number, data: FormData) =>
+    api.create(url.GET_ADMIN + `/tickets/${id}/invoice`, data, { headers: { "Content-Type": "multipart/form-data" } });
+export const deleteAdminTicketInvoice = (id: number) => api.delete(url.GET_ADMIN + `/tickets/${id}/invoice`);
+export const unmarkAdminTicketPaid = (id: number) => api.delete(url.GET_ADMIN + `/tickets/${id}/mark-paid`);
+export const deleteAdminTicket = (id: number) => api.delete(url.GET_ADMIN + `/tickets/${id}`);
 
 // XPLENDOR — Orçamentos avulsos (gestão comercial, /admin, só root).
 export const getAdminQuotes = (params?: { status?: string; search?: string }) =>
