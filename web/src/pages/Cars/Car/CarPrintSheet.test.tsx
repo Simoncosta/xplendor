@@ -1,5 +1,5 @@
 import { act, render, screen, within } from "@testing-library/react";
-import CarPrintSheet, { descriptionParagraphs } from "./CarPrintSheet";
+import CarPrintSheet, { descriptionParagraphs, groupPhone } from "./CarPrintSheet";
 import type { CarPrintSheet as Sheet } from "types/api";
 
 // O Jest do CRA não resolve o react-router-dom 7 (exports): substitui-se só o que a ficha usa.
@@ -91,6 +91,39 @@ describe("Ficha A4 da viatura", () => {
         await screen.findByTestId("ps-qr-missing");
         expect(screen.queryByTestId("ps-qr")).not.toBeInTheDocument();
         expect(within(screen.getByTestId("ps-qr-missing")).getByText("Empresa › Dados gerais")).toHaveAttribute("href", "/companies/1");
+    });
+
+    it("com o contacto comercial da empresa: designação e telefone em grupos de 3, sem o nome do vendedor", async () => {
+        mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_contact: { label: "Dep. Comercial", phone: "917349847" } }) });
+        render(<CarPrintSheet />);
+        const contact = await screen.findByTestId("ps-print-contact");
+        expect(contact.textContent).toBe("Dep. Comercial: 917 349 847");
+        expect(screen.queryByText(/Vendedor Exemplo/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/910000000/)).not.toBeInTheDocument();
+    });
+
+    it("sem o contacto comercial: o vendedor como antes", async () => {
+        mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_contact: null }) });
+        render(<CarPrintSheet />);
+        await screen.findByText("Vendedor Exemplo");
+        expect(screen.getByText(/910000000/)).toBeInTheDocument();
+        expect(screen.queryByTestId("ps-print-contact")).not.toBeInTheDocument();
+    });
+
+    it("o telefone em grupos de 3, com o indicativo à parte", () => {
+        const plain = (v: string) => groupPhone(v).replace(/ /g, " ");
+        expect(plain("917349847")).toBe("917 349 847");
+        expect(plain("917 349 847")).toBe("917 349 847");
+        expect(plain("+351917349847")).toBe("+351 917 349 847");
+        expect(plain("00351 917349847")).toBe("+351 917 349 847");
+    });
+
+    it("o aviso legal, igual para todas as empresas, por cima da identificação da empresa", async () => {
+        mockGetCarPrintSheet.mockResolvedValue({ data: sheet() });
+        render(<CarPrintSheet />);
+        const legal = await screen.findByTestId("ps-legal");
+        expect(legal.textContent).toBe("Este preçário serve apenas como uma prévia do veículo e não faz parte de um contrato de venda. As informações fornecidas aqui são descrições não vinculativas e não representam bens garantidos. O vendedor não se responsabiliza por erros, erros de introdução e erros de transmissão de dados.");
+        expect(legal.nextElementSibling).toHaveClass("ps-company");
     });
 
     it("a descrição em HTML do editor passa a parágrafos de texto simples", () => {

@@ -61,6 +61,12 @@ class CarPrintSheetResource extends JsonResource
             'presentation' => $public['presentation'],
             'qr' => $qr,
             'seller' => $public['seller'] ?? null,
+            // O contacto comercial da empresa: com telefone, a ficha mostra-o em vez do vendedor.
+            // Só aqui (nunca na API pública nem no site); o vendedor acima fica igual para os outros usos.
+            'print_contact' => filled($company?->print_contact_phone) ? [
+                'label' => trim((string) $company->print_contact_label) ?: 'Dep. Comercial',
+                'phone' => $company->print_contact_phone,
+            ] : null,
             // ── Empresa (para cabeçalho + rodapé) ─────────────────────────
             'company' => [
                 'id'           => $company?->id,

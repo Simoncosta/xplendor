@@ -53,6 +53,9 @@ export interface ICompany {
     website: string | null;
     /** Ficha da viatura (QR): o endereço da viatura no site, com {id}. */
     vehicle_url_template?: string | null;
+    /** Ficha da viatura: o contacto comercial (com telefone, substitui o vendedor na ficha). */
+    print_contact_label?: string | null;
+    print_contact_phone?: string | null;
     instagram: string | null;
     linkedin?: string | null;
     tiktok?: string | null;

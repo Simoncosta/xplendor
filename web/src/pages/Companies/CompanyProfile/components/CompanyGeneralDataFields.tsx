@@ -143,6 +143,26 @@ export default function CompanyGeneralDataFields({ isEdit, managed = false }: { 
                     placeholder="Email de faturação"
                 />
             </Col>
+            {/* Ficha da viatura (A4): com telefone, mostra este contacto em vez do vendedor. */}
+            <Col lg={6}>
+                <XInput
+                    className='mb-2'
+                    name="print_contact_label"
+                    label="Contacto na ficha: designação"
+                    hint="O nome do contacto na ficha da viatura (A4). Vazio, fica Dep. Comercial."
+                    placeholder="Dep. Comercial"
+                />
+            </Col>
+            <Col lg={6}>
+                <XInput
+                    type="tel"
+                    className='mb-2'
+                    name="print_contact_phone"
+                    label="Contacto na ficha: telefone"
+                    hint="Preenchido, a ficha da viatura (A4) mostra a designação e este telefone, sem o nome do vendedor. Vazio, a ficha mostra o vendedor como até aqui."
+                    placeholder="917 349 847"
+                />
+            </Col>
             <div className="mt-4 mb-2 border-bottom pb-2">
                 <h5 className="card-title mb-0">Faturação</h5>
                 <small className="text-muted">Liga o regime de IVA por viatura para esta empresa.</small>

@@ -93,6 +93,9 @@ class CompanyRequest extends FormRequest
                     $fail($error);
                 }
             }],
+            // Ficha da viatura: o contacto comercial (designação e telefone; sem telefone, fica o vendedor).
+            'print_contact_label' => ['nullable', 'string', 'max:60'],
+            'print_contact_phone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ]+$/'],
             'instagram' => ['nullable', 'string', 'max:255'],
             'facebook' => ['nullable', 'string', 'max:255'],
             'youtube' => ['nullable', 'string', 'max:255'],
@@ -130,6 +133,7 @@ class CompanyRequest extends FormRequest
             'fiscal_name.required' => 'A designação fiscal é obrigatória.',
             'email.email' => 'O email informado não é válido.',
             'invoice_email.email' => 'O email de faturação não é válido.',
+            'print_contact_phone.regex' => 'O telefone do contacto na ficha só pode ter algarismos e espaços (ex.: 917 349 847).',
             'lead_distribution.in' => 'Tipo de distribuição de leads inválido.',
             'plan_id.required' => 'É obrigatório associar um plano.',
             'plan_id.exists' => 'O plano selecionado não existe.',

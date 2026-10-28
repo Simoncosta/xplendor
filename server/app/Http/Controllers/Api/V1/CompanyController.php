@@ -99,6 +99,7 @@ class CompanyController extends Controller
     private const AGENCY_BASIC_FIELDS = [
         'fiscal_name', 'trade_name', 'logo', 'content_sector_id',
         'phone', 'mobile', 'email', 'website', 'address', 'postal_code', 'district_id', 'municipality_id', 'parish_id',
+        'print_contact_label', 'print_contact_phone',
     ];
 
     public function update(CompanyRequest $request, int $id)

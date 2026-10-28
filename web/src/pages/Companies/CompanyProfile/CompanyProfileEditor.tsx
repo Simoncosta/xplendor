@@ -108,6 +108,9 @@ export default function CompanyProfileEditor({
                 const error = vehicleUrlTemplateError(String(v ?? ""));
                 return error ? ctx.createError({ message: error }) : true;
             }),
+        // Contacto na ficha: a mesma regra do servidor.
+        print_contact_phone: Yup.string().nullable()
+            .matches(/^\+?[0-9 ]*$/, "O telefone do contacto na ficha só pode ter algarismos e espaços (ex.: 917 349 847)."),
     });
 
     const formik = useFormik({

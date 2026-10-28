@@ -12,7 +12,8 @@ import "./CarPrintSheet.fonts.css";
  * e, depois, do site do cliente), com a hierarquia da ficha do site adaptada a papel:
  * cabeçalho (logótipo, tipologia · estado · ref., título, ano · origem · cor, preço), números-chave,
  * blocos (detalhes, equipamento com ✓, camas com explicação), a descrição e o rodapé (QR Code,
- * contacto do vendedor, identificação da empresa). Sem galeria nem botões na folha.
+ * contacto do vendedor ou o contacto comercial da empresa, o aviso legal, identificação da
+ * empresa). Sem galeria nem botões na folha.
  *
  * Técnica: HTML + @media print + @page A4 + window.print() do browser. Feita para se ler bem a
  * preto e branco: texto escuro, linhas finas, sem fundos de cor. Os blocos não se partem entre
@@ -49,6 +50,18 @@ const postalCode = (value?: string | null) => (value && /^\d{7}$/.test(value) ? 
 
 // Como o site: "57 900 €", com espaço também nos milhares de 4 algarismos ("9 500 €"; o pt-PT do
 // Intl não os agrupa). Espaço fixo, para o preço não partir entre linhas.
+// O contacto comercial da empresa em grupos de 3 ("917 349 847"), com o indicativo à parte
+// ("+351 917 349 847"). Espaço fixo, para o número não partir entre linhas.
+export function groupPhone(value: string): string {
+    const t = value.replace(/\s+/g, "");
+    const pt = /^(?:\+|00)351(\d+)$/.exec(t);
+    const [prefix, digits] = pt ? ["+351 ", pt[1]] : t.startsWith("+") ? ["+", t.slice(1)] : ["", t];
+    return prefix + digits.replace(/(\d{3})(?=\d)/g, "$1 ");
+}
+
+// O aviso legal da ficha: texto fixo, igual para todas as empresas.
+export const LEGAL_NOTICE = "Este preçário serve apenas como uma prévia do veículo e não faz parte de um contrato de venda. As informações fornecidas aqui são descrições não vinculativas e não representam bens garantidos. O vendedor não se responsabiliza por erros, erros de introdução e erros de transmissão de dados.";
+
 const euros = (value: number) => `${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0")}\u00a0€`;
 
 function PriceBox({ price }: { price: CarPresentation["price"] }) {
@@ -180,6 +193,8 @@ export default function CarPrintSheet() {
     const address = [c.address, postalCode(c.postal_code)].filter(Boolean).join(", ");
     const paragraphs = p.description ? descriptionParagraphs(p.description) : [];
     const sellerPhone = data.seller?.mobile || c.mobile || c.phone;
+    // Com o contacto comercial da empresa, a ficha mostra-o e não o nome do vendedor.
+    const printContact = data.print_contact?.phone ? data.print_contact : null;
 
     return (
         <>
@@ -246,8 +261,13 @@ export default function CarPrintSheet() {
                         )}
                         <div className="ps-contact">
                             {data.qr.available && <div className="ps-qr-hint">Veja esta viatura no site: aponte a câmara ao código.</div>}
-                            {data.seller?.name && <div className="ps-seller"><strong>{data.seller.name}</strong>{sellerPhone ? ` · ${sellerPhone}` : ""}</div>}
-                            {!data.seller?.name && sellerPhone && <div className="ps-seller"><strong>{sellerPhone}</strong></div>}
+                            {printContact
+                                ? <div className="ps-seller" data-testid="ps-print-contact"><strong>{printContact.label || "Dep. Comercial"}: {groupPhone(printContact.phone)}</strong></div>
+                                : <>
+                                    {data.seller?.name && <div className="ps-seller"><strong>{data.seller.name}</strong>{sellerPhone ? ` · ${sellerPhone}` : ""}</div>}
+                                    {!data.seller?.name && sellerPhone && <div className="ps-seller"><strong>{sellerPhone}</strong></div>}
+                                </>}
+                            <p className="ps-legal" data-testid="ps-legal">{LEGAL_NOTICE}</p>
                             <div className="ps-company">
                                 <strong>{c.fiscal_name || companyName}</strong>
                                 {c.nipc ? ` · NIPC ${c.nipc}` : ""}
@@ -348,5 +368,7 @@ const PRINT_STYLES = `
 .ps-contact { flex: 1 1 auto; font-size: .905em; }
 .ps-qr-hint { font-size: .947em; color: #374151; margin-bottom: .405em; }
 .ps-seller { font-size: 1.158em; margin-bottom: .27em; }
+/* Aviso legal: letra pequena, mas nunca abaixo de 6,5 pt (lê-se na folha impressa). */
+.ps-legal { font-size: max(6.5pt, .82em); line-height: 1.3; color: #4b5563; margin: 0 0 .35em; }
 .ps-company-lines { color: #374151; }
 `;

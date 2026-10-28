@@ -56,6 +56,9 @@ class Company extends Model
         'website',
         // Ficha da viatura: o endereço da viatura no site da empresa, um modelo com {id}.
         'vehicle_url_template',
+        // Ficha da viatura: o contacto comercial que substitui o vendedor (vazio = como antes).
+        'print_contact_label',
+        'print_contact_phone',
         'instagram',
         'linkedin', // Site do consultor: as redes que faltavam
         'tiktok',

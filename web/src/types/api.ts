@@ -515,6 +515,8 @@ export interface CarPrintSheet {
     presentation: CarPresentation;
     qr: PrintSheetQr;
     seller: { name: string | null; avatar?: string | null; mobile: string | null; whatsapp?: string | null } | null;
+    /** O contacto comercial da empresa: quando vem, a ficha mostra-o em vez do vendedor. */
+    print_contact?: { label: string; phone: string } | null;
     company: PrintSheetCompany;
     vehicle_type: 'car' | 'motorcycle' | 'motorhome' | 'caravan' | null;
     brand: { id: number; name: string } | null;
