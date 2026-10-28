@@ -185,4 +185,16 @@ class AgencyAssetLinksTest extends TestCase
         $this->assertSame(['ok' => true, 'access_token' => null], $client->pageToken('token-agencia', '2003'));
         Http::assertSent(fn (Request $r) => str_contains($r->url(), '/2002?') && str_contains($r->url(), 'fields=access_token') && str_contains($r->url(), 'access_token=token-agencia'));
     }
+
+    /**
+     * Agência › Portefólios: "Passar para a ligação da agência" envia replace: true. Em multipart
+     * chegava como "true" e a regra boolean recusava (422); o ecrã passou a enviar JSON.
+     */
+    public function test_the_screen_sends_replace_as_json_and_the_old_multipart_text_was_rejected(): void
+    {
+        $body = ['company_id' => $this->client->id, 'asset_type' => 'page', 'external_id' => '2002'];
+        $this->as($this->admin)->post($this->url(), $body + ['replace' => 'true'], ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('replace');
+        $this->as($this->admin)->postJson($this->url(), $body + ['replace' => true])->assertOk()->assertJsonPath('data.status', 'ligado');
+    }
 }

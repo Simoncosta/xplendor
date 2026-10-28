@@ -28,7 +28,7 @@ describe("Pós-venda: enviar o link pela minha caixa", () => {
         const toggle = await screen.findByLabelText(/Enviar pela minha caixa \(matilde@exemplo\.pt\)/);
         await waitFor(() => expect(toggle).toBeChecked());
         await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Enviar por email/ })); });
-        expect(axios.post).toHaveBeenLastCalledWith("/companies/3/cars/9/satisfaction-report/send-email", { via: "mailbox" });
+        expect(axios.post).toHaveBeenLastCalledWith("/companies/3/cars/9/satisfaction-report/send-email", { via: "mailbox" }, { headers: { "Content-Type": "application/json" } });
     });
 
     it("desligando a opção, vai como hoje (pela XPLENDOR)", async () => {
@@ -38,7 +38,7 @@ describe("Pós-venda: enviar o link pela minha caixa", () => {
         await waitFor(() => expect(toggle).toBeChecked());
         fireEvent.click(toggle);
         await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Enviar por email/ })); });
-        expect(axios.post).toHaveBeenLastCalledWith("/companies/3/cars/9/satisfaction-report/send-email", {});
+        expect(axios.post).toHaveBeenLastCalledWith("/companies/3/cars/9/satisfaction-report/send-email", {}, { headers: { "Content-Type": "application/json" } });
     });
 
     it("com a caixa por testar, a opção fica desligada e com o aviso", async () => {

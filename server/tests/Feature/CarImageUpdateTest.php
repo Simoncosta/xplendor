@@ -188,4 +188,21 @@ class CarImageUpdateTest extends TestCase
         $this->assertContains('/storage/img/b.jpg', $remaining);
         $this->assertNotContains('/storage/img/c.jpg', $remaining);
     }
+
+    /**
+     * Viatura (multipart, com imagens): os booleanos em texto "true"/"false" passam a true/false
+     * antes da validação. Os "1"/"0" que o ecrã já envia continuam a valer; outro texto é recusado.
+     */
+    public function test_multipart_text_booleans_are_accepted_on_update(): void
+    {
+        $url = "/api/v1/companies/{$this->company->id}/cars/{$this->car->id}";
+        $this->actingAs($this->user)->post($url, array_merge($this->basePayload(), [
+            'has_manuals' => 'true', 'has_spare_key' => 'FALSE', 'is_metallic' => '1', 'hide_price_online' => 'false',
+        ]), ['Accept' => 'application/json'])->assertOk();
+        $car = $this->car->fresh();
+        $this->assertSame([true, false, true, false], [(bool) $car->has_manuals, (bool) $car->has_spare_key, (bool) $car->is_metallic, (bool) $car->hide_price_online]);
+
+        $this->actingAs($this->user)->post($url, array_merge($this->basePayload(), ['has_manuals' => 'talvez']), ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('has_manuals');
+    }
 }

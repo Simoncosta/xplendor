@@ -12,6 +12,9 @@ import { isImpersonating } from "helpers/impersonation";
 import { postDocx, saveBlob } from "helpers/download_helper";
 import { IDocumentTemplate, IDocumentVariable } from "common/models/documentTemplate.model";
 
+// Pedidos sem ficheiros: em JSON (o axios da app envia os POST em multipart por omissão).
+const JSON_BODY = { headers: { "Content-Type": "application/json" } };
+
 const escHtml = (s: string) =>
     s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
 
@@ -313,7 +316,7 @@ export function SatisfactionLinkBox({ companyId, carId }: { companyId: number; c
 
     const markSent = (channel: string) => {
         setBox((b) => (b ? { ...b, sentAt: new Date().toISOString(), sentChannel: channel } : b));
-        axios.post(`/companies/${companyId}/cars/${carId}/satisfaction-report/mark-sent`, { channel })
+        axios.post(`/companies/${companyId}/cars/${carId}/satisfaction-report/mark-sent`, { channel }, JSON_BODY)
             .catch(() => {/* registo best-effort — não bloqueia o envio manual */});
     };
 
@@ -327,7 +330,7 @@ export function SatisfactionLinkBox({ companyId, carId }: { companyId: number; c
         if (!box?.email) return;
         setEmailState("sending");
         try {
-            const res: any = await axios.post(`/companies/${companyId}/cars/${carId}/satisfaction-report/send-email`, viaMailbox ? { via: "mailbox" } : {});
+            const res: any = await axios.post(`/companies/${companyId}/cars/${carId}/satisfaction-report/send-email`, viaMailbox ? { via: "mailbox" } : {}, JSON_BODY);
             setEmailState("sent");
             setBox((b) => (b ? { ...b, sentAt: res?.data?.sent_at ?? new Date().toISOString(), sentChannel: "email" } : b));
             toast.success(viaMailbox ? (res?.message ?? "Email enviado pela sua caixa.") : "Email enviado ao cliente.");

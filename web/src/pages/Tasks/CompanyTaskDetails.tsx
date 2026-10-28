@@ -11,6 +11,7 @@ import {
     getCompanyTasks, updateCompanyTask, moveCompanyTask, getCompanyUsers,
 } from "helpers/laravel_helper";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { apiErrorMessage } from "helpers/apiError";
 
 /**
  * XPLENDOR — DETALHE de uma tarefa interna (B1), com o VISUAL do TaskDetails do
@@ -92,7 +93,7 @@ const CompanyTaskDetails = () => {
             setTask(r?.data ?? { ...task, title: fTitle.trim(), description: fDescription.trim() });
             toast.success("Tarefa atualizada.");
         } catch (e: any) {
-            toast.error(e?.response?.data?.message || "Não foi possível guardar.");
+            toast.error(apiErrorMessage(e, "Não foi possível guardar."));
         } finally {
             setSavingSummary(false);
         }
@@ -122,7 +123,7 @@ const CompanyTaskDetails = () => {
             const r: any = await updateCompanyTask(companyId, task.id, { assignee_user_id: assignee });
             if (r?.data) setTask(r.data);
         } catch (e: any) {
-            toast.error(e?.response?.data?.message || "Não foi possível mudar o responsável.");
+            toast.error(apiErrorMessage(e, "Não foi possível mudar o responsável."));
             setTask(prev);
         }
     };

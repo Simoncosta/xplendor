@@ -246,4 +246,17 @@ class PingwinSupplierWriteTest extends TestCase
         $this->assertSame('criar', $new['write']->action);
         Bus::assertDispatched(WritePingwinSupplierJob::class);
     }
+
+    /**
+     * Fornecedores do PingWin › criar com um NIF que não é português: a confirmação seguia em
+     * multipart como "true" e a regra boolean recusava (422). Em JSON grava (verificação do ponto 2).
+     */
+    public function test_allow_invalid_nif_in_json_and_the_old_multipart_text_was_rejected(): void
+    {
+        Bus::fake();
+        $this->actingAs($this->user, 'sanctum')->post($this->url(), array_merge(self::FORM, ['tax_number' => 'ES12345678', 'allow_invalid_nif' => 'true']), ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('allow_invalid_nif');
+        $this->actingAs($this->user, 'sanctum')->postJson($this->url(), array_merge(self::FORM, ['tax_number' => 'ES12345678', 'allow_invalid_nif' => true]))
+            ->assertStatus(202);
+    }
 }

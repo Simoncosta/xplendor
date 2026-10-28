@@ -248,4 +248,16 @@ class PermissionProfilesTest extends TestCase
         $data = $this->createFrom(ProfileSuggestions::MARKETING, 'Marketing com vendas', [...$marketing, 'restauracao.ver']);
         $this->assertContains('restauracao.ver', $data['permissions']);
     }
+
+    /**
+     * Colaboradores › Perfis: um perfil sem nenhuma permissão. Em multipart, a lista vazia não chegava
+     * a ser enviada e a regra present recusava; em JSON chega [] e grava (verificação do ponto 2).
+     */
+    public function test_an_empty_permission_list_in_json(): void
+    {
+        $this->actingAs($this->admin, 'sanctum')->post($this->url('permission-profiles'), ['name' => 'Vazio', 'side' => 'cliente'], ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('permissions');
+        $this->actingAs($this->admin, 'sanctum')->postJson($this->url('permission-profiles'), ['name' => 'Vazio', 'side' => 'cliente', 'permissions' => [], 'from_profile_id' => null])
+            ->assertOk();
+    }
 }

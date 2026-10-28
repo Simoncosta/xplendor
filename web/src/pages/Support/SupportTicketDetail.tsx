@@ -11,6 +11,7 @@ import {
     ISupportTicket, TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro,
 } from "common/models/supportTicket.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { apiErrorMessage } from "helpers/apiError";
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
@@ -65,7 +66,7 @@ const SupportTicketDetail = () => {
             setTicket(res?.data ?? ticket);
             toast.success(decision === "approve" ? "Orçamento aprovado. Vais receber a fatura." : "Orçamento rejeitado.");
         } catch (err: any) {
-            toast.error(err?.response?.data?.message || "Não foi possível registar a decisão.");
+            toast.error(apiErrorMessage(err, "Não foi possível registar a decisão."));
         } finally {
             setDeciding(false);
         }

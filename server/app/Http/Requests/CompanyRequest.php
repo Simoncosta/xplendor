@@ -8,6 +8,14 @@ use Illuminate\Validation\Rule;
 
 class CompanyRequest extends FormRequest
 {
+    use \App\Http\Requests\Concerns\AcceptsTextBooleans;
+
+    /** Pedido com o logótipo (multipart): "true"/"false" em texto passam a booleanos nos campos boolean. */
+    protected function prepareForValidation(): void
+    {
+        $this->acceptTextBooleans();
+    }
+
     /**
      * Criar empresa: só root. Alterar: admin da própria empresa, ou root (que
      * edita as empresas dos clientes a partir da lista /companies), ou a agência

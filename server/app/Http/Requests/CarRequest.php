@@ -7,6 +7,8 @@ use Illuminate\Validation\Rule;
 
 class CarRequest extends FormRequest
 {
+    use \App\Http\Requests\Concerns\AcceptsTextBooleans;
+
     /**
      * M2.2 — marcas de motor aceites (autocaravanas e caravanas).
      * A Matilde confirmou: a autocaravana é Challenger/McLouis, o MOTOR
@@ -39,6 +41,8 @@ class CarRequest extends FormRequest
         }
 
         $this->merge($payload);
+        // Pedidos com ficheiros: "true"/"false" em texto passam a booleanos nos campos boolean.
+        $this->acceptTextBooleans();
     }
 
     /**

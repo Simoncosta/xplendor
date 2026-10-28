@@ -20,6 +20,7 @@ import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import XSelect from "Components/Common/Select";
+import { apiErrorMessage } from "helpers/apiError";
 
 /**
  * XPLENDOR — Kanban de TAREFAS internas do cliente (painel do stand). Entidade
@@ -105,7 +106,7 @@ const CompanyTasksKanban = () => {
             setOpen(false);
             load();
         } catch (e: any) {
-            toast.error(e?.response?.data?.message || "Não foi possível criar a tarefa.");
+            toast.error(apiErrorMessage(e, "Não foi possível criar a tarefa."));
         } finally {
             setSaving(false);
         }

@@ -284,4 +284,13 @@ class AgencyViewTest extends TestCase
         $flag = fn (User $u) => $this->as($u)->getJson("/api/v1/companies/{$d->id}/management")->json('data.can_edit_company');
         $this->assertSame([false, true, true], [$flag($this->member), $flag($clientAdmin), $flag($this->root)]);
     }
+
+    /** Painel da agência › Pedir nova empresa: o corpo do ecrã em JSON (authorization_declared: true). */
+    public function test_the_company_request_screen_body_in_json(): void
+    {
+        $this->as($this->admin)->postJson($this->url('/company-requests'), ['name' => 'Casa Viva', 'content_sector_id' => null, 'contact_name' => 'Joana',
+            'contact_phone' => '912345678', 'note' => null, 'authorization_declared' => true])->assertOk();
+        $this->as($this->admin)->postJson($this->url('/company-requests'), ['name' => 'Outra', 'authorization_declared' => false])
+            ->assertStatus(422)->assertJsonValidationErrors('authorization_declared');
+    }
 }

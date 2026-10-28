@@ -230,4 +230,13 @@ class ExpenseCategoryTest extends TestCase
     {
         $this->getJson($this->url())->assertStatus(401);
     }
+
+    /** Categorias de despesa: archived em JSON passa; o texto "false" em multipart era recusado. */
+    public function test_archived_in_json_and_the_old_multipart_text_was_rejected(): void
+    {
+        $this->actingAs($this->user, 'sanctum')->post($this->url(), ['name' => 'Texto', 'archived' => 'false'], ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('archived');
+        $this->actingAs($this->user, 'sanctum')->postJson($this->url(), ['name' => 'JSON', 'archived' => false])
+            ->assertSuccessful()->assertJsonPath('data.archived', false);
+    }
 }

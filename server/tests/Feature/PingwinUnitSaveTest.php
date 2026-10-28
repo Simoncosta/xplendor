@@ -188,4 +188,15 @@ class PingwinUnitSaveTest extends TestCase
             ->postJson("/api/v1/companies/{$this->auto->id}/integrations/pingwin/units/{$unit->id}/anular", ['confirm' => true])
             ->assertStatus(403);
     }
+
+    /** Restauração › Unidades › Anular: o ecrã envia { confirm: true } em JSON; sem confirmação não escreve. */
+    public function test_the_anular_screen_body_in_json(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake();
+        \App\Access\CompatibilityMigration::run();
+        $unit = $this->testUnit();
+        $url = "/api/v1/companies/{$this->resto->id}/integrations/pingwin/units/{$unit->id}/anular";
+        $this->actingAs($this->restoUser, 'sanctum')->postJson($url, [])->assertStatus(422)->assertJsonValidationErrors('confirm');
+        $this->actingAs($this->restoUser, 'sanctum')->postJson($url, ['confirm' => true])->assertSuccessful();
+    }
 }

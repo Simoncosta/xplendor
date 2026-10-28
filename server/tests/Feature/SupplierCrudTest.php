@@ -185,4 +185,16 @@ class SupplierCrudTest extends TestCase
         $response = $this->getJson($this->url());
         $response->assertStatus(401);
     }
+
+    /**
+     * Fornecedores: em JSON, archived chega com o tipo dele. Em multipart, "false" chegava como texto
+     * e a regra boolean recusava (o ecrã passou a enviar JSON).
+     */
+    public function test_archived_in_json_and_the_old_multipart_text_was_rejected(): void
+    {
+        $this->actingAs($this->user, 'sanctum')->post($this->url(), ['name' => 'Fornecedor Texto', 'archived' => 'false'], ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonValidationErrors('archived');
+        $this->actingAs($this->user, 'sanctum')->postJson($this->url(), ['name' => 'Fornecedor JSON', 'archived' => false, 'district_id' => null])
+            ->assertSuccessful()->assertJsonPath('data.archived', false);
+    }
 }

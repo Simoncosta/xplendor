@@ -10,6 +10,7 @@ import {
     getCarFinancingLinks, getFinancingDocumentDownload, getFinancingLinkUrl, getLeadFinancingLinks, revokeFinancingLink, updateFinancingSettings,
 } from "helpers/laravel_helper";
 import { fileSrc, fmtBytes } from "common/models/files.model";
+import { apiErrorMessage } from "helpers/apiError";
 
 /**
  * Envio seguro de documentos para financiamento (na ficha da viatura e no detalhe da lead).
@@ -54,11 +55,7 @@ const SCAN: Partial<Record<FinancingDocumentDto["scan_status"], { label: string;
 };
 export const fmtDay = (s?: string | null) => (s ? new Date(s).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
 const eur = (v: number) => `${new Intl.NumberFormat("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)} €`;
-export const errorOf = (e: any, fallback: string): string => {
-    const errors = e?.response?.data?.errors;
-    const first = errors ? Object.values(errors).flat()[0] : null;
-    return String(first ?? e?.response?.data?.message ?? fallback);
-};
+export const errorOf = (e: any, fallback: string): string => apiErrorMessage(e, fallback);
 
 export async function copyText(text: string, message = "Link copiado. Envie-o só a esta pessoa.") {
     try {

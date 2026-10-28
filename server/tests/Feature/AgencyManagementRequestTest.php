@@ -470,4 +470,13 @@ class AgencyManagementRequestTest extends TestCase
         $this->as($this->root)->putJson("/api/v1/admin/companies/{$b->id}/management", ['agency_company_id' => $this->agency->id])->assertOk();
         $this->assertNull($b->fresh()->archived_at, 'Ganhou uma agência.');
     }
+
+    /** Painel da agência › Pedir a gestão: o corpo do ecrã em JSON (authorization_declared: true; false recusa). */
+    public function test_the_management_request_screen_body_in_json(): void
+    {
+        $this->as($this->agencyAdmin)->postJson("/api/v1/agencies/{$this->agency->id}/management-requests",
+            ['nipc' => '500000000', 'message' => 'Olá.', 'authorization_declared' => true])->assertOk();
+        $this->as($this->agencyAdmin)->postJson("/api/v1/agencies/{$this->agency->id}/management-requests",
+            ['nipc' => '500000000', 'authorization_declared' => false])->assertStatus(422)->assertJsonValidationErrors('authorization_declared');
+    }
 }

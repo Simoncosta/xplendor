@@ -12,6 +12,7 @@ import ReasonButton from "Components/Common/ReasonButton";
 import PtReviewNotice from "Components/Common/PtReviewNotice";
 import { generateCarDescriptionApi } from "helpers/laravel_helper";
 import type { VehicleType } from "common/models/car.model";
+import { apiErrorMessage, apiErrorStatus } from "helpers/apiError";
 
 // Máximo de gerações por veículo (proteção de custo de tokens — decisão do Simon).
 const MAX_GENERATIONS = 3;
@@ -203,9 +204,9 @@ export default function CarDescriptionDataFields({
             }
         } catch (error: unknown) {
             console.error(error);
-            const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
-            const status = axiosError?.response?.status;
-            const serverMessage = axiosError?.response?.data?.message;
+            // O interceptor devolve o corpo do erro (message, errors, __status): um 422 ou um 429 mostra o motivo.
+            const status = apiErrorStatus(error);
+            const serverMessage = apiErrorMessage(error, "");
 
             let message: string;
             if (serverMessage && status !== undefined && status < 500) {

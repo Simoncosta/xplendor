@@ -3,6 +3,10 @@ import { APIClient } from "./api_helper";
 import * as url from "./url_helper";
 import type { RadarItemsQuery } from "common/models/radar.model";
 
+// Pedidos sem ficheiros: sempre em JSON. O axios da app envia os POST, por omissão, em
+// multipart/form-data, e aí true/false chegam como "true"/"false" (a regra boolean recusa-os).
+const JSON_BODY = { headers: { "Content-Type": "application/json" } };
+
 const api = new APIClient();
 
 export interface ApiResponse<T> {
@@ -24,14 +28,14 @@ export const isUserAuthenticated = () => {
 };
 
 // Login Method
-export const postApiLogin = (data: any) => api.create(url.POST_FAKE_API_LOGIN, data);
+export const postApiLogin = (data: any) => api.create(url.POST_FAKE_API_LOGIN, data, JSON_BODY);
 // Logout Method
-export const postApiLogout = (data: any) => api.create(url.POST_FAKE_API_LOGOUT, data);
+export const postApiLogout = (data: any) => api.create(url.POST_FAKE_API_LOGOUT, data, JSON_BODY);
 
 // IMPERSONATION — start só root (/admin); stop/current com o token atual. Paths relativos à base /api/v1.
 export const startImpersonation = (userId: number, reason?: string) =>
-    api.create("/admin/impersonation/start", { user_id: userId, reason });
-export const stopImpersonation = () => api.create("/impersonation/stop", {});
+    api.create("/admin/impersonation/start", { user_id: userId, reason }, JSON_BODY);
+export const stopImpersonation = () => api.create("/impersonation/stop", {}, JSON_BODY);
 export const getCurrentImpersonation = () => api.get("/impersonation/current");
 // ROOT (área /admin, transversal): empresas + utilizadores por empresa (base da impersonation).
 export const getAdminCompanies = () => api.get("/admin/companies");
@@ -39,7 +43,7 @@ export const getAdminCompanyUsers = (companyId: number) => api.get(`/admin/compa
 // User By Invite
 export const getUserByInvite = (token: string) => api.get(url.GET_USER_BY_INVITE + token);
 // Register By Invite
-export const postRegisterByInvite = (data: any) => api.create(url.POST_REGISTER_BY_INVITE, data);
+export const postRegisterByInvite = (data: any) => api.create(url.POST_REGISTER_BY_INVITE, data, JSON_BODY);
 
 // COMPANIES
 export const getCompaniesPaginate = (params: { perPage: number; page: number; }) => api.get(url.GET_COMPANIES, params);
@@ -54,7 +58,7 @@ export const getCompanyAlertsUnreadCountApi = (companyId: number) =>
 export const markCompanyAlertsReadApi = (companyId: number, data?: { ids?: number[] }) =>
     api.update(url.GET_COMPANIES + `/${companyId}` + url.PATCH_ALERTS_READ, data ?? {});
 export const markCompanyAlertReadApi = (companyId: number, alertId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_ALERTS + `/${alertId}` + url.POST_ALERT_READ, {});
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_ALERTS + `/${alertId}` + url.POST_ALERT_READ, {}, JSON_BODY);
 
 // DASHBOARDS
 export const getAnalyticsDashboard = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS);
@@ -131,7 +135,7 @@ export const toggleCarAdCampaignApi = (companyId: number, carId: number | string
 
 // BLOGS (Ticket 11): conteúdo em multipart (banner); fluxo e IA em JSON.
 const BLOG = (companyId: number) => url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS;
-const BLOG_JSON = { headers: { "Content-Type": "application/json" } };
+const BLOG_JSON = JSON_BODY;
 export const getBlogs = (companyId: number, params?: { status?: string; search?: string; perPage?: number; page?: number }) => api.get(BLOG(companyId), params);
 export const showBlog = (companyId: number, id: number) => api.get(`${BLOG(companyId)}/${id}`);
 export const createBlog = (companyId: number, data: FormData) => api.create(BLOG(companyId), data, { headers: { "Content-Type": "multipart/form-data" } });
@@ -167,13 +171,13 @@ export const getSocialPublishAuthUrl = (companyId: number) => api.get(url.GET_CO
 export const disconnectSocialPublishing = (companyId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/integrations/social/publishing`);
 export const setSocialAutoPublishing = (companyId: number, enabled: boolean) => api.put(url.GET_COMPANIES + `/${companyId}/integrations/social/auto-publishing`, { enabled });
 export const recordFollowers = (companyId: number, data: { platform: "instagram" | "facebook"; followers_count: number }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/followers`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/followers`, data, JSON_BODY);
 // "Sugerir perfil" (IA): pedir e consultar. Nunca grava o perfil.
-export const requestBrandProfileSuggestion = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/brand-profile/suggestions`, {});
+export const requestBrandProfileSuggestion = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/brand-profile/suggestions`, {}, JSON_BODY);
 export const getBrandProfileSuggestion = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/brand-profile/suggestions/${id}`);
 // "Sugerir criativo" (Linha Editorial) e criativo aceite campo a campo.
 export const requestCreativeSuggestion = (companyId: number, postId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative-suggestions`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative-suggestions`, {}, JSON_BODY);
 export const getCreativeSuggestion = (companyId: number, postId: number, id: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative-suggestions/${id}`);
 export const getPostCreative = (companyId: number, postId: number) => api.get(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative`);
@@ -181,7 +185,7 @@ export const acceptPostCreative = (companyId: number, postId: number, data: any)
     api.put(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative`, data);
 // "Gerar legenda" (IA, com as imagens da versão atual): propostas, nunca gravadas.
 export const requestCaptionSuggestion = (companyId: number, postId: number, networks?: string[]) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/caption-suggestions`, networks ? { networks } : {});
+    api.create(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/caption-suggestions`, networks ? { networks } : {}, JSON_BODY);
 export const getCaptionSuggestion = (companyId: number, postId: number, id: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/caption-suggestions/${id}`);
 // Modelos de IA por função e teste às cegas: só root.
@@ -197,23 +201,23 @@ export const updatePingwinPlatformSettings = (values: Record<string, unknown>, r
 export const updatePingwinCompanySettings = (companyId: number, values: Record<string, unknown>, reason?: string) =>
     api.put(`/admin/integrations/pingwin/companies/${companyId}`, { values, reason });
 export const updateAiModel = (fn: string, data: { model: string; effort: string }) => api.put(`/admin/ai-models/${fn}`, data);
-export const applyAiModelToAll = (data: { model: string; effort: string }) => api.create(`/admin/ai-models/apply-all`, data);
+export const applyAiModelToAll = (data: { model: string; effort: string }) => api.create(`/admin/ai-models/apply-all`, data, JSON_BODY);
 export const getAiBlindTests = () => api.get(`/admin/ai-blind-tests`);
-export const createAiBlindTest = (fn: string) => api.create(`/admin/ai-blind-tests`, { function: fn });
+export const createAiBlindTest = (fn: string) => api.create(`/admin/ai-blind-tests`, { function: fn }, JSON_BODY);
 export const getAiBlindTest = (id: number) => api.get(`/admin/ai-blind-tests/${id}`);
 export const chooseAiBlindCase = (testId: number, caseId: number, choice: "left" | "right" | "tie") =>
-    api.create(`/admin/ai-blind-tests/${testId}/cases/${caseId}/choice`, { choice });
+    api.create(`/admin/ai-blind-tests/${testId}/cases/${caseId}/choice`, { choice }, JSON_BODY);
 // Link de configuração do cliente (F1c) e histórico das ligações.
 export const getSetupLink = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/setup-link`);
 export const createSetupLink = (companyId: number, steps: string[], supportTicketId?: number | null) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/setup-links`, { steps, ...(supportTicketId ? { support_ticket_id: supportTicketId } : {}) });
-export const extendSetupLink = (companyId: number, linkId: number) => api.create(url.GET_COMPANIES + `/${companyId}/setup-links/${linkId}/extend`, {});
-export const revokeSetupLink = (companyId: number, linkId: number) => api.create(url.GET_COMPANIES + `/${companyId}/setup-links/${linkId}/revoke`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/setup-links`, { steps, ...(supportTicketId ? { support_ticket_id: supportTicketId } : {}) }, JSON_BODY);
+export const extendSetupLink = (companyId: number, linkId: number) => api.create(url.GET_COMPANIES + `/${companyId}/setup-links/${linkId}/extend`, {}, JSON_BODY);
+export const revokeSetupLink = (companyId: number, linkId: number) => api.create(url.GET_COMPANIES + `/${companyId}/setup-links/${linkId}/revoke`, {}, JSON_BODY);
 export const getIntegrationsHistory = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/history`);
 export const getMetaAdAccounts = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/meta/ad-accounts`);
 // Regras de formato (referência de mercado): só root.
 export const getCreativeFormatRules = () => api.get(`/admin/creative-format-rules`);
-export const createCreativeFormatRule = (data: any) => api.create(`/admin/creative-format-rules`, data);
+export const createCreativeFormatRule = (data: any) => api.create(`/admin/creative-format-rules`, data, JSON_BODY);
 export const updateCreativeFormatRule = (id: number, data: any) => api.put(`/admin/creative-format-rules/${id}`, data);
 export const deleteCreativeFormatRule = (id: number) => api.delete(`/admin/creative-format-rules/${id}`);
 
@@ -223,7 +227,7 @@ export const getSuppliers = (companyId: number, params?: { perPage?: number; pag
 export const showSupplier = (companyId: number, id: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS + `/${id}`);
 export const createSupplier = (companyId: number, data: any) =>
-    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS, data);
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS, data, JSON_BODY);
 export const updateSupplier = (companyId: number, id: number, data: any) =>
     api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS + `/${id}`, data);
 export const deleteSupplier = (companyId: number, id: number) =>
@@ -305,18 +309,17 @@ export const getAdminQuoteDefaults = () => api.get(url.GET_ADMIN + `/quotes/defa
 export const getAdminPlatformSummary = () => api.get(url.GET_ADMIN + `/platform/summary`);
 export const showAdminQuote = (id: number) => api.get(url.GET_ADMIN + `/quotes/${id}`);
 // JSON (e não o multipart por omissão dos POST): os booleanos das linhas ("Opcional", "Do pacote") chegam como booleanos.
-const JSON_BODY = { headers: { "Content-Type": "application/json" } };
 export const createAdminQuote = (data: any) => api.create(url.GET_ADMIN + `/quotes`, data, JSON_BODY);
 export const updateAdminQuote = (id: number, data: any) => api.update(url.GET_ADMIN + `/quotes/${id}`, data);
-export const sendAdminQuote = (id: number) => api.create(url.GET_ADMIN + `/quotes/${id}/send`, {});
+export const sendAdminQuote = (id: number) => api.create(url.GET_ADMIN + `/quotes/${id}/send`, {}, JSON_BODY);
 export const decideAdminQuote = (id: number, decision: "accept" | "refuse") =>
     api.update(url.GET_ADMIN + `/quotes/${id}/decision`, { decision });
-export const duplicateAdminQuote = (id: number) => api.create(url.GET_ADMIN + `/quotes/${id}/duplicate`, {});
+export const duplicateAdminQuote = (id: number) => api.create(url.GET_ADMIN + `/quotes/${id}/duplicate`, {}, JSON_BODY);
 export const deleteAdminQuote = (id: number) => api.delete(url.GET_ADMIN + `/quotes/${id}`);
 export const getAdminQuoteCompanies = () => api.get(url.GET_ADMIN + `/quotes/companies`);
 export const searchAdminQuoteCustomers = (search?: string) => api.get(url.GET_ADMIN + `/quotes/customers`, search ? { search } : undefined);
 export const createAdminQuoteCustomer = (data: { name: string; phone?: string; email?: string }) =>
-    api.create(url.GET_ADMIN + `/quotes/customers`, data);
+    api.create(url.GET_ADMIN + `/quotes/customers`, data, JSON_BODY);
 // PDFs (blob, via download_helper): pré-visualização do estado atual e versões congeladas.
 export const adminQuotePdfPath = (id: number) => url.GET_ADMIN + `/quotes/${id}/pdf`;
 export const adminQuoteVersionPdfPath = (id: number, version: number) => url.GET_ADMIN + `/quotes/${id}/versions/${version}/pdf`;
@@ -343,7 +346,7 @@ export const decideCompanyQuote = (companyId: number, id: number, decision: "app
 export const getCompanyTasks = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/tasks`);
 export const createCompanyTask = (companyId: number, data: { title: string; description?: string; status?: string; assignee_user_id?: number | null }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/tasks`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/tasks`, data, JSON_BODY);
 export const updateCompanyTask = (companyId: number, id: number, data: { title?: string; description?: string; assignee_user_id?: number | null }) =>
     api.update(url.GET_COMPANIES + `/${companyId}/tasks/${id}`, data);
 export const moveCompanyTask = (companyId: number, id: number, status: string, orderedIds: number[]) =>
@@ -357,7 +360,7 @@ export const getCompanyUsers = (companyId: number) =>
 // XPLENDOR — GA4 (tráfego do site do cliente). Service Account no servidor;
 // property_id por empresa. Scoped por company_id.
 export const connectGoogleAnalytics = (companyId: number, propertyId: string) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/google/connect`, { property_id: propertyId });
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/google/connect`, { property_id: propertyId }, JSON_BODY);
 export const disconnectGoogleAnalytics = (companyId: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/integrations/google`);
 export const getGa4Traffic = (companyId: number, days = 28, fresh = false) =>
@@ -436,12 +439,12 @@ export const sendMailboxMessage = (companyId: number, data: MailboxSendPayload) 
 // ACL (F5): Utilizadores › Perfis e o teto da agência gestora.
 export const getPermissionProfiles = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/permission-profiles`);
 export const createPermissionProfile = (companyId: number, data: { name: string; description?: string | null; side: string; permissions: string[]; from_profile_id?: number | null }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/permission-profiles`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/permission-profiles`, data, JSON_BODY);
 export const updatePermissionProfile = (companyId: number, profileId: number, data: { name?: string; description?: string | null; permissions?: string[] }) =>
     api.put(url.GET_COMPANIES + `/${companyId}/permission-profiles/${profileId}`, data);
 export const deletePermissionProfile = (companyId: number, profileId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/permission-profiles/${profileId}`);
 export const previewPermissionProfile = (companyId: number, data: { side: string; permissions: string[] }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/permission-profiles/preview`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/permission-profiles/preview`, data, JSON_BODY);
 export const assignUserProfile = (companyId: number, userId: number, profileId: number) =>
     api.put(url.GET_COMPANIES + `/${companyId}/users/${userId}/profile`, { profile_id: profileId });
 export const setAgencyCeiling = (companyId: number, profileId: number) =>
@@ -462,7 +465,7 @@ export const switchAdminRadarCompany =(companyId: number, enabled: boolean) => a
 export const getAdminCharges = (params?: { status?: string; company_id?: number; overdue?: 1 }) => api.get(url.GET_ADMIN + `/charges`, params);
 export const createAdminCharge = (data: FormData) => api.create(url.GET_ADMIN + `/charges`, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const adminChargeAction = (id: number, action: "paid" | "cancel" | "refuse" | "send", body: Record<string, unknown> = {}) =>
-    api.create(url.GET_ADMIN + `/charges/${id}/${action}`, body);
+    api.create(url.GET_ADMIN + `/charges/${id}/${action}`, body, JSON_BODY);
 export const adminChargeFilePath = (id: number, file: "invoice" | "proof") => url.GET_ADMIN + `/charges/${id}/${file}`;
 export const getCompanyCharges = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/xplendor-charges`);
 export const companyChargeInvoicePath = (companyId: number, id: number) => url.GET_COMPANIES + `/${companyId}/xplendor-charges/${id}/invoice`;
@@ -490,10 +493,10 @@ export const getAgencyAssignments = (agencyId: number) => api.get(AG(agencyId) +
 export const setAgencyAssignment = (agencyId: number, companyId: number, teamScope: "all" | "assigned", memberIds: number[]) =>
     api.put(AG(agencyId) + `/assignments/${companyId}`, { team_scope: teamScope, member_ids: memberIds });
 export const getAgencyCompanyRequests = (agencyId: number) => api.get(AG(agencyId) + `/company-requests`);
-export const createAgencyCompanyRequest = (agencyId: number, data: Record<string, unknown>) => api.create(AG(agencyId) + `/company-requests`, data);
+export const createAgencyCompanyRequest = (agencyId: number, data: Record<string, unknown>) => api.create(AG(agencyId) + `/company-requests`, data, JSON_BODY);
 export const getAdminCompanyRequests = (status?: string) => api.get(url.GET_ADMIN + `/company-requests`, status ? { status } : undefined);
 export const decideAdminCompanyRequest = (id: number, decision: "approve" | "decline", reason?: string) =>
-    api.create(url.GET_ADMIN + `/company-requests/${id}/${decision}`, decision === "decline" ? { reason } : {});
+    api.create(url.GET_ADMIN + `/company-requests/${id}/${decision}`, decision === "decline" ? { reason } : {}, JSON_BODY);
 // Dashboard base (empresas sem viaturas nem restauração).
 export const getBaseDashboard = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/dashboard/base`);
 export const getCompany = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}`);
@@ -511,19 +514,19 @@ export const endCompanyManagement = (companyId: number, reason?: string, connect
 // F1d: pedidos de gestão recebidos (só os admins da empresa) e a escolha sobre as ligações da agência.
 export const getCompanyManagementRequests = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/management/requests`);
 export const acceptCompanyManagementRequest = (companyId: number, requestId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/management/requests/${requestId}/accept`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/management/requests/${requestId}/accept`, {}, JSON_BODY);
 export const declineCompanyManagementRequest = (companyId: number, requestId: number, reason?: string) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/management/requests/${requestId}/decline`, { reason: reason || null });
+    api.create(url.GET_COMPANIES + `/${companyId}/management/requests/${requestId}/decline`, { reason: reason || null }, JSON_BODY);
 export const decideCompanyConnections = (companyId: number, decision: "keep" | "disconnect") =>
-    api.create(url.GET_COMPANIES + `/${companyId}/management/connections`, { decision });
+    api.create(url.GET_COMPANIES + `/${companyId}/management/connections`, { decision }, JSON_BODY);
 // F1d: a agência pede a gestão de uma empresa existente e termina a relação com um cliente.
 export const getAgencyManagementRequests = (agencyId: number) => api.get(AG(agencyId) + `/management-requests`);
 // F1e: quantas empresas contam para a agência (paga quem dá o acesso), mês atual e seguinte.
 export const getAgencyBilling = (agencyId: number) => api.get(AG(agencyId) + `/billing`);
 export const createAgencyManagementRequest = (agencyId: number, data: { nipc?: string; email?: string; message?: string; authorization_declared: boolean }) =>
-    api.create(AG(agencyId) + `/management-requests`, data);
-export const withdrawAgencyManagementRequest = (agencyId: number, requestId: number) => api.create(AG(agencyId) + `/management-requests/${requestId}/withdraw`, {});
-export const endAgencyManagement = (agencyId: number, companyId: number, reason: string) => api.create(AG(agencyId) + `/managed/${companyId}/end`, { reason });
+    api.create(AG(agencyId) + `/management-requests`, data, JSON_BODY);
+export const withdrawAgencyManagementRequest = (agencyId: number, requestId: number) => api.create(AG(agencyId) + `/management-requests/${requestId}/withdraw`, {}, JSON_BODY);
+export const endAgencyManagement = (agencyId: number, companyId: number, reason: string) => api.create(AG(agencyId) + `/managed/${companyId}/end`, { reason }, JSON_BODY);
 // Parceiro 2: a ligação da Meta da agência (estado, autorizar e desligar).
 export const getAgencyMeta = (agencyId: number) => api.get(AG(agencyId) + `/meta`);
 export const getAgencyMetaAuthUrl = (agencyId: number) => api.get(AG(agencyId) + `/meta/auth-url`);
@@ -533,13 +536,13 @@ export const getAgencyMetaPortfolios = (agencyId: number, refresh = false) => ap
 // Parceiro 4: ligar ativos da Meta da agência a uma empresa gerida (cada ativo só numa empresa).
 export const getAgencyMetaLinks = (agencyId: number) => api.get(AG(agencyId) + `/meta/links`);
 export const linkAgencyMetaAsset = (agencyId: number, data: { company_id: number; asset_type: "page" | "instagram" | "ad_account"; external_id: string; replace?: boolean }) =>
-    api.create(AG(agencyId) + `/meta/links`, data);
+    api.create(AG(agencyId) + `/meta/links`, data, JSON_BODY);
 export const unlinkAgencyMetaAsset = (agencyId: number, linkId: number) => api.delete(AG(agencyId) + `/meta/links/${linkId}`);
 // F1d (root): pedidos de gestão com a situação de faturação, e terminar uma relação.
 export const getAdminManagementRequests = (status?: string) => api.get(url.GET_ADMIN + `/management-requests`, status ? { status } : undefined);
-export const endAdminCompanyManagement = (companyId: number, reason: string) => api.create(url.GET_ADMIN + `/companies/${companyId}/management/end`, { reason });
+export const endAdminCompanyManagement = (companyId: number, reason: string) => api.create(url.GET_ADMIN + `/companies/${companyId}/management/end`, { reason }, JSON_BODY);
 export const inviteFirstAdmin = (companyId: number, data: { name: string; email: string }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/management/first-admin`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/management/first-admin`, data, JSON_BODY);
 // Root: agências e agência gestora de cada empresa (com o histórico da relação).
 export const getAdminAgencies = () => api.get(url.GET_ADMIN + `/agencies`);
 export const getAdminCompanyManagement = (companyId: number) => api.get(url.GET_ADMIN + `/companies/${companyId}/management`);
@@ -554,12 +557,12 @@ export const setAdminCompanyManagement = (companyId: number, agencyCompanyId: nu
 export const getPingwin = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin`);
 export const connectPingwin = (companyId: number, data: Record<string, any>) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/connect`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/connect`, data, JSON_BODY);
 export const syncPingwin = (companyId: number, date?: string) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/sync`, date ? { date } : {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/sync`, date ? { date } : {}, JSON_BODY);
 // Gatilho do dashboard: mete a sincronização na FILA (não trava; notifica no sino).
 export const queuePingwinSync = (companyId: number, date?: string) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/sync-queue`, date ? { date } : {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/sync-queue`, date ? { date } : {}, JSON_BODY);
 // Dashboard de restauração (cards anual/mensal/diário + lojas).
 // Motor de recomendações (regras explicáveis) de uma empresa, por ramo.
 export const getRecommendations = (companyId: number, vertical: "restaurant" | "automotive") =>
@@ -597,10 +600,10 @@ export const getPingwinDocuments = (
     params?: { page?: number; perPage?: number; search?: string; entitytype?: string }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents`, params);
 export const syncPingwinDocuments = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/sync`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/sync`, {}, JSON_BODY);
 // Documentos — LEITURA RICA (Fase D0): sincronizar config completa + detalhe por id.
 export const syncPingwinDocumentsRich = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/sync-rich`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/sync-rich`, {}, JSON_BODY);
 export const getPingwinDocumentConfigDetail = (companyId: number, externalId: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/${externalId}`);
 // D1 (ESCRITA): editar o maindataset de um documento ativo + polling do estado.
@@ -613,7 +616,7 @@ export const getPingwinDocumentConfigWrite = (companyId: number, writeId: number
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/writes/${writeId}`);
 // D3 (ESCRITA): criar documento novo (fields = maindataset principal incl. code).
 export const createPingwinDocumentConfig = (companyId: number, fields: Record<string, any>) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents`, { fields });
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents`, { fields }, JSON_BODY);
 // D4 (ESCRITA): anular (soft-delete) um documento ativo por id.
 export const voidPingwinDocumentConfig = (companyId: number, externalId: string) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/${externalId}`);
@@ -623,7 +626,7 @@ export const getPingwinCatalog = (
     params?: { page?: number; perPage?: number; search?: string; family?: string; forsale?: number; forpurchase?: number; sort?: string; dir?: "asc" | "desc" }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog`, params);
 export const syncPingwinCatalog = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog/sync`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog/sync`, {}, JSON_BODY);
 
 // ── Artigos: CRUD no PingWin ──────────────────────────────────────────────────
 // ⚠️ IDs: LER usa o pingwin_id (id do PingWin); EDITAR/ANULAR usam o catalog_item_id
@@ -645,10 +648,10 @@ export const getArticleCopy = (companyId: number, pingwinId: string) =>
     api.get(A(companyId) + `/${pingwinId}/copy`);
 // "Atualizar do PingWin": lê o artigo ao vivo e grava na cópia (com limite de pedidos). Poll em read/{token}.
 export const refreshArticle = (companyId: number, pingwinId: string) =>
-    api.create(A(companyId) + `/${pingwinId}/refresh`, {});
+    api.create(A(companyId) + `/${pingwinId}/refresh`, {}, JSON_BODY);
 // ⚠️ ESCRITA: criar (exige confirm:true). Poll em articles/creation/{id}.
 export const createArticle = (companyId: number, data: Record<string, any>) =>
-    api.create(A(companyId), data);
+    api.create(A(companyId), data, JSON_BODY);
 export const getArticleCreation = (companyId: number, creationId: number) =>
     api.get(A(companyId) + `/creation/${creationId}`);
 // ⚠️ ESCRITA: editar pelo CATALOG_ITEM_ID (exige confirm:true). Poll em articles/edition/{id}.
@@ -668,7 +671,7 @@ const ED = (companyId: number) => url.GET_COMPANIES + `/${companyId}/editorial`;
 export const getEditorialSectors = (companyId: number) => api.get(ED(companyId) + `/sectors`);
 // 1.ª escolha do ramo (POST). O backend recusa se já houver ramo → isso é a troca (PUT).
 export const setEditorialSector = (companyId: number, sectorId: number) =>
-    api.create(ED(companyId) + `/sector`, { sector_id: sectorId });
+    api.create(ED(companyId) + `/sector`, { sector_id: sectorId }, JSON_BODY);
 // B3b — TROCA de ramo (PUT, destrutiva). Distinta da 1.ª escolha; devolve o calendar novo.
 export const changeEditorialSector = (companyId: number, sectorId: number) =>
     api.put(ED(companyId) + `/sector`, { sector_id: sectorId });
@@ -676,21 +679,21 @@ export const changeEditorialSector = (companyId: number, sectorId: number) =>
 export const getEditorialCalendar = (companyId: number) => api.get(ED(companyId) + `/calendar`);
 // B2 — máquina de estados dos meses (devolvem o array 'months' atualizado).
 export const openEditorialMonth = (companyId: number, year: number, month: number) =>
-    api.create(ED(companyId) + `/months/${year}/${month}/open`, {});
+    api.create(ED(companyId) + `/months/${year}/${month}/open`, {}, JSON_BODY);
 export const closeEditorialMonth = (companyId: number, year: number, month: number) =>
-    api.create(ED(companyId) + `/months/${year}/${month}/close`, {});
+    api.create(ED(companyId) + `/months/${year}/${month}/close`, {}, JSON_BODY);
 // B3a — esconder/mostrar HERDADAS (id de content_anchors) por ocorrência; devolvem o calendar.
 export const hideEditorialAnchor = (companyId: number, anchorId: number, year: number) =>
-    api.create(ED(companyId) + `/anchors/${anchorId}/hide`, { year });
+    api.create(ED(companyId) + `/anchors/${anchorId}/hide`, { year }, JSON_BODY);
 export const showEditorialAnchor = (companyId: number, anchorId: number, year: number) =>
-    api.create(ED(companyId) + `/anchors/${anchorId}/show`, { year });
+    api.create(ED(companyId) + `/anchors/${anchorId}/show`, { year }, JSON_BODY);
 // B3a — criar/apagar PRÓPRIAS (id de editorial_own_anchors — espaço distinto).
 export const createEditorialOwnAnchor = (companyId: number, payload: any) =>
-    api.create(ED(companyId) + `/anchors`, payload);
+    api.create(ED(companyId) + `/anchors`, payload, JSON_BODY);
 export const deleteEditorialOwnAnchor = (companyId: number, ownAnchorId: number) =>
     api.delete(ED(companyId) + `/own-anchors/${ownAnchorId}`);
 // Os POST vão em multipart por omissão (api_helper), onde true e false viram texto: a Linha Editorial envia JSON.
-const ED_JSON = { headers: { "Content-Type": "application/json" } };
+const ED_JSON = JSON_BODY;
 // P1 — PUBLICAÇÕES (espaço de id distinto das âncoras); devolvem o calendar atualizado.
 export const createEditorialPost = (companyId: number, payload: any) =>
     api.create(ED(companyId) + `/posts`, payload, ED_JSON);
@@ -744,7 +747,7 @@ export const markPostPublished = (companyId: number, postId: number, data: { net
 export const savePostResults = (companyId: number, postId: number, data: Record<string, unknown>) => api.put(ED(companyId) + `/posts/${postId}/results`, data);
 export const getEditorialResults = (companyId: number, month: string) => api.get(ED(companyId) + `/results`, { month });
 // F3c: links de aprovação por lote (o link em si é público: /aprovar#<token>).
-const REVIEW_JSON = { headers: { "Content-Type": "application/json" } };
+const REVIEW_JSON = JSON_BODY;
 export const getReviewLinks = (companyId: number) => api.get(ED(companyId) + `/review-links`);
 export const getReviewCandidates = (companyId: number) => api.get(ED(companyId) + `/review-links/candidates`);
 export const createReviewLink = (companyId: number, data: { title: string; post_ids: number[]; recipient_name?: string; recipient_email?: string }) =>
@@ -771,11 +774,11 @@ export const getPingwinHeatmap = (companyId: number, locationId?: number | null,
 export const getBussola = (companyId: number, locationId?: number | null, summary?: boolean, playsOnly?: boolean) =>
     api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola`, { ...(locationId ? { location_id: locationId } : {}), ...(summary ? { summary: 1 } : {}), ...(playsOnly ? { plays_only: 1 } : {}) });
 // "Não voltar a sugerir este artigo" (permanente) e "Voltar a incluir" (página das categorias).
-export const excludeRestaurantItem = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals/exclude-item`, { key });
-export const includeRestaurantItem = (companyId: number, itemId: number) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/excluded-items/${itemId}/include`, {});
-export const createPostFromPlay = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/post`, data);
+export const excludeRestaurantItem = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals/exclude-item`, { key }, JSON_BODY);
+export const includeRestaurantItem = (companyId: number, itemId: number) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/excluded-items/${itemId}/include`, {}, JSON_BODY);
+export const createPostFromPlay = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/post`, data, JSON_BODY);
 export const requestPlayCaption = (companyId: number, data: { play_key: string; location_id?: number | null; networks: string[] }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/caption`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/caption`, data, JSON_BODY);
 export const getPlayCaption = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola/caption/${id}`);
 // Bússola do stand (veículos): a página, criar publicação, sugerir texto, ignorar e não voltar a sugerir um veículo.
 export const getBussolaStand = (companyId: number, type: "all" | "car" | "motorhome" = "all", playsOnly?: boolean) =>
@@ -874,7 +877,7 @@ export const createPostFromSignal = (companyId: number, data: { key: string; tit
 export const getFamilyCategories = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories`);
 export const suggestFamilyCategories = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories/ai-suggest`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories/ai-suggest`, {}, JSON_BODY);
 export const updateAnnualLocals = (companyId: number, locals: string) =>
     api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/annual-locals`, { locals });
 export const confirmFamilyCategories = (companyId: number, items: { family_pingwin_id: string; category: string }[]) =>
@@ -882,24 +885,24 @@ export const confirmFamilyCategories = (companyId: number, items: { family_pingw
 export const getPingwinFamilies = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families`);
 export const syncPingwinFamilies = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families/sync`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families/sync`, {}, JSON_BODY);
 
 export const getPingwinUnits = (
     companyId: number,
     params?: { page?: number; perPage?: number; search?: string; active?: number }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units`, params);
 export const syncPingwinUnits = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/sync`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/sync`, {}, JSON_BODY);
 // ⚠️ ESCRITA no PingWin: criar unidade (exige confirm:true). Ação deliberada.
 export const createPingwinUnit = (companyId: number, data: Record<string, any>) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/create`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/create`, data, JSON_BODY);
 export const getPingwinUnitCreation = (companyId: number, creationId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/creations/${creationId}`);
 // ⚠️ ESCRITA: editar/anular unidade (exige confirm:true). Ação deliberada.
 export const editPingwinUnit = (companyId: number, unitId: number, data: Record<string, any>) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/${unitId}/edit`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/${unitId}/edit`, data, JSON_BODY);
 export const anularPingwinUnit = (companyId: number, unitId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/${unitId}/anular`, { confirm: true });
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/${unitId}/anular`, { confirm: true }, JSON_BODY);
 export const getPingwinUnitUsage = (companyId: number, unitId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/${unitId}/usage`);
 
@@ -908,10 +911,10 @@ export const getPingwinSuppliers = (
     params?: { page?: number; perPage?: number; search?: string; active?: number }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers`, params);
 export const syncPingwinSuppliers = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/sync`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/sync`, {}, JSON_BODY);
 // FN — ⚠️ ESCRITA de fornecedores no PingWin (assíncrona: devolve write_id → polling).
 export const createPingwinSupplier = (companyId: number, data: Record<string, any>) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers`, data, JSON_BODY);
 export const updatePingwinSupplier = (companyId: number, supplierId: number, data: Record<string, any>) =>
     api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/${supplierId}`, data);
 export const voidPingwinSupplier = (companyId: number, supplierId: number) =>
@@ -924,14 +927,14 @@ export const getPingwinPaymentConditions = (
     params?: { page?: number; perPage?: number; search?: string; active?: number }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions`, params);
 export const syncPingwinPaymentConditions = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/sync`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/sync`, {}, JSON_BODY);
 // Fatia 2a (ESCRITA): template de documentos (p/ o modal), criar, e polling da criação.
 export const getPingwinPaymentConditionDocsTemplate = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/docs-template`);
 export const createPingwinPaymentCondition = (
     companyId: number,
     body: { code?: string; description: string; discount?: number; days?: number; tbdocs_unlinked?: string[] }
-) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions`, body);
+) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions`, body, JSON_BODY);
 export const getPingwinPaymentConditionCreation = (companyId: number, creationId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/creation/${creationId}`);
 // Fatia 2b (ESCRITA): editar condição ATIVA por id (pingwin_id). code read-only; envia só as mudanças de tbdocs.
@@ -960,7 +963,7 @@ export const getSupplierCc = (companyId: number, supplierId: number) =>
 export const getSupplierCcStatement = (companyId: number, supplierId: number, params: { from?: string; to?: string; store?: string }) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc/${supplierId}/statement`, params);
 export const refreshSupplierCc = (companyId: number, supplierId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc/${supplierId}/refresh`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc/${supplierId}/refresh`, {}, JSON_BODY);
 export const getSupplierCcStatus = (companyId: number, supplierId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc/${supplierId}/status`);
 // F1 — Documentos de fornecedor do PingWin (só leitura): lista, sync por período (async) e estado do run.
@@ -969,7 +972,7 @@ export const getPingwinSupplierDocuments = (
     params?: { page?: number; perPage?: number; from?: string; to?: string; types?: string; supplier?: string; missing_ref?: number }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents`, params);
 export const syncPingwinSupplierDocuments = (companyId: number, period: { from: string; to: string }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/sync`, period);
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/sync`, period, JSON_BODY);
 export const getPingwinSupplierDocumentsRun = (companyId: number, runId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/sync-runs/${runId}`);
 export const uploadOcrInvoice = (companyId: number, file: File) => {
@@ -987,7 +990,7 @@ export const updateOcrInvoice = (companyId: number, invoiceId: number, data: Rec
 // F2a: reprocessar (async — volta a 'processing'; a página faz polling como no upload).
 // "Reler do documento": keep_manual = manter as alterações manuais (voltam a ser aplicadas à nova leitura).
 export const reprocessOcrInvoice = (companyId: number, invoiceId: number, data: { keep_manual?: boolean } = {}) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/reprocess`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/reprocess`, data, JSON_BODY);
 export const getOcrManualChanges = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/manual-changes`);
 // "Revalidar": grava as linhas de agora (sem mudar o estado) e volta a correr as validações. Sem IA.
@@ -998,15 +1001,15 @@ export const getOcrInvoiceImageBlob = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/image`, { responseType: "blob" } as any);
 // CoverManager (reservas) — Etapa 1: sincroniza o agregado por turno de uma data.
 export const syncCoverManager = (companyId: number, date: string) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/sync`, { date });
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/sync`, { date }, JSON_BODY);
 // Sincronização por PERÍODO (um job por dia; notificação única no fim).
 export const syncRestaurantPeriod = (companyId: number, from: string, to: string) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/restaurant/sync-period`, { from, to });
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/restaurant/sync-period`, { from, to }, JSON_BODY);
 // CoverManager — token AO NÍVEL DA EMPRESA (Integrações). O token nunca é devolvido.
 export const getCoverManager = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/covermanager`);
 export const connectCoverManager = (companyId: number, token: string) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/connect`, { token });
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/connect`, { token }, JSON_BODY);
 export const disconnectCoverManager = (companyId: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/integrations/covermanager`);
 // CoverManager — Etapa 2: flag do ticket médio (por empresa).
@@ -1018,7 +1021,7 @@ export const updateCoverManagerSettings = (companyId: number, avgTicketEnabled: 
 export const getPingwinLocations = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/locations`);
 export const createPingwinLocation = (companyId: number, data: Record<string, any>) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/locations`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/locations`, data, JSON_BODY);
 export const updatePingwinLocation = (companyId: number, locationId: number, data: Record<string, any>) =>
     api.update(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/locations/${locationId}`, data);
 export const deletePingwinLocation = (companyId: number, locationId: number) =>
@@ -1042,7 +1045,7 @@ export const getCompanyModules = (companyId: number) =>
 export const setCompanyModule = (companyId: number, moduleKey: string, enabled: boolean) =>
     api.update(url.GET_ADMIN + `/companies/${companyId}/modules`, { module_key: moduleKey, enabled });
 export const applyCompanyModulePreset = (companyId: number, preset: string) =>
-    api.create(url.GET_ADMIN + `/companies/${companyId}/modules/preset`, { preset });
+    api.create(url.GET_ADMIN + `/companies/${companyId}/modules/preset`, { preset }, JSON_BODY);
 
 // DMS — Tickets de suporte (lado stand). Create pode ser multipart (bug + print).
 export const getSupportTickets = (companyId: number) =>
@@ -1071,13 +1074,13 @@ export const getAdminTicketsQuotePipeline = (params?: { company_id?: number }) =
 export const getExpenseCategories = (companyId: number, params?: { only_active?: number }) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES, params);
 export const createExpenseCategory = (companyId: number, data: any) =>
-    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES, data);
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES, data, JSON_BODY);
 export const updateExpenseCategory = (companyId: number, id: number, data: any) =>
     api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES + `/${id}`, data);
 export const deleteExpenseCategory = (companyId: number, id: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES + `/${id}`);
 export const importSuggestedExpenseCategories = (companyId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}` + url.POST_EXPENSE_CATEGORIES_IMPORT, {});
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.POST_EXPENSE_CATEGORIES_IMPORT, {}, JSON_BODY);
 export const getSuggestedExpenseCategories = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES_SUGGESTED);
 
@@ -1110,12 +1113,12 @@ export const getCompanyLeadsAll = (companyId: number) => api.get(url.GET_COMPANI
 const finBase = (companyId: number) => url.GET_COMPANIES + `/${companyId}`;
 export const getCarFinancingLinks = (companyId: number, carId: number) => api.get(finBase(companyId) + `/cars/${carId}/financing-links`);
 export const createCarFinancingLink = (companyId: number, carId: number, data: { customer_name: string; items: string[]; other?: string; days?: number }) =>
-    api.create(finBase(companyId) + `/cars/${carId}/financing-links`, data);
+    api.create(finBase(companyId) + `/cars/${carId}/financing-links`, data, JSON_BODY);
 export const getLeadFinancingLinks = (companyId: number, leadId: number) => api.get(finBase(companyId) + `/leads/${leadId}/financing-links`);
 export const createLeadFinancingLink = (companyId: number, leadId: number, data: { customer_name: string; items: string[]; other?: string; days?: number }) =>
-    api.create(finBase(companyId) + `/leads/${leadId}/financing-links`, data);
+    api.create(finBase(companyId) + `/leads/${leadId}/financing-links`, data, JSON_BODY);
 export const getFinancingLinkUrl = (companyId: number, linkId: number) => api.get(finBase(companyId) + `/financing-links/${linkId}/url`);
-export const revokeFinancingLink = (companyId: number, linkId: number) => api.create(finBase(companyId) + `/financing-links/${linkId}/revoke`, {});
+export const revokeFinancingLink = (companyId: number, linkId: number) => api.create(finBase(companyId) + `/financing-links/${linkId}/revoke`, {}, JSON_BODY);
 export const deleteFinancingLink = (companyId: number, linkId: number) => api.delete(finBase(companyId) + `/financing-links/${linkId}`);
 export const getFinancingDocumentDownload = (companyId: number, documentId: number) => api.get(finBase(companyId) + `/financing-documents/${documentId}/download`);
 export const deleteFinancingDocument = (companyId: number, documentId: number) => api.delete(finBase(companyId) + `/financing-documents/${documentId}`);
@@ -1123,13 +1126,13 @@ export const updateFinancingSettings = (companyId: number, retentionDays: number
     api.put(finBase(companyId) + `/financing-settings`, defaultItems ? { retention_days: retentionDays, default_items: defaultItems } : { retention_days: retentionDays });
 // Pedido com 2 titulares: acrescentar o segundo e apagar o pedido inteiro.
 export const addFinancingSecondHolder = (companyId: number, requestId: number, data: { customer_name?: string; relationship?: string; relationship_other?: string }) =>
-    api.create(finBase(companyId) + `/financing-requests/${requestId}/second-holder`, data);
+    api.create(finBase(companyId) + `/financing-requests/${requestId}/second-holder`, data, JSON_BODY);
 export const deleteFinancingRequest = (companyId: number, requestId: number) => api.delete(finBase(companyId) + `/financing-requests/${requestId}`);
 // RETOMA (pedido de proposta): fotografias e DUA da lead.
 export const getLeadTradeIn = (companyId: number, leadId: number) => api.get(finBase(companyId) + `/leads/${leadId}/trade-in`);
-export const createLeadTradeInLink = (companyId: number, leadId: number, days?: number) => api.create(finBase(companyId) + `/leads/${leadId}/trade-in/link`, days ? { days } : {});
+export const createLeadTradeInLink = (companyId: number, leadId: number, days?: number) => api.create(finBase(companyId) + `/leads/${leadId}/trade-in/link`, days ? { days } : {}, JSON_BODY);
 export const getTradeInLinkUrl = (companyId: number, linkId: number) => api.get(finBase(companyId) + `/trade-in-links/${linkId}/url`);
-export const revokeTradeInLink = (companyId: number, linkId: number) => api.create(finBase(companyId) + `/trade-in-links/${linkId}/revoke`, {});
+export const revokeTradeInLink = (companyId: number, linkId: number) => api.create(finBase(companyId) + `/trade-in-links/${linkId}/revoke`, {}, JSON_BODY);
 export const getTradeInFileDownload = (companyId: number, documentId: number) => api.get(finBase(companyId) + `/trade-in-files/${documentId}/download`);
 export const deleteTradeInFile = (companyId: number, documentId: number) => api.delete(finBase(companyId) + `/trade-in-files/${documentId}`);
 // AVISOS DO SITE (pop-up).
@@ -1187,7 +1190,7 @@ export const updateCarSale = (companyId: number, carId: number, data: any) => ap
 export const getSaleLeadMatch = (companyId: number, carId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/sale/lead-match`);
 export const linkSaleLead = (companyId: number, carId: number, leadId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/sale/link-lead`, { lead_id: leadId });
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/sale/link-lead`, { lead_id: leadId }, JSON_BODY);
 export const generateCarDescriptionApi = (companyId: number, data: any) =>
     api.create(
         url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + url.POST_CAR_GENERATE_DESCRIPTION,
@@ -1208,19 +1211,19 @@ export const executeCarActionApi = (
 );
 
 // CAR AI ANALISES
-export const postCarAiAnalyses = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS_ANALYSES + `/${carId}`, {});
-export const postCarRecalculate = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/potential-score/recalculate`, {});
+export const postCarAiAnalyses = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS_ANALYSES + `/${carId}`, {}, JSON_BODY);
+export const postCarRecalculate = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/potential-score/recalculate`, {}, JSON_BODY);
 export const postCarMetaAdsRefresh = (companyId: number, carId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.POST_CAR_META_ADS_REFRESH, {});
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.POST_CAR_META_ADS_REFRESH, {}, JSON_BODY);
 export const postCarAnalysisRegenerate = (companyId: number, carId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.POST_CAR_ANALYSIS_REGENERATE, {});
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.POST_CAR_ANALYSIS_REGENERATE, {}, JSON_BODY);
 
 // USERS
 // Colaboradores (equipa) e departamentos. As ações de acesso só funcionam para o admin
 // da própria empresa e fora da sessão como cliente (o servidor recusa com 403).
 const COL = (companyId: number) => url.GET_COMPANIES + `/${companyId}/collaborators`;
 // Os POST da app vão por omissão como multipart (os booleanos chegariam como texto): estes vão em JSON.
-const JSON_HEADERS = { headers: { "Content-Type": "application/json" } };
+const JSON_HEADERS = JSON_BODY;
 export const getCollaborators = (companyId: number, params?: { search?: string; status?: string; department_id?: number }) => api.get(COL(companyId), params);
 export const getCollaborator = (companyId: number, id: number) => api.get(`${COL(companyId)}/${id}`);
 export const createCollaborator = (companyId: number, data: any) => api.create(COL(companyId), data, JSON_HEADERS);
@@ -1232,18 +1235,18 @@ export const uploadCollaboratorPhoto = (companyId: number, id: number, file: Fil
     return api.create(`${COL(companyId)}/${id}/photo`, fd, { headers: { "Content-Type": "multipart/form-data" } });
 };
 export const deleteCollaboratorPhoto = (companyId: number, id: number) => api.delete(`${COL(companyId)}/${id}/photo`);
-export const setCollaboratorActive = (companyId: number, id: number, active: boolean) => api.create(`${COL(companyId)}/${id}/${active ? "activate" : "deactivate"}`, {});
+export const setCollaboratorActive = (companyId: number, id: number, active: boolean) => api.create(`${COL(companyId)}/${id}/${active ? "activate" : "deactivate"}`, {}, JSON_BODY);
 export const grantCollaboratorAccess = (companyId: number, id: number, email: string) => api.create(`${COL(companyId)}/${id}/access`, { email }, JSON_HEADERS);
-export const resendCollaboratorInvite = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/resend`, {});
+export const resendCollaboratorInvite = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/resend`, {}, JSON_BODY);
 export const cancelCollaboratorInvite = (companyId: number, id: number) => api.delete(`${COL(companyId)}/${id}/access/invite`);
-export const revokeCollaboratorAccess = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/revoke`, {});
-export const restoreCollaboratorAccess = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/restore`, {});
+export const revokeCollaboratorAccess = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/revoke`, {}, JSON_BODY);
+export const restoreCollaboratorAccess = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/restore`, {}, JSON_BODY);
 const DEP = (companyId: number) => url.GET_COMPANIES + `/${companyId}/departments`;
 export const getDepartments = (companyId: number) => api.get(DEP(companyId));
 export const createDepartment = (companyId: number, data: any) => api.create(DEP(companyId), data, JSON_HEADERS);
 export const updateDepartment = (companyId: number, id: number, data: any) => api.update(`${DEP(companyId)}/${id}`, data);
 export const deleteDepartment = (companyId: number, id: number) => api.delete(`${DEP(companyId)}/${id}`);
-export const createSuggestedDepartments = (companyId: number) => api.create(`${DEP(companyId)}/suggested`, {});
+export const createSuggestedDepartments = (companyId: number) => api.create(`${DEP(companyId)}/suggested`, {}, JSON_BODY);
 
 export const getUsersPaginate = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_USERS_APIS, { params });
 export const showUser = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_USERS_APIS + "/" + params.id);
@@ -1254,7 +1257,7 @@ export const createUser = (companyId: number, data: FormData | any) => api.creat
 export const showCarmine = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_CARMINE_APIS + "/" + params.id);
 export const createCarmine = (companyId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARMINE_APIS, data);
 export const updateCarmine = (companyId: number, id: number, data: FormData | any) => api.put(url.GET_COMPANIES + `/${companyId}` + url.GET_CARMINE_APIS + "/" + id, data);
-export const syncCarmine = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARMINE_APIS + "/sync", {});
+export const syncCarmine = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARMINE_APIS + "/sync", {}, JSON_BODY);
 
 // CAR BRANDS
 export const getCarBrands = (vehicleType?: string) => api.get(url.GET_CAR_BRANDS, {
@@ -1314,9 +1317,9 @@ export const getParishes = (municipalityId: number) => api.get(`/municipalities/
 
 // F3 — Ligação Fatura OCR ↔ documento(s) do PingWin (só espelhos; nunca escreve no PingWin).
 export const searchOcrPingwinLink = (companyId: number, invoiceId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link`, {}, JSON_BODY);
 export const confirmOcrPingwinLink = (companyId: number, invoiceId: number, data: { docheader_ids?: string[]; method?: string }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link/confirm`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link/confirm`, data, JSON_BODY);
 export const unlinkOcrPingwinLink = (companyId: number, invoiceId: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link`);
 
@@ -1326,23 +1329,23 @@ export const searchOcrArticles = (companyId: number, params: { q?: string; nif?:
 export const getOcrArticleForm = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/articles/form`);
 export const associateOcrLineArticle = (companyId: number, invoiceId: number, lineId: number, data: { article_id: number; method?: string; replace_code?: boolean }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article`, data, JSON_BODY);
 export const unlinkOcrLineArticle = (companyId: number, invoiceId: number, lineId: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article`);
 export const createOcrLineArticle = (companyId: number, invoiceId: number, lineId: number, data: Record<string, any>) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/create-article`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/create-article`, data, JSON_BODY);
 export const acceptOcrLineSuggestions = (companyId: number, invoiceId: number, minConfidence: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/accept-suggestions`, { min_confidence: minConfidence });
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/accept-suggestions`, { min_confidence: minConfidence }, JSON_BODY);
 
 // FB-1 — "Lançar no PingWin" (rascunho → fechar / anular; escritas assíncronas com releitura).
 export const getOcrLaunch = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch`);
 export const launchOcrInvoice = (companyId: number, invoiceId: number, data: { accept_check_diff?: boolean; close?: boolean }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch`, data, JSON_BODY);
 export const closeOcrLaunch = (companyId: number, invoiceId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/close`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/close`, {}, JSON_BODY);
 export const voidOcrLaunch = (companyId: number, invoiceId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/void`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/void`, {}, JSON_BODY);
 /** Cadastros › Artigos: "Artigo de agrupamento" (definição da XPLENDOR; não mexe no PingWin). */
 export const getArticleGrouping = (companyId: number, catalogItemId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/grouping`);
@@ -1350,9 +1353,9 @@ export const setArticleGrouping = (companyId: number, catalogItemId: number, gro
     api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/grouping`, { grouping });
 /** Sem QR: "Conferi os totais com o papel" (marcar ou desmarcar). */
 export const setOcrPaperCheck = (companyId: number, invoiceId: number, checked: boolean) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/paper-check`, { checked });
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/paper-check`, { checked }, JSON_BODY);
 export const setOcrLineLaunchUnit = (companyId: number, invoiceId: number, lineId: number, data: { unit_id: string; quantity?: number | null }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/launch-unit`, data);
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/launch-unit`, data, JSON_BODY);
 
 // Finanças › Mês: resultado e tesouraria (só leitura) e a classificação manual dos "Por classificar".
 export const getFinanceMonth = (companyId: number, params: { month?: string; store?: number | null }) =>
@@ -1406,9 +1409,9 @@ export const getOcrInvoicesList = (companyId: number, params: { page?: number; p
 export const deleteOcrInvoice = (companyId: number, invoiceId: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`);
 export const restoreOcrInvoice = (companyId: number, invoiceId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/restore`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/restore`, {}, JSON_BODY);
 export const bulkDeleteOcrInvoices = (companyId: number, ids: number[]) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/bulk-delete`, { ids });
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/bulk-delete`, { ids }, JSON_BODY);
 
 // Ficheiros: o gestor de ficheiros da empresa.
 const FL = (companyId: number) => url.GET_COMPANIES + `/${companyId}/files`;
@@ -1444,9 +1447,9 @@ export const restoreFileShortcut = (companyId: number, id: number) => api.create
 
 // F2d — vários códigos do fornecedor por artigo (principal no PingWin + alternativos), IVA da linha ≠ IVA do artigo.
 export const makeOcrLineCodePrincipal = (companyId: number, invoiceId: number, lineId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/supplier-code/principal`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/supplier-code/principal`, {}, JSON_BODY);
 export const correctOcrLineArticleVat = (companyId: number, invoiceId: number, lineId: number) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article-vat`, {});
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article-vat`, {}, JSON_BODY);
 export const getArticleSupplierCodes = (companyId: number, catalogItemId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/supplier-codes`);
 export const getArticleVatDivergences = (companyId: number) =>
@@ -1460,12 +1463,12 @@ export const getRecipe = (companyId: number, productId: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}`);
 // Fatia 1b (só na XPLENDOR): confirmar o rendimento de um semi-produto e o fator de uma unidade de compra.
 export const confirmRecipeYield = (companyId: number, productId: string, body: { bom_id: string; quantity: number; reason?: string | null }) =>
-    api.create(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/yield`, body);
+    api.create(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/yield`, body, JSON_BODY);
 export const confirmUnitConversion = (
     companyId: number,
     productId: string,
     body: { unit_key: string; unit_label?: string | null; factor: number; supplier_nif?: string | null; reason?: string | null }
-) => api.create(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/conversion`, body);
+) => api.create(url.GET_COMPANIES + `/${companyId}/restaurant/recipes/${productId}/conversion`, body, JSON_BODY);
 // Fatia 4: editor das fichas técnicas (rascunho na XPLENDOR; gravar no PingWin em fila, uma ficha de cada vez).
 const R = (companyId: number) => url.GET_COMPANIES + `/${companyId}/restaurant/recipes`;
 export const getRecipeEditor = (companyId: number, productId: string) => api.get(R(companyId) + `/${productId}/editor`);

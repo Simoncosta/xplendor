@@ -10,6 +10,7 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { createSitePopup, deleteSitePopup, getSitePopup, getSitePopups, updateSitePopup } from "helpers/laravel_helper";
 import { fileSrc, StoredFileDto } from "common/models/files.model";
 import PopupImageCropper, { CropPixels, CropState, PopupDevicePreviews, RECOMMENDED } from "./PopupImageCropper";
+import { apiErrorMessage } from "helpers/apiError";
 
 /**
  * "Avisos do site": os avisos (pop-up) que o site da empresa mostra aos visitantes (os stands e
@@ -42,11 +43,7 @@ const toLocalInput = (s?: string | null) => {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
-const errorOf = (e: any, fallback: string): string => {
-    const errors = e?.response?.data?.errors;
-    const first = errors ? Object.values(errors).flat()[0] : null;
-    return String(first ?? e?.response?.data?.message ?? fallback);
-};
+const errorOf = (e: any, fallback: string): string => apiErrorMessage(e, fallback);
 
 interface Payload { popups: SitePopupDto[]; can: { create: boolean; edit: boolean; delete: boolean } }
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Spinner, Badge } from "reactstrap";
 import { toast } from "react-toastify";
 import { getCompanyModules, setCompanyModule, applyCompanyModulePreset } from "helpers/laravel_helper";
+import { apiErrorMessage } from "helpers/apiError";
 
 /**
  * Módulos de uma empresa (só o root), no separador "Módulos" do modal da empresa: liga e
@@ -75,7 +76,7 @@ const CompanyModulesPanel: React.FC<Props> = ({ companyId }) => {
             if (r?.data?.history) setHistory(r.data.history);
         } catch (e: any) {
             // Bloqueio de dependências → mensagem clara do backend.
-            toast.error(e?.response?.data?.errors?.module_key?.[0] || e?.response?.data?.message || "Não foi possível alterar o módulo.");
+            toast.error(apiErrorMessage(e, "Não foi possível alterar o módulo."));
         } finally {
             setBusy(null);
         }
@@ -90,7 +91,7 @@ const CompanyModulesPanel: React.FC<Props> = ({ companyId }) => {
             if (r?.data?.history) setHistory(r.data.history);
             toast.success(`Preset "${PRESET_LABELS[preset] ?? preset}" aplicado.`);
         } catch (e: any) {
-            toast.error(e?.response?.data?.message || "Não foi possível aplicar o preset.");
+            toast.error(apiErrorMessage(e, "Não foi possível aplicar o preset."));
         } finally {
             setBusy(null);
         }
