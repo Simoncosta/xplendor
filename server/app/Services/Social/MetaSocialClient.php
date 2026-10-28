@@ -218,12 +218,13 @@ class MetaSocialClient implements MetaSocialClientInterface
     }
 
     /**
-     * Retira UMA permissão (DELETE /me/permissions/{permissão}). Nunca o DELETE
-     * /me/permissions sem nome, que retiraria todas, incluindo a dos anúncios.
+     * Retira UMA permissão (DELETE /me/permissions/{permissão}), de qualquer fluxo da app (leitura,
+     * publicação, agência). Nunca o DELETE /me/permissions sem nome, que retiraria todas, nem uma
+     * permissão que a app não pede. Quem chama decide o que se pode revogar (SharedMetaUser).
      */
     public function revokePermission(string $userToken, string $permission): array
     {
-        if ($userToken === '' || ! in_array($permission, SocialConnection::SCOPES, true)) {
+        if ($userToken === '' || ! in_array($permission, self::knownScopes(), true)) {
             return ['revoked' => false, 'error' => 'sem token'];
         }
         $r = $this->send(fn () => Http::timeout(self::TIMEOUT)->delete(

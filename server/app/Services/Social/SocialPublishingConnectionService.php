@@ -9,6 +9,7 @@ use App\Models\SocialConnection;
 use App\Models\SocialConnectionAccount;
 use App\Models\SocialPublishingGrant;
 use App\Models\User;
+use App\Services\Integrations\SharedMetaUser;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -119,18 +120,17 @@ class SocialPublishingConnectionService
         $grant = SocialPublishingGrant::where('company_id', $companyId)->first();
         $shared = false;
         if ($grant) {
-            $others = SocialPublishingGrant::where('company_id', '!=', $companyId)->get();
-            $shared = $grant->meta_user_id === null
-                || $others->contains(fn (SocialPublishingGrant $o) => $o->meta_user_id === null || (string) $o->meta_user_id === (string) $grant->meta_user_id);
-            if (! $shared) {
-                foreach (SocialPublishingGrant::SCOPES as $permission) {
-                    $result = $this->meta->revokePermission((string) $grant->access_token, $permission);
-                    if (! ($result['revoked'] ?? false)) {
-                        Log::info('[Ligar publicação] Permissão não revogada na Meta', ['company_id' => $companyId, 'permission' => $permission]);
-                    }
+            // As permissões de publicar que nenhuma outra ligação ativa do mesmo utilizador da Meta usa.
+            $revocable = SharedMetaUser::revocablePublishingScopes($grant);
+            $shared = array_diff(SocialPublishingGrant::SCOPES, $revocable) !== [];
+            foreach ($revocable as $permission) {
+                $result = $this->meta->revokePermission((string) $grant->access_token, $permission);
+                if (! ($result['revoked'] ?? false)) {
+                    Log::info('[Ligar publicação] Permissão não revogada na Meta', ['company_id' => $companyId, 'permission' => $permission]);
                 }
-            } else {
-                Log::info('[Ligar publicação] Permissões mantidas: o mesmo utilizador da Meta publica noutra empresa', ['company_id' => $companyId]);
+            }
+            if ($shared) {
+                Log::info('[Ligar publicação] Permissões mantidas: o mesmo utilizador da Meta publica noutra empresa (ou é desconhecido)', ['company_id' => $companyId]);
             }
             $grant->delete();
         }

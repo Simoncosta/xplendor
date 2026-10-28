@@ -95,12 +95,10 @@ class SocialConnectionService
             // aprovação para contas fora da equipa); se recusou, pede-se de novo.
             $statuses = $this->meta->permissionStatuses($token['token']) ?? [];
             $declined = array_filter($missing, fn ($p) => ($statuses[$p] ?? null) === 'declined');
-            // Só se revoga se este utilizador da Meta não tiver outra ligação das redes ativa (cortava-a).
-            if (SharedMetaUser::canRevokeNewSocialGrant($token['user_id'] ?? null)) {
-                // Só as da leitura: as de publicar ou da agência pertencem a outras ligações.
-                foreach (array_intersect($token['scopes'], SocialConnection::SCOPES) as $granted) {
-                    $this->meta->revokePermission($token['token'], $granted);
-                }
+            // Só as da leitura (as de publicar ou da agência pertencem a outras ligações), e só as que
+            // nenhuma outra ligação ativa do mesmo utilizador da Meta usa (cortava-a).
+            foreach (SharedMetaUser::revocableNewSocialGrant($token['user_id'] ?? null, (array) $token['scopes']) as $granted) {
+                $this->meta->revokePermission($token['token'], $granted);
             }
 
             return [$companyId, $declined === [] ? 'error:not_approved' : 'error:scopes', $linkId];
@@ -353,13 +351,16 @@ class SocialConnectionService
 
         $revoked = [];
         $token = (string) ($connection?->access_token ?? '');
-        // O mesmo utilizador da Meta ligado noutra empresa (ou desconhecido): desliga só cá, sem revogar.
-        $shared = $token !== '' && ! SharedMetaUser::canRevokeSocial($connection);
+        // Só as permissões que nenhuma outra ligação ativa do mesmo utilizador da Meta usa (noutra
+        // empresa ou noutro fluxo); as outras ficam, e desliga-se só cá.
+        $revocable = $token !== '' ? SharedMetaUser::revocableSocialScopes($connection) : [];
+        $shared = $token !== '' && array_diff(SocialConnection::SCOPES, $revocable) !== [];
         if ($shared) {
-            Log::info('[Redes sociais] Desligado só na XPLENDOR; o utilizador da Meta continua ligado noutra empresa (ou é desconhecido).', ['company_id' => $companyId]);
+            Log::info('[Redes sociais] Permissões mantidas na Meta: o mesmo utilizador continua ligado noutra empresa ou fluxo (ou é desconhecido).',
+                ['company_id' => $companyId, 'mantidas' => array_values(array_diff(SocialConnection::SCOPES, $revocable))]);
         }
-        if ($token !== '' && ! $shared) {
-            foreach (SocialConnection::SCOPES as $permission) {
+        if ($token !== '') {
+            foreach ($revocable as $permission) {
                 $r = $this->meta->revokePermission($token, $permission);
                 $revoked[$permission] = $r['revoked'];
                 if (! $r['revoked']) {
