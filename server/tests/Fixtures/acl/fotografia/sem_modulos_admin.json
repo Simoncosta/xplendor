@@ -1,6 +1,6 @@
 {
     "ator": "sem_modulos_admin",
-    "rotas": 657,
+    "rotas": 658,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -358,6 +358,7 @@
         "POST api/v1/companies/{id}/ocr/invoices/bulk-delete",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/general-expense/apply",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/accept-suggestions",
+        "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/article-bulk",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/relink",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article-vat",
@@ -826,6 +827,7 @@
         "POST api/v1/companies/{id}/ocr/invoices/bulk-delete": "Este módulo não está ativo para a empresa.",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/general-expense/apply": "Este módulo não está ativo para a empresa.",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/accept-suggestions": "Este módulo não está ativo para a empresa.",
+        "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/article-bulk": "Este módulo não está ativo para a empresa.",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/relink": "Este módulo não está ativo para a empresa.",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": "Este módulo não está ativo para a empresa.",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article-vat": "Este módulo não está ativo para a empresa.",
@@ -1455,6 +1457,7 @@
         "POST api/v1/companies/{id}/ocr/invoices/bulk-delete": 403,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/general-expense/apply": 403,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/accept-suggestions": 403,
+        "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/article-bulk": 403,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/relink": 403,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 403,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article-vat": 403,

@@ -21,7 +21,7 @@ import {
     getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice, revalidateOcrInvoice,
     searchOcrPingwinLink, confirmOcrPingwinLink, unlinkOcrPingwinLink,
     associateOcrLineArticle, unlinkOcrLineArticle, createOcrLineArticle, acceptOcrLineSuggestions,
-    deleteOcrInvoice, makeOcrLineCodePrincipal, correctOcrLineArticleVat, applyOcrGeneralExpense,
+    deleteOcrInvoice, makeOcrLineCodePrincipal, correctOcrLineArticleVat, applyOcrGeneralExpense, bulkAssociateOcrLines,
 } from "helpers/laravel_helper";
 import {
     OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption,
@@ -65,6 +65,8 @@ import Skeleton from "Components/Common/Skeleton";
 const VAT_OPTS = [0, 6, 13, 23].map((v) => ({ value: v, label: v === 0 ? "Isento" : `${v}%` }));
 const num = (v: any): number | null => (v === "" || v === null || v === undefined || isNaN(Number(v)) ? null : Number(v));
 const eur = (n?: number | null) => (n ?? 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
+/** Como o normDesc do servidor: minúsculas, sem acentos, só letras e dígitos separados por um espaço. */
+const normDesc = (s?: string | null) => (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const approx = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.05, Math.abs(b) * 0.01);
 
 const emptyLine = (): OcrInvoiceLine => ({ supplier_code: "", item: "", quantity: null, unit: "", unit_price: null, discount_pct: null, line_total: null, vat_rate: null, promo_code: "", discount: 0 });
@@ -116,6 +118,9 @@ export default function FaturaValidacaoPage() {
     const [applyingExpense, setApplyingExpense] = useState(false);
     const isRoot = useAccess().can("plataforma.configurar");
     const [picker, setPicker] = useState<number | null>(null);       // índice da linha
+    // B1: as linhas selecionadas (ids) e o "Ligar selecionadas a…".
+    const [selected, setSelected] = useState<Set<number>>(new Set());
+    const [bulkPicker, setBulkPicker] = useState(false);
     const [creating, setCreating] = useState<number | null>(null);   // índice da linha
     const [createBusy, setCreateBusy] = useState(false);
     const [lineBusy, setLineBusy] = useState<number | null>(null);   // id da linha
@@ -152,6 +157,7 @@ export default function FaturaValidacaoPage() {
         setLinks(linksFrom(d.lines ?? []));
         setArtSummary(d.articles_summary ?? null);
         setGeneralExpense(d.general_expense ?? null);
+        setSelected(new Set());
         setSupplierId(d.supplier_id);
         setSupplierName(d.supplier_name ?? "");
         setSupplierNif(d.supplier_nif ?? "");
@@ -221,6 +227,42 @@ export default function FaturaValidacaoPage() {
         setLinks(linksFrom(p.line_links));
         setArtSummary(p.articles_summary);
         if (p.general_expense !== undefined) setGeneralExpense(p.general_expense);
+    };
+
+    // B1: as linhas que se podem selecionar (guardadas e que contam).
+    const selectable = lines.filter((l) => l.id && !links[l.id]?.expense_ignored).map((l) => l.id as number);
+    const toggleSelected = (id: number) => setSelected((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+    // B1: liga várias linhas ao mesmo artigo (selecionadas, ou as com a mesma descrição).
+    const bulkAssociate = async (lineIds: number[], articleId: number) => {
+        setLineBusy(-1);
+        try {
+            const r: any = await bulkAssociateOcrLines(companyId, invoiceId, lineIds, articleId);
+            applyLinks(r?.data);
+            setSelected(new Set());
+            setBulkPicker(false);
+            setLaunchRefresh((n) => n + 1);
+            toast.success(r?.message ?? "Linhas ligadas ao artigo.");
+        } catch (e: any) {
+            toast.error(apiErrorMessage(e, "Não foi possível ligar as linhas."));
+        } finally {
+            setLineBusy(null);
+        }
+    };
+
+    /** "Aplicar às linhas com a mesma descrição": as outras linhas guardadas com a descrição igual (sem acentos nem pontuação). */
+    const applyToSameDescription = (i: number) => {
+        const source = lines[i];
+        const articleId = source?.id ? links[source.id]?.article?.id : undefined;
+        if (!source?.id || !articleId) return;
+        const key = normDesc(source.item);
+        const ids = lines.filter((l) => l.id && l.id !== source.id && normDesc(l.item) === key && !links[l.id]?.expense_ignored
+            && links[l.id]?.article?.id !== articleId).map((l) => l.id as number);
+        if (ids.length === 0) {
+            toast.info("Não há outras linhas com a mesma descrição por ligar a este artigo.");
+            return;
+        }
+        bulkAssociate(ids, articleId);
     };
 
     // "Aplicar a esta fatura" (despesas gerais): volta a ler só as ligações, sem tocar no formulário.
@@ -756,7 +798,16 @@ export default function FaturaValidacaoPage() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="d-flex gap-2">
+                                <div className="d-flex gap-2 align-items-center flex-wrap">
+                                    {selected.size > 0 && (
+                                        <span className="d-flex align-items-center gap-2" data-testid="lines-selection">
+                                            <span className="fs-13 text-muted">{selected.size} {selected.size === 1 ? "selecionada" : "selecionadas"}</span>
+                                            <Button size="sm" color="primary" onClick={() => setBulkPicker(true)} disabled={lineBusy !== null} data-testid="lines-bulk-link">
+                                                <i className="ri-links-line me-1" />Ligar selecionadas a…
+                                            </Button>
+                                            <Button size="sm" color="link" className="px-1" onClick={() => setSelected(new Set())}>Limpar</Button>
+                                        </span>
+                                    )}
                                     {artSummary && artSummary.suggested > 0 && (
                                         <Button size="sm" color="outline-primary" onClick={() => setAcceptOpen(true)} disabled={lineBusy !== null}><i className="ri-check-line me-1" />Aceitar sugestões</Button>
                                     )}
@@ -775,7 +826,16 @@ export default function FaturaValidacaoPage() {
                                     <thead className="text-muted table-light">
                                         <tr>
                                             <th className="xp-sticky-1">Cód. fornecedor</th><th className="xp-sticky-2">Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th>
-                                            <th className="text-end">Total</th><th>IVA</th><th>Artigo</th><th className="xp-sticky-end"><span className="visually-hidden">Ações da linha</span></th>
+                                            <th className="text-end">Total</th><th>IVA</th>
+                                            <th>
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <input type="checkbox" className="form-check-input m-0" checked={selectable.length > 0 && selectable.every((id) => selected.has(id))}
+                                                        disabled={selectable.length === 0} onChange={(e) => setSelected(e.target.checked ? new Set(selectable) : new Set())}
+                                                        aria-label="Selecionar todas as linhas" data-testid="lines-select-all" />
+                                                    Artigo
+                                                </div>
+                                            </th>
+                                            <th className="xp-sticky-end"><span className="visually-hidden">Ações da linha</span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -819,6 +879,12 @@ export default function FaturaValidacaoPage() {
                                                     <XSelect small ariaLabel="Taxa de IVA" options={VAT_OPTS} value={l.vat_rate as any} onChange={(v) => setLine(i, { vat_rate: v as number })} placeholder="Taxa" searchable={false} />
                                                 </td>
                                                 <td>
+                                                    <div className="d-flex align-items-start gap-2">
+                                                    {l.id && !links[l.id]?.expense_ignored ? (
+                                                        <input type="checkbox" className="form-check-input mt-1 flex-shrink-0" checked={selected.has(l.id)}
+                                                            onChange={() => toggleSelected(l.id as number)} aria-label={`Selecionar a linha ${i + 1}`} data-testid={`line-select-${i}`} />
+                                                    ) : null}
+                                                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
                                                     <LineArticleCell
                                                         link={l.id ? links[l.id] ?? null : null}
                                                         saved={!!l.id}
@@ -830,7 +896,10 @@ export default function FaturaValidacaoPage() {
                                                         onMakePrincipal={() => l.id && setLineAction({ kind: "principal", lineId: l.id })}
                                                         onVatInfo={() => l.id && setLineAction({ kind: "vat_info", lineId: l.id })}
                                                         onVatFix={() => l.id && setLineAction({ kind: "vat_fix", lineId: l.id })}
+                                                        onSameDescription={() => applyToSameDescription(i)}
                                                     />
+                                                    </div>
+                                                    </div>
                                                 </td>
                                                 <td className="xp-sticky-end text-center">
                                                     <ActionsMenu size="sm" label={`Ações da linha ${i + 1}`} items={[
@@ -955,6 +1024,18 @@ export default function FaturaValidacaoPage() {
                     onPick={(a) => { const id = picker !== null ? lines[picker]?.id : undefined; if (id) associate(id, a.id); }}
                     onCreate={() => { const i = picker; setPicker(null); setCreating(i); }}
                     onClose={() => setPicker(null)}
+                />
+                {/* B1 — "Ligar selecionadas a…": só artigos que já existem */}
+                <ArticlePicker
+                    isOpen={bulkPicker}
+                    companyId={companyId}
+                    supplierNif={supplierNif || null}
+                    supplierName={supplierName || null}
+                    initialQuery={lines.find((l) => l.id && selected.has(l.id))?.item ?? ""}
+                    lineLabel={`${selected.size} ${selected.size === 1 ? "linha selecionada" : "linhas selecionadas"}`}
+                    title="Ligar selecionadas a…"
+                    onPick={(a) => bulkAssociate(selectable.filter((id) => selected.has(id)), a.id)}
+                    onClose={() => setBulkPicker(false)}
                 />
                 <CreateArticleModal
                     isOpen={creating !== null}

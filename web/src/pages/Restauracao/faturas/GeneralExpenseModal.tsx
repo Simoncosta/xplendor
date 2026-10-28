@@ -57,6 +57,8 @@ export default function GeneralExpenseModal({ companyId, supplier, onClose }: {
     };
 
     const anyArticle = RATES.some((r) => chosen[String(r)]);
+    // Já marcado e a desmarcar ou a mudar os artigos: as faturas já lidas não mudam sozinhas.
+    const changed = !!state?.enabled && (!enabled || RATES.some((r) => (chosen[String(r)]?.id ?? null) !== (state.articles[String(r)]?.id ?? null)));
 
     return (
         <Modal isOpen={!!supplier} toggle={() => !saving && onClose()} centered data-testid="general-expense-modal">
@@ -101,6 +103,11 @@ export default function GeneralExpenseModal({ companyId, supplier, onClose }: {
                             </table>
                         )}
                     </>
+                )}
+                {changed && (
+                    <Alert color="warning" className="fs-13 py-2 mt-3 mb-0" data-testid="general-expense-change-warning">
+                        As faturas já lidas e por lançar mantêm as ligações atuais. Use 'Aplicar a esta fatura' em cada uma para as atualizar.
+                    </Alert>
                 )}
             </ModalBody>
             <ModalFooter>

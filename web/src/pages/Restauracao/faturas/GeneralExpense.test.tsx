@@ -63,6 +63,7 @@ describe("nos Fornecedores (root)", () => {
 
         fireEvent.click(await screen.findByTestId("general-expense-enabled"));
         expect(screen.getByTestId("general-expense-save")).toBeDisabled(); // sem nenhum artigo
+        expect(screen.queryByTestId("general-expense-change-warning")).not.toBeInTheDocument(); // ainda não estava marcado
         fireEvent.click(within(screen.getByTestId("general-expense-rate-0")).getByText("Escolher"));
         fireEvent.click(await screen.findByText("DESPESAS GERAIS ISENTO", {}, { timeout: 2000 }));
         expect(screen.queryByText("Criar artigo")).not.toBeInTheDocument(); // não cria artigos no PingWin
@@ -74,12 +75,25 @@ describe("nos Fornecedores (root)", () => {
         expect(onClose).toHaveBeenCalled();
     });
 
-    test("desmarcar envia só enabled: false", async () => {
+    test("mudar o artigo de um fornecedor já marcado mostra o aviso das faturas já lidas", async () => {
+        mockApi.get.mockResolvedValue({ data: { supplier_id: 9, enabled: true, articles: { 23: null, 13: null, 6: null, 0: { id: 7, code: "DG0", description: "DESPESAS GERAIS ISENTO" } },
+            rates: [23, 13, 6, 0], changed_at: null } });
+        render(<GeneralExpenseModal companyId={5} supplier={{ id: 9, name: "CORREIOS EXEMPLO" }} onClose={jest.fn()} />);
+        await screen.findByTestId("general-expense-rate-0");
+        fireEvent.click(screen.getByLabelText("Tirar o artigo da taxa 0 %"));
+        expect(screen.getByTestId("general-expense-change-warning")).toBeInTheDocument();
+    });
+
+    test("desmarcar envia só enabled: false e avisa", async () => {
         mockApi.get.mockResolvedValue({ data: { supplier_id: 9, enabled: true, articles: { 23: null, 13: null, 6: null, 0: { id: 7, code: "DG0", description: "DESPESAS GERAIS ISENTO" } },
             rates: [23, 13, 6, 0], changed_at: "2026-10-28T10:00:00+00:00" } });
         mockApi.set.mockResolvedValue({ message: "ok", data: {} });
         render(<GeneralExpenseModal companyId={5} supplier={{ id: 9, name: "CORREIOS EXEMPLO" }} onClose={jest.fn()} />);
-        fireEvent.click(await screen.findByTestId("general-expense-enabled"));
+        expect(await screen.findByTestId("general-expense-enabled")).toBeChecked();
+        expect(screen.queryByTestId("general-expense-change-warning")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByTestId("general-expense-enabled"));
+        expect(screen.getByTestId("general-expense-change-warning")).toHaveTextContent(
+            "As faturas já lidas e por lançar mantêm as ligações atuais. Use 'Aplicar a esta fatura' em cada uma para as atualizar.");
         fireEvent.click(screen.getByTestId("general-expense-save"));
         await waitFor(() => expect(mockApi.set).toHaveBeenCalledWith(5, 9, { enabled: false }));
     });

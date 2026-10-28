@@ -8,7 +8,9 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\OcrInvoice;
 use App\Models\OcrInvoiceLine;
+use App\Models\PingwinCatalogItem;
 use App\Models\PingwinFamily;
+use App\Services\DescriptionMemoryService;
 use App\Services\GeneralExpenseService;
 use App\Services\OcrArticleSearchService;
 use App\Services\OcrLineArticleService;
@@ -131,14 +133,47 @@ class CompanyOcrLineArticleController extends Controller
         return ApiResponse::success($this->payload($inv) + ['write_id' => $write->id], 'A corrigir o IVA do artigo no PingWin… confirmado por releitura.', 202);
     }
 
+    /**
+     * B1 · "Ligar selecionadas a…" e "Aplicar às linhas com a mesma descrição": liga várias linhas da
+     * fatura ao mesmo artigo, como a ligação à mão de cada uma (a memória e o mapa aprendem). JSON:
+     * {line_ids: [...], article_id}. Todas as linhas têm de ser desta fatura; senão, nenhuma muda.
+     */
+    public function bulkAssociate(Request $request, int $companyId, int $invoiceId)
+    {
+        [$inv, , $err] = $this->resolve($companyId, $invoiceId, null);
+        if ($err) {
+            return $err;
+        }
+        $data = $request->validate([
+            'line_ids'   => ['required', 'array', 'min:1', 'max:500'],
+            'line_ids.*' => ['integer', 'distinct'],
+            'article_id' => ['required', 'integer'],
+        ]);
+        $ids = array_map('intval', $data['line_ids']);
+        $lines = OcrInvoiceLine::where('company_id', $companyId)->where('ocr_invoice_id', $inv->id)->whereIn('id', $ids)->orderBy('position')->get();
+        if ($lines->count() !== count($ids)) {
+            return ApiResponse::error('Há linhas que não são desta fatura.', 404);
+        }
+        // O artigo valida-se antes de mexer em qualquer linha (o pedido do código ao PingWin sai por linha).
+        if (! OcrLineArticleService::usable(PingwinCatalogItem::where('company_id', $companyId)->whereKey((int) $data['article_id']))->exists()) {
+            return ApiResponse::error('Artigo desconhecido, inativo ou descontinuado.', 422);
+        }
+        foreach ($lines as $line) {
+            $this->lines->associate($inv, $line, (int) $data['article_id'], Auth::id(), 'manual');
+        }
+        $n = $lines->count();
+
+        return ApiResponse::success($this->payload($inv) + ['result' => ['linked' => $n]], $n === 1 ? '1 linha ligada ao artigo.' : "{$n} linhas ligadas ao artigo.");
+    }
+
     public function unlink(int $companyId, int $invoiceId, int $lineId)
     {
         [$inv, $line, $err] = $this->resolve($companyId, $invoiceId, $lineId);
         if ($err) {
             return $err;
         }
-        if (! $line->isManual()) {
-            return ApiResponse::error('Só se desfazem ligações feitas à mão.', 422);
+        if (! $line->isManual() && $line->link_method !== DescriptionMemoryService::METHOD) {
+            return ApiResponse::error('Só se desfazem ligações feitas à mão ou pela memória.', 422);
         }
         $this->lines->unlink($inv, $line);
 

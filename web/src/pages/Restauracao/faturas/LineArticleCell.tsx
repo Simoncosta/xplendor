@@ -25,6 +25,8 @@ type Props = {
     onMakePrincipal?: () => void;
     onVatInfo?: () => void;
     onVatFix?: () => void;
+    /** "Aplicar às linhas com a mesma descrição" (o artigo desta linha). */
+    onSameDescription?: () => void;
 };
 
 const REASON_LABEL: Record<string, { badge: string; title: string }> = {
@@ -33,7 +35,8 @@ const REASON_LABEL: Record<string, { badge: string; title: string }> = {
 };
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
-const manual = (m: string | null) => m === "manual" || m === "sugestao" || m === "criado";
+// As que se podem desfazer: as feitas à mão e as da memória por descrição (a memória esquece o par).
+const manual = (m: string | null) => m === "manual" || m === "sugestao" || m === "criado" || m === "memoria";
 
 function SupplierCodeStatus({ link }: { link: OcrLineLink }) {
     switch (link.supplier_code_status) {
@@ -104,7 +107,7 @@ function VatCheck({ link }: { link: OcrLineLink }) {
     );
 }
 
-export default function LineArticleCell({ link, saved, busy, onAccept, onAssociate, onCreate, onUnlink, onMakePrincipal, onVatInfo, onVatFix }: Props) {
+export default function LineArticleCell({ link, saved, busy, onAccept, onAssociate, onCreate, onUnlink, onMakePrincipal, onVatInfo, onVatFix, onSameDescription }: Props) {
     if (!saved || !link) {
         return <span className="fs-12 text-muted">Guarde a fatura para ligar esta linha.</span>;
     }
@@ -127,7 +130,10 @@ export default function LineArticleCell({ link, saved, busy, onAccept, onAssocia
                     <div className="fs-13 text-truncate" title={link.article.description ?? ""}>
                         <span className="font-monospace me-1">{link.article.code}</span>{link.article.description}
                     </div>
-                    <span className="badge bg-success-subtle text-success me-1">{link.link_method ? OCR_LINK_METHOD_LABEL[link.link_method] : "Ligada"}</span>
+                    <span className={`badge me-1 ${link.link_method === "memoria" ? "bg-info-subtle text-info" : "bg-success-subtle text-success"}`} data-testid="line-link-method"
+                        title={link.link_method === "memoria" ? "Ligada como na última vez que ligou à mão uma linha com esta descrição deste fornecedor. Pode desfazer no menu." : undefined}>
+                        {link.link_method ? OCR_LINK_METHOD_LABEL[link.link_method] : "Ligada"}
+                    </span>
                     <CodeCheck link={link} />
                     <SupplierCodeStatus link={link} />
                     <SupplierCodes link={link} />
@@ -140,6 +146,7 @@ export default function LineArticleCell({ link, saved, busy, onAccept, onAssocia
                     { label: "Corrigir o IVA do artigo no PingWin", icon: "ri-edit-line", onClick: () => onVatFix?.(),
                         hidden: !link.vat_check || !onVatFix, disabledReason: link.vat_write?.status === "a_editar" ? "Já está a ser corrigido." : null },
                     { label: "Associar a outro artigo", icon: "ri-search-line", onClick: onAssociate },
+                    { label: "Aplicar às linhas com a mesma descrição", icon: "ri-file-copy-line", onClick: () => onSameDescription?.(), hidden: !onSameDescription },
                     { label: "Desfazer a ligação", icon: "ri-link-unlink", onClick: onUnlink, hidden: !manual(link.link_method) },
                 ]} disabled={busy} />
             </div>

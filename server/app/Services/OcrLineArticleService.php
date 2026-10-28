@@ -27,6 +27,8 @@ use Illuminate\Support\Str;
  *   b. PINGWIN: com 1 documento ligado (F3), emparelha com as linhas desse documento (total,
  *      quantidade e preço; a ordem desempata) → o artigo vem do PingWin; com código do
  *      fornecedor, o par entra no mapa (ocr_link);
+ *   b2. MEMÓRIA (só linhas sem código do fornecedor): NIF + descrição → o artigo da última ligação à
+ *      mão (DescriptionMemoryService; "Ligada pela memória", pode desfazer-se);
  *   c. DESCRIÇÃO normalizada igual à de UM artigo → automático;
  *   d. descrição PARECIDA (trigramas ≥ SUGGEST_MIN) → até 3 sugestões, NUNCA automático;
  *   e. nada → por ligar.
@@ -176,6 +178,11 @@ class OcrLineArticleService
             return $linked((int) $pw->article_id, 'pingwin', 0.95);
         }
 
+        // b2. Memória por fornecedor e descrição (só as linhas sem código)
+        if (($mem = app(DescriptionMemoryService::class)->lookup($inv, $line)) && isset($catalog[$mem->article_id])) {
+            return $linked((int) $mem->article_id, DescriptionMemoryService::METHOD, 0.95);
+        }
+
         // c./d. Descrição
         $norm = self::normDesc($line->item);
         $suggestions = [];
@@ -311,6 +318,8 @@ class OcrLineArticleService
             $this->map->learn($inv->company_id, $nif, $code, $article->id, SupplierArticleMap::SOURCE_MANUAL,
                 $line->unit_price !== null ? (string) $line->unit_price : null, $line->unit);
         }
+        // Sem código: a memória por descrição aprende (ou muda) o par.
+        app(DescriptionMemoryService::class)->learn($inv, $line, (int) $article->id, $userId);
         if (Gtin::probablyMisread($code)) {
             $line->update(['supplier_code_status' => null, 'supplier_code_error' => null]); // só no mapa
         } else {
@@ -405,11 +414,15 @@ class OcrLineArticleService
         return $write;
     }
 
-    /** Desfaz uma ligação manual: esquece o par aprendido à mão e volta à ligação automática. */
+    /**
+     * Desfaz uma ligação manual ou pela memória: esquece o par aprendido à mão (código ou descrição) e
+     * volta à ligação automática.
+     */
     public function unlink(OcrInvoice $inv, OcrInvoiceLine $line): OcrInvoiceLine
     {
-        if ($line->isManual() && $line->article_id) {
+        if (($line->isManual() || $line->link_method === DescriptionMemoryService::METHOD) && $line->article_id) {
             $this->map->forgetManual($inv->company_id, SupplierArticleMapService::nif($inv->supplier_nif), $line->supplier_code, (int) $line->article_id);
+            app(DescriptionMemoryService::class)->forget($inv, $line, (int) $line->article_id);
         }
         $line->fill(['article_id' => null, 'link_state' => OcrInvoiceLine::UNLINKED, 'link_method' => null, 'link_confidence' => null,
             'link_suggestions' => null, 'linked_by' => null, 'linked_at' => null, 'supplier_code_status' => null, 'supplier_code_error' => null])->save();

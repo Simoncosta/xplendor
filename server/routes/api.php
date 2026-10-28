@@ -609,6 +609,7 @@ Route::prefix('v1')->group(function () {
                     Route::get('/ocr/articles/form', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'form']);
                     Route::post('/ocr/invoices/{invoiceId}/lines/accept-suggestions', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'acceptSuggestions']);
                     Route::post('/ocr/invoices/{invoiceId}/lines/relink', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'relink']);
+                    Route::post('/ocr/invoices/{invoiceId}/lines/article-bulk', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'bulkAssociate'])->whereNumber('invoiceId');
                     Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'associate'])->whereNumber('lineId');
                     Route::delete('/ocr/invoices/{invoiceId}/lines/{lineId}/article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'unlink'])->whereNumber('lineId');
                     Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/create-article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'createArticle'])->whereNumber('lineId');

@@ -1,6 +1,6 @@
 {
     "ator": "impersonacao_admin",
-    "rotas": 657,
+    "rotas": 658,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -737,6 +737,7 @@
         "POST api/v1/companies/{id}/ocr/invoices/bulk-delete": 200,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/general-expense/apply": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/accept-suggestions": 404,
+        "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/article-bulk": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/relink": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article-vat": 404,

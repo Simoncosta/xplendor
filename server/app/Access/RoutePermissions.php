@@ -557,6 +557,7 @@ final class RoutePermissions
         'POST {id}/ocr/invoices/{invoiceId}/lines/relink' => 'restauracao.editar',
         'DELETE {id}/ocr/invoices/{invoiceId}/lines/{lineId}/article' => 'restauracao.apagar',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/article' => 'restauracao.criar',
+        'POST {id}/ocr/invoices/{invoiceId}/lines/article-bulk' => 'restauracao.criar', // a mesma da ligação por linha
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/create-article' => 'restauracao.criar',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/supplier-code/principal' => 'restauracao.editar',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/article-vat' => 'restauracao.editar',
@@ -887,6 +888,7 @@ final class RoutePermissions
         'GET {id}/ocr/articles/search' => 'restauracao_faturas',
         'GET {id}/ocr/articles/form' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/general-expense/apply' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/lines/article-bulk' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/lines/accept-suggestions' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/lines/relink' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/article' => 'restauracao_faturas',

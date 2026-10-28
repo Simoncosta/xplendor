@@ -246,7 +246,7 @@ export const OCR_LINK_STATUS: Record<OcrLinkStatus, { label: string; cls: string
 
 // ── F2b: artigos nas linhas da fatura ───────────────────────────────────────
 export type OcrLineLinkState = "ligada" | "sugerida" | "por_ligar";
-export type OcrLineLinkMethod = "mapa" | "pingwin" | "descricao" | "sugestao" | "manual" | "criado" | "despesa";
+export type OcrLineLinkMethod = "mapa" | "pingwin" | "descricao" | "sugestao" | "manual" | "criado" | "despesa" | "memoria";
 
 export interface OcrLineArticle {
     id: number;
@@ -360,6 +360,7 @@ export const OCR_LINK_METHOD_LABEL: Record<OcrLineLinkMethod, string> = {
     manual: "Associado à mão",
     criado: "Artigo criado",
     despesa: "Despesa geral",
+    memoria: "Ligada pela memória",
 };
 
 /**

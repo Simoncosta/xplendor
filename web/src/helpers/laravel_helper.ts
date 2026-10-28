@@ -1341,6 +1341,9 @@ export const getOcrArticleForm = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/articles/form`);
 export const associateOcrLineArticle = (companyId: number, invoiceId: number, lineId: number, data: { article_id: number; method?: string; replace_code?: boolean }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article`, data, JSON_BODY);
+/** "Ligar selecionadas a…" e "Aplicar às linhas com a mesma descrição": várias linhas ao mesmo artigo. */
+export const bulkAssociateOcrLines = (companyId: number, invoiceId: number, lineIds: number[], articleId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/article-bulk`, { line_ids: lineIds, article_id: articleId }, JSON_BODY);
 export const unlinkOcrLineArticle = (companyId: number, invoiceId: number, lineId: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article`);
 export const createOcrLineArticle = (companyId: number, invoiceId: number, lineId: number, data: Record<string, any>) =>
