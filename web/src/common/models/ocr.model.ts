@@ -131,6 +131,8 @@ export interface OcrInvoiceDetail {
     lines: (OcrInvoiceLine & OcrLineLink)[];
     summary: OcrInvoiceSummary | null;
     articles_summary: OcrArticlesSummary;
+    general_expense?: OcrGeneralExpense | null;   // fornecedor de despesas gerais (null sem a marca)
+    expense_supplier_id?: number | null;          // o fornecedor por NIF (atalho do root para os Fornecedores)
     delete_block: string | null;          // F2c
     // Descontos de promoção, quadro do IVA, "Reler do documento", fecho e a próxima por lançar.
     discounts?: OcrInvoiceDiscount[];
@@ -244,7 +246,7 @@ export const OCR_LINK_STATUS: Record<OcrLinkStatus, { label: string; cls: string
 
 // ── F2b: artigos nas linhas da fatura ───────────────────────────────────────
 export type OcrLineLinkState = "ligada" | "sugerida" | "por_ligar";
-export type OcrLineLinkMethod = "mapa" | "pingwin" | "descricao" | "sugestao" | "manual" | "criado";
+export type OcrLineLinkMethod = "mapa" | "pingwin" | "descricao" | "sugestao" | "manual" | "criado" | "despesa";
 
 export interface OcrLineArticle {
     id: number;
@@ -287,6 +289,8 @@ export interface OcrLineLink {
     // F2d: IVA da fatura ≠ IVA do artigo no catálogo
     vat_check?: { invoice_rate: number; article_rate: number; invoice_taxgroup: string } | null;
     vat_write?: { write_id: number; status: string; error: string | null } | null; // "Corrigir o IVA do artigo" em curso
+    // Despesas gerais: linha a 0,00 € que não conta e não precisa de ligação
+    expense_ignored?: boolean;
 }
 
 export interface OcrArticlesSummary {
@@ -300,6 +304,7 @@ export interface OcrArticlesSummary {
 export interface OcrLineLinksPayload {
     articles_summary: OcrArticlesSummary;
     line_links: (OcrLineLink & { id: number })[];
+    general_expense?: OcrGeneralExpense | null;
 }
 
 export interface OcrArticleSearchResult {
@@ -354,11 +359,40 @@ export const OCR_LINK_METHOD_LABEL: Record<OcrLineLinkMethod, string> = {
     sugestao: "Sugestão aceite",
     manual: "Associado à mão",
     criado: "Artigo criado",
+    despesa: "Despesa geral",
 };
+
+/**
+ * Faturas de despesas gerais (fornecedores de serviços, como os CTT): as linhas com valor, uma linha
+ * por taxa de IVA ao lançar, e as taxas sem artigo de despesa (essas linhas ficam por ligar).
+ */
+export interface OcrGeneralExpenseArticle {
+    id: number;
+    code: string | null;
+    description: string | null;
+    inactive?: boolean;
+}
+
+export interface OcrGeneralExpense {
+    supplier_id: number;
+    lines: number;
+    ignored_zero: number;
+    rates: { rate: number | null; lines: number; total_cents: number; article: OcrGeneralExpenseArticle | null }[];
+    missing_rates: (number | null)[];
+}
+
+/** A definição do fornecedor (Fornecedores › Despesas gerais): um artigo por taxa. */
+export interface SupplierGeneralExpense {
+    supplier_id: number;
+    enabled: boolean;
+    articles: Record<string, OcrGeneralExpenseArticle | null>;
+    rates: number[];
+    changed_at: string | null;
+}
 
 // ── FB-1: "Lançar no PingWin" (rascunho 8001 → fechar 8002 / anular 8003) ────────────
 export interface OcrLaunchGuard {
-    key: "tipo" | "qr" | "conferencia" | "fornecedor" | "nao_lancada" | "artigos" | "unidades" | "iva" | "valores" | "descontos" | "acerto" | "escrita";
+    key: "tipo" | "qr" | "conferencia" | "fornecedor" | "nao_lancada" | "artigos" | "unidades" | "iva" | "valores" | "descontos" | "acerto" | "escrita" | "despesa_taxas";
     ok: boolean;
     label: string;
     message: string | null;

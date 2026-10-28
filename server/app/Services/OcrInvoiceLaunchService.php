@@ -201,12 +201,21 @@ class OcrInvoiceLaunchService
     {
         $inv->loadMissing(['lines', 'summary', 'discounts']);
         $lines = $inv->lines->sortBy('position')->values();
+        // Despesas gerais: as linhas a 0,00 € não contam (nem nas guardas, nem no que vai para o PingWin).
+        $expense = app(GeneralExpenseService::class)->forInvoice($inv);
+        if ($expense) {
+            $lines = GeneralExpenseService::withValue($lines);
+        }
         $supplier = $this->lines->supplier($inv);
         $ownNif = OcrPingwinLinkService::digits(Company::where('id', $inv->company_id)->value('nipc'));
         $articles = PingwinCatalogItem::whereIn('id', $lines->pluck('article_id')->filter())->get()->keyBy('id');
         $usable = OcrLineArticleService::usable(PingwinCatalogItem::whereIn('id', $lines->pluck('article_id')->filter()))->pluck('id')->flip();
 
         $grouping = $this->groupingArticles($inv, $articles);
+        if ($expense) {
+            // Os artigos de despesa juntam as linhas numa por taxa, como os artigos de agrupamento.
+            $grouping += app(GeneralExpenseService::class)->groupingMap($expense);
+        }
         $lineInfo = $lines->map(function (OcrInvoiceLine $l) use ($articles, $grouping) {
             $info = $this->lineInfo($l, $articles[$l->article_id] ?? null);
             // Linha de um artigo de agrupamento: vai junta, com quantidade 1 (a unidade é a do artigo).
@@ -247,6 +256,12 @@ class OcrInvoiceLaunchService
             'Ainda não lançada no PingWin', $this->launchedMessage($inv));
         $add('artigos', $lines->isNotEmpty() && $lines->every(fn ($l) => $l->link_state === OcrInvoiceLine::LINKED && isset($usable[$l->article_id])),
             'Todas as linhas ligadas a artigos ativos', 'Há linhas por ligar a um artigo ativo.');
+        // Despesas gerais: a taxa sem artigo de despesa (as linhas dessa taxa ficam por ligar).
+        $expenseSummary = $expense ? app(GeneralExpenseService::class)->summary($inv, $expense) : null;
+        if ($expenseSummary !== null && $expenseSummary['missing_rates'] !== []) {
+            $add('despesa_taxas', false, 'Artigo de despesa de cada taxa', sprintf('Falta o artigo de despesa da taxa %s nas definições do fornecedor (Fornecedores › Despesas gerais): as linhas dessa taxa ficam por ligar.',
+                implode(', ', array_map(fn ($r) => $r === null ? '(sem taxa)' : "{$r} %", $expenseSummary['missing_rates']))));
+        }
         // A unidade de cada linha (as de agrupamento não contam) e as quantidades com decimais numa unidade
         // que não os aceita (o PingWin arredondava-as para cima).
         $unitMsgs = $lineInfo->every(fn ($l) => $l['unit_ok']) ? [] : ['Escolha a unidade das linhas assinaladas.'];
@@ -286,7 +301,10 @@ class OcrInvoiceLaunchService
         $add('iva', $lines->every(fn ($l) => $l->vat_rate !== null && isset(OcrLineArticleService::TAXGROUPS[$l->vat_rate])),
             'IVA de cada linha', 'Há linhas sem taxa de IVA.');
         // Os descontos de promoção ficam no artigo (não são linhas): aqui conta só o artigo.
-        $add('valores', $lines->every(fn ($l) => (float) $l->quantity > 0 && $l->unit_price !== null && (float) $l->unit_price >= 0),
+        // As linhas juntas (agrupamento ou despesa geral) vão com quantidade 1 e o valor somado: só precisam do valor.
+        $add('valores', $lines->every(fn ($l) => isset($grouping[$l->article_id])
+            ? $l->line_total_cents !== null && (int) $l->line_total_cents >= 0
+            : (float) $l->quantity > 0 && $l->unit_price !== null && (float) $l->unit_price >= 0),
             'Quantidades e preços', 'Há linhas sem quantidade (> 0) ou sem preço.');
         $unassigned = $inv->discounts->where('status', OcrInvoiceDiscount::UNASSIGNED);
         $add('descontos', $unassigned->isEmpty(), 'Descontos no seu artigo',
@@ -319,6 +337,8 @@ class OcrInvoiceLaunchService
             'planned'     => ['lines' => $estimate['planned'], 'total_cents' => $estimate['computed_cents'], 'target_cents' => $estimate['target_cents'],
                 'iec_from' => $iec['document'] ?? null],
             'supplier'    => $supplier ? ['id' => $supplier->id, 'name' => $supplier->name, 'pingwin_id' => $supplier->pingwin_id] : null,
+            // Fornecedor de despesas gerais: as linhas com valor, uma linha por taxa (null sem a marca).
+            'general_expense' => $expenseSummary,
             'docreference' => ['number' => self::docReference($inv->number), 'truncated' => mb_strlen(self::docReference($inv->number, false)) > self::DOCREF_MAX,
                 'date' => $inv->issue_date?->toDateString()],
             'defaults'    => $this->defaults($inv->company_id),

@@ -21,13 +21,16 @@ import {
     getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice, revalidateOcrInvoice,
     searchOcrPingwinLink, confirmOcrPingwinLink, unlinkOcrPingwinLink,
     associateOcrLineArticle, unlinkOcrLineArticle, createOcrLineArticle, acceptOcrLineSuggestions,
-    deleteOcrInvoice, makeOcrLineCodePrincipal, correctOcrLineArticleVat,
+    deleteOcrInvoice, makeOcrLineCodePrincipal, correctOcrLineArticleVat, applyOcrGeneralExpense,
 } from "helpers/laravel_helper";
 import {
     OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption,
     OcrPingwinBlock, OcrPingwinDoc, OcrLinkMethod, OCR_LINK_STATUS,
-    OcrLineLink, OcrArticlesSummary, OcrLineLinksPayload, OCR_DOC_TYPES, NOTE_BLOCKED, OcrLaunchPreview,
+    OcrLineLink, OcrArticlesSummary, OcrLineLinksPayload, OCR_DOC_TYPES, NOTE_BLOCKED, OcrLaunchPreview, OcrGeneralExpense,
 } from "common/models/ocr.model";
+import { useAccess } from "contexts/ModulesContext";
+import { apiErrorMessage } from "helpers/apiError";
+import GeneralExpenseCard from "./faturas/GeneralExpenseCard";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import Skeleton from "Components/Common/Skeleton";
 
@@ -108,6 +111,10 @@ export default function FaturaValidacaoPage() {
     // F2b — ligação das linhas a artigos (separada do formulário: as ações não apagam edições)
     const [links, setLinks] = useState<Record<number, OcrLineLink>>({});
     const [artSummary, setArtSummary] = useState<OcrArticlesSummary | null>(null);
+    // Fornecedor de despesas gerais: uma linha por taxa (null sem a marca); só o root marca.
+    const [generalExpense, setGeneralExpense] = useState<OcrGeneralExpense | null>(null);
+    const [applyingExpense, setApplyingExpense] = useState(false);
+    const isRoot = useAccess().can("plataforma.configurar");
     const [picker, setPicker] = useState<number | null>(null);       // índice da linha
     const [creating, setCreating] = useState<number | null>(null);   // índice da linha
     const [createBusy, setCreateBusy] = useState(false);
@@ -144,6 +151,7 @@ export default function FaturaValidacaoPage() {
         setInv(d);
         setLinks(linksFrom(d.lines ?? []));
         setArtSummary(d.articles_summary ?? null);
+        setGeneralExpense(d.general_expense ?? null);
         setSupplierId(d.supplier_id);
         setSupplierName(d.supplier_name ?? "");
         setSupplierNif(d.supplier_nif ?? "");
@@ -202,7 +210,7 @@ export default function FaturaValidacaoPage() {
             try {
                 const res: any = await getOcrInvoice(companyId, invoiceId);
                 const d = res?.data?.invoice;
-                if (d) { setLinks(linksFrom(d.lines ?? [])); setArtSummary(d.articles_summary ?? null); }
+                if (d) { setLinks(linksFrom(d.lines ?? [])); setArtSummary(d.articles_summary ?? null); setGeneralExpense(d.general_expense ?? null); }
             } catch { /* tenta na próxima */ }
         }, 4000);
         return () => clearInterval(t);
@@ -212,6 +220,24 @@ export default function FaturaValidacaoPage() {
         if (!p) return;
         setLinks(linksFrom(p.line_links));
         setArtSummary(p.articles_summary);
+        if (p.general_expense !== undefined) setGeneralExpense(p.general_expense);
+    };
+
+    // "Aplicar a esta fatura" (despesas gerais): volta a ler só as ligações, sem tocar no formulário.
+    const applyGeneralExpense = async () => {
+        setApplyingExpense(true);
+        try {
+            const r: any = await applyOcrGeneralExpense(companyId, invoiceId);
+            const res: any = await getOcrInvoice(companyId, invoiceId);
+            const d = res?.data?.invoice;
+            if (d) { setLinks(linksFrom(d.lines ?? [])); setArtSummary(d.articles_summary ?? null); setGeneralExpense(d.general_expense ?? null); }
+            setLaunchRefresh((n) => n + 1);
+            toast.success(r?.message ?? "Despesa geral aplicada.");
+        } catch (e: any) {
+            toast.error(apiErrorMessage(e, "Não foi possível aplicar a despesa geral."));
+        } finally {
+            setApplyingExpense(false);
+        }
     };
 
     // F2d: se o artigo já tiver outro código deste fornecedor, não há pergunta: o do PingWin fica
@@ -710,6 +736,10 @@ export default function FaturaValidacaoPage() {
                                 </Row>
                             </CardBody>
                         </Card>
+
+                        <GeneralExpenseCard expense={generalExpense} supplierId={generalExpense?.supplier_id ?? inv?.expense_supplier_id} isRoot={isRoot}
+                            canApply={!!generalExpense && pingwin?.status === "nao_lancada" && (inv?.status === "por_validar" || inv?.status === "validada")}
+                            applying={applyingExpense} onApply={applyGeneralExpense} />
 
                         <Card>
                             <div className="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">

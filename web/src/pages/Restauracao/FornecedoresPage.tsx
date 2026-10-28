@@ -15,6 +15,8 @@ import {
 } from "helpers/laravel_helper";
 import { PingwinSupplier, PingwinSupplierForm, PingwinSupplierWriteState } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { useAccess } from "contexts/ModulesContext";
+import GeneralExpenseModal from "./faturas/GeneralExpenseModal";
 import AuditButton from "pages/Auditoria/AuditButton";
 import AuditCountCell, { useAuditCounts } from "pages/Auditoria/AuditCountCell";
 
@@ -98,6 +100,9 @@ export default function FornecedoresPage() {
 
     // Anular
     const [voidTarget, setVoidTarget] = useState<PingwinSupplier | null>(null);
+    // Despesas gerais (sem stock): só o root marca; o atalho da fatura abre-a com ?despesas=<id>.
+    const isRoot = useAccess().can("plataforma.configurar");
+    const [expenseTarget, setExpenseTarget] = useState<{ id: number; name: string | null } | null>(null);
     const [voiding, setVoiding] = useState(false);
 
     // Escrita em curso (polling)
@@ -196,6 +201,13 @@ export default function FornecedoresPage() {
     // F3: "Criar fornecedor" a partir de uma fatura carregada → modal de criação pré-preenchido
     // (?novo=1&nif=…&nome=…&morada=…). Os parâmetros saem do URL depois de usados.
     const [searchParams, setSearchParams] = useSearchParams();
+    useEffect(() => {
+        const expense = Number(searchParams.get("despesas"));
+        if (!expense || !isRoot) return;
+        setExpenseTarget({ id: expense, name: rows.find((r) => r.id === expense)?.name ?? null });
+        setSearchParams({}, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, isRoot]);
     useEffect(() => {
         if (searchParams.get("novo") !== "1") return;
         const f: PingwinSupplierForm = {
@@ -309,6 +321,7 @@ export default function FornecedoresPage() {
                 <i className="ri-pencil-line" />
             </ReasonButton>
             <ActionsMenu size="sm" label={`Mais ações: ${s.name ?? "fornecedor"}`} items={[
+                { label: "Despesas gerais (sem stock)", icon: "ri-mail-send-line", onClick: () => setExpenseTarget({ id: s.id, name: s.name }), hidden: !isRoot },
                 { label: "Anular no PingWin", icon: "ri-close-circle-line", danger: true, onClick: () => setVoidTarget(s), disabledReason: busyReason },
             ]} />
         </>
@@ -482,6 +495,8 @@ export default function FornecedoresPage() {
                         </ReasonButton>
                     </ModalFooter>
                 </Modal>
+
+                {companyId ? <GeneralExpenseModal companyId={companyId} supplier={expenseTarget} onClose={() => setExpenseTarget(null)} /> : null}
 
                 {/* Anular */}
                 <Modal isOpen={!!voidTarget} toggle={() => !voiding && setVoidTarget(null)} centered>

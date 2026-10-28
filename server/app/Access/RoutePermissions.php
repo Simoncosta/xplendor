@@ -533,6 +533,8 @@ final class RoutePermissions
         'GET {id}/integrations/pingwin/suppliers/writes/{writeId}' => 'restauracao.ver',
         'DELETE {id}/integrations/pingwin/suppliers/{supplierId}' => 'restauracao.apagar',
         'PUT {id}/integrations/pingwin/suppliers/{supplierId}' => 'restauracao.editar',
+        'GET {id}/integrations/pingwin/suppliers/{supplierId}/general-expense' => 'restauracao.ver',
+        'PUT {id}/integrations/pingwin/suppliers/{supplierId}/general-expense' => 'plataforma.configurar', // despesas gerais: só o root marca
         'POST {id}/integrations/pingwin/sync' => 'restauracao.editar',
         'POST {id}/integrations/pingwin/sync-queue' => 'restauracao.editar',
         'GET {id}/integrations/pingwin/units' => 'restauracao.ver',
@@ -558,6 +560,7 @@ final class RoutePermissions
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/create-article' => 'restauracao.criar',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/supplier-code/principal' => 'restauracao.editar',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/article-vat' => 'restauracao.editar',
+        'POST {id}/ocr/invoices/{invoiceId}/general-expense/apply' => 'restauracao.editar',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/launch-unit' => 'restauracao.editar',
         'GET {id}/ocr/invoices/{invoiceId}/pingwin-launch' => 'restauracao.ver',
         'POST {id}/ocr/invoices/{invoiceId}/pingwin-launch' => 'restauracao.criar',
@@ -863,6 +866,8 @@ final class RoutePermissions
         'GET {id}/integrations/pingwin/families' => 'restauracao_familias',
         'POST {id}/integrations/pingwin/families/sync' => 'restauracao_familias',
         'POST {id}/integrations/pingwin/suppliers/sync' => 'restauracao_fornecedores',
+        'GET {id}/integrations/pingwin/suppliers/{supplierId}/general-expense' => 'restauracao_fornecedores',
+        'PUT {id}/integrations/pingwin/suppliers/{supplierId}/general-expense' => 'restauracao_fornecedores',
         'GET {id}/ocr/invoices' => 'restauracao_faturas',
         'POST {id}/ocr/invoices' => 'restauracao_faturas',
         'POST {id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice' => 'restauracao_faturas', // E-mail 7
@@ -881,6 +886,7 @@ final class RoutePermissions
         'DELETE {id}/ocr/invoices/{invoiceId}/pingwin-link' => 'restauracao_faturas',
         'GET {id}/ocr/articles/search' => 'restauracao_faturas',
         'GET {id}/ocr/articles/form' => 'restauracao_faturas',
+        'POST {id}/ocr/invoices/{invoiceId}/general-expense/apply' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/lines/accept-suggestions' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/lines/relink' => 'restauracao_faturas',
         'POST {id}/ocr/invoices/{invoiceId}/lines/{lineId}/article' => 'restauracao_faturas',

@@ -1,6 +1,6 @@
 {
     "ator": "root_outra",
-    "rotas": 654,
+    "rotas": 657,
     "proibidas": [
         "DELETE api/v1/companies/{id}/management",
         "DELETE api/v1/companies/{id}/my-mailbox",
@@ -323,6 +323,7 @@
         "GET api/v1/companies/{id}/integrations/pingwin/supplier-documents/{docheaderId}/lines": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/suppliers": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/suppliers/writes/{writeId}": 404,
+        "GET api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}/general-expense": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/units": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/units/creations/{creationId}": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/units/{unitId}/usage": 404,
@@ -624,6 +625,7 @@
         "POST api/v1/companies/{id}/my-mailbox/trash": 403,
         "POST api/v1/companies/{id}/ocr/invoices": 422,
         "POST api/v1/companies/{id}/ocr/invoices/bulk-delete": 200,
+        "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/general-expense/apply": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/accept-suggestions": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/relink": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
@@ -736,6 +738,7 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/family-categories": 422,
         "PUT api/v1/companies/{id}/integrations/pingwin/payment-conditions/{paycondId}": 404,
         "PUT api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}": 404,
+        "PUT api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}/general-expense": 404,
         "PUT api/v1/companies/{id}/integrations/social/accounts": 422,
         "PUT api/v1/companies/{id}/integrations/social/auto-publishing": 422,
         "PUT api/v1/companies/{id}/leads/{lead}": 404,

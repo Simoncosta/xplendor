@@ -1358,6 +1358,14 @@ export const closeOcrLaunch = (companyId: number, invoiceId: number) =>
 export const voidOcrLaunch = (companyId: number, invoiceId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/void`, {}, JSON_BODY);
 /** Cadastros › Artigos: "Artigo de agrupamento" (definição da XPLENDOR; não mexe no PingWin). */
+// Despesas gerais (sem stock): um artigo por taxa de IVA por fornecedor; só o root marca.
+export const getSupplierGeneralExpense = (companyId: number, supplierId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/${supplierId}/general-expense`);
+export const setSupplierGeneralExpense = (companyId: number, supplierId: number, data: { enabled: boolean; articles?: Record<string, number | null> }) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/${supplierId}/general-expense`, data);
+/** "Aplicar a esta fatura": liga as linhas com valor ao artigo de despesa da sua taxa. */
+export const applyOcrGeneralExpense = (companyId: number, invoiceId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/general-expense/apply`, {}, JSON_BODY);
 export const getArticleGrouping = (companyId: number, catalogItemId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/grouping`);
 export const setArticleGrouping = (companyId: number, catalogItemId: number, grouping: boolean) =>

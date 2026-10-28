@@ -24,14 +24,16 @@ type Props = {
     /** O que a fatura diz da linha (para comparar). */
     lineLabel: string;
     onPick: (a: OcrArticleSearchResult) => void;
-    onCreate: () => void;
+    /** Sem ele, não há "Criar artigo" (só se escolhe entre os que já existem). */
+    onCreate?: () => void;
     onClose: () => void;
+    title?: string;
 };
 
 const eur = (n: number) => n.toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 4 });
 const fmtDay = (d?: string | null) => (d ? d.split("-").reverse().join("/") : "");
 
-export default function ArticlePicker({ isOpen, companyId, supplierNif, supplierName, initialQuery, lineLabel, onPick, onCreate, onClose }: Props) {
+export default function ArticlePicker({ isOpen, companyId, supplierNif, supplierName, initialQuery, lineLabel, onPick, onCreate, onClose, title = "Associar a artigo" }: Props) {
     const [q, setQ] = useState(initialQuery);
     const [results, setResults] = useState<OcrArticleSearchResult[]>([]);
     const [loading, setLoading] = useState(false);
@@ -76,7 +78,7 @@ export default function ArticlePicker({ isOpen, companyId, supplierNif, supplier
 
     return (
         <Modal isOpen={isOpen} toggle={onClose} size="lg" fullscreen="sm" scrollable onOpened={() => inputRef.current?.focus()} data-testid="article-picker">
-            <ModalHeader toggle={onClose}>Associar a artigo</ModalHeader>
+            <ModalHeader toggle={onClose}>{title}</ModalHeader>
             <ModalBody>
                 <p className="fs-13 text-muted mb-2">
                     Na fatura: <strong className="text-body">{lineLabel}</strong>
@@ -104,7 +106,7 @@ export default function ArticlePicker({ isOpen, companyId, supplierNif, supplier
                 {!loading && results.length === 0 ? (
                     <div className="text-center text-muted py-4" data-testid="article-empty">
                         <p className="mb-2">{q.trim() ? <>Nenhum artigo encontrado para «{q.trim()}».</> : "Escreva para procurar."}</p>
-                        <Button size="sm" color="outline-primary" onClick={onCreate}><i className="ri-add-line me-1" />Criar artigo</Button>
+                        {onCreate && <Button size="sm" color="outline-primary" onClick={onCreate}><i className="ri-add-line me-1" />Criar artigo</Button>}
                     </div>
                 ) : (
                     <>
@@ -149,7 +151,7 @@ export default function ArticlePicker({ isOpen, companyId, supplierNif, supplier
                 <span className="fs-12 text-muted d-none d-md-inline">↑ ↓ escolher · Enter associar · Esc fechar</span>
                 <div className="d-flex gap-2">
                     <Button color="light" onClick={onClose}>Cancelar</Button>
-                    <Button color="outline-primary" onClick={onCreate}><i className="ri-add-line me-1" />Criar artigo</Button>
+                    {onCreate && <Button color="outline-primary" onClick={onCreate}><i className="ri-add-line me-1" />Criar artigo</Button>}
                 </div>
             </ModalFooter>
         </Modal>

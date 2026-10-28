@@ -109,6 +109,11 @@ export default function LineArticleCell({ link, saved, busy, onAccept, onAssocia
         return <span className="fs-12 text-muted">Guarde a fatura para ligar esta linha.</span>;
     }
 
+    // Despesas gerais: a linha a 0,00 € (por exemplo o código de seguimento) não conta nem precisa de artigo.
+    if (link.expense_ignored) {
+        return <span className="fs-12 text-muted" data-testid="line-expense-ignored"><i className="ri-subtract-line me-1" />A 0,00 €: não conta (despesa geral).</span>;
+    }
+
     if (link.creating && link.creating.status !== "ok") {
         return link.creating.status === "erro"
             ? <span className="fs-12 text-danger" title={link.creating.error ?? ""}><i className="ri-error-warning-line me-1" />Não foi possível criar o artigo{link.creating.error ? `: ${link.creating.error}` : "."}</span>

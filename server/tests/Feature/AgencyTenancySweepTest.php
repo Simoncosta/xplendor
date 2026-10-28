@@ -207,6 +207,8 @@ class AgencyTenancySweepTest extends TestCase
     private const ROOT_ONLY = [
         // Postos de venda do relatório anual do PingWin (início de cada loja).
         'PUT api/v1/companies/{id}/integrations/pingwin/annual-locals',
+        // Despesas gerais (sem stock) de um fornecedor: só o root marca.
+        'PUT api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}/general-expense',
     ];
 
     /** Ligar, alterar e desligar integrações e credenciais: só os ADMINS da agência (um membro comum recebe 403). */

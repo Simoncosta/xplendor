@@ -12,6 +12,7 @@ use App\Models\OcrInvoiceLine;
 use App\Models\OcrInvoiceSummary;
 use App\Models\PingwinSupplier;
 use App\Jobs\LinkOcrInvoiceJob;
+use App\Services\GeneralExpenseService;
 use App\Services\InvoiceOcrService;
 use App\Services\OcrInvoiceDeleteService;
 use App\Services\OcrInvoiceIntake;
@@ -544,6 +545,9 @@ class CompanyInvoiceOcrController extends Controller
         $lineLinks = app(OcrLineArticleService::class);
         $lineArticles = OcrLineArticleService::articlesFor($inv->lines);
         $lineCodes = $lineLinks->codesFor($inv, $inv->lines); // F2d: principal + alternativos
+        // Fornecedor de despesas gerais: as linhas a 0,00 € não contam e não precisam de ligação.
+        $expenses = app(GeneralExpenseService::class);
+        $expense = $expenses->forInvoice($inv);
         // ⚠️ A Xplendor calcula a soma das linhas (mais fiável que o sumário da IA).
         $linesTotal = $inv->lines->sum(fn (OcrInvoiceLine $l) => (int) ($l->line_total_cents ?? 0)) / 100;
 
@@ -606,6 +610,7 @@ class CompanyInvoiceOcrController extends Controller
                 'promo_code'   => $l->promo_code,
                 'vat_code'     => $l->vat_code,
                 'vat_rate'     => $l->vat_rate,
+                'expense_ignored' => $expense !== null && ! GeneralExpenseService::hasValue($l),
             ] + $lineLinks->presentLine($l, $lineArticles, $lineCodes))->values(),
             // Os descontos de promoção lidos e a quem ficaram (sem par: "Desconto por atribuir").
             'discounts'         => $inv->discounts->map(fn ($d) => [
@@ -624,7 +629,11 @@ class CompanyInvoiceOcrController extends Controller
             // F2c: motivo para não se poder apagar (null = pode)
             'delete_block'      => app(OcrInvoiceDeleteService::class)->blockReason($inv),
             // F2b: linhas ligadas a artigos; "pronta para lançar" = todas ligadas.
-            'articles_summary'  => OcrLineArticleService::summary($inv->lines),
+            'articles_summary'  => OcrLineArticleService::summary($expense ? GeneralExpenseService::withValue($inv->lines) : $inv->lines),
+            // Despesas gerais: "Despesa geral: N linhas, 1 por taxa" e as taxas sem artigo (null sem a marca).
+            'general_expense'   => $expense ? $expenses->summary($inv, $expense) : null,
+            // O fornecedor (por NIF) a que o root pode marcar as despesas gerais (atalho para os Fornecedores).
+            'expense_supplier_id' => $lineLinks->supplier($inv)?->id,
             'summary'           => $inv->summary ? [
                 'goods_total'         => $inv->summary->goods_total_cents / 100,
                 'commercial_discount' => $inv->summary->commercial_discount_cents / 100,

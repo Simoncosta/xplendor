@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OcrInvoice;
 use App\Models\OcrInvoiceLine;
 use App\Models\PingwinFamily;
+use App\Services\GeneralExpenseService;
 use App\Services\OcrArticleSearchService;
 use App\Services\OcrLineArticleService;
 use Illuminate\Http\Request;
@@ -221,10 +222,14 @@ class CompanyOcrLineArticleController extends Controller
         $lines = $inv->lines()->orderBy('position')->get();
         $articles = OcrLineArticleService::articlesFor($lines);
         $codes = $this->lines->codesFor($inv, $lines);
+        $expenses = app(GeneralExpenseService::class);
+        $expense = $expenses->forInvoice($inv);
 
         return [
-            'articles_summary' => OcrLineArticleService::summary($lines),
-            'line_links'       => $lines->map(fn ($l) => ['id' => $l->id] + $this->lines->presentLine($l, $articles, $codes))->values(),
+            'articles_summary' => OcrLineArticleService::summary($expense ? GeneralExpenseService::withValue($lines) : $lines),
+            'line_links'       => $lines->map(fn ($l) => ['id' => $l->id, 'expense_ignored' => $expense !== null && ! GeneralExpenseService::hasValue($l)]
+                + $this->lines->presentLine($l, $articles, $codes))->values(),
+            'general_expense'  => $expense ? $expenses->summary($inv->setRelation('lines', $lines), $expense) : null,
         ];
     }
 }

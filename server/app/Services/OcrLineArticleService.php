@@ -121,11 +121,18 @@ class OcrLineArticleService
     // Ligação automática
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Corre a → e nas linhas não manuais. Devolve contagem por método. */
+    /**
+     * Corre a → e nas linhas não manuais. Devolve contagem por método. Fornecedor de despesas gerais
+     * (GeneralExpenseService): as linhas com valor ligam-se ao artigo de despesa da sua taxa.
+     */
     public function linkInvoice(OcrInvoice $inv): array
     {
         $inv->loadMissing('lines');
         $this->resolvePendingCreations($inv);
+        $expenses = app(GeneralExpenseService::class);
+        if ($setting = $expenses->forInvoice($inv)) {
+            return $expenses->apply($inv, $setting, false)['count'];
+        }
         $lines = $inv->lines()->orderBy('position')->get();
         $nif = SupplierArticleMapService::nif($inv->supplier_nif);
         $catalog = $this->catalog($inv->company_id);
