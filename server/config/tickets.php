@@ -16,4 +16,8 @@ return [
     | nota "acresce IVA à taxa legal" — sem inventar um total que confunda.
     */
     'site_change_hourly_rate' => (float) env('SITE_CHANGE_HOURLY_RATE', 25),
+
+    // Dias que o ficheiro de uma fatura retirada (ou trocada) fica guardado antes de o comando
+    // support:purge-removed-files o apagar. Nunca menos de 1.
+    'removed_files_days' => max(1, (int) env('TICKETS_REMOVED_FILES_DAYS', 30)),
 ];

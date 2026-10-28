@@ -72,6 +72,9 @@ final class CompanyStorageUsage
             . 'SUM(CASE WHEN invoice_path IS NOT NULL AND invoice_size_bytes IS NULL THEN 1 ELSE 0 END) + SUM(CASE WHEN proof_path IS NOT NULL AND proof_size_bytes IS NULL THEN 1 ELSE 0 END) AS missing')->get(), 'cobrancas');
         $add($scope(DB::table('support_tickets')->whereNotNull('invoice_path'))->groupBy('company_id')
             ->selectRaw('company_id, SUM(COALESCE(invoice_size_bytes, 0)) AS bytes, SUM(CASE WHEN invoice_size_bytes IS NULL THEN 1 ELSE 0 END) AS missing')->get(), 'faturas_tickets');
+        // As faturas retiradas ou trocadas contam até o ficheiro ser apagado (30 dias).
+        $add($scope(DB::table('support_ticket_removed_files')->whereNull('purged_at'))->groupBy('company_id')
+            ->selectRaw('company_id, SUM(COALESCE(size_bytes, 0)) AS bytes, SUM(CASE WHEN size_bytes IS NULL THEN 1 ELSE 0 END) AS missing')->get(), 'faturas_tickets');
         $add($scope(DB::table('satisfaction_report_photos')->join('satisfaction_reports', 'satisfaction_reports.id', '=', 'satisfaction_report_photos.satisfaction_report_id'), 'satisfaction_reports.company_id')
             ->groupBy('satisfaction_reports.company_id')
             ->selectRaw('satisfaction_reports.company_id AS company_id, SUM(COALESCE(satisfaction_report_photos.size_bytes, 0)) AS bytes, '

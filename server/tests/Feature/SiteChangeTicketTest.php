@@ -126,9 +126,12 @@ class SiteChangeTicketTest extends TestCase
         $res = $this->actingAs($this->root, 'sanctum')->post("/api/v1/admin/tickets/{$t->id}/mark-paid", [
             'invoice' => UploadedFile::fake()->create('fatura.pdf', 40, 'application/pdf'),
         ], ['Accept' => 'application/json']);
-        $res->assertStatus(200)->assertJsonPath('data.quote_status', 'paid');
+        // O pagamento tem coluna própria: o trabalho continua "aprovado" e o pagamento fica registado.
+        $res->assertStatus(200)->assertJsonPath('data.quote_status', 'approved')->assertJsonPath('data.payment_status', 'paid');
 
         $fresh = $t->fresh();
+        $this->assertNotNull($fresh->paid_at);
+        $this->assertSame($this->root->id, (int) $fresh->paid_by_user_id);
         $this->assertNotNull($fresh->invoice_path);
         $this->assertStringEndsWith('.pdf', $fresh->invoice_path);
         // Pré-deploy, ponto 5: a fatura fica no disco PRIVADO e sai por URL assinado.
@@ -174,8 +177,8 @@ class SiteChangeTicketTest extends TestCase
         $t2 = $this->makeTicket('quoted', ['quoted_amount' => 50]);
         $this->actingAs($this->root, 'sanctum')->post("/api/v1/admin/tickets/{$t2->id}/mark-paid", [], ['Accept' => 'application/json'])->assertStatus(422);
 
-        // Concluir sem estar pago → 422.
-        $t3 = $this->makeTicket('approved', ['quoted_amount' => 50]);
+        // Concluir sem o orçamento aprovado → 422 (concluir antes do pagamento é permitido).
+        $t3 = $this->makeTicket('quoted', ['quoted_amount' => 50]);
         $this->actingAs($this->root, 'sanctum')->patchJson("/api/v1/admin/tickets/{$t3->id}/complete")->assertStatus(422);
     }
 

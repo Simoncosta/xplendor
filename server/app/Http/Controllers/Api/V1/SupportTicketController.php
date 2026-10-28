@@ -6,6 +6,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SupportTicketRequest;
 use App\Http\Resources\SupportTicketResource;
+use App\Models\ImpersonationSession;
 use App\Models\SupportTicket;
 use App\Services\SupportTicketService;
 use Illuminate\Http\Request;
@@ -65,11 +66,13 @@ class SupportTicketController extends Controller
             ]);
         }
 
+        // Na sessão como cliente, grava-se o root que escreveu de facto.
         $ticket = $this->service->createTicket(
             $companyId,
             (int) Auth::id(),
             $request->validated(),
-            $request->file('screenshot')
+            $request->file('screenshot'),
+            ImpersonationSession::activeFor(Auth::user())?->root_id
         );
         $ticket->load('user');
 
@@ -91,7 +94,7 @@ class SupportTicketController extends Controller
         }
 
         // O cliente acompanha o arranque (lista de tarefas, só leitura).
-        $ticket->load(['user', 'messages.user', 'tasks.doneBy']);
+        $ticket->load(['user', 'messages.user', 'messages.impersonator', 'tasks.doneBy']);
 
         return ApiResponse::success(
             (new SupportTicketResource($ticket))->resolve(),
@@ -114,10 +117,11 @@ class SupportTicketController extends Controller
             'body' => ['required', 'string', 'max:5000'],
         ]);
 
+        // Na sessão como cliente, a mensagem é do root: conta como da equipa e grava quem a escreveu.
         $user = Auth::user();
-        $this->service->addMessage($ticket, (int) $user->id, $data['body'], $user->isRoot());
+        $this->service->addMessage($ticket, (int) $user->id, $data['body'], $user->isRoot(), ImpersonationSession::activeFor($user)?->root_id);
 
-        $ticket->load(['user', 'messages.user']);
+        $ticket->load(['user', 'messages.user', 'messages.impersonator']);
 
         return ApiResponse::success(
             (new SupportTicketResource($ticket))->resolve(),
@@ -228,7 +232,7 @@ class SupportTicketController extends Controller
             ? $this->service->approveQuote($ticket)
             : $this->service->rejectQuote($ticket);
 
-        $ticket->load(['user', 'messages.user']);
+        $ticket->load(['user', 'messages.user', 'messages.impersonator']);
 
         return ApiResponse::success(
             (new SupportTicketResource($ticket))->resolve(),

@@ -16,6 +16,8 @@ class SupportTicketResource extends JsonResource
         // O orçamento (valor, horas, fatura) é da faturação da XPLENDOR: só o Administrador o vê.
         $billing = \App\Access\XplendorBilling::visibleTo($request, (int) $this->company_id);
         $request->attributes->set('support_billing_visible', $billing);
+        // A equipa XPLENDOR (o root fora da sessão como cliente) vê quem escreveu e o que pode fazer.
+        $team = (bool) $request->user()?->isRoot();
 
         return [
             'id'             => $this->id,
@@ -38,6 +40,10 @@ class SupportTicketResource extends JsonResource
             // Disco privado: URL assinado de curta duração (esta resposta já passou pela empresa e pelo ACL).
             'invoice_url'     => $billing ? \App\Support\Storage\PrivateFiles::ticketInvoiceUrl($this->resource) : null,
             'hourly_rate'     => $billing && $this->type === 'site_change' ? (float) config('tickets.site_change_hourly_rate') : null,
+            // A fatura e o pagamento, à parte do trabalho (quote_status): paid | invoiced | pending.
+            'payment_status'  => $billing ? $this->paymentStatus() : null,
+            'invoiced_at'     => $billing ? optional($this->invoiced_at)->toIso8601String() : null,
+            'paid_at'         => $billing ? optional($this->paid_at)->toIso8601String() : null,
             'author_name'    => $this->whenLoaded('user', fn () => $this->user?->name),
             'messages_count' => $this->whenCounted('messages'),
             'messages'       => SupportTicketMessageResource::collection($this->whenLoaded('messages')),
@@ -71,6 +77,17 @@ class SupportTicketResource extends JsonResource
             }),
             'created_at'     => optional($this->created_at)->toIso8601String(),
             'updated_at'     => optional($this->updated_at)->toIso8601String(),
+            // Só a equipa: quem escreveu de facto, quem anexou a fatura e marcou o pagamento, o apagado.
+            'team'           => $this->when($team, fn () => [
+                'impersonator_name' => $this->impersonator_user_id ? $this->impersonator?->name : null,
+                'invoice_by_name'   => $this->invoice_by_user_id ? $this->invoiceBy?->name : null,
+                'paid_by_name'      => $this->paid_by_user_id ? $this->paidBy?->name : null,
+                'deleted_at'        => optional($this->deleted_at)->toIso8601String(),
+                'deleted_by_name'   => $this->deleted_by_user_id ? $this->deletedBy?->name : null,
+                'can'               => $this->relationLoaded('messages')
+                    ? app(\App\Services\SupportTickets\TicketAuthorship::class)->abilities($request->user(), $this->resource)
+                    : null,
+            ]),
         ];
     }
 }

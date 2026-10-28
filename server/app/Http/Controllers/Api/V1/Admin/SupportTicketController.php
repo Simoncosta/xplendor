@@ -10,7 +10,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\SupportTicketResource;
 use App\Models\ImpersonationSession;
 use App\Models\SupportTicket;
+use App\Models\SupportTicketMessage;
 use App\Services\SupportTicketService;
+use App\Services\SupportTickets\TicketEdits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -28,7 +30,18 @@ use Illuminate\Validation\Rule;
  */
 class SupportTicketController extends Controller
 {
-    public function __construct(protected SupportTicketService $service) {}
+    /** Tudo o que o ecrã do root mostra num pedido (autores, edições, fatura e pagamento). */
+    private const RELATIONS = ['company', 'user', 'impersonator', 'invoiceBy', 'paidBy', 'deletedBy', 'messages.user', 'messages.impersonator',
+        'messages.versions.editedBy', 'messages.deletedBy', 'typeChanges.changedBy', 'tasks.doneBy'];
+
+    public function __construct(protected SupportTicketService $service, protected TicketEdits $edits) {}
+
+    private function respond(SupportTicket $ticket, string $message)
+    {
+        $ticket = SupportTicket::withTrashed()->with(self::RELATIONS)->find($ticket->id);
+
+        return ApiResponse::success((new SupportTicketResource($ticket))->resolve(), $message);
+    }
 
     private function ensureRoot(): void
     {
@@ -41,6 +54,10 @@ class SupportTicketController extends Controller
         $this->ensureRoot();
 
         $query = SupportTicket::with(['company', 'user'])->withCount('messages');
+        // Filtro "Apagados": só os tickets apagados (soft delete); sem ele, nunca aparecem.
+        if ($request->boolean('deleted')) {
+            $query->onlyTrashed()->with('deletedBy');
+        }
 
         if ($status = $request->input('status')) {
             $query->where('status', $status);
@@ -101,7 +118,8 @@ class SupportTicketController extends Controller
     {
         $this->ensureRoot();
 
-        $ticket = SupportTicket::with(['company', 'user', 'messages.user', 'typeChanges.changedBy', 'tasks.doneBy'])->find($ticketId);
+        // O root também abre os apagados (só leitura; o filtro "Apagados" leva-o até eles).
+        $ticket = SupportTicket::withTrashed()->with(self::RELATIONS)->find($ticketId);
         if (! $ticket) {
             return ApiResponse::error('Ticket não encontrado.', 404);
         }
@@ -143,12 +161,7 @@ class SupportTicketController extends Controller
         ]);
 
         $ticket = $this->service->updateStatus($ticket, $data['status']);
-        $ticket->load(['company', 'user', 'messages.user']);
-
-        return ApiResponse::success(
-            (new SupportTicketResource($ticket))->resolve(),
-            'Ticket status updated successfully.'
-        );
+        return $this->respond($ticket, 'Ticket status updated successfully.');
     }
 
     /**
@@ -177,12 +190,7 @@ class SupportTicketController extends Controller
         } catch (TicketTypeChangeNeedsConfirmation $e) {
             return ApiResponse::error($e->getMessage(), 409, $e->payload());
         }
-        $ticket->load(['company', 'user', 'messages.user', 'typeChanges.changedBy']);
-
-        return ApiResponse::success(
-            (new SupportTicketResource($ticket))->resolve(),
-            'Tipo do ticket alterado.'
-        );
+        return $this->respond($ticket, 'Tipo do ticket alterado.');
     }
 
     public function storeMessage(Request $request, int $ticketId)
@@ -200,12 +208,7 @@ class SupportTicketController extends Controller
 
         // is_staff=true → resposta do super-admin (não dispara email ao Simon).
         $this->service->addMessage($ticket, (int) Auth::id(), $data['body'], true);
-        $ticket->load(['company', 'user', 'messages.user']);
-
-        return ApiResponse::success(
-            (new SupportTicketResource($ticket))->resolve(),
-            'Message added successfully.'
-        );
+        return $this->respond($ticket, 'Message added successfully.');
     }
 
     // ── Camada de orçamento (só site_change, só o super-admin) ───────────────
@@ -225,15 +228,10 @@ class SupportTicketController extends Controller
         ]);
 
         $ticket = $this->service->setQuote($ticket, (float) $data['estimated_hours']);
-        $ticket->load(['company', 'user', 'messages.user']);
-
-        return ApiResponse::success(
-            (new SupportTicketResource($ticket))->resolve(),
-            'Quote saved successfully.'
-        );
+        return $this->respond($ticket, 'Quote saved successfully.');
     }
 
-    /** ADMIN — marca pago (fora do software) e anexa o PDF da fatura. */
+    /** ADMIN — marca pago (fora do software); a fatura em PDF é opcional. */
     public function markPaid(Request $request, int $ticketId)
     {
         $this->ensureRoot();
@@ -250,13 +248,83 @@ class SupportTicketController extends Controller
             ]);
         }
 
-        $ticket = $this->service->markPaid($ticket, $request->file('invoice'));
-        $ticket->load(['company', 'user', 'messages.user']);
+        $ticket = $this->service->markPaid($ticket, $request->file('invoice'), $request->user());
 
-        return ApiResponse::success(
-            (new SupportTicketResource($ticket))->resolve(),
-            'Ticket marked as paid successfully.'
-        );
+        return $this->respond($ticket, 'Pagamento marcado.');
+    }
+
+    /** ADMIN — anula o pagamento marcado por engano (fica na auditoria). */
+    public function unmarkPaid(Request $request, int $ticketId)
+    {
+        $this->ensureRoot();
+        $ticket = SupportTicket::findOrFail($ticketId);
+
+        return $this->respond($this->service->unmarkPaid($ticket, $request->user()), 'Pagamento anulado.');
+    }
+
+    /** ADMIN — anexa ou troca a fatura em PDF (multipart), sem mexer no pagamento. */
+    public function storeInvoice(Request $request, int $ticketId)
+    {
+        $this->ensureRoot();
+        $ticket = SupportTicket::findOrFail($ticketId);
+        $request->validate(['invoice' => ['required', 'file', 'mimes:pdf', 'max:8192']]);
+
+        return $this->respond($this->service->attachInvoice($ticket, $request->file('invoice'), $request->user()), 'Fatura anexada.');
+    }
+
+    /** ADMIN — retira a fatura (só a que anexou). */
+    public function destroyInvoice(Request $request, int $ticketId)
+    {
+        $this->ensureRoot();
+        $ticket = SupportTicket::findOrFail($ticketId);
+
+        return $this->respond($this->service->removeInvoice($ticket, $request->user()), 'Fatura retirada.');
+    }
+
+    /** ADMIN — edita uma mensagem que escreveu (o texto anterior fica guardado). */
+    public function updateMessage(Request $request, int $ticketId, int $messageId)
+    {
+        $this->ensureRoot();
+        $ticket = SupportTicket::findOrFail($ticketId);
+        $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
+        $this->edits->editMessage($ticket, $this->message($ticket, $messageId), $request->user(), $data['body']);
+
+        return $this->respond($ticket, 'Mensagem editada.');
+    }
+
+    /** ADMIN — apaga uma mensagem que escreveu (fica a marca na thread). */
+    public function destroyMessage(Request $request, int $ticketId, int $messageId)
+    {
+        $this->ensureRoot();
+        $ticket = SupportTicket::findOrFail($ticketId);
+        $this->edits->deleteMessage($ticket, $this->message($ticket, $messageId), $request->user());
+
+        return $this->respond($ticket, 'Mensagem apagada.');
+    }
+
+    /** ADMIN — retira o anexo de um pedido que criou. */
+    public function destroyScreenshot(Request $request, int $ticketId)
+    {
+        $this->ensureRoot();
+        $ticket = SupportTicket::findOrFail($ticketId);
+        $this->edits->removeScreenshot($ticket, $request->user());
+
+        return $this->respond($ticket, 'Anexo retirado.');
+    }
+
+    /** ADMIN — apaga (soft delete) um pedido que criou por engano. */
+    public function destroy(Request $request, int $ticketId)
+    {
+        $this->ensureRoot();
+        $ticket = SupportTicket::findOrFail($ticketId);
+        $this->edits->deleteTicket($ticket, $request->user());
+
+        return $this->respond($ticket, 'Pedido apagado.');
+    }
+
+    private function message(SupportTicket $ticket, int $messageId): SupportTicketMessage
+    {
+        return SupportTicketMessage::where('support_ticket_id', $ticket->id)->findOrFail($messageId);
     }
 
     /** ADMIN — marca concluído quando o trabalho termina. */
@@ -270,11 +338,7 @@ class SupportTicketController extends Controller
         }
 
         $ticket = $this->service->markCompleted($ticket);
-        $ticket->load(['company', 'user', 'messages.user']);
 
-        return ApiResponse::success(
-            (new SupportTicketResource($ticket))->resolve(),
-            'Ticket marked as completed successfully.'
-        );
+        return $this->respond($ticket, 'Ticket marked as completed successfully.');
     }
 }

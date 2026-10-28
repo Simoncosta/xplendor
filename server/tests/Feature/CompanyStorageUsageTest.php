@@ -86,7 +86,7 @@ class CompanyStorageUsageTest extends TestCase
         app(ChargeService::class)->indicatePayment($charge, 'app', $this->admin, null, UploadedFile::fake()->createWithContent('c.pdf', str_repeat('c', 700)));
         $ticket = SupportTicket::forceCreate(['company_id' => $this->company->id, 'user_id' => $this->admin->id, 'type' => 'site_change', 'title' => 'Página',
             'description' => 'Texto', 'status' => 'open', 'quote_status' => 'approved', 'quoted_amount' => 100]);
-        app(SupportTicketService::class)->markPaid($ticket, UploadedFile::fake()->createWithContent('t.pdf', str_repeat('t', 900)));
+        app(SupportTicketService::class)->markPaid($ticket, UploadedFile::fake()->createWithContent('t.pdf', str_repeat('t', 900)), \App\Models\User::factory()->create(['role' => 'root']));
         $car = \App\Models\Car::factory()->create(['company_id' => $this->company->id]);
         $sale = \App\Models\CarSale::create(['car_id' => $car->id, 'company_id' => $this->company->id, 'sale_price' => 1, 'buyer_gender' => 'male',
             'buyer_age_range' => '31-45', 'sale_channel' => 'in_person', 'sold_at' => now()]);

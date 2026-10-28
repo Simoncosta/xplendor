@@ -247,7 +247,7 @@ class R2StorageTest extends TestCase
         config(['storage_targets.private_disk' => 'r2']);
         $ticket = \App\Models\SupportTicket::forceCreate(['company_id' => $this->company->id, 'user_id' => $this->user->id, 'type' => 'site_change',
             'title' => 'Mudar o site', 'description' => 'Texto', 'status' => 'open', 'quote_status' => 'approved', 'quoted_amount' => 100]);
-        $ticket = app(\App\Services\SupportTicketService::class)->markPaid($ticket, UploadedFile::fake()->createWithContent('fatura.pdf', '%PDF-1.4 no R2'));
+        $ticket = app(\App\Services\SupportTicketService::class)->markPaid($ticket, UploadedFile::fake()->createWithContent('fatura.pdf', '%PDF-1.4 no R2'), \App\Models\User::factory()->create(['role' => 'root']));
         $this->assertTrue(Storage::disk('r2')->exists($ticket->invoice_path));
         $this->assertSame([], Storage::disk('local')->allFiles(), 'nada no disco local');
 

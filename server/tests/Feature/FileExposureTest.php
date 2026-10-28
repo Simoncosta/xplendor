@@ -82,7 +82,7 @@ class FileExposureTest extends TestCase
 
     public function test_the_ticket_invoice_is_private_and_served_only_by_a_signed_url(): void
     {
-        $ticket = app(SupportTicketService::class)->markPaid($this->ticket(), UploadedFile::fake()->createWithContent('fatura.pdf', '%PDF-1.4 fatura'));
+        $ticket = app(SupportTicketService::class)->markPaid($this->ticket(), UploadedFile::fake()->createWithContent('fatura.pdf', '%PDF-1.4 fatura'), \App\Models\User::factory()->create(['role' => 'root']));
 
         $this->assertStringStartsWith("support-invoices/company_{$this->company->id}/", $ticket->invoice_path);
         $this->assertSame([], Storage::disk('public')->allFiles(), 'nada no disco público');

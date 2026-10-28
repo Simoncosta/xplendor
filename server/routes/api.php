@@ -1114,6 +1114,17 @@ Route::prefix('v1')->group(function () {
             Route::patch('/tickets/{ticket}/quote', [AdminSupportTicketController::class, 'setQuote']);
             Route::post('/tickets/{ticket}/mark-paid', [AdminSupportTicketController::class, 'markPaid']);
             Route::patch('/tickets/{ticket}/complete', [AdminSupportTicketController::class, 'markCompleted']);
+            // Editar e apagar (só o root, fora da sessão como cliente, e só o que é dele) e a fatura
+            // separada do pagamento: anexar ou trocar (multipart), retirar, e anular o pago.
+            Route::middleware('block_when_impersonating')->group(function () {
+                Route::delete('/tickets/{ticket}/mark-paid', [AdminSupportTicketController::class, 'unmarkPaid'])->whereNumber('ticket');
+                Route::post('/tickets/{ticket}/invoice', [AdminSupportTicketController::class, 'storeInvoice'])->whereNumber('ticket');
+                Route::delete('/tickets/{ticket}/invoice', [AdminSupportTicketController::class, 'destroyInvoice'])->whereNumber('ticket');
+                Route::delete('/tickets/{ticket}/screenshot', [AdminSupportTicketController::class, 'destroyScreenshot'])->whereNumber('ticket');
+                Route::patch('/tickets/{ticket}/messages/{message}', [AdminSupportTicketController::class, 'updateMessage'])->whereNumber(['ticket', 'message']);
+                Route::delete('/tickets/{ticket}/messages/{message}', [AdminSupportTicketController::class, 'destroyMessage'])->whereNumber(['ticket', 'message']);
+                Route::delete('/tickets/{ticket}', [AdminSupportTicketController::class, 'destroy'])->whereNumber('ticket');
+            });
 
             // Orçamentos de serviços da XPLENDOR (só a equipa). Rotas fixas antes de /{quote}.
             Route::get('/quotes/summary', [AdminQuoteController::class, 'summary']);

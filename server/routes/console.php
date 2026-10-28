@@ -649,6 +649,14 @@ Schedule::command('mailbox:purge-retention')
     ->name('mailbox-retention-purge')
     ->withoutOverlapping(60);
 
+// Todas as noites às 05:05 (Lisboa) — Pedidos de suporte: os ficheiros das faturas retiradas ou
+// trocadas há mais de 30 dias. Interna: só apaga ficheiros da XPLENDOR.
+Schedule::command('support:purge-removed-files')
+    ->dailyAt('05:05')
+    ->timezone('Europe/Lisbon')
+    ->name('support-removed-files-purge')
+    ->withoutOverlapping(30);
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

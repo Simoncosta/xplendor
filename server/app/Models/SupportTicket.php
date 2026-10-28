@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Auditable;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
@@ -15,7 +16,7 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  */
 class SupportTicket extends Model implements AuditableContract
 {
-    use Auditable;
+    use Auditable, SoftDeletes;
 
     // 'site_change' é o tipo PAGO (dispara a camada de orçamento). Os restantes
     // são grátis/suporte normal.
@@ -26,11 +27,18 @@ class SupportTicket extends Model implements AuditableContract
     // arranque criado quando um orçamento é aceite, com a lista de tarefas dos serviços.
     public const TYPE_ONBOARDING = 'onboarding';
 
-    // Fluxo de orçamento — só para tickets 'site_change' (null nos grátis).
+    // Fluxo de orçamento — só para tickets 'site_change' (null nos grátis). Só a aprovação e o
+    // trabalho: a fatura (invoiced_at) e o pagamento (paid_at) têm colunas próprias. 'paid' é o
+    // valor antigo (antes da separação), já migrado para 'approved' com paid_at; fica na lista
+    // para os cartões do pipeline continuarem a ter a chave.
     public const QUOTE_STATUSES = ['awaiting_quote', 'quoted', 'approved', 'paid', 'completed', 'rejected'];
+    public const LEGACY_PAID = 'paid';
 
-    // Mudança de tipo: com orçamento nestes estados é bloqueada (há dinheiro aprovado);
-    // nestes, é permitida com confirmação e o orçamento fica a null (rasto no histórico).
+    // A partir daqui há trabalho aprovado: anexar a fatura, marcar pago e concluir.
+    public const QUOTE_WORK_STATUSES = ['approved', 'paid', 'completed'];
+
+    // Mudança de tipo: com orçamento nestes estados é bloqueada (há dinheiro aprovado), tal como
+    // com fatura ou pagamento; nestes, é permitida com confirmação e o orçamento fica a null.
     public const QUOTE_LOCKED_STATUSES = ['approved', 'paid', 'completed'];
     public const QUOTE_RESETTABLE_STATUSES = ['quoted', 'rejected'];
 
@@ -47,10 +55,18 @@ class SupportTicket extends Model implements AuditableContract
         'quoted_amount',
         'invoice_path',
         'quote_status',
+        'impersonator_user_id',
+        'invoiced_at',
+        'invoice_by_user_id',
+        'paid_at',
+        'paid_by_user_id',
+        'deleted_by_user_id',
     ];
 
     protected $casts = [
         'resolved_at'     => 'datetime',
+        'invoiced_at'     => 'datetime',
+        'paid_at'         => 'datetime',
         'estimated_hours' => 'decimal:2',
         'quoted_amount'   => 'decimal:2',
     ];
@@ -84,6 +100,37 @@ class SupportTicket extends Model implements AuditableContract
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** O root que criou o ticket na sessão como cliente (o ticket continua a ser da empresa). */
+    public function impersonator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'impersonator_user_id');
+    }
+
+    public function invoiceBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'invoice_by_user_id');
+    }
+
+    public function paidBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'paid_by_user_id');
+    }
+
+    public function deletedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by_user_id');
+    }
+
+    /** Fatura e pagamento: 'paid' (pagamento recebido), 'invoiced' (fatura emitida, por pagar), 'pending' (sem fatura nem pagamento). */
+    public function paymentStatus(): ?string
+    {
+        if (! in_array($this->quote_status, self::QUOTE_WORK_STATUSES, true)) {
+            return null;
+        }
+
+        return $this->paid_at !== null ? 'paid' : ($this->invoice_path !== null ? 'invoiced' : 'pending');
     }
 
     public function messages(): HasMany

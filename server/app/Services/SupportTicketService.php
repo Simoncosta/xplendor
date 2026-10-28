@@ -37,8 +37,12 @@ class SupportTicketService extends BaseService
     // plataforma. Hardcoded para seguir o padrão existente.
     private const NOTIFY_RECIPIENT = 'simonfrtd@gmail.com';
 
-    /** Cria o ticket; para bug com print, re-encoda o screenshot (sem original cru). */
-    public function createTicket(int $companyId, int $userId, array $data, ?UploadedFile $screenshot): SupportTicket
+    /**
+     * Cria o ticket; para bug com print, re-encoda o screenshot (sem original cru). Criado pelo root
+     * na sessão como cliente ($impersonatorId): continua a ser da empresa (um pedido em nome dela),
+     * grava quem o escreveu e não envia ao Simon o e-mail de "novo pedido".
+     */
+    public function createTicket(int $companyId, int $userId, array $data, ?UploadedFile $screenshot, ?int $impersonatorId = null): SupportTicket
     {
         $screenshotPath = null;
         if ($data['type'] === 'bug' && $screenshot) {
@@ -58,9 +62,12 @@ class SupportTicketService extends BaseService
             'status'          => 'open',
             'screenshot_path' => $screenshotPath,
             'quote_status'    => $isSiteChange ? 'awaiting_quote' : null,
+            'impersonator_user_id' => $impersonatorId,
         ]);
 
-        $this->notifyCreated($ticket);
+        if ($impersonatorId === null) {
+            $this->notifyCreated($ticket);
+        }
 
         return $ticket;
     }
@@ -97,7 +104,7 @@ class SupportTicketService extends BaseService
             $resetQuote = false;
 
             if ($wasSiteChange && ! $willBeSiteChange) {
-                if (in_array($locked->quote_status, SupportTicket::QUOTE_LOCKED_STATUSES, true) || $locked->invoice_path !== null) {
+                if (in_array($locked->quote_status, SupportTicket::QUOTE_LOCKED_STATUSES, true) || $locked->invoice_path !== null || $locked->paid_at !== null) {
                     $this->reject('Este pedido tem um orçamento aprovado, pago ou concluído, por isso o tipo não pode ser alterado. Anule primeiro o orçamento.');
                 }
                 if (in_array($locked->quote_status, SupportTicket::QUOTE_RESETTABLE_STATUSES, true) || $locked->quoted_amount !== null) {
@@ -228,8 +235,21 @@ class SupportTicketService extends BaseService
             ];
         }
 
+        // A fatura e o pagamento, à parte do trabalho (só os pedidos com o orçamento aprovado).
+        $work = (clone $base)->whereIn('quote_status', SupportTicket::QUOTE_WORK_STATUSES);
+        $payment = [
+            'to_invoice'      => (clone $work)->whereNull('invoice_path')->whereNull('paid_at'),
+            'invoiced_unpaid' => (clone $work)->whereNotNull('invoice_path')->whereNull('paid_at'),
+            'paid'            => (clone $work)->whereNotNull('paid_at'),
+        ];
+        $payment = array_map(fn ($q) => [
+            'count'  => (int) (clone $q)->count(),
+            'amount' => (float) (clone $q)->sum('quoted_amount'),
+        ], $payment);
+
         return [
             'by_status' => $byStatus,
+            'payment'   => $payment,
             'total'     => [
                 'count'  => array_sum(array_column($byStatus, 'count')),
                 'amount' => array_sum(array_column($byStatus, 'amount')),
@@ -285,38 +305,87 @@ class SupportTicketService extends BaseService
     }
 
     /**
-     * ADMIN — marca PAGO (pagamento acontece fora do software) e anexa o PDF da
-     * fatura. Só a partir de 'approved'. Passa a "em execução".
+     * ADMIN — anexa (ou troca) a fatura em PDF. A partir de "aprovado", não mexe no pagamento: o
+     * Simon faz o trabalho, emite a fatura e só depois recebe. Trocar só a fatura que é dele; a
+     * antiga deixa de ter endereço e o ficheiro apaga-se ao fim do prazo. Avisa por e-mail quem vê
+     * a faturação da XPLENDOR na empresa (sem o PDF em anexo).
      */
-    public function markPaid(SupportTicket $ticket, ?UploadedFile $invoice): SupportTicket
+    public function attachInvoice(SupportTicket $ticket, UploadedFile $invoice, User $actor): SupportTicket
     {
+        $authorship = app(\App\Services\SupportTickets\TicketAuthorship::class);
+        $authorship->assertTeam($actor);
         $this->assertSiteChange($ticket);
-        if ($ticket->quote_status !== 'approved') {
-            $this->reject('Só se marca pago um orçamento aprovado.');
-        }
+        $this->assertWorkApproved($ticket, 'Só se anexa a fatura de um orçamento aprovado.');
+        abort_if($ticket->invoice_path !== null && ! $authorship->ownsInvoice($actor, $ticket), 403, 'Só pode trocar a fatura que anexou.');
 
-        $invoicePath = $invoice ? $this->storeInvoice($ticket->company_id, $invoice) : $ticket->invoice_path;
+        $this->storeInvoiceOn($ticket, $invoice, $actor);
+        $this->notifyInvoice($ticket->fresh());
 
-        $ticket->update([
-            'quote_status' => 'paid',
-            'invoice_path' => $invoicePath,
-        ]);
-        if ($invoice) {
-            $ticket->forceFill(['invoice_size_bytes' => (int) $invoice->getSize()])->saveQuietly(); // espaço por empresa
+        return $ticket->fresh();
+    }
+
+    /** ADMIN — retira a fatura (só a que é dele) e avisa na thread. Não mexe no pagamento. */
+    public function removeInvoice(SupportTicket $ticket, User $actor): SupportTicket
+    {
+        $authorship = app(\App\Services\SupportTickets\TicketAuthorship::class);
+        $authorship->assertTeam($actor);
+        if ($ticket->invoice_path === null) {
+            return $ticket;
         }
+        abort_unless($authorship->ownsInvoice($actor, $ticket), 403, 'Só pode retirar a fatura que anexou.');
+
+        DB::transaction(function () use ($ticket, $actor) {
+            app(\App\Services\SupportTickets\RemovedTicketFiles::class)->trashInvoice($ticket, $actor);
+            $ticket->update(['invoice_path' => null, 'invoiced_at' => null, 'invoice_by_user_id' => null]);
+            $ticket->forceFill(['invoice_size_bytes' => null])->saveQuietly();
+        });
+        $this->addMessage($ticket, $actor->id, 'A equipa XPLENDOR retirou a fatura anexada a este pedido.', true);
 
         return $ticket->fresh();
     }
 
     /**
-     * ADMIN — marca CONCLUÍDO quando o trabalho termina. Só a partir de 'paid'.
-     * Espelha no status genérico como resolved (grava resolved_at).
+     * ADMIN — marca PAGO (o pagamento acontece fora do software). A partir de "aprovado" ou
+     * "concluído", com a fatura opcional (se vier, anexa-a como no attachInvoice).
+     */
+    public function markPaid(SupportTicket $ticket, ?UploadedFile $invoice, User $actor): SupportTicket
+    {
+        app(\App\Services\SupportTickets\TicketAuthorship::class)->assertTeam($actor);
+        $this->assertSiteChange($ticket);
+        $this->assertWorkApproved($ticket, 'Só se marca pago um orçamento aprovado.');
+        if ($ticket->paid_at !== null) {
+            $this->reject('Este pedido já está marcado como pago.');
+        }
+        if ($invoice) {
+            $this->attachInvoice($ticket, $invoice, $actor);
+        }
+        $ticket->refresh()->update(['paid_at' => now(), 'paid_by_user_id' => $actor->id]);
+
+        return $ticket->fresh();
+    }
+
+    /** ADMIN — anula o pagamento marcado por engano (fica na auditoria do ticket). */
+    public function unmarkPaid(SupportTicket $ticket, User $actor): SupportTicket
+    {
+        app(\App\Services\SupportTickets\TicketAuthorship::class)->assertTeam($actor);
+        $this->assertSiteChange($ticket);
+        if ($ticket->paid_at === null) {
+            $this->reject('Este pedido não está marcado como pago.');
+        }
+        $ticket->update(['paid_at' => null, 'paid_by_user_id' => null]);
+
+        return $ticket->fresh();
+    }
+
+    /**
+     * ADMIN — marca CONCLUÍDO quando o trabalho termina, antes ou depois do pagamento. Só a partir
+     * de "aprovado". Espelha no status genérico como resolved (grava resolved_at).
      */
     public function markCompleted(SupportTicket $ticket): SupportTicket
     {
         $this->assertSiteChange($ticket);
-        if ($ticket->quote_status !== 'paid') {
-            $this->reject('Só se conclui um pedido pago/em execução.');
+        if (! in_array($ticket->quote_status, ['approved', SupportTicket::LEGACY_PAID], true)) {
+            $this->reject('Só se conclui um pedido com o orçamento aprovado.');
         }
 
         $ticket->update([
@@ -326,6 +395,24 @@ class SupportTicketService extends BaseService
         ]);
 
         return $ticket->fresh();
+    }
+
+    private function assertWorkApproved(SupportTicket $ticket, string $message): void
+    {
+        if (! in_array($ticket->quote_status, SupportTicket::QUOTE_WORK_STATUSES, true)) {
+            $this->reject($message);
+        }
+    }
+
+    /** Grava a fatura nova no ticket; a anterior (se houver) vai para a reciclagem. */
+    private function storeInvoiceOn(SupportTicket $ticket, UploadedFile $invoice, User $actor): void
+    {
+        $path = $this->storeInvoice($ticket->company_id, $invoice);
+        DB::transaction(function () use ($ticket, $invoice, $actor, $path) {
+            app(\App\Services\SupportTickets\RemovedTicketFiles::class)->trashInvoice($ticket, $actor);
+            $ticket->update(['invoice_path' => $path, 'invoiced_at' => now(), 'invoice_by_user_id' => $actor->id]);
+            $ticket->forceFill(['invoice_size_bytes' => (int) $invoice->getSize()])->saveQuietly(); // espaço por empresa
+        });
     }
 
     private function assertSiteChange(SupportTicket $ticket): void
@@ -341,14 +428,20 @@ class SupportTicketService extends BaseService
         throw ValidationException::withMessages(['quote_status' => [$message]]);
     }
 
-    /** Acrescenta uma mensagem à thread. is_staff deriva do role (root = staff). */
-    public function addMessage(SupportTicket $ticket, int $userId, string $body, bool $isStaff): SupportTicketMessage
+    /**
+     * Acrescenta uma mensagem à thread. is_staff deriva do role (root = staff). Escrita pelo root
+     * na sessão como cliente ($impersonatorId): conta como da equipa e não envia ao Simon o e-mail
+     * de "nova mensagem do stand".
+     */
+    public function addMessage(SupportTicket $ticket, int $userId, string $body, bool $isStaff, ?int $impersonatorId = null): SupportTicketMessage
     {
+        $isStaff = $isStaff || $impersonatorId !== null;
         $message = SupportTicketMessage::create([
-            'support_ticket_id' => $ticket->id,
-            'user_id'           => $userId,
-            'body'              => $body,
-            'is_staff'          => $isStaff,
+            'support_ticket_id'    => $ticket->id,
+            'user_id'              => $userId,
+            'body'                 => $body,
+            'is_staff'             => $isStaff,
+            'impersonator_user_id' => $impersonatorId,
         ]);
 
         // Só as interações DOS STANDS notificam o super-admin (nunca as do staff).
@@ -416,12 +509,9 @@ class SupportTicketService extends BaseService
     {
         try {
             $ticket->loadMissing(['company', 'user']);
-            // O orçamento é da faturação da XPLENDOR: vai para o autor se for Administrador; senão,
-            // para os administradores ativos da empresa (o autor vê só o estado no pedido).
-            $to = $ticket->user && $ticket->user->isAdmin() && $ticket->user->email
-                ? [$ticket->user->email]
-                : \App\Models\User::where('company_id', $ticket->company_id)->where('role', 'admin')->whereNull('deactivated_at')
-                    ->whereNotNull('email')->pluck('email')->unique()->values()->all();
+            // O orçamento é da faturação da XPLENDOR: vai para quem a vê na empresa
+            // (faturacao_xplendor.ver), como o e-mail da fatura.
+            $to = $this->billingRecipients((int) $ticket->company_id);
             if ($to === []) {
                 return; // sem administrador com email não há a quem notificar
             }
@@ -435,6 +525,34 @@ class SupportTicketService extends BaseService
         } catch (\Throwable $e) {
             Log::error('[Support] Falha ao enfileirar email de orçamento', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
         }
+    }
+
+    /** E-mail a quem vê a faturação da XPLENDOR: há fatura nova no pedido (via queue, fail-safe). */
+    private function notifyInvoice(SupportTicket $ticket): void
+    {
+        try {
+            $to = $this->billingRecipients((int) $ticket->company_id);
+            if ($to === []) {
+                return;
+            }
+            Mail::to($to)->queue(new \App\Mail\SupportInvoiceAvailableMail(
+                ticketId: (int) $ticket->id,
+                ticketTitle: $ticket->title,
+                ticketUrl: rtrim((string) config('app.frontend_url'), '/') . "/support/{$ticket->id}",
+            ));
+        } catch (\Throwable $e) {
+            Log::error('[Support] Falha ao enfileirar email de fatura', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /** Os endereços de quem vê a faturação da XPLENDOR na empresa (ativos, com e-mail). */
+    private function billingRecipients(int $companyId): array
+    {
+        $access = app(\App\Access\Access::class);
+
+        return User::where('company_id', $companyId)->whereNull('deactivated_at')->whereNotNull('email')->get()
+            ->filter(fn (User $u) => $access->can($u, $companyId, 'faturacao_xplendor.ver')->allowed)
+            ->pluck('email')->unique()->values()->all();
     }
 
     /** Email ao SIMON: o stand aprovou (para faturar) ou rejeitou (fechou). */
