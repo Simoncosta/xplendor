@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import CarPrintSheet, { descriptionParagraphs } from "./CarPrintSheet";
 import type { CarPrintSheet as Sheet } from "types/api";
 
@@ -97,5 +97,53 @@ describe("Ficha A4 da viatura", () => {
         expect(descriptionParagraphs("<p><span style=\"color: red\">Um &amp; dois</span></p><p><br></p><p>Linha<br>seguinte</p><script>alert(1)</script>"))
             .toEqual(["Um & dois", "Linha\nseguinte", "alert(1)"]);
         expect(descriptionParagraphs("Texto simples sem etiquetas.")).toEqual(["Texto simples sem etiquetas."]);
+    });
+
+    describe("caber numa folha A4 sem passar a largura", () => {
+        const realFonts = (document as any).fonts;
+        const A4_CONTENT_PX = (276 * 96) / 25.4;
+        let height: (fit: number) => number;
+        beforeEach(() => {
+            height = () => 500;
+            jest.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+                if (!this.classList.contains("ps-fit")) return { height: 0, width: 0 } as DOMRect;
+                return { height: height(Number(this.style.getPropertyValue("--ps-fit") || 1)), width: 700 } as DOMRect;
+            });
+        });
+        afterEach(() => { jest.restoreAllMocks(); (document as any).fonts = realFonts; });
+
+        it("sem zoom: a ficha reduz-se pela letra (--ps-fit no tamanho, nunca zoom nem largura compensada)", async () => {
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet() });
+            const { container } = render(<CarPrintSheet />);
+            await screen.findByText("Sunlight A72");
+            const css = container.querySelector("style")!.textContent!;
+            expect(css).not.toMatch(/zoom\s*:/);
+            expect(css).not.toMatch(/calc\(100% \/ var\(--ps-fit/);
+            expect(css).toMatch(/font-size: calc\(10\.5pt \* var\(--ps-fit, 1\)\)/);
+            expect(css).toMatch(/max-width: 210mm/);
+            expect(css).toMatch(/font-family: 'XplInterSheet'/);
+        });
+
+        it("o fator só se calcula depois de o tipo de letra carregar, e outra vez antes de imprimir", async () => {
+            let fontsLoaded: () => void = () => undefined;
+            (document as any).fonts = { ready: new Promise<void>((r) => { fontsLoaded = r; }) };
+            // Com a letra normal ocupa 1,5 folhas: nem com o fator mínimo (0,72) cabe.
+            height = (f) => A4_CONTENT_PX * 1.5 * f;
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet() });
+            render(<CarPrintSheet />);
+            await screen.findByText("Sunlight A72");
+            const fit = () => screen.getByTestId("print-sheet").querySelector(".ps-fit") as HTMLElement;
+            expect(fit().dataset.fit).toBe("1"); // ainda à espera do Inter
+            await act(async () => { fontsLoaded(); await Promise.resolve(); });
+            expect(fit().dataset.fit).toBe("0.72"); // fica no mínimo...
+            expect(fit().dataset.pages).toBe("2"); // ...e passa a 2 páginas limpas, sem cortar texto
+            // Antes de imprimir, volta a medir (agora 1,2 folhas: cabe com cerca de 0,82).
+            height = (f) => A4_CONTENT_PX * 1.2 * f;
+            await act(async () => { window.dispatchEvent(new Event("beforeprint")); });
+            expect(Number(fit().dataset.fit)).toBeLessThan(0.83);
+            expect(Number(fit().dataset.fit)).toBeGreaterThan(0.8);
+            expect(fit().dataset.pages).toBe("1");
+            expect(fit().className).not.toContain("ps-two-pages");
+        });
     });
 });

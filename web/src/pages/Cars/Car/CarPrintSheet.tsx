@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Spinner } from "reactstrap";
 import { getCarPrintSheet } from "helpers/laravel_helper";
 import type { CarPrintSheet as CarPrintSheetType, CarPresentation } from "types/api";
+import "./CarPrintSheet.fonts.css";
 
 /**
  * Ficha de impressão A4 da viatura (a folha que o stand imprime e põe na viatura).
@@ -17,6 +18,13 @@ import type { CarPrintSheet as CarPrintSheetType, CarPresentation } from "types/
  * preto e branco: texto escuro, linhas finas, sem fundos de cor. Os blocos não se partem entre
  * colunas nem entre páginas; com muito equipamento ou uma descrição longa, a ficha reduz-se por
  * igual (sem cortar nada) para caber numa folha.
+ *
+ * A redução é uma escala do tipo de letra e dos espaços (tudo em em, a partir de --ps-fit), nunca
+ * um zoom: a folha tem no máximo 210 mm com qualquer tipo de letra e em qualquer browser (o zoom
+ * com a largura compensada passava a folha no Chrome atual e cortava a impressão). O tipo de letra
+ * é o Inter servido pela app, igual em Mac e Windows; o fator calcula-se depois de ele carregar e
+ * outra vez antes de imprimir. Se nem com o fator mínimo couber, a ficha passa a 2 páginas limpas
+ * (sem blocos partidos), em vez de cortar texto.
  */
 
 const publicUrl = process.env.REACT_APP_PUBLIC_URL ?? "";
@@ -91,13 +99,14 @@ export default function CarPrintSheet() {
     const [error, setError] = useState(false);
     // Sem logótipo (ou se falhar a carregar), o nome da empresa em texto.
     const [logoBroken, setLogoBroken] = useState(false);
-    // Fator para a ficha caber numa folha (1 = tamanho normal).
+    // Fator para a ficha caber numa folha (1 = tamanho normal) e se, nem com o mínimo, precisa de 2 páginas.
     const [fit, setFit] = useState(1);
+    const [twoPages, setTwoPages] = useState(false);
     const fitRef = useRef<HTMLDivElement>(null);
 
     // Procura o maior fator com que a ficha cabe na área útil do A4 (a largura no ecrã é a mesma
     // da folha, por isso o ecrã mostra o que sai na impressora). Mede-se a altura real em cada
-    // tentativa: reduzida, cabe mais texto por linha e a altura não desce na proporção.
+    // tentativa: com a letra mais pequena cabe mais texto por linha e a altura não desce na proporção.
     const measure = useCallback(() => {
         const el = fitRef.current;
         if (!el) return;
@@ -108,8 +117,9 @@ export default function CarPrintSheet() {
             return el.getBoundingClientRect().height;
         };
         let best = 1;
+        let overflow = false;
         if (heightAt(1) > available) {
-            if (heightAt(MIN_FIT) > available) best = MIN_FIT;
+            if (heightAt(MIN_FIT) > available) { best = MIN_FIT; overflow = true; }
             else {
                 let lo = MIN_FIT, hi = 1;
                 for (let i = 0; i < 10; i++) {
@@ -121,10 +131,20 @@ export default function CarPrintSheet() {
         }
         el.style.setProperty("--ps-fit", String(best));
         el.classList.remove("ps-measuring");
-        if (heightAt(best) > 0) setFit(best);
+        if (heightAt(best) > 0) { setFit(best); setTwoPages(overflow); }
     }, []);
 
-    useLayoutEffect(() => { if (data) measure(); }, [data, measure]);
+    // O fator só se calcula com o Inter carregado (outra letra daria outras medidas) e volta a
+    // calcular-se antes de imprimir.
+    useLayoutEffect(() => {
+        if (!data) return;
+        let alive = true;
+        const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+        (fonts?.ready ?? Promise.resolve()).then(() => { if (alive) measure(); });
+        const beforePrint = () => measure();
+        window.addEventListener("beforeprint", beforePrint);
+        return () => { alive = false; window.removeEventListener("beforeprint", beforePrint); };
+    }, [data, measure]);
 
     const goBack = () => {
         if (id) navigate(`/cars/${id}/ficha`);
@@ -183,7 +203,7 @@ export default function CarPrintSheet() {
                 </div>
 
                 <div className="print-sheet" data-testid="print-sheet">
-                  <div className="ps-fit" ref={fitRef} style={{ ["--ps-fit" as string]: String(fit) }} data-fit={fit}>
+                  <div className={`ps-fit${twoPages ? " ps-two-pages" : ""}`} ref={fitRef} style={{ ["--ps-fit" as string]: String(fit) }} data-fit={fit} data-pages={twoPages ? 2 : 1}>
                     <header className="ps-header">
                         <div className="ps-brand">
                             {logoUrl && !logoBroken
@@ -253,7 +273,7 @@ const PRINT_STYLES = `
 
 .print-overlay {
     position: fixed; inset: 0; z-index: 1500; background: #f3f4f6; overflow-y: auto;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'XplInterSheet', Arial, sans-serif;
     color: #111827;
 }
 .print-toolbar { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #e5e7eb; box-shadow: 0 2px 6px rgba(15,23,42,.06); }
@@ -261,68 +281,72 @@ const PRINT_STYLES = `
 .print-toolbar-hint { flex: 1; font-size: 12px; color: #6b7280; text-align: center; }
 @media (max-width: 640px) { .print-toolbar-hint { display: none; } }
 
-.print-sheet { font-size: 10.5pt; line-height: 1.35; }
-/* A redução para caber numa folha: o zoom encolhe por igual, a largura compensa-o para a ficha
-   ocupar a largura da folha e a altura mínima mantém o rodapé no fundo. */
-.ps-fit { display: flex; flex-direction: column; zoom: var(--ps-fit, 1); width: calc(100% / var(--ps-fit, 1)); min-height: calc(276mm / var(--ps-fit, 1)); }
-.ps-fit.ps-measuring { min-height: 0; }
+/* A folha nunca passa a largura do A4: tudo o que está dentro encolhe ou quebra linha. */
+.print-sheet { box-sizing: border-box; max-width: 210mm; line-height: 1.3; overflow-wrap: anywhere; }
+.print-sheet *, .print-sheet *::before, .print-sheet *::after { box-sizing: border-box; min-width: 0; }
+.print-sheet h1, .print-sheet h3 { font-family: inherit; }
+/* A redução para caber numa folha: o tamanho da letra (e, com ele, todos os espaços em em) escala com
+   --ps-fit. A largura não muda; a altura mínima mantém o rodapé no fundo. */
+.ps-fit { display: flex; flex-direction: column; width: 100%; font-size: calc(10.5pt * var(--ps-fit, 1)); min-height: 276mm; }
+.ps-fit.ps-measuring, .ps-fit.ps-two-pages { min-height: 0; }
 @media screen {
-    .print-sheet { width: 210mm; min-height: 297mm; margin: 20px auto; padding: 11mm 12mm 10mm 12mm; background: #fff; box-shadow: 0 20px 40px rgba(15,23,42,.10); box-sizing: border-box; }
+    .print-sheet { width: 210mm; min-height: 297mm; margin: 20px auto; padding: 11mm 12mm 10mm 12mm; background: #fff; box-shadow: 0 20px 40px rgba(15,23,42,.10); }
 }
 @media print {
     html, body { background: #fff !important; }
     .no-print { display: none !important; }
     .print-overlay { position: static !important; overflow: visible !important; background: #fff !important; inset: auto !important; }
-    .print-sheet { width: 100%; margin: 0; padding: 0; box-shadow: none; }
+    .print-sheet { width: 100%; max-width: 100%; margin: 0; padding: 0; box-shadow: none; }
     body > *:not(#root) { display: none !important; }
 }
 
-/* Cabeçalho */
-.ps-header { display: grid; grid-template-columns: auto 1fr auto; gap: 6mm; align-items: start; padding-bottom: 4mm; border-bottom: 1.5pt solid #111827; }
-.ps-logo { max-height: 16mm; max-width: 42mm; object-fit: contain; }
-.ps-logo-fallback { font-weight: 800; font-size: 13pt; letter-spacing: .02em; text-transform: uppercase; max-width: 42mm; }
-.ps-eyebrow { font-size: 8.5pt; text-transform: uppercase; letter-spacing: .08em; color: #4b5563; margin-bottom: 1mm; }
-.ps-title { font-size: 21pt; line-height: 1.1; font-weight: 800; margin: 0; color: #111827; }
-.ps-meta { margin-top: 1.5mm; font-size: 10.5pt; color: #374151; }
-.ps-price { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: .5mm; white-space: nowrap; }
-.ps-price-current { font-size: 21pt; font-weight: 800; line-height: 1.1; }
-.ps-price-old { font-size: 11pt; color: #4b5563; text-decoration: line-through; }
-.ps-price-tag { font-size: 8pt; text-transform: uppercase; letter-spacing: .08em; border: 1pt solid #111827; padding: .3mm 1.5mm; border-radius: 1mm; }
+/* Cabeçalho: o título encolhe e quebra linha; o preço nunca o empurra para fora. */
+.ps-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1.6em; align-items: start; padding-bottom: .9em; border-bottom: 1.5pt solid #111827; }
+.ps-brand { max-width: 42mm; }
+.ps-logo { max-height: 16mm; max-width: 100%; object-fit: contain; display: block; }
+.ps-logo-fallback { font-weight: 800; font-size: 1.238em; letter-spacing: .02em; text-transform: uppercase; }
+.ps-eyebrow { font-size: .81em; text-transform: uppercase; letter-spacing: .08em; color: #4b5563; margin-bottom: .27em; }
+.ps-title { font-size: 2em; line-height: 1.1; font-weight: 800; margin: 0; color: #111827; overflow-wrap: break-word; }
+.ps-meta { margin-top: .4em; color: #374151; }
+.ps-price { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: .14em; white-space: nowrap; }
+.ps-price-current { font-size: 2em; font-weight: 800; line-height: 1.1; }
+.ps-price-old { font-size: 1.048em; color: #4b5563; text-decoration: line-through; }
+.ps-price-tag { font-size: .762em; text-transform: uppercase; letter-spacing: .08em; border: 1pt solid #111827; padding: .08em .4em; border-radius: .27em; }
 
-/* Números-chave */
-.ps-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(30mm, 1fr)); gap: 3mm; margin: 4mm 0; }
-.ps-figure { border: 1pt solid #9ca3af; border-radius: 2mm; padding: 2.5mm 3mm; text-align: center; }
-.ps-figure-value { font-size: 13pt; font-weight: 800; }
-.ps-figure-caption { font-size: 8pt; text-transform: uppercase; letter-spacing: .06em; color: #4b5563; }
+/* Números-chave: as caixas repartem a largura e encolhem. */
+.ps-figures { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .81em; margin: .9em 0; }
+.ps-figure { border: 1pt solid #9ca3af; border-radius: .54em; padding: .55em .5em; text-align: center; }
+.ps-figure-value { font-size: 1.238em; font-weight: 800; }
+.ps-figure-caption { font-size: .762em; text-transform: uppercase; letter-spacing: .06em; color: #4b5563; }
 
 /* Blocos */
-.ps-sections { column-count: 2; column-gap: 7mm; flex: 1; }
-.ps-section { break-inside: avoid; page-break-inside: avoid; margin: 0 0 4mm; }
-.ps-section-title { font-size: 9.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; margin: 0 0 1.5mm; padding-bottom: 1mm; border-bottom: .75pt solid #6b7280; }
-.ps-details { margin: 0 0 1.5mm; }
-.ps-detail { display: flex; justify-content: space-between; gap: 3mm; padding: .6mm 0; border-bottom: .5pt dotted #d1d5db; }
-.ps-detail dt { font-weight: 400; color: #374151; }
-.ps-detail dd { margin: 0; font-weight: 700; text-align: right; }
-.ps-items { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 3mm; }
-.ps-items li { padding: .4mm 0; display: flex; gap: 1.5mm; align-items: baseline; }
-.ps-check { font-weight: 800; }
-.ps-beds { list-style: none; margin: 0 0 1.5mm; padding: 0; }
-.ps-beds li { padding: .6mm 0; }
-.ps-beds li span { display: block; font-size: 9pt; color: #4b5563; }
+.ps-sections { column-count: 2; column-gap: 1.89em; flex: 1; }
+.ps-section { break-inside: avoid; page-break-inside: avoid; margin: 0 0 .85em; }
+.ps-section-title { font-size: .905em; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; margin: 0 0 .405em; padding-bottom: .27em; border-bottom: .75pt solid #6b7280; }
+.ps-details { margin: 0 0 .405em; }
+.ps-detail { display: flex; justify-content: space-between; gap: .81em; padding: .16em 0; border-bottom: .5pt dotted #d1d5db; }
+.ps-detail dt { font-weight: 400; color: #374151; flex: 0 1 auto; }
+.ps-detail dd { margin: 0; font-weight: 700; text-align: right; flex: 0 1 auto; }
+.ps-items { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: .81em; }
+.ps-items li { padding: .06em 0; display: flex; gap: .405em; align-items: baseline; }
+.ps-check { font-weight: 800; flex: 0 0 auto; }
+.ps-beds { list-style: none; margin: 0 0 .405em; padding: 0; }
+.ps-beds li { padding: .16em 0; }
+.ps-beds li span { display: block; font-size: .857em; color: #4b5563; }
 
 /* Descrição */
-.ps-about { break-inside: avoid; margin-top: 1mm; }
-.ps-about p { margin: 0 0 1.5mm; }
+.ps-about { break-inside: avoid; margin-top: .27em; }
+.ps-about p { margin: 0 0 .405em; }
 
 /* Rodapé */
-.ps-footer { display: flex; gap: 6mm; align-items: center; margin-top: 4mm; padding-top: 4mm; border-top: 1.5pt solid #111827; break-inside: avoid; }
-.ps-qr { flex: 0 0 auto; text-align: center; }
-/* 32 mm na folha mesmo quando a ficha se reduz para caber (o zoom do .ps-fit é compensado). */
-.ps-qr-code { width: calc(32mm / var(--ps-fit, 1)); height: calc(32mm / var(--ps-fit, 1)); background: #fff; }
+.ps-footer { display: flex; gap: 1.6em; align-items: center; margin-top: .9em; padding-top: .9em; border-top: 1.5pt solid #111827; break-inside: avoid; page-break-inside: avoid; }
+.ps-qr { flex: 0 0 auto; text-align: center; max-width: 40mm; }
+/* 32 mm na folha, seja qual for o fator (o QR não escala com a letra). */
+.ps-qr-code { width: 32mm; height: 32mm; margin: 0 auto; background: #fff; }
 .ps-qr-code svg { width: 100%; height: 100%; display: block; }
-.ps-qr-label { font-size: 8pt; margin-top: 1mm; font-weight: 700; word-break: break-all; max-width: 40mm; }
-.ps-contact { flex: 1; font-size: 9.5pt; }
-.ps-qr-hint { font-size: 9pt; color: #374151; margin-bottom: 1.5mm; }
-.ps-seller { font-size: 11pt; margin-bottom: 1mm; }
+.ps-qr-label { font-size: 8pt; margin-top: 1mm; font-weight: 700; word-break: break-all; }
+.ps-contact { flex: 1 1 auto; font-size: .905em; }
+.ps-qr-hint { font-size: .947em; color: #374151; margin-bottom: .405em; }
+.ps-seller { font-size: 1.158em; margin-bottom: .27em; }
 .ps-company-lines { color: #374151; }
 `;

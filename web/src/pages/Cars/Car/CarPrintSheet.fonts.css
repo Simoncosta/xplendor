@@ -1,0 +1,8 @@
+/*
+ * Ficha A4 da viatura: o Inter servido pela própria app (os mesmos ficheiros da página pública do
+ * orçamento), para a ficha ser igual em Mac e Windows e não depender do tipo de letra do sistema
+ * nem do Google Fonts. O 800 usa o ficheiro do 700 (não há Inter ExtraBold no repositório).
+ */
+@font-face { font-family: 'XplInterSheet'; font-weight: 400; font-style: normal; font-display: block; src: url('../../QuotePublic/fonts/Inter-Regular.ttf') format('truetype'); }
+@font-face { font-family: 'XplInterSheet'; font-weight: 600; font-style: normal; font-display: block; src: url('../../QuotePublic/fonts/Inter-SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'XplInterSheet'; font-weight: 700 800; font-style: normal; font-display: block; src: url('../../QuotePublic/fonts/Inter-Bold.ttf') format('truetype'); }
