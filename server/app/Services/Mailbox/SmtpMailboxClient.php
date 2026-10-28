@@ -30,31 +30,7 @@ class SmtpMailboxClient implements MailboxClient
             if ($transport === null) {
                 return MailboxSendResult::failed("O servidor {$mailbox->smtp_host} não foi encontrado ou não é um servidor de e-mail público.");
             }
-            $email = (new Email())
-                ->from(new Address($mailbox->email, (string) $mail->fromName))
-                ->to(...$mail->toList())
-                ->subject($mail->subject)
-                ->text($mail->text);
-            if ($mail->cc) {
-                $email->cc(...$mail->cc);
-            }
-            // E-mail 5: a resposta fica no mesmo fio (In-Reply-To e References).
-            if ($mail->inReplyTo) {
-                $email->getHeaders()->addIdHeader('In-Reply-To', trim($mail->inReplyTo, '<>'));
-            }
-            if ($mail->references) {
-                $email->getHeaders()->addIdHeader('References', array_map(fn ($r) => trim($r, '<>'), $mail->references));
-            }
-            if ($mail->html !== null) {
-                $email->html($mail->html);
-            }
-            // E-mail 5b: os anexos (vão também na cópia em Enviados, que é esta mensagem inteira).
-            foreach ($mail->attachments as $a) {
-                $email->attach($a['content'], $a['name'], $a['mime']);
-            }
-            // O Message-ID é sempre o nosso (o SentMessage::getMessageId() pode ser o "queued as" do servidor).
-            $messageId = trim($mail->messageId ?? (Str::uuid() . '@' . (Str::after($mailbox->email, '@') ?: 'xplendor.pt')), '<>');
-            $email->getHeaders()->addIdHeader('Message-ID', $messageId);
+            [$email, $messageId] = $this->build($mailbox, $mail);
             $sent = $transport->send($email);
 
             return MailboxSendResult::sent('<' . $messageId . '>', $sent?->toString());
@@ -63,6 +39,50 @@ class SmtpMailboxClient implements MailboxClient
 
             return MailboxSendResult::failed($this->describe($e, $mailbox));
         }
+    }
+
+    /**
+     * A mensagem, como sai (sem a enviar). O assunto e o nome do remetente vêm de texto escrito pelo
+     * utilizador: passam a uma só linha (uma quebra vira um espaço). O Symfony já codifica qualquer
+     * quebra num cabeçalho, por isso nunca acrescenta cabeçalhos; isto só evita o assunto partido.
+     *
+     * @return array{0: Email, 1: string} a mensagem e o Message-ID (sem < >)
+     */
+    public function build(Mailbox $mailbox, OutgoingMail $mail): array
+    {
+        $email = (new Email())
+            ->from(new Address($mailbox->email, self::oneLine((string) $mail->fromName)))
+            ->to(...$mail->toList())
+            ->subject(self::oneLine($mail->subject))
+            ->text($mail->text);
+        if ($mail->cc) {
+            $email->cc(...$mail->cc);
+        }
+        // E-mail 5: a resposta fica no mesmo fio (In-Reply-To e References).
+        if ($mail->inReplyTo) {
+            $email->getHeaders()->addIdHeader('In-Reply-To', trim($mail->inReplyTo, '<>'));
+        }
+        if ($mail->references) {
+            $email->getHeaders()->addIdHeader('References', array_map(fn ($r) => trim($r, '<>'), $mail->references));
+        }
+        if ($mail->html !== null) {
+            $email->html($mail->html);
+        }
+        // E-mail 5b: os anexos (vão também na cópia em Enviados, que é esta mensagem inteira).
+        foreach ($mail->attachments as $a) {
+            $email->attach($a['content'], $a['name'], $a['mime']);
+        }
+        // O Message-ID é sempre o nosso (o SentMessage::getMessageId() pode ser o "queued as" do servidor).
+        $messageId = trim($mail->messageId ?? (Str::uuid() . '@' . (Str::after($mailbox->email, '@') ?: 'xplendor.pt')), '<>');
+        $email->getHeaders()->addIdHeader('Message-ID', $messageId);
+
+        return [$email, $messageId];
+    }
+
+    /** Texto de um cabeçalho numa só linha: as quebras e os tabs passam a um espaço. */
+    public static function oneLine(string $value): string
+    {
+        return trim((string) preg_replace('/[\r\n\t]+/', ' ', $value));
     }
 
     private function transport(Mailbox $mailbox): ?EsmtpTransport
