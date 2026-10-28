@@ -32,6 +32,7 @@ describe("Retoma no detalhe da lead", () => {
         mockGet.mockResolvedValue({ data: payload(true) });
         render(<TradeInCard companyId={4} leadId={9} />);
         expect(await screen.findByText("Renault Clio")).toBeInTheDocument();
+        expect(screen.getByTestId("send-link-7")).toHaveTextContent("Enviar por email"); // E-mail 9, no link ativo
         expect(screen.getByText(/142\s000 km/)).toBeInTheDocument();
         expect(screen.getByText("«Pequeno risco na porta.»")).toBeInTheDocument();
         expect(within(screen.getByTestId("trade-in-photos")).getAllByRole("img")).toHaveLength(1);

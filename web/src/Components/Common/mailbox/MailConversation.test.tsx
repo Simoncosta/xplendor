@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import MailConversation from "./MailConversation";
-import { getCarMailMessages, getCustomerMailMessages, getMailboxComposeContext, sendMailboxMessage } from "helpers/laravel_helper";
+import { getCarMailMessages, getCustomerMailMessages, getLeadMailMessages, getMailboxComposeContext, sendMailboxMessage } from "helpers/laravel_helper";
 
-jest.mock("helpers/laravel_helper", () => ({ getCustomerMailMessages: jest.fn(), getCarMailMessages: jest.fn(), getMailboxComposeContext: jest.fn(), sendMailboxMessage: jest.fn(),
+jest.mock("helpers/laravel_helper", () => ({ getCustomerMailMessages: jest.fn(), getCarMailMessages: jest.fn(), getLeadMailMessages: jest.fn(), getMailboxComposeContext: jest.fn(), sendMailboxMessage: jest.fn(),
     uploadMailboxAttachment: jest.fn(), attachMailboxFile: jest.fn(), deleteMailboxAttachment: jest.fn(() => Promise.resolve({})) }));
 jest.mock("react-toastify", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock("Components/Common/XInputTextareaQuill", () => function QuillStub({ name }: { name: string }) {
@@ -69,5 +69,19 @@ describe("A secção Conversa (E-mail 4)", () => {
         ] } });
         render(<MailConversation companyId={5} customerId={12} />);
         expect(await screen.findByTestId("mail-conversation-attachments")).toHaveTextContent("proposta.pdf (200 KB), foto.jpg (512 B)");
+    });
+
+    it("E-mail 9: na lead, o link enviado aparece escondido, sem \"Escrever ao cliente\", e recarrega quando sai uma mensagem", async () => {
+        (getLeadMailMessages as jest.Mock).mockResolvedValue({ data: { messages: [
+            { id: 9, direction: "out", from: "m@exemplo.pt", to: "joana@cliente.invalid", subject: "Documentos para o financiamento · Quebom", date: "2026-10-27T12:00:00Z",
+                text: "Olá,\n\n[link enviado, oculto por segurança]", html: null, status: "enviada", attachments: [] },
+        ] } });
+        render(<MailConversation companyId={5} leadId={77} />);
+        fireEvent.click(await screen.findByText("Documentos para o financiamento · Quebom"));
+        expect(screen.getByText(/\[link enviado, oculto por segurança\]/)).toBeInTheDocument();
+        expect(screen.queryByTestId("mail-write-customer")).not.toBeInTheDocument();
+        expect(getLeadMailMessages).toHaveBeenCalledWith(5, 77);
+        await act(async () => { window.dispatchEvent(new Event("xp:mail-sent")); });
+        expect(getLeadMailMessages).toHaveBeenCalledTimes(2);
     });
 });

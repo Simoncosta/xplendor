@@ -25,13 +25,17 @@ class MailMessage extends Model
     protected $fillable = [
         'company_id', 'mailbox_id', 'user_id', 'direction', 'message_id', 'in_reply_to', 'references', 'from_address', 'to_address', 'cc_address',
         'subject', 'body_text', 'body_html', 'status', 'error', 'sent_at', 'received_at', 'customer_id', 'car_sale_id', 'car_lead_id',
-        'satisfaction_report_id', 'attachments',
+        'satisfaction_report_id', 'attachments', 'financing_link_id', 'outgoing_secret',
     ];
+
+    /** E-mail 9: o texto completo (com o link) nunca sai pela API. */
+    protected $hidden = ['outgoing_secret'];
 
     protected $casts = [
         'sent_at' => 'datetime',
         'received_at' => 'datetime',
         'attachments' => 'array', // E-mail 5b: só o nome e o tamanho de cada anexo
+        'outgoing_secret' => 'encrypted:array', // E-mail 9: só até ao envio
     ];
 
     public function mailbox(): BelongsTo

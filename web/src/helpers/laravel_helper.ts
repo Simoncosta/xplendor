@@ -398,7 +398,13 @@ export type MailboxSendPayload = {
     reply_to?: { folder: string; uid: number } | null; customer_id?: number | null; car_id?: number | null;
     /** E-mail 5b: os identificadores dos anexos já carregados. */
     attachments?: string[];
+    /** E-mail 9: o link de financiamento ou de retoma (o servidor confirma que o texto o leva e esconde-o na cópia guardada). */
+    link?: { kind: "financing" | "trade_in"; id: number } | null;
 };
+// E-mail 9: a mensagem já preenchida para enviar o link de financiamento ou de retoma pela caixa.
+export const getMailboxLinkContext = (companyId: number, kind: "financing" | "trade_in", linkId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/link-context`, { kind, link_id: linkId });
+export const getLeadMailMessages = (companyId: number, leadId: number) => api.get(url.GET_COMPANIES + `/${companyId}/leads/${leadId}/mail-messages`);
 export const getMailboxComposeContext = (companyId: number, target: { customerId?: number; carId?: number } = {}) =>
     api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/compose-context`, { customer_id: target.customerId, car_id: target.carId });
 // E-mail 5b: os anexos. O carregamento vai em multipart (tem o ficheiro), com o progresso; o resto em JSON.

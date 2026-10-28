@@ -3,6 +3,7 @@ import { Modal, ModalHeader, ModalBody, ModalFooter, Input, Label, Badge, Spinne
 import { ILead, LEAD_STATUS_META, leadOrigin, lossReasonLabel } from "common/models/lead.model";
 import FinancingDocumentsCard from "pages/Cars/Car/components/FinancingDocumentsCard";
 import TradeInCard from "./TradeInCard";
+import MailConversation from "Components/Common/mailbox/MailConversation";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
@@ -86,6 +87,9 @@ const LeadDetailModal: React.FC<Props> = ({ lead, saving = false, onSaveNotes, o
                 {lead.car_id && getWorkingCompanyId() ? (
                     <FinancingDocumentsCard companyId={Number(getWorkingCompanyId())} leadId={lead.id} embedded />
                 ) : null}
+
+                {/* E-mail 9: os links enviados por email (escondida a quem não vê o conteúdo dos e-mails). */}
+                {getWorkingCompanyId() ? <div className="mt-3"><MailConversation companyId={Number(getWorkingCompanyId())} leadId={lead.id} /></div> : null}
 
                 {(phone || lead.email) && (
                     <div className="d-flex gap-2 mt-3">

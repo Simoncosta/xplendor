@@ -43,7 +43,7 @@ class SendMailboxMessageJob implements ShouldQueue
             return; // já tratada (ou apagada)
         }
         if (! $message->mailbox) {
-            $message->forceFill(['status' => MailMessage::STATUS_ERROR, 'error' => 'A caixa de correio foi removida antes do envio.'])->save();
+            $message->forceFill(['status' => MailMessage::STATUS_ERROR, 'error' => 'A caixa de correio foi removida antes do envio.', 'outgoing_secret' => null])->save();
             $attachments->purgeFor($message);
 
             return;
@@ -54,16 +54,21 @@ class SendMailboxMessageJob implements ShouldQueue
         } finally {
             // E-mail 5b: os ficheiros dos anexos apagam-se depois do envio (bem ou mal; uma só tentativa).
             $attachments->purgeFor($message);
+            // E-mail 9: o texto completo (com o link) apaga-se também; fica só a cópia com o link escondido.
+            if ($message->outgoing_secret !== null) {
+                $message->forceFill(['outgoing_secret' => null])->save();
+            }
         }
     }
 
     private function deliver(MailMessage $message, MailboxClient $client, SentCopy $sentCopy, array $files): void
     {
+        $full = $message->outgoing_secret; // E-mail 9: a mensagem com o link (a guardada leva-o escondido)
         $result = $client->send($message->mailbox, new OutgoingMail(
             to: $message->to_address,
             subject: $message->subject,
-            text: (string) $message->body_text,
-            html: $message->body_html,
+            text: (string) ($full['text'] ?? $message->body_text),
+            html: $full['html'] ?? $message->body_html,
             fromName: $this->fromName,
             messageId: $message->message_id,
             cc: OutgoingMail::split((string) $message->cc_address),

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Button, Card, CardBody, CardHeader, Col, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner, Table } from "reactstrap";
 import { toast } from "react-toastify";
 import ReasonButton from "Components/Common/ReasonButton";
+import SendLinkByEmail from "Components/Common/mailbox/SendLinkByEmail";
 import ConfirmModal from "Components/Common/ConfirmModal";
 import { useCan } from "contexts/ModulesContext";
 import {
@@ -170,6 +171,7 @@ export default function FinancingDocumentsCard({ companyId, carId, leadId, embed
                     {h.state === "ativo" && data?.can.create && (
                         <>
                             <Button size="sm" color="outline-primary" onClick={() => copyLink(h)}><i className="ri-file-copy-line me-1" />Copiar link</Button>
+                            <SendLinkByEmail companyId={companyId} kind="financing" linkId={h.link_id} />
                             <Button size="sm" color="outline-secondary" onClick={() => setConfirm({ kind: "revoke", id: h.link_id, label: `titular ${h.holder}` })}>Revogar</Button>
                         </>
                     )}

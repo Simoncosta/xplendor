@@ -344,6 +344,8 @@ Route::prefix('v1')->group(function () {
                     // E-mail 5: escrever e responder (da caixa, da ficha do cliente e da venda).
                     Route::get('/my-mailbox/compose-context', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'context']);
                     Route::post('/my-mailbox/send', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'send'])->middleware('throttle:20,1');
+                    // E-mail 9: o link de financiamento e o de retoma, já preenchidos (as permissões de cada link, no controlador).
+                    Route::get('/my-mailbox/link-context', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'linkContext']);
                     // E-mail 5b: os anexos no envio (o carregamento em multipart; o resto em JSON).
                     $att = \App\Http\Controllers\Api\V1\MyMailboxAttachmentController::class;
                     Route::post('/my-mailbox/attachments', [$att, 'store'])->middleware('throttle:60,1');
@@ -772,6 +774,9 @@ Route::prefix('v1')->group(function () {
                 });
                 // A retoma de uma lead (fotografias, km e observações seguem a lead; o DUA, a área "Financiamento").
                 Route::middleware('ensure_module:commercial_crm')->group(function () {
+                    // E-mail 9: a "Conversa" da lead (nunca em impersonation; nunca o root fora da sua empresa).
+                    Route::get('/leads/{lead}/mail-messages', [\App\Http\Controllers\Api\V1\MailConversationController::class, 'lead'])
+                        ->whereNumber('lead')->middleware('block_when_impersonating');
                     $tin = \App\Http\Controllers\Api\V1\TradeInController::class;
                     Route::get('/leads/{lead}/trade-in', [$tin, 'show'])->whereNumber('lead');
                     Route::post('/leads/{lead}/trade-in/link', [$tin, 'store'])->whereNumber('lead')->middleware('throttle:30,1');

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Input, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import ConfirmModal from "Components/Common/ConfirmModal";
+import SendLinkByEmail from "Components/Common/mailbox/SendLinkByEmail";
 import ReasonButton from "Components/Common/ReasonButton";
 import {
     createLeadTradeInLink, deleteFinancingDocument, deleteTradeInFile, getFinancingDocumentDownload, getLeadTradeIn, getTradeInFileDownload,
@@ -136,6 +137,7 @@ export default function TradeInCard({ companyId, leadId }: { companyId: number; 
                     {h.state === "ativo" && data.can.request && (
                         <span className="d-flex gap-2">
                             <button type="button" className="btn btn-link btn-sm p-0" onClick={async () => { try { const x: any = await getTradeInLinkUrl(companyId, h.link_id); if (x?.data?.url) await copyText(x.data.url, "Link copiado. Envie-o ao cliente."); } catch (e) { toast.error(errorOf(e, "Não foi possível obter o link.")); } }}>Copiar link</button>
+                            <SendLinkByEmail companyId={companyId} kind="trade_in" linkId={h.link_id} variant="link" />
                             <button type="button" className="btn btn-link btn-sm p-0" onClick={async () => { await revokeTradeInLink(companyId, h.link_id); load(); }}>Revogar</button>
                         </span>
                     )}

@@ -58,6 +58,8 @@ describe("Documentos para financiamento (ficha da viatura)", () => {
         const req = await screen.findByTestId("fin-request-12");
         expect(within(req).getByText(/os documentos apagam-se a 20\/01\/2027/)).toBeInTheDocument();
         const first = screen.getByTestId("fin-holder-21");
+        // E-mail 9: ao lado de "Copiar link", "Enviar por email" (pela caixa da própria pessoa).
+        expect(within(first).getByTestId("send-link-21")).toHaveTextContent("Enviar por email");
         expect(within(first).getByText("Titular 1")).toBeInTheDocument();
         expect(within(first).getByText("910 000 000")).toBeInTheDocument();
         expect(within(first).getByText(/450,50 €/)).toBeInTheDocument();

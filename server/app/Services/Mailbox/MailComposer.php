@@ -58,7 +58,8 @@ class MailComposer
     }
 
     /**
-     * @param  array{to: string, cc?: ?string, subject: string, body: string, reply_to?: ?array{folder: string, uid: int}, customer_id?: ?int, car_id?: ?int, attachments?: list<string>}  $input
+     * @param  array{to: string, cc?: ?string, subject: string, body: string, reply_to?: ?array{folder: string, uid: int}, customer_id?: ?int, car_id?: ?int, attachments?: list<string>, financing_link?: ?\App\Models\FinancingLink}  $input
+     *         financing_link: E-mail 9, o link de financiamento ou de retoma (já desta empresa e autorizado no controlador)
      * @return array{ok: bool, error?: string, message?: MailMessage}
      */
     public function send(Mailbox $mailbox, User $user, array $input): array
@@ -84,6 +85,16 @@ class MailComposer
         $context = $this->context($mailbox->company_id, $input['customer_id'] ?? null, $input['car_id'] ?? null);
         if (! $context['ok']) {
             return $context;
+        }
+        // E-mail 9: o link de financiamento ou de retoma (ligado à lead, ao link e ao cliente; o consentimento da lead).
+        $financingLink = $input['financing_link'] ?? null;
+        if ($financingLink) {
+            if (! $financingLink->isOpen()) {
+                return ['ok' => false, 'error' => 'Este link já não está ativo. Crie um link novo.'];
+            }
+            $linkContext = app(LinkMail::class)->context($financingLink, LinkMail::kindOf($financingLink));
+            $context = ['ok' => true, 'to' => $linkContext['to'], 'name' => $linkContext['name'], 'consent' => $linkContext['consent'] && $context['consent'],
+                'links' => $context['links'] + array_filter($linkContext['links'], fn ($v) => $v !== null)];
         }
         // A resposta: o fio e o original citado por baixo.
         $thread = ['cc' => $cc];
@@ -125,8 +136,20 @@ class MailComposer
         }
 
         [$text, $html] = $this->body((string) $input['body'], (string) $mailbox->signature);
+        $text .= $quoteText;
+        $html .= $quoteHtml;
+        $secret = null;
+        if ($financingLink) {
+            // O texto tem de levar o link; a cópia guardada leva-o escondido e o texto completo vai cifrado só até ao envio.
+            $url = $financingLink->url();
+            if (! str_contains($text, $url) && ! str_contains($html, $url)) {
+                return ['ok' => false, 'error' => 'O texto tem de levar o link. Volte a abrir "Enviar por email" para o repor.'];
+            }
+            $secret = ['text' => $text, 'html' => $html];
+            [$text, $html] = [LinkMail::hide($text, $financingLink), LinkMail::hide($html, $financingLink)];
+        }
         $message = $this->sender->queue($mailbox, $user, implode(', ', $to), mb_substr(trim((string) $input['subject']), 0, 500),
-            $text . $quoteText, $html . $quoteHtml, array_filter($links, fn ($v) => $v !== null), $thread, $files['uploads']);
+            $text, $html, array_filter($links, fn ($v) => $v !== null), $thread, $files['uploads'], $secret);
 
         return ['ok' => true, 'message' => $message->fresh()];
     }

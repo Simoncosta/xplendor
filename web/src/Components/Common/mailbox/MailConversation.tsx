@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Card, CardBody, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import { getCarMailMessages, getCustomerMailMessages, getMailboxComposeContext } from "helpers/laravel_helper";
+import { getCarMailMessages, getCustomerMailMessages, getLeadMailMessages, getMailboxComposeContext } from "helpers/laravel_helper";
 import ComposeModal, { AttachmentLimits, fmtSize } from "./ComposeModal";
 import MessageFrame from "pages/Email/inbox/MessageFrame";
 import { ConversationSkeleton } from "pages/Email/inbox/skeletons";
@@ -12,6 +12,8 @@ import { ConversationSkeleton } from "pages/Email/inbox/skeletons";
  * da própria empresa e a impersonation não a veem (o backend recusa: a secção fica escondida).
  * E-mail 5: "Escrever ao cliente", pela minha caixa; a mensagem fica ligada ao cliente (e à venda).
  * Sem consentimento de contacto, a janela abre com o aviso e não deixa enviar.
+ * E-mail 9: a "Conversa" da lead (com a permissão de ver a lead), com os links de financiamento e de
+ * retoma enviados (o link aparece escondido). Recarrega quando sai uma mensagem pela caixa.
  */
 type Context = { to: string | null; name: string | null; consent: boolean; blocked: string | null; mailbox: { email: string; signature: string | null } | null; attachments?: AttachmentLimits };
 export const NO_CONSENT = "O cliente não deu consentimento para contacto (RGPD): não se pode escrever-lhe.";
@@ -20,7 +22,7 @@ type Msg = { id: number; direction: "in" | "out"; from: string; to: string; subj
     /** E-mail 5b: só o nome e o tamanho (o ficheiro vive na pasta Enviados da caixa). */
     attachments?: { name: string; size: number }[] };
 
-export default function MailConversation({ companyId, customerId, carId }: { companyId: number; customerId?: number; carId?: number }) {
+export default function MailConversation({ companyId, customerId, carId, leadId }: { companyId: number; customerId?: number; carId?: number; leadId?: number }) {
     const [messages, setMessages] = useState<Msg[] | null>(null);
     const [hidden, setHidden] = useState(false);
     const [open, setOpen] = useState<number | null>(null);
@@ -42,12 +44,17 @@ export default function MailConversation({ companyId, customerId, carId }: { com
 
     useEffect(() => {
         let alive = true;
-        const req = customerId ? getCustomerMailMessages(companyId, customerId) : carId ? getCarMailMessages(companyId, carId) : null;
+        const req = customerId ? getCustomerMailMessages(companyId, customerId) : carId ? getCarMailMessages(companyId, carId) : leadId ? getLeadMailMessages(companyId, leadId) : null;
         if (!req) return;
         req.then((r: any) => { if (alive) setMessages(r?.data?.messages ?? []); })
             .catch(() => { if (alive) setHidden(true); });
         return () => { alive = false; };
-    }, [companyId, customerId, carId, reload]);
+    }, [companyId, customerId, carId, leadId, reload]);
+    useEffect(() => {
+        const again = () => setReload((n) => n + 1);
+        window.addEventListener("xp:mail-sent", again);
+        return () => window.removeEventListener("xp:mail-sent", again);
+    }, []);
 
     if (hidden) return null;
 
@@ -56,7 +63,7 @@ export default function MailConversation({ companyId, customerId, carId }: { com
             <CardBody>
                 <div className="d-flex align-items-center mb-3">
                     <h5 className="card-title mb-0 flex-grow-1"><i className="ri-mail-line me-1" />Conversa</h5>
-                    {messages !== null && (
+                    {messages !== null && !leadId && (
                         <Button size="sm" color="outline-primary" onClick={write} disabled={opening} data-testid="mail-write-customer">
                             {opening ? <Spinner size="sm" /> : <><i className="ri-mail-send-line me-1" />Escrever ao cliente</>}
                         </Button>
@@ -65,7 +72,9 @@ export default function MailConversation({ companyId, customerId, carId }: { com
                 {messages === null ? (
                     <ConversationSkeleton />
                 ) : messages.length === 0 ? (
-                    <div className="text-muted fs-13">Ainda não há e-mails ligados. As mensagens enviadas pela XPLENDOR, as respostas e as que ligar na caixa de entrada aparecem aqui.</div>
+                    <div className="text-muted fs-13">{leadId
+                        ? "Ainda não há e-mails ligados a esta lead. Os links de financiamento e de retoma enviados por email aparecem aqui."
+                        : "Ainda não há e-mails ligados. As mensagens enviadas pela XPLENDOR, as respostas e as que ligar na caixa de entrada aparecem aqui."}</div>
                 ) : (
                     <ul className="list-unstyled vstack gap-2 mb-0">
                         {messages.map((m) => (

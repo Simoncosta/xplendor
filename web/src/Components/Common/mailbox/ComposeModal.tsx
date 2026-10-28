@@ -37,7 +37,7 @@ const errorOf = (e: any, fallback: string) => {
     return (lists.flat()[0] as string | undefined) || e?.message || fallback;
 };
 
-export default function ComposeModal({ isOpen, toggle, companyId, title = "Nova mensagem", initial, replyTo, quoteHeader, customerId, carId, signature, blocked, limits, onSent }: {
+export default function ComposeModal({ isOpen, toggle, companyId, title = "Nova mensagem", initial, replyTo, quoteHeader, customerId, carId, signature, blocked, limits, link, onSent }: {
     isOpen: boolean; toggle: () => void; companyId: number; title?: string;
     initial?: Partial<ComposeValues>;
     replyTo?: { folder: string; uid: number } | null;
@@ -49,6 +49,8 @@ export default function ComposeModal({ isOpen, toggle, companyId, title = "Nova 
     blocked?: string | null;
     /** Os limites dos anexos (do compose-context); sem eles, pede-os ao abrir. */
     limits?: AttachmentLimits;
+    /** E-mail 9: o link de financiamento ou de retoma que a mensagem leva. */
+    link?: { kind: "financing" | "trade_in"; id: number } | null;
     onSent?: (message: any) => void;
 }) {
     const [error, setError] = useState<string | null>(null);
@@ -129,10 +131,11 @@ export default function ComposeModal({ isOpen, toggle, companyId, title = "Nova 
         setError(null);
         try {
             const ids = files.filter((f) => f.id && !f.error).map((f) => f.id as string);
-            const r: any = await sendMailboxMessage(companyId, { ...values, reply_to: replyTo ?? null, customer_id: customerId ?? null, car_id: carId ?? null, attachments: ids });
+            const r: any = await sendMailboxMessage(companyId, { ...values, reply_to: replyTo ?? null, customer_id: customerId ?? null, car_id: carId ?? null, attachments: ids, ...(link ? { link } : {}) });
             sentRef.current = true; // os anexos foram com a mensagem (o servidor apaga-os depois do envio)
             toast.success(r?.message || "Mensagem enviada.");
             onSent?.(r?.data?.message);
+            window.dispatchEvent(new Event("xp:mail-sent")); // as "Conversas" abertas recarregam
             toggle();
         } catch (e: any) {
             // O texto e os anexos ficam; só se mostra o motivo.

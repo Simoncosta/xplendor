@@ -60,6 +60,7 @@ final class RoutePermissions
         'GET {id}/my-mailbox/thread' => 'empresa.ver',
         'POST {id}/my-mailbox/seen' => 'empresa.ver',
         'GET {id}/my-mailbox/compose-context' => 'empresa.ver',
+        'GET {id}/my-mailbox/link-context' => 'empresa.ver', // E-mail 9 (e financiamento.criar ou automovel.editar, no controlador)
         'POST {id}/my-mailbox/send' => 'empresa.ver',
         // E-mail 5b: os anexos no envio (os dos Ficheiros pedem também ficheiros.ver, no controlador).
         'POST {id}/my-mailbox/attachments' => 'empresa.ver',
@@ -70,6 +71,7 @@ final class RoutePermissions
         // E-mail 4: a secção "Conversa" (as mensagens ligadas ao cliente ou à venda; MAIL_CONTENT).
         'GET {id}/customers/{customer}/mail-messages' => 'financas.ver',
         'GET {id}/cars/{carId}/mail-messages' => 'automovel.ver',
+        'GET {id}/leads/{lead}/mail-messages' => 'automovel.ver', // E-mail 9: com a permissão de ver a lead
         'PUT {id}/management/guest-profile' => 'empresa.aprovar', // F5: o teto da agência é uma decisão do cliente
         // ── utilizadores ──
         'GET {id}/collaborators' => 'utilizadores.ver',
@@ -970,6 +972,7 @@ final class RoutePermissions
         'GET {id}/my-mailbox/thread',
         'POST {id}/my-mailbox/seen',
         'GET {id}/my-mailbox/compose-context',
+        'GET {id}/my-mailbox/link-context',
         'POST {id}/my-mailbox/send',
         'POST {id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice',
         'POST {id}/my-mailbox/attachments',
@@ -984,6 +987,7 @@ final class RoutePermissions
     public const MAIL_CONTENT = [
         'GET {id}/customers/{customer}/mail-messages',
         'GET {id}/cars/{carId}/mail-messages',
+        'GET {id}/leads/{lead}/mail-messages',
     ];
 
     /** Rotas sobre a PRÓPRIA conta: a pessoa pode sempre ver e alterar a sua (rota → parâmetro do utilizador). */

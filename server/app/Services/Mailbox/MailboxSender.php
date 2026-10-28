@@ -39,8 +39,9 @@ class MailboxSender
      * @param  array{customer_id?: ?int, car_sale_id?: ?int, car_lead_id?: ?int, satisfaction_report_id?: ?int}  $links
      * @param  array{cc?: list<string>, in_reply_to?: ?string, references?: list<string>}  $thread  E-mail 5: o Cc e o fio das respostas
      * @param  ?\Illuminate\Support\Collection  $uploads  E-mail 5b: os anexos (MailAttachments::forSend)
+     * @param  ?array{text: string, html: ?string}  $secret  E-mail 9: o texto completo (com o link), cifrado só até ao envio
      */
-    public function queue(Mailbox $mailbox, User $sender, string $to, string $subject, string $text, ?string $html, array $links = [], array $thread = [], ?\Illuminate\Support\Collection $uploads = null): MailMessage
+    public function queue(Mailbox $mailbox, User $sender, string $to, string $subject, string $text, ?string $html, array $links = [], array $thread = [], ?\Illuminate\Support\Collection $uploads = null, ?array $secret = null): MailMessage
     {
         $domain = Str::after($mailbox->email, '@') ?: 'xplendor.pt';
         $message = MailMessage::create([
@@ -58,7 +59,8 @@ class MailboxSender
             'body_text' => $text,
             'body_html' => $html,
             'status' => MailMessage::STATUS_QUEUED,
-        ] + array_intersect_key($links, array_flip(['customer_id', 'car_sale_id', 'car_lead_id', 'satisfaction_report_id'])));
+            'outgoing_secret' => $secret,
+        ] + array_intersect_key($links, array_flip(['customer_id', 'car_sale_id', 'car_lead_id', 'satisfaction_report_id', 'financing_link_id'])));
         if ($uploads && $uploads->isNotEmpty()) {
             app(MailAttachments::class)->attach($message, $uploads); // E-mail 5b: antes de ir para a fila
         }
