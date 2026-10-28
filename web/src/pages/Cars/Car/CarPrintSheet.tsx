@@ -12,7 +12,7 @@ import "./CarPrintSheet.fonts.css";
  * e, depois, do site do cliente), com a hierarquia da ficha do site adaptada a papel:
  * cabeçalho (logótipo, tipologia · estado · ref., título, ano · origem · cor, preço), números-chave,
  * blocos (detalhes, equipamento com ✓, camas com explicação), a descrição e o rodapé (QR Code,
- * contacto do vendedor ou o contacto comercial da empresa, o aviso legal, identificação da
+ * contacto do vendedor ou o contacto comercial da empresa, a nota da empresa, o aviso legal, identificação da
  * empresa). Sem galeria nem botões na folha.
  *
  * Técnica: HTML + @media print + @page A4 + window.print() do browser. Feita para se ler bem a
@@ -267,6 +267,7 @@ export default function CarPrintSheet() {
                                     {data.seller?.name && <div className="ps-seller"><strong>{data.seller.name}</strong>{sellerPhone ? ` · ${sellerPhone}` : ""}</div>}
                                     {!data.seller?.name && sellerPhone && <div className="ps-seller"><strong>{sellerPhone}</strong></div>}
                                 </>}
+                            {data.print_note?.trim() && <p className="ps-note" data-testid="ps-note">{data.print_note.trim()}</p>}
                             <p className="ps-legal" data-testid="ps-legal">{LEGAL_NOTICE}</p>
                             <div className="ps-company">
                                 <strong>{c.fiscal_name || companyName}</strong>
@@ -368,6 +369,8 @@ const PRINT_STYLES = `
 .ps-contact { flex: 1 1 auto; font-size: .905em; }
 .ps-qr-hint { font-size: .947em; color: #374151; margin-bottom: .405em; }
 .ps-seller { font-size: 1.158em; margin-bottom: .27em; }
+/* Nota da empresa (até 250 caracteres): as quebras de linha escritas no painel mantêm-se. */
+.ps-note { margin: 0 0 .35em; white-space: pre-line; }
 /* Aviso legal: letra pequena, mas nunca abaixo de 6,5 pt (lê-se na folha impressa). */
 .ps-legal { font-size: max(6.5pt, .82em); line-height: 1.3; color: #4b5563; margin: 0 0 .35em; }
 .ps-company-lines { color: #374151; }

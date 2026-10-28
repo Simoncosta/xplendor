@@ -321,13 +321,13 @@ class AgencyManagementTest extends TestCase
 
         $this->as($this->member)->putJson($this->url($this->client), [
             'fiscal_name' => 'Domiway Lda', 'phone' => '220000000', 'email' => 'geral@domiway.pt',
-            'print_contact_label' => 'Dep. Comercial', 'print_contact_phone' => '220000001',
+            'print_contact_label' => 'Dep. Comercial', 'print_contact_phone' => '220000001', 'print_note' => 'Oficina própria',
             'nipc' => '599999999', 'plan_id' => $this->plan, 'lead_distribution' => 'automatic_latest',
         ])->assertOk();
         $c = $this->client->fresh();
         $this->assertSame(['Domiway Lda', '220000000', 'geral@domiway.pt'], [$c->fiscal_name, $c->phone, $c->email]);
-        // O contacto na ficha também é um dado básico.
-        $this->assertSame(['Dep. Comercial', '220000001'], [$c->print_contact_label, $c->print_contact_phone]);
+        // O contacto e a nota da ficha também são dados básicos.
+        $this->assertSame(['Dep. Comercial', '220000001', 'Oficina própria'], [$c->print_contact_label, $c->print_contact_phone, $c->print_note]);
         // Só os dados básicos: o resto não se grava.
         $this->assertSame([$nipc, 'manual'], [$c->nipc, $c->lead_distribution]);
         // O ramo define-se uma vez; trocar de ramo é uma fase futura.

@@ -9,7 +9,7 @@ import { vehicleUrlTemplateError } from "./components/VehicleUrlTemplateField";
 // Components
 import PageHeader from 'Components/Common/PageHeader';
 import PageCard from 'Components/Common/PageCard';
-import CompanyGeneralDataFields from './components/CompanyGeneralDataFields';
+import CompanyGeneralDataFields, { PRINT_NOTE_MAX } from './components/CompanyGeneralDataFields';
 import AgencyCreateFields from './components/AgencyCreateFields';
 import ManagingAgencyCard from './components/ManagingAgencyCard';
 import AgencyManagementPanel from 'pages/Companies/components/AgencyManagementPanel';
@@ -111,6 +111,7 @@ export default function CompanyProfileEditor({
         // Contacto na ficha: a mesma regra do servidor.
         print_contact_phone: Yup.string().nullable()
             .matches(/^\+?[0-9 ]*$/, "O telefone do contacto na ficha só pode ter algarismos e espaços (ex.: 917 349 847)."),
+        print_note: Yup.string().nullable().max(PRINT_NOTE_MAX, `A nota da ficha tem no máximo ${PRINT_NOTE_MAX} caracteres.`),
     });
 
     const formik = useFormik({

@@ -56,6 +56,8 @@ export interface ICompany {
     /** Ficha da viatura: o contacto comercial (com telefone, substitui o vendedor na ficha). */
     print_contact_label?: string | null;
     print_contact_phone?: string | null;
+    /** Ficha da viatura: a nota do rodapé, por cima do aviso legal (até 250 caracteres). */
+    print_note?: string | null;
     instagram: string | null;
     linkedin?: string | null;
     tiktok?: string | null;

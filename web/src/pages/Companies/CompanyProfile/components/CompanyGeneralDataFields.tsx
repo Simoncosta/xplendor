@@ -4,15 +4,20 @@ import XInput from "Components/Common/XInput";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 import XInputMask from "Components/Common/XInputMask";
 import AddressFields from "Components/Common/AddressFields";
-import { Row, Col, Input, Label } from "reactstrap";
+import FieldLabelWithHint from "Components/Common/FieldLabelWithHint";
+import { Row, Col, Input, Label, FormFeedback } from "reactstrap";
 import { useField } from "formik";
 import VehicleUrlTemplateField from "./VehicleUrlTemplateField";
+
+export const PRINT_NOTE_MAX = 250;
 
 export default function CompanyGeneralDataFields({ isEdit, managed = false }: { isEdit: boolean; managed?: boolean }) {
     // NIPC: fixo depois de criado, salvo numa empresa gerida que nasceu sem ele.
     const [nipc] = useField("nipc");
     // O artigo do nome nos textos ("Esta semana nos Pinheiros"); vazio = sem artigo.
     const [article, , articleHelpers] = useField("name_article");
+    // Nota da ficha da viatura (A4): texto curto de cada empresa, até 250 caracteres.
+    const [printNote, printNoteMeta] = useField<string | null>("print_note");
     return (
         <Row>
             {!isEdit && (
@@ -162,6 +167,17 @@ export default function CompanyGeneralDataFields({ isEdit, managed = false }: { 
                     hint="Preenchido, a ficha da viatura (A4) mostra a designação e este telefone, sem o nome do vendedor. Vazio, a ficha mostra o vendedor como até aqui."
                     placeholder="917 349 847"
                 />
+            </Col>
+            <Col lg={12}>
+                <div className="mb-2" data-testid="print-note">
+                    <FieldLabelWithHint htmlFor="print_note" label="Nota da ficha"
+                        hint="Uma nota curta no rodapé da ficha da viatura (A4), por cima do aviso legal (por exemplo, a oficina ou o financiamento). Vazia, não aparece." />
+                    <Input id="print_note" name="print_note" type="textarea" rows={2} maxLength={PRINT_NOTE_MAX}
+                        placeholder="Ex.: Oficina própria para a manutenção. Financiamento à medida, peça uma simulação."
+                        value={printNote.value ?? ""} onChange={printNote.onChange} onBlur={printNote.onBlur} invalid={!!printNoteMeta.error} />
+                    {printNoteMeta.error && <FormFeedback>{printNoteMeta.error}</FormFeedback>}
+                    <div className="small text-muted text-end">{(printNote.value ?? "").length}/{PRINT_NOTE_MAX}</div>
+                </div>
             </Col>
             <div className="mt-4 mb-2 border-bottom pb-2">
                 <h5 className="card-title mb-0">Faturação</h5>

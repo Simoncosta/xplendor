@@ -67,6 +67,8 @@ class CarPrintSheetResource extends JsonResource
                 'label' => trim((string) $company->print_contact_label) ?: 'Dep. Comercial',
                 'phone' => $company->print_contact_phone,
             ] : null,
+            // A nota da empresa para o rodapé (só aqui, como o contacto); vazia não vem.
+            'print_note' => trim((string) $company?->print_note) ?: null,
             // ── Empresa (para cabeçalho + rodapé) ─────────────────────────
             'company' => [
                 'id'           => $company?->id,

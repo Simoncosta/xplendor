@@ -16,10 +16,11 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * Ficha da viatura (A4): o contacto comercial por empresa. Com o telefone, a ficha recebe a
- * designação (Dep. Comercial por omissão) e o telefone; sem ele, recebe o vendedor como antes.
- * O contacto só sai na ficha (nunca na API pública, e o vendedor das outras utilizações não muda)
- * e só o altera quem pode alterar os outros dados da empresa.
+ * Ficha da viatura (A4): o contacto comercial e a nota por empresa. Com o telefone, a ficha recebe
+ * a designação (Dep. Comercial por omissão) e o telefone; sem ele, recebe o vendedor como antes.
+ * A nota (até 250 caracteres) só vem quando está preenchida. Os dois só saem na ficha (nunca na
+ * API pública, e o vendedor das outras utilizações não muda) e só os altera quem pode alterar os
+ * outros dados da empresa.
  */
 class PrintSheetContactTest extends TestCase
 {
@@ -84,6 +85,45 @@ class PrintSheetContactTest extends TestCase
         $public = json_encode(CarPublicResource::make($out->load(['brand', 'model', 'category']))->resolve(request()));
         $this->assertStringNotContainsString('917349847', $public);
         $this->assertStringNotContainsString('print_contact', $public);
+    }
+
+    public function test_the_note_is_on_the_sheet_only_when_filled(): void
+    {
+        $this->assertNull($this->sheet()['print_note']);
+
+        $this->company->forceFill(['print_note' => '   '])->save();
+        $this->assertNull($this->sheet()['print_note']);
+
+        $this->company->forceFill(['print_note' => 'Oficina própria. Financiamento à medida.'])->save();
+        $this->assertSame('Oficina própria. Financiamento à medida.', $this->sheet()['print_note']);
+    }
+
+    public function test_the_note_has_at_most_250_characters_and_only_who_edits_the_company_changes_it(): void
+    {
+        $url = "/api/v1/companies/{$this->company->id}";
+        $full = str_repeat('á', 250); // conta caracteres, não bytes
+
+        $this->actingAs($this->seller, 'sanctum')->putJson($url, ['print_note' => 'Nota'])->assertForbidden();
+        $otherAdmin = User::factory()->create(['company_id' => $this->other->id, 'role' => 'admin']);
+        $this->actingAs($otherAdmin, 'sanctum')->putJson($url, ['print_note' => 'Nota'])->assertForbidden();
+        $this->assertNull($this->company->fresh()->print_note);
+
+        $this->actingAs($this->admin, 'sanctum')->putJson($url, ['print_note' => $full . 'a'])->assertStatus(422)->assertJsonValidationErrors('print_note');
+        $this->actingAs($this->admin, 'sanctum')->putJson($url, ['print_note' => $full])->assertOk();
+        $this->assertSame($full, $this->company->fresh()->print_note);
+
+        // Vazia, deixa de aparecer.
+        $this->actingAs($this->admin, 'sanctum')->putJson($url, ['print_note' => ''])->assertOk();
+        $this->assertNull($this->sheet()['print_note']);
+    }
+
+    public function test_the_note_is_never_in_the_public_api(): void
+    {
+        $this->company->forceFill(['print_note' => 'Nota exclusiva da ficha impressa'])->save();
+        $out = app(CarService::class)->appendPublicSellerContact(Car::find($this->car->id));
+        $public = json_encode(CarPublicResource::make($out->load(['brand', 'model', 'category', 'company']))->resolve(request()));
+        $this->assertStringNotContainsString('Nota exclusiva', $public);
+        $this->assertStringNotContainsString('print_note', $public);
     }
 
     public function test_who_edits_the_company_data_edits_the_contact_and_nobody_else(): void

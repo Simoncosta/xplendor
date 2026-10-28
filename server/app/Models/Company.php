@@ -59,6 +59,8 @@ class Company extends Model
         // Ficha da viatura: o contacto comercial que substitui o vendedor (vazio = como antes).
         'print_contact_label',
         'print_contact_phone',
+        // Ficha da viatura: a nota do rodapé, por cima do aviso legal (vazia = não aparece).
+        'print_note',
         'instagram',
         'linkedin', // Site do consultor: as redes que faltavam
         'tiktok',

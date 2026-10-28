@@ -126,6 +126,21 @@ describe("Ficha A4 da viatura", () => {
         expect(legal.nextElementSibling).toHaveClass("ps-company");
     });
 
+    it("a nota da empresa sai no rodapé, por cima do aviso legal", async () => {
+        mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_note: "Oficina própria para a manutenção. Financiamento à medida." }) });
+        render(<CarPrintSheet />);
+        const note = await screen.findByTestId("ps-note");
+        expect(note.textContent).toBe("Oficina própria para a manutenção. Financiamento à medida.");
+        expect(note.nextElementSibling).toBe(screen.getByTestId("ps-legal"));
+    });
+
+    it("sem nota (ou só com espaços), não aparece nada", async () => {
+        mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_note: "   " }) });
+        render(<CarPrintSheet />);
+        await screen.findByTestId("ps-legal");
+        expect(screen.queryByTestId("ps-note")).not.toBeInTheDocument();
+    });
+
     it("a descrição em HTML do editor passa a parágrafos de texto simples", () => {
         expect(descriptionParagraphs("<p><span style=\"color: red\">Um &amp; dois</span></p><p><br></p><p>Linha<br>seguinte</p><script>alert(1)</script>"))
             .toEqual(["Um & dois", "Linha\nseguinte", "alert(1)"]);
