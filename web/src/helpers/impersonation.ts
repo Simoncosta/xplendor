@@ -9,6 +9,8 @@ import { clearWorkingCompany } from "./workingCompany";
 
 const AUTH = "authUser";
 const ROOT = "rootAuthUser";
+// O endereço onde o root estava ao entrar: ao sair, volta para lá (sem ele, para o /admin).
+const RETURN_TO = "impersonationReturnTo";
 // Base da app (basename do CRA = PUBLIC_URL, ex.: "/app"). Os redirects abaixo usam
 // window.location (fora do react-router → sem basename automático) → prefixar à mão.
 const BASE = process.env.PUBLIC_URL || "";
@@ -22,9 +24,21 @@ const writeAuthUser = (u: AuthUser) => { try { sessionStorage.setItem(AUTH, JSON
 
 export const isImpersonating = (): boolean => !!readAuthUser()?.impersonating;
 
+/** Só endereços da própria app (nunca outro sítio, nem "//outro-dominio"). */
+const isAppPath = (p: string | null): p is string => !!p && p.startsWith(BASE + "/") && !p.startsWith("//");
+
+/** Para onde vai o root ao sair: o endereço guardado ao entrar, ou o /admin. Limpa a marca. */
+export function takeReturnPath(): string {
+    let saved: string | null = null;
+    try { saved = sessionStorage.getItem(RETURN_TO); sessionStorage.removeItem(RETURN_TO); } catch { /* ignore */ }
+    return isAppPath(saved) ? saved : BASE + "/admin";
+}
+
 /**
  * INICIAR: chama o backend (só passa se for root), guarda o root de lado, põe o authUser do
  * impersonado (token de impersonation) e recarrega → o ModulesContext re-inicializa com B.
+ * Entrar e sair são sempre um recarregamento completo da página: nada do root fica em memória
+ * (Redux, contextos, caches de pedidos), e o axios lê o token novo do sessionStorage.
  */
 export async function startImpersonationFlow(userId: number, reason?: string): Promise<void> {
     const r: any = await startImpersonation(userId, reason);
@@ -34,9 +48,13 @@ export async function startImpersonationFlow(userId: number, reason?: string): P
     // Em impersonation trabalha-se na empresa do utilizador-alvo (sai do contexto de trabalho).
     clearWorkingCompany();
 
-    // Guarda o root só se ainda não estivermos já em impersonation (evita perder o root real).
+    // Guarda o root só se ainda não estivermos já em impersonation (evita perder o root real),
+    // e o sítio de onde entrou, para voltar ao sair.
     if (current && !current.impersonating) {
-        try { sessionStorage.setItem(ROOT, JSON.stringify(current)); } catch { /* ignore */ }
+        try {
+            sessionStorage.setItem(ROOT, JSON.stringify(current));
+            sessionStorage.setItem(RETURN_TO, window.location.pathname + window.location.search);
+        } catch { /* ignore */ }
     }
 
     writeAuthUser({
@@ -56,11 +74,11 @@ export async function startImpersonationFlow(userId: number, reason?: string): P
     window.location.assign(BASE + "/dashboard");
 }
 
-/** SAIR: termina no backend, restaura o root e recarrega. Robusto mesmo se o stop falhar. */
+/** SAIR: termina no backend, restaura o root e recarrega onde estava. Robusto mesmo se o stop falhar. */
 export async function stopImpersonationFlow(): Promise<void> {
     try { await stopImpersonation(); } catch { /* mesmo que falhe, restauramos o root localmente */ }
     restoreRootLocally();
-    window.location.assign(BASE + "/dashboard");
+    window.location.assign(takeReturnPath());
 }
 
 /** Restaura o authUser do root (do rootAuthUser) e limpa o estado de impersonation. */
@@ -101,7 +119,7 @@ export async function reconcileImpersonation(): Promise<boolean> {
 
     if (local && !backendActive) {
         restoreRootLocally();
-        window.location.assign(BASE + "/dashboard");
+        window.location.assign(takeReturnPath());
         return true;
     }
     return false;

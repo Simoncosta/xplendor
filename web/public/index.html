@@ -24,6 +24,43 @@
     html[data-bs-theme="dark"], html[data-bs-theme="dark"] body { background-color: #1a1d21; color-scheme: dark; }
   </style>
 
+  <!-- Recuperação depois de um deploy: se um ficheiro do build não carregar (um index.html antigo,
+       em cache, a pedir um main.js que já não existe, ou o servidor a responder com HTML), remove
+       o service worker e as caches e recarrega UMA vez. A marca no sessionStorage impede ciclos:
+       não volta a tentar durante 1 minuto e, sem armazenamento, não recarrega. -->
+  <script>
+    (function () {
+      var KEY = 'xp-recover-at';
+      function failedBuildFile(e) {
+        var t = e.target;
+        if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) return /\/static\//.test(t.src || t.href || '');
+        return /\/static\/js\//.test(e.filename || '') && /Unexpected token/.test(e.message || '');
+      }
+      window.addEventListener('error', function (e) {
+        if (!failedBuildFile(e)) return;
+        var now = Date.now();
+        try {
+          if (now - Number(window.sessionStorage.getItem(KEY) || 0) < 60000) return;
+          window.sessionStorage.setItem(KEY, String(now));
+          if (window.sessionStorage.getItem(KEY) !== String(now)) return;
+        } catch (x) { return; }
+        var jobs = [];
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+            return Promise.all(rs.map(function (r) { return r.unregister(); }));
+          }));
+        }
+        if (window.caches && window.caches.keys) {
+          jobs.push(window.caches.keys().then(function (ks) {
+            return Promise.all(ks.map(function (k) { return window.caches.delete(k); }));
+          }));
+        }
+        var reload = function () { window.location.reload(); };
+        Promise.all(jobs).then(reload, reload);
+      }, true);
+    })();
+  </script>
+
   <!-- Google Consent Mode v2 — default DENIED até consentimento -->
   <script>
     window.dataLayer = window.dataLayer || [];

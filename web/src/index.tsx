@@ -8,6 +8,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import rootReducer from "./slices";
 import * as serviceWorkerRegistration from "./serviceWorkerRegistration";
 import "./helpers/installPrompt"; // começa a ouvir beforeinstallprompt no arranque
+import AppErrorBoundary from "./Components/Common/AppErrorBoundary";
 
 const store = configureStore({ reducer: rootReducer, devTools: true });
 
@@ -15,13 +16,15 @@ const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
 );
 root.render(
-    <Provider store={store}>
-        <React.Fragment>
-            <BrowserRouter basename={process.env.PUBLIC_URL}>
-                <App />
-            </BrowserRouter>
-        </React.Fragment>
-    </Provider>
+    <AppErrorBoundary>
+        <Provider store={store}>
+            <React.Fragment>
+                <BrowserRouter basename={process.env.PUBLIC_URL}>
+                    <App />
+                </BrowserRouter>
+            </React.Fragment>
+        </Provider>
+    </AppErrorBoundary>
 );
 
 // If you want to start measuring performance in your app, pass a function
