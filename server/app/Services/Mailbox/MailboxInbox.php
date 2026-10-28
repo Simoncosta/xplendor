@@ -151,8 +151,17 @@ class MailboxInbox
         return ['ok' => true];
     }
 
-    /** E-mail 10 · A pasta do Lixo da caixa: só a que tem a marca especial \Trash (no Gmail, o Lixo dele). */
+    /**
+     * E-mail 10 · A pasta do Lixo da caixa: a que o servidor marca com \Trash (no Gmail, o Lixo dele);
+     * sem marca, a escolhida à mão nas definições da caixa (E-mail 10b), se ainda existir na caixa.
+     */
     public function trashFolder(Mailbox $mailbox): ?string
+    {
+        return $this->markedTrash($mailbox) ?? ($mailbox->trash_folder && $this->knows($mailbox, $mailbox->trash_folder) ? $mailbox->trash_folder : null);
+    }
+
+    /** A pasta que o servidor marca com \Trash (null: nenhuma, ou a caixa não respondeu). */
+    public function markedTrash(Mailbox $mailbox): ?string
     {
         $folders = $this->folders($mailbox);
         if (! $folders['ok']) {
@@ -168,8 +177,8 @@ class MailboxInbox
     }
 
     /**
-     * E-mail 10 · Apagar: mover para o Lixo da caixa, nunca apagar de vez. Sem Lixo (marca \Trash),
-     * não se apaga e diz-se porquê; já no Lixo, também não (apagar de vez é no programa de e-mail).
+     * E-mail 10 · Apagar: mover para o Lixo da caixa, nunca apagar de vez. Sem Lixo (nem marcado com
+     * \Trash pelo servidor, nem escolhido à mão nas definições), não se apaga e diz-se porquê; já no Lixo, também não (apagar de vez é no programa de e-mail).
      * A cópia ligada a um cliente na XPLENDOR (mail_messages) fica até ao fim da retenção: faz parte
      * do histórico do cliente. Devolve o que o "Desfazer" precisa (os Message-ID e as pastas).
      *
@@ -179,7 +188,7 @@ class MailboxInbox
     {
         $trash = $this->trashFolder($mailbox);
         if ($trash === null) {
-            return ['ok' => false, 'error' => 'A sua caixa não tem uma pasta de Lixo (marca \\Trash). Por segurança, a XPLENDOR não apaga mensagens de vez: nada foi apagado.'];
+            return ['ok' => false, 'code' => 'no_trash_folder', 'error' => 'A sua caixa não tem uma pasta de Lixo: o servidor não marca nenhuma com \\Trash e ainda não escolheu uma nas definições da caixa. Por segurança, a XPLENDOR não apaga mensagens de vez: nada foi apagado.'];
         }
         if ($trash === $folder) {
             return ['ok' => false, 'error' => 'Estas mensagens já estão no Lixo. Para as apagar de vez, use o seu programa de e-mail.'];

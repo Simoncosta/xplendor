@@ -217,7 +217,10 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
         } catch (e: any) {
             setList(before);
             if (serverFolder === inboxPath && unreadGone > 0) adjustMailboxUnread(unreadGone);
-            toast.error(`Não foi possível apagar: ${e?.message || "erro do servidor"}`);
+            // Sem pasta do Lixo: o motivo e o link para as definições da caixa (onde se escolhe uma).
+            toast.error(e?.errors?.code === "no_trash_folder"
+                ? <span data-testid="mail-no-trash">{e.message} <a href={`/app${profileLink}`} className="fw-semibold">Escolher a pasta do Lixo</a></span>
+                : `Não foi possível apagar: ${e?.message || "erro do servidor"}`);
         } finally {
             refreshMailboxUnread();
         }

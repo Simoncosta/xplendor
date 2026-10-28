@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import PageCard from "Components/Common/PageCard";
 import XSelect from "Components/Common/Select";
 import { deleteMyMailbox, getMyMailbox, saveMyMailbox, testMyMailbox, testMyMailboxImap } from "helpers/laravel_helper";
+import TrashFolderField from "./TrashFolderField";
 import { refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
 import { confirmDelete } from "helpers/swal";
 import {
@@ -191,6 +192,7 @@ export default function MyMailboxCard({ companyId }: { companyId: number }) {
                     {saved.account_type === "gmail" || saved.smtp_host === "smtp.gmail.com" ? " · o Gmail guarda sozinho a cópia em Enviados" : saved.sent_folder ? ` · cópia em Enviados na pasta ${saved.sent_folder}` : ""}
                 </p>
             )}
+            {saved?.imap_status === "ativa" && <TrashFolderField companyId={companyId} />}
             <Row>
                 <Col lg={6} className="mb-3">
                     <Label htmlFor="mailbox-type" className="form-label">Tipo de conta</Label>

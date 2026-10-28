@@ -345,6 +345,9 @@ Route::prefix('v1')->group(function () {
                     Route::post('/my-mailbox/flag', [$inbox, 'flag'])->middleware('throttle:120,1');
                     Route::post('/my-mailbox/trash', [$inbox, 'trash'])->middleware('throttle:60,1');
                     Route::post('/my-mailbox/restore', [$inbox, 'restore'])->middleware('throttle:60,1');
+                    // E-mail 10b: a pasta do Lixo nas definições da caixa (a marcada com \Trash ou a escolhida à mão).
+                    Route::get('/my-mailbox/trash-folder', [$inbox, 'trashFolder']);
+                    Route::put('/my-mailbox/trash-folder', [$inbox, 'updateTrashFolder']);
                     // E-mail 5: escrever e responder (da caixa, da ficha do cliente e da venda).
                     Route::get('/my-mailbox/compose-context', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'context']);
                     Route::post('/my-mailbox/send', [\App\Http\Controllers\Api\V1\MyMailboxComposeController::class, 'send'])->middleware('throttle:20,1');

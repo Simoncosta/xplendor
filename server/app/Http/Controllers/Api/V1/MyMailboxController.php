@@ -63,7 +63,7 @@ class MyMailboxController extends Controller
             // Mudou: tem de voltar a ser testada (o envio e o IMAP; a pasta de Enviados volta a ser procurada).
             $mailbox->fill(['status' => Mailbox::STATUS_PENDING, 'last_error' => null]);
             if ($mailbox->isDirty(['imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'email'])) {
-                $mailbox->fill(['imap_status' => null, 'imap_error' => null, 'sent_folder' => null, 'unread_count' => null, 'unread_checked_at' => null, 'uidvalidity' => null, 'last_uid' => null]);
+                $mailbox->fill(['imap_status' => null, 'imap_error' => null, 'sent_folder' => null, 'trash_folder' => null, 'unread_count' => null, 'unread_checked_at' => null, 'uidvalidity' => null, 'last_uid' => null]);
             }
         }
         $mailbox->save();

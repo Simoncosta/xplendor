@@ -114,6 +114,17 @@ describe("A caixa de entrada: seleção, estrela, apagar e desfazer (E-mail 10)"
         expect(screen.getByText("Segunda")).toBeInTheDocument();
     });
 
+    it("sem pasta do Lixo, o aviso leva às definições da caixa", async () => {
+        (trashMailboxMessages as jest.Mock).mockRejectedValueOnce({ message: "A sua caixa não tem uma pasta de Lixo.", errors: { code: "no_trash_folder" } });
+        await renderInbox();
+        fireEvent.click(within(rowOf("Segunda")).getByTestId("mail-select"));
+        fireEvent.click(screen.getByTestId("mail-delete-selected"));
+        await waitFor(() => expect(toast.error).toHaveBeenCalled());
+        render((toast.error as jest.Mock).mock.calls[0][0]);
+        expect(screen.getByText("Escolher a pasta do Lixo")).toHaveAttribute("href", "/app/users/4#mailbox");
+        expect(screen.getByText("Segunda")).toBeInTheDocument(); // nada foi apagado
+    });
+
     it("apagar a conversa aberta volta à lista sem ela", async () => {
         (getMailboxThread as jest.Mock).mockResolvedValue({ data: { messages: [{ uid: 2, folder: "INBOX", subject: "Segunda", from, to: [], cc: [], date: "2026-10-27T16:00:00Z",
             text: "Corpo.", html: null, external_images: 0, seen: true, attachments: [], customer: null }] } });

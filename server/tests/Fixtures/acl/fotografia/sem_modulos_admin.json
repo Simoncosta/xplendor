@@ -1,6 +1,6 @@
 {
     "ator": "sem_modulos_admin",
-    "rotas": 652,
+    "rotas": 654,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -1178,6 +1178,7 @@
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}": 422,
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}": 422,
         "GET api/v1/companies/{id}/my-mailbox/thread": 422,
+        "GET api/v1/companies/{id}/my-mailbox/trash-folder": 422,
         "GET api/v1/companies/{id}/my-mailbox/unread": 200,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 403,
@@ -1564,6 +1565,7 @@
         "PUT api/v1/companies/{id}/management/guest-profile": 422,
         "PUT api/v1/companies/{id}/marketing/radar/settings": 403,
         "PUT api/v1/companies/{id}/my-mailbox": 422,
+        "PUT api/v1/companies/{id}/my-mailbox/trash-folder": 422,
         "PUT api/v1/companies/{id}/ocr/invoices/{invoiceId}": 403,
         "PUT api/v1/companies/{id}/permission-profiles/{profileId}": 404,
         "PUT api/v1/companies/{id}/properties/{propertyId}": 403,

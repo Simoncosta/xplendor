@@ -62,6 +62,8 @@ final class RoutePermissions
         'POST {id}/my-mailbox/flag' => 'empresa.ver', // E-mail 10
         'POST {id}/my-mailbox/trash' => 'empresa.ver',
         'POST {id}/my-mailbox/restore' => 'empresa.ver',
+        'GET {id}/my-mailbox/trash-folder' => 'empresa.ver', // E-mail 10b
+        'PUT {id}/my-mailbox/trash-folder' => 'empresa.ver',
         'GET {id}/my-mailbox/compose-context' => 'empresa.ver',
         'GET {id}/my-mailbox/link-context' => 'empresa.ver', // E-mail 9 (e financiamento.criar ou automovel.editar, no controlador)
         'POST {id}/my-mailbox/send' => 'empresa.ver',
@@ -977,6 +979,8 @@ final class RoutePermissions
         'POST {id}/my-mailbox/flag',
         'POST {id}/my-mailbox/trash',
         'POST {id}/my-mailbox/restore',
+        'GET {id}/my-mailbox/trash-folder',
+        'PUT {id}/my-mailbox/trash-folder',
         'GET {id}/my-mailbox/compose-context',
         'GET {id}/my-mailbox/link-context',
         'POST {id}/my-mailbox/send',

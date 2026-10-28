@@ -402,6 +402,9 @@ export const trashMailboxMessages = (companyId: number, folder: string, uids: nu
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/trash`, { folder, uids, message_ids: messageIds.filter(Boolean) }, JSON_BODY);
 export const restoreMailboxMessages = (companyId: number, folder: string, messageIds: string[]) =>
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/restore`, { folder, message_ids: messageIds }, JSON_BODY);
+// E-mail 10b: a pasta do Lixo nas definições da caixa (a marcada com \\Trash, ou a escolhida à mão).
+export const getMailboxTrashFolder = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/trash-folder`);
+export const setMailboxTrashFolder = (companyId: number, folder: string | null) => api.put(url.GET_COMPANIES + `/${companyId}/my-mailbox/trash-folder`, { folder });
 export const linkMailboxMessage = (companyId: number, uid: number, folder: string, customerId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/link`, { folder, customer_id: customerId }, JSON_BODY);
 // E-mail 7: um anexo (PDF ou imagem) para as Faturas, em JSON.

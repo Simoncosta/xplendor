@@ -22,7 +22,7 @@ class Mailbox extends Model
 
     protected $fillable = [
         'company_id', 'user_id', 'account_type', 'email', 'smtp_host', 'smtp_port', 'smtp_encryption',
-        'imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'sent_folder', 'save_to_sent',
+        'imap_host', 'imap_port', 'imap_encryption', 'username', 'password', 'sent_folder', 'trash_folder', 'save_to_sent',
         'status', 'last_error', 'last_tested_at', 'last_uid', 'uidvalidity', 'unread_count', 'unread_checked_at',
         'imap_status', 'imap_error', 'imap_tested_at', 'mark_seen_on_server', 'signature', 'dev_test_addresses',
     ];
@@ -95,6 +95,7 @@ class Mailbox extends Model
             'imap_error' => $this->imap_error,
             'imap_tested_at' => $this->imap_tested_at?->toIso8601String(),
             'sent_folder' => $this->sent_folder,
+            'trash_folder' => $this->trash_folder, // E-mail 10b: a escolhida à mão (sem pasta marcada com \Trash)
             'unread_count' => $this->unread_count,
             'unread_checked_at' => $this->unread_checked_at?->toIso8601String(),
         ];

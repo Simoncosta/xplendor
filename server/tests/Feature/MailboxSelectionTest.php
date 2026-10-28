@@ -157,7 +157,7 @@ class MailboxSelectionTest extends TestCase
         FakeMailboxImap::$folders['Lixo sem marca'] = ['\\HasNoChildren']; // o nome não basta: só a marca \Trash
 
         $this->as($this->owner)->postJson($this->url('/trash'), ['folder' => 'INBOX', 'uids' => [2], 'message_ids' => ['<dois@exemplo.invalid>']])
-            ->assertStatus(422)->assertJsonPath('message', 'A sua caixa não tem uma pasta de Lixo (marca \\Trash). Por segurança, a XPLENDOR não apaga mensagens de vez: nada foi apagado.');
+            ->assertStatus(422)->assertJsonPath('errors.code', 'no_trash_folder');
         $this->assertCount(3, FakeMailboxImap::$messages['INBOX']);
         $this->assertEmpty(array_filter(FakeMailboxImap::$calls, fn ($c) => str_starts_with($c, 'move:')));
     }

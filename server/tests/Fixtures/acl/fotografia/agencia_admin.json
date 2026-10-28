@@ -1,6 +1,6 @@
 {
     "ator": "agencia_admin",
-    "rotas": 652,
+    "rotas": 654,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/collaborators/{collaborator}/access/invite",
@@ -34,6 +34,7 @@
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}",
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}",
         "GET api/v1/companies/{id}/my-mailbox/thread",
+        "GET api/v1/companies/{id}/my-mailbox/trash-folder",
         "GET api/v1/companies/{id}/my-mailbox/unread",
         "GET api/v1/companies/{id}/quotes",
         "GET api/v1/companies/{id}/quotes/{quote}/pdf",
@@ -88,6 +89,7 @@
         "PUT api/v1/companies/{id}/mail-settings",
         "PUT api/v1/companies/{id}/management/guest-profile",
         "PUT api/v1/companies/{id}/my-mailbox",
+        "PUT api/v1/companies/{id}/my-mailbox/trash-folder",
         "PUT api/v1/companies/{id}/permission-profiles/{profileId}",
         "PUT api/v1/companies/{id}/users/{user}",
         "PUT api/v1/companies/{id}/users/{user}/profile"
@@ -125,6 +127,7 @@
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
         "GET api/v1/companies/{id}/my-mailbox/thread": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
+        "GET api/v1/companies/{id}/my-mailbox/trash-folder": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
         "GET api/v1/companies/{id}/my-mailbox/unread": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
         "GET api/v1/companies/{id}/quotes": "Só o Administrador da empresa vê e aprova a faturação da XPLENDOR.",
         "GET api/v1/companies/{id}/quotes/{quote}/pdf": "Só o Administrador da empresa vê e aprova a faturação da XPLENDOR.",
@@ -179,6 +182,7 @@
         "PUT api/v1/companies/{id}/mail-settings": "Cliente Teste não deu acesso a esta agência para editar em Empresa.",
         "PUT api/v1/companies/{id}/management/guest-profile": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "PUT api/v1/companies/{id}/my-mailbox": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
+        "PUT api/v1/companies/{id}/my-mailbox/trash-folder": "Isto é pessoal: só a própria pessoa, na sua empresa, o pode ver e configurar.",
         "PUT api/v1/companies/{id}/permission-profiles/{profileId}": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "PUT api/v1/companies/{id}/users/{user}": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "PUT api/v1/companies/{id}/users/{user}/profile": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa."
@@ -430,6 +434,7 @@
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}": 403,
         "GET api/v1/companies/{id}/my-mailbox/messages/{uid}/attachments/{index}": 403,
         "GET api/v1/companies/{id}/my-mailbox/thread": 403,
+        "GET api/v1/companies/{id}/my-mailbox/trash-folder": 403,
         "GET api/v1/companies/{id}/my-mailbox/unread": 403,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 200,
@@ -816,6 +821,7 @@
         "PUT api/v1/companies/{id}/management/guest-profile": 403,
         "PUT api/v1/companies/{id}/marketing/radar/settings": 422,
         "PUT api/v1/companies/{id}/my-mailbox": 403,
+        "PUT api/v1/companies/{id}/my-mailbox/trash-folder": 403,
         "PUT api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
         "PUT api/v1/companies/{id}/permission-profiles/{profileId}": 403,
         "PUT api/v1/companies/{id}/properties/{propertyId}": 404,

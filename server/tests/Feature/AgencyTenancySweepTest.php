@@ -137,6 +137,8 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/my-mailbox/flag', // E-mail 10
         'POST api/v1/companies/{id}/my-mailbox/trash',
         'POST api/v1/companies/{id}/my-mailbox/restore',
+        'GET api/v1/companies/{id}/my-mailbox/trash-folder', // E-mail 10b
+        'PUT api/v1/companies/{id}/my-mailbox/trash-folder',
         'GET api/v1/companies/{id}/my-mailbox/compose-context',
         'GET api/v1/companies/{id}/my-mailbox/link-context',
         'POST api/v1/companies/{id}/my-mailbox/send',

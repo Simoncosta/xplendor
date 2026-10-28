@@ -137,11 +137,59 @@ class MyMailboxInboxController extends Controller
         }
         $result = $this->inbox->trash($mailbox, $folder, $uids, array_values(array_filter((array) $request->input('message_ids', []), 'is_string')));
         if (! $result['ok']) {
-            return ApiResponse::error($result['error'], 422);
+            // Sem Lixo: o ecrã mostra o link para as definições da caixa (code: no_trash_folder).
+            return ApiResponse::error($result['error'], 422, isset($result['code']) ? ['code' => $result['code']] : []);
         }
         unset($result['ok']);
 
         return ApiResponse::success($result, $result['moved'] === 1 ? 'Mensagem movida para o Lixo.' : "{$result['moved']} mensagens movidas para o Lixo.");
+    }
+
+    /**
+     * E-mail 10b · A pasta do Lixo, nas definições da caixa: a que o servidor marca com \Trash (só para
+     * informação) ou, sem marca, a escolhida à mão e as pastas que existem na caixa para escolher.
+     */
+    public function trashFolder(Request $request, int $companyId)
+    {
+        $mailbox = $this->mailbox($request, $companyId);
+        if (! $mailbox) {
+            return $this->noMailbox();
+        }
+        $folders = $this->inbox->folders($mailbox);
+        if (! $folders['ok']) {
+            return ApiResponse::error($folders['error'], 422);
+        }
+        $marked = $this->inbox->markedTrash($mailbox);
+
+        return ApiResponse::success([
+            'marked' => $marked,
+            'chosen' => $marked ? null : $mailbox->trash_folder,
+            // Para escolher: as pastas da caixa, sem a Entrada (nunca é o Lixo).
+            'folders' => $marked ? [] : array_values(array_map(fn ($f) => ['path' => $f['path'], 'name' => $f['name']],
+                array_filter($folders['folders'], fn ($f) => $f['special'] !== 'inbox'))),
+        ]);
+    }
+
+    /** E-mail 10b · Escolher a pasta do Lixo à mão (só sem pasta marcada com \Trash; sempre uma que já existe). */
+    public function updateTrashFolder(Request $request, int $companyId)
+    {
+        $data = $request->validate(['folder' => ['nullable', 'string', 'max:255']]);
+        $mailbox = $this->mailbox($request, $companyId);
+        if (! $mailbox) {
+            return $this->noMailbox();
+        }
+        $folder = $data['folder'] ?? null;
+        if ($folder !== null) {
+            if (($marked = $this->inbox->markedTrash($mailbox)) !== null) {
+                return ApiResponse::error("O servidor já marca a pasta {$marked} como Lixo: é essa que a XPLENDOR usa.", 422);
+            }
+            if (strtoupper($folder) === 'INBOX' || ! $this->inbox->knows($mailbox, $folder)) {
+                return ApiResponse::error('Essa pasta não existe na caixa. Escolha uma das pastas que já existem (a XPLENDOR não cria pastas).', 422);
+            }
+        }
+        $mailbox->forceFill(['trash_folder' => $folder])->save();
+
+        return ApiResponse::success(['chosen' => $folder], $folder ? "Pasta do Lixo: {$folder}." : 'Pasta do Lixo retirada.');
     }
 
     /** E-mail 10 · "Desfazer": do Lixo de volta para a pasta de onde saíram. */
