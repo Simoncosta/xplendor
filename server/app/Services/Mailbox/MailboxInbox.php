@@ -41,7 +41,9 @@ class MailboxInbox
         $folders = [];
         foreach ($result->data as $f) {
             $flags = array_map('strtolower', (array) $f['flags']);
-            if (in_array('\\noselect', $flags, true) || in_array('\\nonexistent', $flags, true)) {
+            // E-mail 10: a pasta "Com estrela" do Gmail (marca \Flagged) não aparece: o filtro
+            // "Com estrela" da barra lateral faz esse papel, igual em todas as caixas.
+            if (in_array('\\noselect', $flags, true) || in_array('\\nonexistent', $flags, true) || in_array('\\flagged', $flags, true)) {
                 continue;
             }
             $special = strtoupper($f['path']) === 'INBOX' ? 'inbox' : null;
@@ -67,14 +69,23 @@ class MailboxInbox
         return $folders['ok'] && in_array($folder, array_column($folders['folders'], 'path'), true);
     }
 
-    /** @return array{ok: bool, error?: string, total?: int, page?: int, per_page?: int, items?: list<array>, unread?: ?int} */
-    public function page(Mailbox $mailbox, string $folder, int $page): array
+    /**
+     * Uma página da pasta. E-mail 10: na Entrada, as com estrela ficam no topo da primeira página
+     * (starred, até uma página das mais recentes) e a paginação (items, total) corre só pelas sem
+     * estrela, das mais recentes para as mais antigas; com $starred, só as com estrela da Entrada.
+     *
+     * @return array{ok: bool, error?: string, total?: int, page?: int, per_page?: int, items?: list<array>, starred?: list<array>, starred_total?: int, unread?: ?int}
+     */
+    public function page(Mailbox $mailbox, string $folder, int $page, bool $starred = false): array
     {
         $page = max(1, $page);
-        $key = $this->key($mailbox, "list:{$folder}:{$page}");
+        $inbox = strtoupper($folder) === 'INBOX';
+        $key = $this->key($mailbox, "list:{$folder}:{$page}" . ($starred ? ':starred' : ''));
         $cached = Cache::get($key);
         if (! is_array($cached)) {
-            if (strtoupper($folder) === 'INBOX' && $page === 1) {
+            if ($starred) {
+                $result = $this->imap->page($mailbox, $folder, $page, self::PER_PAGE, MailboxImap::FLAGGED);
+            } elseif ($inbox && $page === 1) {
                 // Abrir a Entrada numa só ligação: as respostas novas, a primeira página e os não lidos.
                 $result = $this->imap->openInbox($mailbox, $mailbox->last_uid, $mailbox->uidvalidity, ReplyLinker::BATCH, self::PER_PAGE, ! $mailbox->marksSeenOnServer());
                 if ($result->ok) {
@@ -83,25 +94,153 @@ class MailboxInbox
                         'unread_checked_at' => now(), 'imap_status' => Mailbox::STATUS_ACTIVE, 'imap_error' => null])->save();
                 }
             } else {
-                $result = $this->imap->page($mailbox, $folder, $page, self::PER_PAGE);
+                $result = $this->imap->page($mailbox, $folder, $page, self::PER_PAGE, $inbox ? MailboxImap::UNFLAGGED : MailboxImap::ALL);
             }
             if (! $result->ok) {
                 return ['ok' => false, 'error' => (string) $result->error];
             }
-            // As conversas (MailThreads): cada mensagem leva "thread"; o ecrã agrupa-as como o Gmail.
-            $items = MailThreads::assign(array_map(fn ($i) => MailParser::summary((int) $i['uid'], (string) $i['header'], (array) $i['flags']), (array) ($result->data['items'] ?? [])));
             $cached = ['total' => (int) ($result->data['total'] ?? 0), 'uidvalidity' => $result->uidvalidity,
-                'items' => array_map(fn ($i) => array_diff_key($i, array_flip(['in_reply_to', 'references'])), $items)];
+                'items' => self::summaries((array) ($result->data['items'] ?? []))];
+            if (isset($result->data['starred'])) {
+                $cached['starred'] = self::summaries((array) $result->data['starred']);
+                $cached['starred_total'] = (int) ($result->data['starred_total'] ?? 0);
+            }
             Cache::put($key, $cached, 30);
         }
         // No Gmail com a opção desligada: as que a pessoa já abriu na XPLENDOR contam como lidas.
         if (! $mailbox->marksSeenOnServer()) {
             $opened = MailboxOpenedUid::set($mailbox, $folder, $cached['uidvalidity'] ?? null);
-            $cached['items'] = array_map(fn ($i) => isset($opened[(int) $i['uid']]) ? ['seen' => true] + $i : $i, $cached['items']);
+            foreach (['items', 'starred'] as $list) {
+                if (isset($cached[$list])) {
+                    $cached[$list] = array_map(fn ($i) => isset($opened[(int) $i['uid']]) ? ['seen' => true] + $i : $i, $cached[$list]);
+                }
+            }
         }
         unset($cached['uidvalidity']);
 
         return ['ok' => true, 'page' => $page, 'per_page' => self::PER_PAGE, 'unread' => $mailbox->fresh()->unread_count] + $cached;
+    }
+
+    /** As linhas da lista, agrupadas por conversa (MailThreads: cada uma leva "thread", como no Gmail). */
+    private static function summaries(array $items): array
+    {
+        $parsed = MailThreads::assign(array_map(fn ($i) => MailParser::summary((int) $i['uid'], (string) $i['header'], (array) $i['flags']), $items));
+
+        return array_map(fn ($i) => array_diff_key($i, array_flip(['in_reply_to', 'references'])), $parsed);
+    }
+
+    /**
+     * E-mail 10 · Pôr ou tirar a estrela (\Flagged, a estrela do Gmail) a várias, numa só ligação.
+     * @param list<int> $uids
+     */
+    public function flagMany(Mailbox $mailbox, string $folder, array $uids, bool $flagged): array
+    {
+        $result = $this->imap->flag($mailbox, $folder, $uids, $flagged);
+        if (! $result->ok) {
+            return ['ok' => false, 'error' => (string) $result->error];
+        }
+        foreach ($uids as $uid) {
+            $key = $this->key($mailbox, "message:{$folder}:{$uid}");
+            $cached = Cache::get($key);
+            if (is_array($cached)) {
+                Cache::put($key, ['flagged' => $flagged] + $cached, 60);
+            }
+        }
+        $this->forget($mailbox);
+
+        return ['ok' => true];
+    }
+
+    /** E-mail 10 · A pasta do Lixo da caixa: só a que tem a marca especial \Trash (no Gmail, o Lixo dele). */
+    public function trashFolder(Mailbox $mailbox): ?string
+    {
+        $folders = $this->folders($mailbox);
+        if (! $folders['ok']) {
+            return null;
+        }
+        foreach ($folders['folders'] as $f) {
+            if ($f['special'] === 'trash') {
+                return $f['path'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * E-mail 10 · Apagar: mover para o Lixo da caixa, nunca apagar de vez. Sem Lixo (marca \Trash),
+     * não se apaga e diz-se porquê; já no Lixo, também não (apagar de vez é no programa de e-mail).
+     * A cópia ligada a um cliente na XPLENDOR (mail_messages) fica até ao fim da retenção: faz parte
+     * do histórico do cliente. Devolve o que o "Desfazer" precisa (os Message-ID e as pastas).
+     *
+     * @param list<int> $uids @param list<string> $messageIds
+     */
+    public function trash(Mailbox $mailbox, string $folder, array $uids, array $messageIds): array
+    {
+        $trash = $this->trashFolder($mailbox);
+        if ($trash === null) {
+            return ['ok' => false, 'error' => 'A sua caixa não tem uma pasta de Lixo (marca \\Trash). Por segurança, a XPLENDOR não apaga mensagens de vez: nada foi apagado.'];
+        }
+        if ($trash === $folder) {
+            return ['ok' => false, 'error' => 'Estas mensagens já estão no Lixo. Para as apagar de vez, use o seu programa de e-mail.'];
+        }
+        $result = $this->imap->move($mailbox, $folder, $uids, $trash);
+        if (! $result->ok) {
+            return ['ok' => false, 'error' => (string) $result->error];
+        }
+        foreach ($uids as $uid) {
+            Cache::forget($this->key($mailbox, "message:{$folder}:{$uid}"));
+        }
+        MailboxOpenedUid::where('mailbox_id', $mailbox->id)->where('folder', $folder)->whereIn('uid', $uids)->delete();
+        $this->forget($mailbox);
+        if (strtoupper($folder) === 'INBOX') {
+            $this->counter->refresh($mailbox);
+        }
+        $ids = array_values(array_filter(array_map(fn ($id) => self::cleanId((string) $id), $messageIds)));
+
+        return ['ok' => true, 'moved' => (int) ($result->data['moved'] ?? count($uids)), 'unread' => $mailbox->fresh()->unread_count,
+            // Sem o Message-ID de todas, o "Desfazer" não as encontraria no Lixo: não se oferece.
+            'undo' => count($ids) === count($uids) ? ['folder' => $folder, 'message_ids' => $ids] : null];
+    }
+
+    /**
+     * E-mail 10 · "Desfazer": as mensagens voltam do Lixo para a pasta de onde saíram (encontradas
+     * pelo Message-ID, porque no Lixo têm outros UID).
+     * @param list<string> $messageIds
+     */
+    public function restore(Mailbox $mailbox, string $folder, array $messageIds): array
+    {
+        $trash = $this->trashFolder($mailbox);
+        if ($trash === null || $trash === $folder) {
+            return ['ok' => false, 'error' => 'Não foi possível desfazer: a caixa não tem uma pasta de Lixo.'];
+        }
+        $ids = array_values(array_filter(array_map(fn ($id) => self::cleanId((string) $id), $messageIds)));
+        $found = $this->imap->findByMessageIds($mailbox, $trash, $ids);
+        if (! $found->ok) {
+            return ['ok' => false, 'error' => (string) $found->error];
+        }
+        $uids = (array) ($found->data['uids'] ?? []);
+        if ($uids === []) {
+            return ['ok' => false, 'error' => 'As mensagens já não estão no Lixo.'];
+        }
+        $result = $this->imap->move($mailbox, $trash, $uids, $folder);
+        if (! $result->ok) {
+            return ['ok' => false, 'error' => (string) $result->error];
+        }
+        $this->forget($mailbox);
+        if (strtoupper($folder) === 'INBOX') {
+            $this->counter->refresh($mailbox);
+        }
+
+        return ['ok' => true, 'restored' => (int) ($result->data['moved'] ?? count($uids)), 'unread' => $mailbox->fresh()->unread_count];
+    }
+
+    /** Um Message-ID com < >, sem aspas nem quebras (vai para um SEARCH no IMAP). */
+    private static function cleanId(string $id): ?string
+    {
+        $id = trim(str_replace(['"', '\\', "\r", "\n", ' '], '', $id), '<>');
+
+        return $id === '' || mb_strlen($id) > 500 ? null : '<' . $id . '>';
     }
 
     /** A mensagem inteira (sem o conteúdo dos anexos), com o cliente a que está ligada. */

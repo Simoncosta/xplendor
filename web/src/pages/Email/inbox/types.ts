@@ -1,6 +1,9 @@
 export type MailFolder = { path: string; name: string; special: string | null };
 export type MailAddress = { name: string | null; address: string | null };
-export type MailSummary = { uid: number; subject: string; from: MailAddress; date: string | null; seen: boolean; flagged: boolean; has_attachments: boolean; thread?: string };
+export type MailSummary = { uid: number; subject: string; from: MailAddress; date: string | null; seen: boolean; flagged: boolean; has_attachments: boolean; thread?: string; message_id?: string | null };
+
+/** E-mail 10 · O filtro "Com estrela" da barra lateral (as da Entrada com a marca \\Flagged); não é uma pasta do servidor. */
+export const STARRED_VIEW = "__starred__";
 export type MailAttachment = { index: number; name: string; mime: string; size: number; previewable: boolean };
 export type MailFull = {
     uid: number; folder: string; subject: string; from: MailAddress; to: MailAddress[]; cc: MailAddress[]; date: string | null;

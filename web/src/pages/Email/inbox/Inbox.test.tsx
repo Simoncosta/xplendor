@@ -72,7 +72,7 @@ describe("A caixa de entrada (E-mail 4)", () => {
         expect(within(rows[0]).getByTestId("mail-clip")).toBeInTheDocument();
         expect(within(rows[1]).queryByTestId("mail-clip")).not.toBeInTheDocument();
         expect(within(rows[1]).queryByTestId("mail-thread-count")).not.toBeInTheDocument();
-        expect(within(screen.getByTestId("mail-folders")).getAllByRole("link").map((a) => a.textContent?.trim())).toEqual(["Entrada1", "Enviados"]);
+        expect(within(screen.getByTestId("mail-folders")).getAllByRole("link").map((a) => a.textContent?.trim())).toEqual(["Entrada1", "Com estrela", "Enviados"]);
     });
 
     it("abrir mostra a conversa em página inteira (a lista sai), marca as por ler e \"Voltar\" regressa", async () => {

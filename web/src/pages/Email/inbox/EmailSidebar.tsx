@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { FOLDER_ICON, MailFolder } from "./types";
+import { FOLDER_ICON, MailFolder, STARRED_VIEW } from "./types";
 import { FoldersSkeleton } from "./skeletons";
 
 /**
@@ -23,7 +23,7 @@ export default function EmailSidebar({ email, folders, current, unread, onPick, 
                 </div>
                 <div className="mx-n4 px-4 email-menu-sidebar-scroll overflow-auto">
                     {loading ? <FoldersSkeleton /> : <div className="mail-list mt-3" data-testid="mail-folders">
-                        {folders.map((f) => (
+                        {folders.flatMap((f) => [(
                             <a href="#!" key={f.path} className={f.path === current ? "active" : ""} onClick={(e) => { e.preventDefault(); onPick(f.path); }}>
                                 <i className={`${FOLDER_ICON[f.special ?? ""] ?? "ri-folder-2-fill"} me-3 align-middle fw-medium`} />
                                 <span className="text-truncate">{f.name}</span>
@@ -31,7 +31,14 @@ export default function EmailSidebar({ email, folders, current, unread, onPick, 
                                     <span className="badge bg-success-subtle text-success ms-auto">{unread > 99 ? "99+" : unread}</span>
                                 )}
                             </a>
-                        ))}
+                        ), ...(f.special === "inbox" ? [(
+                            // E-mail 10: o filtro "Com estrela" (as da Entrada com a estrela), logo a seguir à Entrada.
+                            <a href="#!" key={STARRED_VIEW} className={current === STARRED_VIEW ? "active" : ""} data-testid="mail-folder-starred"
+                                onClick={(e) => { e.preventDefault(); onPick(STARRED_VIEW); }}>
+                                <i className="ri-star-fill me-3 align-middle fw-medium" />
+                                <span className="text-truncate">Com estrela</span>
+                            </a>
+                        )] : [])])}
                     </div>}
                 </div>
                 <div className="mt-auto pt-3 border-top border-top-dashed">

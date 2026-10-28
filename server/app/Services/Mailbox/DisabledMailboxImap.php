@@ -31,7 +31,7 @@ class DisabledMailboxImap implements MailboxImap
         return ImapResult::failed(self::OFF);
     }
 
-    public function page(Mailbox $mailbox, string $folder, int $page, int $perPage): ImapResult
+    public function page(Mailbox $mailbox, string $folder, int $page, int $perPage, string $filter = self::ALL): ImapResult
     {
         return ImapResult::failed(self::OFF);
     }
@@ -67,6 +67,21 @@ class DisabledMailboxImap implements MailboxImap
     }
 
     public function openInbox(Mailbox $mailbox, ?int $afterUid, ?int $knownUidvalidity, int $newLimit, int $perPage, bool $withUnseenUids): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function flag(Mailbox $mailbox, string $folder, array $uids, bool $flagged): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function move(Mailbox $mailbox, string $from, array $uids, string $to): ImapResult
+    {
+        return ImapResult::failed(self::OFF);
+    }
+
+    public function findByMessageIds(Mailbox $mailbox, string $folder, array $messageIds): ImapResult
     {
         return ImapResult::failed(self::OFF);
     }

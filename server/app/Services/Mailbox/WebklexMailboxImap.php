@@ -53,12 +53,12 @@ class WebklexMailboxImap implements MailboxImap
         });
     }
 
-    public function page(Mailbox $mailbox, string $folder, int $page, int $perPage): ImapResult
+    public function page(Mailbox $mailbox, string $folder, int $page, int $perPage, string $filter = self::ALL): ImapResult
     {
-        return $this->with($mailbox, function (Client $client) use ($folder, $page, $perPage) {
+        return $this->with($mailbox, function (Client $client) use ($folder, $page, $perPage, $filter) {
             $conn = $client->getConnection();
             $selected = (array) $conn->examineFolder($folder)->validatedData();
-            $uids = array_map('intval', (array) $conn->search(['ALL'])->validatedData());
+            $uids = array_map('intval', (array) $conn->search([self::criteria($filter)])->validatedData());
             rsort($uids);
             $slice = array_slice($uids, ($page - 1) * $perPage, $perPage);
             $items = [];
@@ -151,14 +151,21 @@ class WebklexMailboxImap implements MailboxImap
             sort($newUids);
             $newUids = array_slice($newUids, 0, $newLimit);
 
-            // A primeira página, como em page.
-            $all = array_map('intval', (array) $conn->search(['ALL'])->validatedData());
+            // A primeira página, como em page. E-mail 10: as com estrela no topo (até uma página, das
+            // mais recentes); a lista e o total são os das sem estrela.
+            $all = array_map('intval', (array) $conn->search(['UNFLAGGED'])->validatedData());
             rsort($all);
             $slice = array_slice($all, 0, $perPage);
-            $wanted = array_values(array_unique([...$slice, ...$newUids]));
+            $flaggedAll = array_map('intval', (array) $conn->search(['FLAGGED'])->validatedData());
+            rsort($flaggedAll);
+            $starredSlice = array_slice($flaggedAll, 0, $perPage);
+            $wanted = array_values(array_unique([...$slice, ...$starredSlice, ...$newUids]));
             $headers = $wanted ? (array) $conn->headers($wanted)->validatedData() : [];
-            $flags = $slice ? (array) $conn->flags($slice)->validatedData() : [];
-            $items = array_map(fn (int $uid) => ['uid' => $uid, 'header' => (string) ($headers[$uid] ?? ''), 'flags' => (array) ($flags[$uid] ?? [])], $slice);
+            $listed = array_values(array_unique([...$slice, ...$starredSlice]));
+            $flags = $listed ? (array) $conn->flags($listed)->validatedData() : [];
+            $item = fn (int $uid) => ['uid' => $uid, 'header' => (string) ($headers[$uid] ?? ''), 'flags' => (array) ($flags[$uid] ?? [])];
+            $items = array_map($item, $slice);
+            $starred = array_map($item, $starredSlice);
             $new = [];
             foreach ($newUids as $uid) {
                 $new[$uid] = (string) ($headers[$uid] ?? '');
@@ -168,8 +175,8 @@ class WebklexMailboxImap implements MailboxImap
             $status = (array) $conn->folderStatus('INBOX', ['UNSEEN'])->validatedData();
             $unseenUids = $withUnseenUids ? array_map('intval', (array) $conn->search(['UNSEEN'])->validatedData()) : null;
 
-            return ImapResult::data(['new' => $new, 'total' => count($all), 'items' => $items, 'unseen' => (int) ($status['unseen'] ?? 0),
-                'unseen_uids' => $unseenUids], $uidvalidity);
+            return ImapResult::data(['new' => $new, 'total' => count($all), 'items' => $items, 'starred' => $starred, 'starred_total' => count($flaggedAll),
+                'unseen' => (int) ($status['unseen'] ?? 0), 'unseen_uids' => $unseenUids], $uidvalidity);
         });
     }
 
@@ -207,6 +214,66 @@ class WebklexMailboxImap implements MailboxImap
 
             return ImapResult::data(['unseen' => count($unseen), 'unseen_uids' => $unseen], isset($selected['uidvalidity']) ? (int) $selected['uidvalidity'] : null);
         });
+    }
+
+    public function flag(Mailbox $mailbox, string $folder, array $uids, bool $flagged): ImapResult
+    {
+        return $this->with($mailbox, function (Client $client) use ($folder, $uids, $flagged) {
+            $conn = $client->getConnection();
+            $conn->selectFolder($folder)->validatedData();
+            $set = implode(',', array_map('intval', $uids));
+            $conn->requestAndResponse('UID STORE', [$set, ($flagged ? '+' : '-') . 'FLAGS.SILENT', '(\\Flagged)'], true)->validatedData();
+
+            return ImapResult::ok();
+        });
+    }
+
+    public function move(Mailbox $mailbox, string $from, array $uids, string $to): ImapResult
+    {
+        return $this->with($mailbox, function (Client $client) use ($from, $uids, $to) {
+            $conn = $client->getConnection();
+            $capabilities = array_map(fn ($c) => strtoupper((string) $c), (array) $conn->getCapabilities()->validatedData());
+            $conn->selectFolder($from)->validatedData();
+            $set = implode(',', array_map('intval', $uids));
+            if (in_array('MOVE', $capabilities, true)) {
+                $conn->requestAndResponse('UID MOVE', [$set, $conn->escapeString($to)], true)->validatedData();
+            } elseif (in_array('UIDPLUS', $capabilities, true)) {
+                // Sem MOVE: copiar, marcar e apagar SÓ estas (UID EXPUNGE). Nunca um EXPUNGE geral.
+                $conn->requestAndResponse('UID COPY', [$set, $conn->escapeString($to)], true)->validatedData();
+                $conn->requestAndResponse('UID STORE', [$set, '+FLAGS.SILENT', '(\\Deleted)'], true)->validatedData();
+                $conn->requestAndResponse('UID EXPUNGE', [$set], true)->validatedData();
+            } else {
+                return ImapResult::failed('O servidor desta caixa não permite mover mensagens com segurança (falta o MOVE ou o UIDPLUS no IMAP). Nada foi alterado.');
+            }
+
+            return ImapResult::data(['moved' => count($uids)]);
+        });
+    }
+
+    public function findByMessageIds(Mailbox $mailbox, string $folder, array $messageIds): ImapResult
+    {
+        return $this->with($mailbox, function (Client $client) use ($folder, $messageIds) {
+            $conn = $client->getConnection();
+            $selected = (array) $conn->examineFolder($folder)->validatedData();
+            $uids = [];
+            foreach ($messageIds as $id) {
+                $clean = '<' . trim(str_replace(['"', '\\', "\r", "\n"], '', (string) $id), '<> ') . '>';
+                $found = array_map('intval', (array) $conn->search(['HEADER', 'Message-ID', '"' . $clean . '"'])->validatedData());
+                array_push($uids, ...$found);
+            }
+
+            return ImapResult::data(['uids' => array_values(array_unique($uids))], isset($selected['uidvalidity']) ? (int) $selected['uidvalidity'] : null);
+        });
+    }
+
+    /** O critério do SEARCH para o filtro da página. */
+    private static function criteria(string $filter): string
+    {
+        return match ($filter) {
+            self::FLAGGED => 'FLAGGED',
+            self::UNFLAGGED => 'UNFLAGGED',
+            default => 'ALL',
+        };
     }
 
     /** @param callable(Client): ImapResult $work */

@@ -9,6 +9,10 @@ export type MailThread = {
     unread: boolean;
     hasAttachments: boolean;
     senders: string; // "Joana, eu (3)" sem o número; o número vem em count
+    /** E-mail 10: alguma mensagem da conversa tem estrela (\\Flagged). */
+    flagged: boolean;
+    /** E-mail 10: os Message-ID (para o "Desfazer" do apagar). */
+    messageIds: (string | null | undefined)[];
 };
 
 const firstName = (s: string) => s.split(/\s+/)[0];
@@ -31,6 +35,7 @@ export function groupThreads(items: MailSummary[], myEmail: string): MailThread[
         return {
             key, uids: ms.map((m) => m.uid), latest: ms[0], count: ms.length,
             unread: ms.some((m) => !m.seen), hasAttachments: ms.some((m) => m.has_attachments), senders: names.join(", "),
+            flagged: ms.some((m) => m.flagged), messageIds: ms.map((m) => m.message_id),
         };
     });
 }

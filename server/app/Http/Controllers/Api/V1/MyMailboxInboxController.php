@@ -26,6 +26,11 @@ use Illuminate\Validation\Rule;
  *   GET  /companies/{id}/my-mailbox/thread?folder=&uids=1,2,3        (E-mail 4b: a conversa numa só ligação)
  *   POST /companies/{id}/my-mailbox/seen                            {folder, uids, seen} (E-mail 4b: várias de uma vez)
  *   POST /companies/{id}/my-mailbox/messages/{uid}/attachments/{index}/import-invoice  {folder} (E-mail 7: para as Faturas)
+ * E-mail 10 (em JSON):
+ *   GET  /companies/{id}/my-mailbox/messages?folder=INBOX&starred=1   (o filtro "Com estrela")
+ *   POST /companies/{id}/my-mailbox/flag      {folder, uids, flagged}   (a estrela: \Flagged)
+ *   POST /companies/{id}/my-mailbox/trash     {folder, uids, message_ids} (para o Lixo da caixa, nunca de vez)
+ *   POST /companies/{id}/my-mailbox/restore   {folder, message_ids}     ("Desfazer": do Lixo para a pasta)
  */
 class MyMailboxInboxController extends Controller
 {
@@ -44,7 +49,8 @@ class MyMailboxInboxController extends Controller
 
     public function messages(Request $request, int $companyId)
     {
-        $data = $request->validate(['folder' => ['required', 'string', 'max:255'], 'page' => ['nullable', 'integer', 'min:1', 'max:10000']]);
+        $data = $request->validate(['folder' => ['required', 'string', 'max:255'], 'page' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'starred' => ['nullable', 'boolean']]);
         $mailbox = $this->mailbox($request, $companyId);
         if (! $mailbox) {
             return $this->noMailbox();
@@ -52,7 +58,7 @@ class MyMailboxInboxController extends Controller
         if (! $this->inbox->knows($mailbox, $data['folder'])) {
             return ApiResponse::error('Essa pasta não existe na caixa.', 422);
         }
-        $result = $this->inbox->page($mailbox, $data['folder'], (int) ($data['page'] ?? 1));
+        $result = $this->inbox->page($mailbox, $data['folder'], (int) ($data['page'] ?? 1), (bool) ($data['starred'] ?? false));
         unset($result['ok']);
 
         return isset($result['error']) ? ApiResponse::error($result['error'], 422) : ApiResponse::success($result);
@@ -98,6 +104,62 @@ class MyMailboxInboxController extends Controller
         $result = $this->inbox->seenMany($mailbox, $folder, $uids, $request->boolean('seen'));
 
         return $result['ok'] ? ApiResponse::success(['unread' => $result['unread']]) : ApiResponse::error($result['error'], 422);
+    }
+
+    /** E-mail 10 · A estrela (\Flagged) em várias de uma vez. */
+    public function flag(Request $request, int $companyId)
+    {
+        $request->validate(['flagged' => ['required', 'boolean']], ['flagged.*' => 'Indique se as mensagens ficam com estrela ou sem.']);
+        $uids = $this->uids($request->input('uids'));
+        if ($uids === null) {
+            return ApiResponse::error('Indique as mensagens.', 422);
+        }
+        [$mailbox, $folder, $error] = $this->resolve($request, $companyId);
+        if ($error) {
+            return $error;
+        }
+        $result = $this->inbox->flagMany($mailbox, $folder, $uids, $request->boolean('flagged'));
+
+        return $result['ok'] ? ApiResponse::success(['flagged' => $request->boolean('flagged')]) : ApiResponse::error($result['error'], 422);
+    }
+
+    /** E-mail 10 · Apagar: para o Lixo da caixa (nunca de vez), com o que o "Desfazer" precisa. */
+    public function trash(Request $request, int $companyId)
+    {
+        $request->validate(['message_ids' => ['nullable', 'array', 'max:50'], 'message_ids.*' => ['nullable', 'string', 'max:500']]);
+        $uids = $this->uids($request->input('uids'));
+        if ($uids === null) {
+            return ApiResponse::error('Indique as mensagens a apagar.', 422);
+        }
+        [$mailbox, $folder, $error] = $this->resolve($request, $companyId);
+        if ($error) {
+            return $error;
+        }
+        $result = $this->inbox->trash($mailbox, $folder, $uids, array_values(array_filter((array) $request->input('message_ids', []), 'is_string')));
+        if (! $result['ok']) {
+            return ApiResponse::error($result['error'], 422);
+        }
+        unset($result['ok']);
+
+        return ApiResponse::success($result, $result['moved'] === 1 ? 'Mensagem movida para o Lixo.' : "{$result['moved']} mensagens movidas para o Lixo.");
+    }
+
+    /** E-mail 10 · "Desfazer": do Lixo de volta para a pasta de onde saíram. */
+    public function restore(Request $request, int $companyId)
+    {
+        $data = $request->validate(['message_ids' => ['required', 'array', 'min:1', 'max:50'], 'message_ids.*' => ['string', 'max:500']],
+            ['message_ids.required' => 'Indique as mensagens a repor.']);
+        [$mailbox, $folder, $error] = $this->resolve($request, $companyId);
+        if ($error) {
+            return $error;
+        }
+        $result = $this->inbox->restore($mailbox, $folder, $data['message_ids']);
+        if (! $result['ok']) {
+            return ApiResponse::error($result['error'], 422);
+        }
+        unset($result['ok']);
+
+        return ApiResponse::success($result, 'Desfeito: as mensagens voltaram.');
     }
 
     /** Os UID (lista ou "1,2,3"): só números, até 50. @return list<int>|null */

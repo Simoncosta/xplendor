@@ -385,7 +385,8 @@ export const testMyMailboxImap = (companyId: number) => api.create(url.GET_COMPA
 export const getMyMailboxUnread = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/unread`);
 // E-mail 4: a caixa de entrada (ao vivo do servidor de e-mail) e a "Conversa" da ficha e da venda.
 export const getMailboxFolders = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/folders`);
-export const getMailboxMessages = (companyId: number, folder: string, page = 1) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages`, { folder, page });
+export const getMailboxMessages = (companyId: number, folder: string, page = 1, starred = false) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages`, starred ? { folder, page, starred: 1 } : { folder, page });
 export const getMailboxMessage = (companyId: number, uid: number, folder: string) => api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}`, { folder });
 export const setMailboxSeen = (companyId: number, uid: number, folder: string, seen: boolean) =>
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/seen`, { folder, seen }, JSON_BODY);
@@ -394,6 +395,13 @@ export const getMailboxThread = (companyId: number, folder: string, uids: number
     api.get(url.GET_COMPANIES + `/${companyId}/my-mailbox/thread`, { folder, uids: uids.join(",") });
 export const setMailboxSeenMany = (companyId: number, folder: string, uids: number[], seen: boolean) =>
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/seen`, { folder, uids, seen }, JSON_BODY);
+// E-mail 10: a estrela (\\Flagged), apagar (para o Lixo da caixa, nunca de vez) e desfazer, em JSON.
+export const setMailboxFlag = (companyId: number, folder: string, uids: number[], flagged: boolean) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/flag`, { folder, uids, flagged }, JSON_BODY);
+export const trashMailboxMessages = (companyId: number, folder: string, uids: number[], messageIds: (string | null | undefined)[]) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/trash`, { folder, uids, message_ids: messageIds.filter(Boolean) }, JSON_BODY);
+export const restoreMailboxMessages = (companyId: number, folder: string, messageIds: string[]) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/restore`, { folder, message_ids: messageIds }, JSON_BODY);
 export const linkMailboxMessage = (companyId: number, uid: number, folder: string, customerId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/my-mailbox/messages/${uid}/link`, { folder, customer_id: customerId }, JSON_BODY);
 // E-mail 7: um anexo (PDF ou imagem) para as Faturas, em JSON.

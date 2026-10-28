@@ -81,13 +81,17 @@ class FakeMailboxImap implements MailboxImap
         return ImapResult::data(array_map(fn ($path, $flags) => ['path' => (string) $path, 'flags' => $flags], array_keys(self::$folders), self::$folders));
     }
 
-    public function page(Mailbox $mailbox, string $folder, int $page, int $perPage): ImapResult
+    public function page(Mailbox $mailbox, string $folder, int $page, int $perPage, string $filter = self::ALL): ImapResult
     {
-        self::$calls[] = "page:{$folder}:{$page}";
+        self::$calls[] = "page:{$folder}:{$page}" . ($filter === self::ALL ? '' : ":{$filter}");
         if (self::$failWith !== null) {
             return ImapResult::failed(self::$failWith);
         }
-        $all = self::$messages[$folder] ?? [];
+        $all = array_filter(self::$messages[$folder] ?? [], fn ($m) => match ($filter) {
+            self::FLAGGED => in_array('\\Flagged', $m['flags'], true),
+            self::UNFLAGGED => ! in_array('\\Flagged', $m['flags'], true),
+            default => true,
+        });
         krsort($all);
         $items = [];
         foreach (array_slice($all, ($page - 1) * $perPage, $perPage, true) as $uid => $m) {
@@ -167,11 +171,14 @@ class FakeMailboxImap implements MailboxImap
         }
         $before = self::$calls;
         $new = $this->newInInbox($mailbox, $afterUid, $knownUidvalidity, $newLimit);
-        $page = $this->page($mailbox, 'INBOX', 1, $perPage);
+        // E-mail 10: as com estrela no topo; a lista e o total são os das sem estrela.
+        $page = $this->page($mailbox, 'INBOX', 1, $perPage, self::UNFLAGGED);
+        $starred = $this->page($mailbox, 'INBOX', 1, $perPage, self::FLAGGED);
         $uids = $withUnseenUids ? $this->unseenUids($mailbox)->data['uids'] : null;
         self::$calls = [...$before, 'open-inbox'];
 
         return ImapResult::data(['new' => $new->data['items'], 'total' => $page->data['total'], 'items' => $page->data['items'],
+            'starred' => $starred->data['items'], 'starred_total' => $starred->data['total'],
             'unseen' => self::$unseen, 'unseen_uids' => $uids], self::$uidvalidity);
     }
 
@@ -214,6 +221,60 @@ class FakeMailboxImap implements MailboxImap
         }
 
         return ImapResult::data(['unseen' => count($unseen), 'unseen_uids' => $unseen], self::$uidvalidity);
+    }
+
+    public function flag(Mailbox $mailbox, string $folder, array $uids, bool $flagged): ImapResult
+    {
+        self::$calls[] = "flag:{$folder}:" . implode(',', $uids) . ':' . ($flagged ? '1' : '0');
+        if (self::$failWith !== null) {
+            return ImapResult::failed(self::$failWith);
+        }
+        foreach ($uids as $uid) {
+            if (isset(self::$messages[$folder][$uid])) {
+                $flags = array_values(array_diff(self::$messages[$folder][$uid]['flags'], ['\\Flagged']));
+                self::$messages[$folder][$uid]['flags'] = $flagged ? [...$flags, '\\Flagged'] : $flags;
+            }
+        }
+
+        return ImapResult::ok();
+    }
+
+    public function move(Mailbox $mailbox, string $from, array $uids, string $to): ImapResult
+    {
+        self::$calls[] = "move:{$from}:" . implode(',', $uids) . ":{$to}";
+        if (self::$failWith !== null) {
+            return ImapResult::failed(self::$failWith);
+        }
+        if (! array_key_exists($to, self::$folders)) {
+            return ImapResult::failed('A pasta de destino não existe na caixa.');
+        }
+        $moved = 0;
+        foreach ($uids as $uid) {
+            if (isset(self::$messages[$from][$uid])) {
+                self::put($to, self::$messages[$from][$uid]['raw'], self::$messages[$from][$uid]['flags']);
+                unset(self::$messages[$from][$uid]);
+                $moved++;
+            }
+        }
+
+        return ImapResult::data(['moved' => $moved]);
+    }
+
+    public function findByMessageIds(Mailbox $mailbox, string $folder, array $messageIds): ImapResult
+    {
+        self::$calls[] = "find:{$folder}:" . count($messageIds);
+        if (self::$failWith !== null) {
+            return ImapResult::failed(self::$failWith);
+        }
+        $wanted = array_map(fn ($id) => '<' . trim((string) $id, '<>') . '>', $messageIds);
+        $uids = [];
+        foreach (self::$messages[$folder] ?? [] as $uid => $m) {
+            if (in_array(MailParser::thread(self::header($m['raw']))['message_id'], $wanted, true)) {
+                $uids[] = $uid;
+            }
+        }
+
+        return ImapResult::data(['uids' => $uids], self::$uidvalidity);
     }
 
     private static function header(string $raw): string

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "reactstrap";
 import { toast } from "react-toastify";
-import { getMailboxFolders, getMailboxMessages, getMailboxThread, setMailboxSeenMany } from "helpers/laravel_helper";
+import { getMailboxFolders, getMailboxMessages, getMailboxThread, restoreMailboxMessages, setMailboxFlag, setMailboxSeenMany, trashMailboxMessages } from "helpers/laravel_helper";
 import { adjustMailboxUnread, refreshMailboxUnread } from "Components/Common/mailbox/useMailboxUnread";
 import ComposeModal, { ComposeValues, quoteHeaderFor, replySubject } from "Components/Common/mailbox/ComposeModal";
 import EmailSidebar from "./EmailSidebar";
 import MessageList from "./MessageList";
 import ThreadView from "./ThreadView";
 import { MailThread } from "./threads";
-import { MailFolder, MailFull, MailSummary } from "./types";
+import { MailFolder, MailFull, MailSummary, STARRED_VIEW } from "./types";
 
 /**
  * E-mail 4 · A caixa de entrada (modelo EmailInbox), lida ao vivo do servidor de e-mail. Como no
@@ -16,6 +16,9 @@ import { MailFolder, MailFull, MailSummary } from "./types";
  * "Retroceder" do navegador regressam à lista). Abrir marca as mensagens como lidas; abrir a Entrada
  * liga as respostas novas e atualiza os não lidos (o envelope e o menu acompanham).
  * E-mail 5: "Escrever" e "Responder" (no mesmo fio, com o original citado por baixo).
+ * E-mail 10: seleção (marcar como lidas, por ler, apagar), a estrela, o filtro "Com estrela" e
+ * apagar para o Lixo da caixa com "Desfazer". Tudo no servidor de e-mail; o ecrã muda logo e volta
+ * atrás (com o motivo) se o servidor der erro.
  */
 type Compose = { title: string; initial: Partial<ComposeValues>; replyTo?: { folder: string; uid: number }; quoteHeader?: string };
 
@@ -23,7 +26,9 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
     const [folders, setFolders] = useState<MailFolder[]>([]);
     const [folder, setFolder] = useState<string>("INBOX");
     const [page, setPage] = useState(1);
-    const [list, setList] = useState<{ items: MailSummary[]; total: number; perPage: number; unread: number | null }>({ items: [], total: 0, perPage: 25, unread: null });
+    const [list, setList] = useState<{ items: MailSummary[]; starred: MailSummary[]; starredTotal: number; total: number; perPage: number; unread: number | null }>(
+        { items: [], starred: [], starredTotal: 0, total: 0, perPage: 25, unread: null });
+    const [selected, setSelected] = useState<Set<string>>(new Set());
     const [loadingList, setLoadingList] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [thread, setThread] = useState<MailThread | null>(null);
@@ -42,18 +47,25 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
             .catch((e: any) => { setError(e?.message || "Não foi possível ler a caixa."); setLoadingList(false); });
     }, [companyId]);
 
+    const inboxPath = folders.find((f) => f.special === "inbox")?.path ?? "INBOX";
+    // "Com estrela" não é uma pasta: são as da Entrada com a estrela (os pedidos vão à Entrada).
+    const starredView = folder === STARRED_VIEW;
+    const serverFolder = starredView ? inboxPath : folder;
+
     const loadList = useCallback(() => {
         if (folders.length === 0) return;
         setLoadingList(true);
-        getMailboxMessages(companyId, folder, page)
+        setSelected(new Set());
+        getMailboxMessages(companyId, serverFolder, page, starredView)
             .then((r: any) => {
-                setList({ items: r?.data?.items ?? [], total: r?.data?.total ?? 0, perPage: r?.data?.per_page ?? 25, unread: r?.data?.unread ?? null });
+                setList({ items: r?.data?.items ?? [], starred: r?.data?.starred ?? [], starredTotal: r?.data?.starred_total ?? 0,
+                    total: r?.data?.total ?? 0, perPage: r?.data?.per_page ?? 25, unread: r?.data?.unread ?? null });
                 setError(null);
                 refreshMailboxUnread();
             })
             .catch((e: any) => setError(e?.message || "Não foi possível ler a pasta."))
             .finally(() => setLoadingList(false));
-    }, [companyId, folder, page, folders.length]);
+    }, [companyId, serverFolder, starredView, page, folders.length]);
 
     useEffect(() => { loadList(); }, [loadList]);
 
@@ -64,7 +76,13 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
         return () => window.removeEventListener("popstate", onPop);
     }, []);
 
-    const markLocal = (uids: number[], seen: boolean) => setList((l) => ({ ...l, items: l.items.map((m) => (uids.includes(m.uid) ? { ...m, seen } : m)) }));
+    /** Muda as mensagens da lista (as da secção "Com estrela" e as outras). */
+    const patchLocal = (uids: number[], patch: Partial<MailSummary>) => setList((l) => ({
+        ...l,
+        items: l.items.map((m) => (uids.includes(m.uid) ? { ...m, ...patch } : m)),
+        starred: l.starred.map((m) => (uids.includes(m.uid) ? { ...m, ...patch } : m)),
+    }));
+    const markLocal = (uids: number[], seen: boolean) => patchLocal(uids, { seen });
 
     /**
      * Marca no servidor, mas o ecrã muda logo: a lista, o número da Entrada e o do envelope e do menu
@@ -73,7 +91,7 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
     const markSeen = async (uids: number[], seen: boolean) => {
         if (uids.length === 0) return;
         markLocal(uids, seen);
-        if (folder === inboxPath) {
+        if (serverFolder === inboxPath) {
             const delta = seen ? -uids.length : uids.length;
             adjustMailboxUnread(delta);
             setList((l) => ({ ...l, unread: l.unread === null ? null : Math.max(0, l.unread + delta) }));
@@ -81,12 +99,12 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
         let unread: number | null = null;
         try {
             // Todas de uma vez: um pedido e uma ligação ao servidor de e-mail (com a contagem na mesma ligação).
-            const s: any = await setMailboxSeenMany(companyId, folder, uids, seen);
+            const s: any = await setMailboxSeenMany(companyId, serverFolder, uids, seen);
             unread = s?.data?.unread ?? null;
         } catch (e: any) {
             // Não ficou marcado no servidor: o ecrã volta atrás e diz porquê (nada de falhas em silêncio).
             markLocal(uids, !seen);
-            if (folder === inboxPath) {
+            if (serverFolder === inboxPath) {
                 const undo = seen ? uids.length : -uids.length;
                 adjustMailboxUnread(undo);
                 setList((l) => ({ ...l, unread: l.unread === null ? null : Math.max(0, l.unread + undo) }));
@@ -106,10 +124,10 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
         setLoadingThread(true);
         window.history.pushState({ ...(window.history.state || {}), xpMailThread: t.key }, "");
         // As por ler da conversa passam logo a lidas (o número desce no mesmo instante).
-        const unseen = list.items.filter((m) => t.uids.includes(m.uid) && !m.seen).map((m) => m.uid);
+        const unseen = [...list.starred, ...list.items].filter((m) => t.uids.includes(m.uid) && !m.seen).map((m) => m.uid);
         markSeen(unseen, true).catch(() => { /* o aviso já apareceu e o ecrã voltou atrás */ });
         // A conversa toda num só pedido: uma ligação ao servidor de e-mail, seja qual for o número de mensagens.
-        getMailboxThread(companyId, folder, t.uids)
+        getMailboxThread(companyId, serverFolder, t.uids)
             .then((r: any) => setMessages(r?.data?.messages ?? []))
             .catch((e: any) => setThreadError(e?.message || "Não foi possível abrir a conversa."))
             .finally(() => setLoadingThread(false));
@@ -131,6 +149,87 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
         }
     };
 
+    // ── E-mail 10: seleção, estrela, apagar e desfazer ─────────────────────────
+
+    const toggleSelect = (t: MailThread) => setSelected((s) => {
+        const next = new Set(s);
+        next.has(t.key) ? next.delete(t.key) : next.add(t.key);
+        return next;
+    });
+    const toggleAll = (ts: MailThread[], select: boolean) => setSelected(select ? new Set(ts.map((t) => t.key)) : new Set());
+
+    const markSelected = (ts: MailThread[], seen: boolean) => {
+        // Só as que mudam (o número de não lidos acompanha sem contar a mais).
+        const all = [...list.starred, ...list.items];
+        const uids = ts.flatMap((t) => t.uids).filter((u) => all.some((m) => m.uid === u && m.seen !== seen));
+        setSelected(new Set());
+        markSeen(uids, seen).catch(() => { /* o aviso já apareceu e o ecrã voltou atrás */ });
+    };
+
+    /** A estrela da conversa (\\Flagged no servidor; no Gmail é a estrela). O ecrã muda logo. */
+    const toggleStar = async (t: MailThread) => {
+        const flagged = !t.flagged;
+        patchLocal(t.uids, { flagged });
+        try {
+            await setMailboxFlag(companyId, serverFolder, t.uids, flagged);
+        } catch (e: any) {
+            patchLocal(t.uids, { flagged: !flagged });
+            toast.error(`${flagged ? "Não foi possível pôr a estrela" : "Não foi possível tirar a estrela"}: ${e?.message || "erro do servidor"}`);
+        }
+    };
+
+    /**
+     * Apagar: para o Lixo da caixa (nunca de vez). As conversas saem logo da lista; se o servidor der
+     * erro, voltam, com o motivo. Depois, "Desfazer" durante alguns segundos.
+     */
+    const remove = async (ts: MailThread[]) => {
+        const uids = ts.flatMap((t) => t.uids);
+        if (uids.length === 0) return;
+        const before = list;
+        const unreadGone = [...list.starred, ...list.items].filter((m) => uids.includes(m.uid) && !m.seen).length;
+        setSelected(new Set());
+        setList((l) => ({ ...l, items: l.items.filter((m) => !uids.includes(m.uid)), starred: l.starred.filter((m) => !uids.includes(m.uid)),
+            total: Math.max(0, l.total - l.items.filter((m) => uids.includes(m.uid)).length) }));
+        if (serverFolder === inboxPath && unreadGone > 0) adjustMailboxUnread(-unreadGone);
+        const from = serverFolder;
+        try {
+            const r: any = await trashMailboxMessages(companyId, from, uids, ts.flatMap((t) => t.messageIds));
+            if (typeof r?.data?.unread === "number") setList((l) => ({ ...l, unread: r.data.unread }));
+            const undo = r?.data?.undo as { folder: string; message_ids: string[] } | null;
+            toast(({ closeToast }: { closeToast?: () => void }) => (
+                <div className="d-flex align-items-center gap-3" data-testid="mail-undo-toast">
+                    <span>{r?.message || "Movida para o Lixo."}</span>
+                    {undo && (
+                        <button type="button" className="btn btn-sm btn-light ms-auto" data-testid="mail-undo" onClick={async () => {
+                            closeToast?.();
+                            try {
+                                await restoreMailboxMessages(companyId, undo.folder, undo.message_ids);
+                                toast.success("Desfeito: as mensagens voltaram.");
+                            } catch (e: any) {
+                                toast.error(`Não foi possível desfazer: ${e?.message || "erro do servidor"}`);
+                            }
+                            loadList();
+                            refreshMailboxUnread();
+                        }}>Desfazer</button>
+                    )}
+                </div>
+            ), { autoClose: 8000 });
+        } catch (e: any) {
+            setList(before);
+            if (serverFolder === inboxPath && unreadGone > 0) adjustMailboxUnread(unreadGone);
+            toast.error(`Não foi possível apagar: ${e?.message || "erro do servidor"}`);
+        } finally {
+            refreshMailboxUnread();
+        }
+    };
+
+    const deleteOpen = () => {
+        if (!thread) return;
+        const t = thread;
+        back();
+        remove([t]);
+    };
+
     /** Responder: a quem enviou (ou, se fui eu, a quem a mandei), "Re: " uma vez e o original citado pelo servidor. */
     const reply = (m: MailFull) => {
         const mine = !!m.from.address && m.from.address.toLowerCase() === email.toLowerCase();
@@ -140,9 +239,8 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
     // Depois de enviar, a pasta de Enviados mostra a cópia (se for a que está aberta).
     const sent = () => { if (folders.find((f) => f.path === folder)?.special === "sent" && !thread) loadList(); };
 
-    const inboxPath = folders.find((f) => f.special === "inbox")?.path ?? "INBOX";
     const pickFolder = (path: string) => { setFolder(path); setPage(1); setThread(null); setMessages([]); };
-    const title = folders.find((f) => f.path === folder)?.name ?? folder;
+    const title = starredView ? "Com estrela" : folders.find((f) => f.path === folder)?.name ?? folder;
 
     if (error && folders.length === 0) {
         return <Alert color="danger" data-testid="mail-error">{error} <a href={`/app${profileLink}`} className="alert-link ms-1">Rever a caixa no Perfil</a></Alert>;
@@ -157,11 +255,13 @@ export default function Inbox({ companyId, email, signature = null, profileLink 
                 onCompose={() => setCompose({ title: "Nova mensagem", initial: {} })} />
             {thread ? (
                 <ThreadView companyId={companyId} myEmail={email} messages={messages} loading={loadingThread} error={threadError}
-                    onBack={back} onUnread={unread} onReply={reply}
+                    onBack={back} onUnread={unread} onReply={reply} onDelete={deleteOpen}
                     onLinked={(uid, c) => setMessages((ms) => ms.map((m) => (m.uid === uid ? { ...m, customer: c } : m)))} />
             ) : error ? <div className="email-content p-4"><Alert color="danger">{error}</Alert></div> : (
-                <MessageList items={list.items} myEmail={email} loading={loadingList} total={list.total} page={page} perPage={list.perPage}
-                    onOpen={open} onPage={setPage} onRefresh={loadList} title={title} />
+                <MessageList items={list.items} starred={list.starred} starredTotal={list.starredTotal} myEmail={email} loading={loadingList}
+                    total={list.total} page={page} perPage={list.perPage} onOpen={open} onPage={setPage} onRefresh={loadList} title={title}
+                    empty={starredView ? "Não há mensagens com estrela na Entrada." : undefined}
+                    actions={{ selected, onToggleSelect: toggleSelect, onToggleAll: toggleAll, onStar: toggleStar, onMarkSelected: markSelected, onDeleteSelected: remove }} />
             )}
             {compose && <ComposeModal isOpen toggle={() => setCompose(null)} companyId={companyId} title={compose.title} initial={compose.initial}
                 replyTo={compose.replyTo ?? null} quoteHeader={compose.quoteHeader} signature={signature} onSent={sent} />}

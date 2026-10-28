@@ -24,11 +24,13 @@ import { MailAttachment, MailFull, fileSize, who } from "./types";
 /** Os anexos que se podem importar para as Faturas (os mesmos tipos do carregamento manual). */
 export const INVOICE_MIMES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 type Imported = { busy?: boolean; status?: "created" | "exists"; id?: number };
-export default function ThreadView({ companyId, myEmail, messages, loading, error, onBack, onUnread, onLinked, onReply }: {
+export default function ThreadView({ companyId, myEmail, messages, loading, error, onBack, onUnread, onLinked, onReply, onDelete }: {
     companyId: number; myEmail: string; messages: MailFull[]; loading: boolean; error: string | null;
     onBack: () => void; onUnread: () => void; onLinked: (uid: number, customer: { id: number; name: string }) => void;
     /** E-mail 5: "Responder" a uma mensagem da conversa (no mesmo fio). */
     onReply?: (message: MailFull) => void;
+    /** E-mail 10: "Apagar" a conversa (para o Lixo da caixa, com "Desfazer"). */
+    onDelete?: () => void;
 }) {
     const ordered = [...messages].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
     const latest = ordered[ordered.length - 1];
@@ -83,6 +85,7 @@ export default function ThreadView({ companyId, myEmail, messages, loading, erro
                 <div className="d-flex align-items-center gap-1 pb-3 border-bottom border-bottom-dashed email-topbar-link">
                     <button type="button" className="btn btn-ghost-secondary btn-icon btn-sm fs-18" onClick={onBack} aria-label="Voltar" title="Voltar"><i className="ri-arrow-left-line" /></button>
                     {latest && <button type="button" className="btn btn-ghost-secondary btn-sm" onClick={onUnread}><i className="ri-mail-unread-line me-1" />Marcar como por ler</button>}
+                    {latest && onDelete && <button type="button" className="btn btn-ghost-danger btn-sm" onClick={onDelete} data-testid="mail-delete-thread"><i className="ri-delete-bin-5-line me-1" />Apagar</button>}
                 </div>
 
                 {loading ? (
