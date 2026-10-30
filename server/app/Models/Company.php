@@ -259,6 +259,7 @@ class Company extends Model
             return false;
         }
 
-        return $this->trial_ends_at->isFuture() || $this->trial_ends_at->isNow();
+        // Dentro do prazo até ao próprio instante do fim, como no scope SQL (trial_ends_at >= now()).
+        return $this->trial_ends_at->greaterThanOrEqualTo(now());
     }
 }
