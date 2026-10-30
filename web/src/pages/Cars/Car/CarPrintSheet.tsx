@@ -26,6 +26,12 @@ import "./CarPrintSheet.fonts.css";
  * é o Inter servido pela app, igual em Mac e Windows; o fator calcula-se depois de ele carregar e
  * outra vez antes de imprimir. Se nem com o fator mínimo couber, a ficha passa a 2 páginas limpas
  * (sem blocos partidos), em vez de cortar texto.
+ *
+ * Opções da ficha: um painel ao lado da folha (por cima, em ecrãs estreitos; nunca sai na
+ * impressão) liga ou desliga a descrição da viatura (desligada por omissão: as visitas são feitas
+ * com o comercial) e a nota da ficha (ligada, se a empresa a tiver). A folha muda na hora, o fator
+ * volta a calcular-se e a escolha fica no browser, por empresa. A descrição não se apaga: é a mesma
+ * do site. O aviso legal, a identificação da empresa, o contacto e o QR ficam sempre.
  */
 
 const publicUrl = process.env.REACT_APP_PUBLIC_URL ?? "";
@@ -61,6 +67,26 @@ export function groupPhone(value: string): string {
 
 // O aviso legal da ficha: texto fixo, igual para todas as empresas.
 export const LEGAL_NOTICE = "Este preçário serve apenas como uma prévia do veículo e não faz parte de um contrato de venda. As informações fornecidas aqui são descrições não vinculativas e não representam bens garantidos. O vendedor não se responsabiliza por erros, erros de introdução e erros de transmissão de dados.";
+
+// As opções da ficha, por empresa, no browser. Sem armazenamento (ou com dados estranhos), as de omissão.
+export type SheetOptions = { about: boolean; note: boolean };
+export const DEFAULT_OPTIONS: SheetOptions = { about: false, note: true };
+const optionsKey = (companyId: string | number) => `xp-ficha-opcoes:${companyId}`;
+export function readOptions(companyId: string | number): SheetOptions {
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(optionsKey(companyId)) ?? "null");
+        if (!saved || typeof saved !== "object") return DEFAULT_OPTIONS;
+        return {
+            about: typeof saved.about === "boolean" ? saved.about : DEFAULT_OPTIONS.about,
+            note: typeof saved.note === "boolean" ? saved.note : DEFAULT_OPTIONS.note,
+        };
+    } catch {
+        return DEFAULT_OPTIONS;
+    }
+}
+function writeOptions(companyId: string | number, options: SheetOptions): void {
+    try { window.localStorage.setItem(optionsKey(companyId), JSON.stringify(options)); } catch { /* sem armazenamento: vale só nesta visita */ }
+}
 
 const euros = (value: number) => `${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0")}\u00a0€`;
 
@@ -116,6 +142,13 @@ export default function CarPrintSheet() {
     const [fit, setFit] = useState(1);
     const [twoPages, setTwoPages] = useState(false);
     const fitRef = useRef<HTMLDivElement>(null);
+    // As opções da ficha (painel ao lado da folha), lembradas por empresa.
+    const [options, setOptions] = useState<SheetOptions>(() => (companyId ? readOptions(companyId) : DEFAULT_OPTIONS));
+    const changeOption = (key: keyof SheetOptions, value: boolean) => {
+        const next = { ...options, [key]: value };
+        setOptions(next);
+        if (companyId) writeOptions(companyId, next);
+    };
 
     // Procura o maior fator com que a ficha cabe na área útil do A4 (a largura no ecrã é a mesma
     // da folha, por isso o ecrã mostra o que sai na impressora). Mede-se a altura real em cada
@@ -148,7 +181,7 @@ export default function CarPrintSheet() {
     }, []);
 
     // O fator só se calcula com o Inter carregado (outra letra daria outras medidas) e volta a
-    // calcular-se antes de imprimir.
+    // calcular-se antes de imprimir e a cada mudança das opções da ficha.
     useLayoutEffect(() => {
         if (!data) return;
         let alive = true;
@@ -157,7 +190,7 @@ export default function CarPrintSheet() {
         const beforePrint = () => measure();
         window.addEventListener("beforeprint", beforePrint);
         return () => { alive = false; window.removeEventListener("beforeprint", beforePrint); };
-    }, [data, measure]);
+    }, [data, measure, options.about, options.note]);
 
     const goBack = () => {
         if (id) navigate(`/cars/${id}/ficha`);
@@ -195,6 +228,9 @@ export default function CarPrintSheet() {
     const sellerPhone = data.seller?.mobile || c.mobile || c.phone;
     // Com o contacto comercial da empresa, a ficha mostra-o e não o nome do vendedor.
     const printContact = data.print_contact?.phone ? data.print_contact : null;
+    const note = data.print_note?.trim() ?? "";
+    const showAbout = options.about && paragraphs.length > 0;
+    const showNote = options.note && note !== "";
 
     return (
         <>
@@ -217,6 +253,33 @@ export default function CarPrintSheet() {
                     )}
                 </div>
 
+                <div className="print-body">
+                <aside className="print-options no-print" data-testid="ps-options" aria-label="Opções da ficha">
+                    <h2 className="print-options-title">Opções da ficha</h2>
+                    {paragraphs.length > 0 && (
+                        <div className="form-check form-switch">
+                            <input id="ps-opt-about" type="checkbox" role="switch" className="form-check-input" checked={options.about}
+                                onChange={(e) => changeOption("about", e.target.checked)} data-testid="ps-opt-about" />
+                            <label htmlFor="ps-opt-about" className="form-check-label">Descrição da viatura</label>
+                            <div className="print-options-help">O bloco "{p.description_title}". A descrição continua no site.</div>
+                        </div>
+                    )}
+                    {note !== "" && (
+                        <div className="form-check form-switch">
+                            <input id="ps-opt-note" type="checkbox" role="switch" className="form-check-input" checked={options.note}
+                                onChange={(e) => changeOption("note", e.target.checked)} data-testid="ps-opt-note" />
+                            <label htmlFor="ps-opt-note" className="form-check-label">Nota da ficha</label>
+                            <div className="print-options-help">A nota da empresa, no rodapé.</div>
+                        </div>
+                    )}
+                    {paragraphs.length === 0 && note === "" && <div className="print-options-help">Esta ficha não tem blocos opcionais.</div>}
+                    <div className={`print-options-fit ${twoPages ? "is-two" : "is-one"}`} data-testid="ps-fit-status" role="status">
+                        <i className={twoPages ? "ri-file-copy-2-line me-1" : "ri-file-line me-1"} aria-hidden />
+                        {twoPages ? "Passa a 2 páginas" : "Cabe numa página"}
+                        {!twoPages && fit < 1 && <span className="print-options-help d-block">Letra reduzida a {Math.round(fit * 100)} %.</span>}
+                    </div>
+                    <div className="print-options-help">O aviso legal, a identificação da empresa, o contacto e o QR saem sempre. A escolha fica guardada neste browser.</div>
+                </aside>
                 <div className="print-sheet" data-testid="print-sheet">
                   <div className={`ps-fit${twoPages ? " ps-two-pages" : ""}`} ref={fitRef} style={{ ["--ps-fit" as string]: String(fit) }} data-fit={fit} data-pages={twoPages ? 2 : 1}>
                     <header className="ps-header">
@@ -245,7 +308,7 @@ export default function CarPrintSheet() {
                         {p.sections.map((s) => <Section key={s.id} section={s} />)}
                     </div>
 
-                    {paragraphs.length > 0 && (
+                    {showAbout && (
                         <section className="ps-about" data-testid="ps-about">
                             <h3 className="ps-section-title">{p.description_title}</h3>
                             {paragraphs.map((t, i) => <p key={i}>{t}</p>)}
@@ -267,7 +330,7 @@ export default function CarPrintSheet() {
                                     {data.seller?.name && <div className="ps-seller"><strong>{data.seller.name}</strong>{sellerPhone ? ` · ${sellerPhone}` : ""}</div>}
                                     {!data.seller?.name && sellerPhone && <div className="ps-seller"><strong>{sellerPhone}</strong></div>}
                                 </>}
-                            {data.print_note?.trim() && <p className="ps-note" data-testid="ps-note">{data.print_note.trim()}</p>}
+                            {showNote && <p className="ps-note" data-testid="ps-note">{note}</p>}
                             <p className="ps-legal" data-testid="ps-legal">{LEGAL_NOTICE}</p>
                             <div className="ps-company">
                                 <strong>{c.fiscal_name || companyName}</strong>
@@ -279,6 +342,7 @@ export default function CarPrintSheet() {
                         </div>
                     </footer>
                   </div>
+                </div>
                 </div>
             </div>
         </>
@@ -312,12 +376,28 @@ const PRINT_STYLES = `
 .ps-fit.ps-measuring, .ps-fit.ps-two-pages { min-height: 0; }
 @media screen {
     .print-sheet { width: 210mm; min-height: 297mm; margin: 20px auto; padding: 11mm 12mm 10mm 12mm; background: #fff; box-shadow: 0 20px 40px rgba(15,23,42,.10); }
+    /* A folha e, à direita, o painel das opções (fixo ao fazer scroll); em ecrãs estreitos, o painel passa para cima. */
+    .print-body { display: flex; justify-content: center; align-items: flex-start; gap: 24px; padding: 0 20px; }
+    .print-body .print-sheet { margin: 20px 0; flex: 0 0 auto; }
+    .print-options { order: 2; flex: 0 0 260px; position: sticky; top: 84px; margin-top: 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+        padding: 16px; font-family: var(--vz-body-font-family, inherit); font-size: 13px; box-shadow: 0 2px 6px rgba(15,23,42,.06); }
+    .print-options-title { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+    .print-options .form-check { margin-bottom: 12px; }
+    .print-options-help { font-size: 12px; color: #6b7280; }
+    .print-options-fit { margin: 4px 0 12px; padding: 8px 10px; border-radius: 6px; font-weight: 600; }
+    .print-options-fit.is-one { background: #ecfdf5; color: #047857; }
+    .print-options-fit.is-two { background: #fffbeb; color: #b45309; }
+    @media (max-width: 1100px) {
+        .print-body { flex-direction: column; align-items: center; }
+        .print-options { order: 0; position: static; width: 210mm; max-width: 100%; flex: 0 0 auto; }
+    }
 }
 @media print {
     html, body { background: #fff !important; }
     .no-print { display: none !important; }
     .print-overlay { position: static !important; overflow: visible !important; background: #fff !important; inset: auto !important; }
     .print-sheet { width: 100%; max-width: 100%; margin: 0; padding: 0; box-shadow: none; }
+    .print-body { display: block; padding: 0; }
     body > *:not(#root) { display: none !important; }
 }
 

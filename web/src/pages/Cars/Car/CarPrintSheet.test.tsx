@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import CarPrintSheet, { descriptionParagraphs, groupPhone } from "./CarPrintSheet";
 import type { CarPrintSheet as Sheet } from "types/api";
 
@@ -44,12 +44,13 @@ const sheet = (over: Partial<Sheet> = {}): Sheet => ({
 });
 
 describe("Ficha A4 da viatura", () => {
-    beforeEach(() => mockGetCarPrintSheet.mockReset());
+    beforeEach(() => { mockGetCarPrintSheet.mockReset(); window.localStorage.clear(); });
 
     it("desenha a apresentação: cabeçalho, números-chave, blocos com ✓, camas com explicação, descrição e rodapé com o QR", async () => {
         mockGetCarPrintSheet.mockResolvedValue({ data: sheet() });
         render(<CarPrintSheet />);
         await screen.findByText("Sunlight A72");
+        fireEvent.click(screen.getByTestId("ps-opt-about")); // a descrição sai só se for ligada no painel
         expect(screen.getByText("Integral · Usado · Ref. 7")).toBeInTheDocument();
         expect(screen.getByText("Integral · 2021 · Importado · Branco metalizado")).toBeInTheDocument();
         expect(screen.getByText(/84\s900\s€/)).toBeInTheDocument();
@@ -145,6 +146,125 @@ describe("Ficha A4 da viatura", () => {
         expect(descriptionParagraphs("<p><span style=\"color: red\">Um &amp; dois</span></p><p><br></p><p>Linha<br>seguinte</p><script>alert(1)</script>"))
             .toEqual(["Um & dois", "Linha\nseguinte", "alert(1)"]);
         expect(descriptionParagraphs("Texto simples sem etiquetas.")).toEqual(["Texto simples sem etiquetas."]);
+    });
+
+    describe("opções da ficha, ao lado da folha", () => {
+        const KEY = "xp-ficha-opcoes:1";
+
+        it("por omissão, a descrição não aparece e a nota aparece; o aviso legal, a empresa, o contacto e o QR ficam sempre", async () => {
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_note: "Financiamento à medida." }) });
+            render(<CarPrintSheet />);
+            await screen.findByTestId("ps-options");
+            expect(screen.queryByTestId("ps-about")).not.toBeInTheDocument();
+            expect(screen.getByTestId("ps-opt-about")).not.toBeChecked();
+            expect(screen.getByTestId("ps-note")).toHaveTextContent("Financiamento à medida.");
+            expect(screen.getByTestId("ps-opt-note")).toBeChecked();
+            expect(screen.getByTestId("ps-legal")).toBeInTheDocument();
+            expect(screen.getByTestId("ps-qr")).toBeInTheDocument();
+            expect(screen.getByText("Vendedor Exemplo")).toBeInTheDocument();
+            expect(screen.getByText("Stand Exemplo Lda")).toBeInTheDocument();
+
+            fireEvent.click(screen.getByTestId("ps-opt-note"));
+            expect(screen.queryByTestId("ps-note")).not.toBeInTheDocument();
+        });
+
+        it("sem nota da empresa, o interruptor da nota não aparece", async () => {
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_note: "  " }) });
+            render(<CarPrintSheet />);
+            await screen.findByTestId("ps-options");
+            expect(screen.queryByTestId("ps-opt-note")).not.toBeInTheDocument();
+            expect(screen.getByTestId("ps-opt-about")).toBeInTheDocument();
+        });
+
+        it("ligar a descrição mostra-a e o fator volta a calcular-se", async () => {
+            const A4 = (276 * 96) / 25.4;
+            // Sem a descrição cabe à vontade; com ela, ocupa 1,2 folhas com a letra normal.
+            jest.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+                if (!this.classList.contains("ps-fit")) return { height: 0, width: 0 } as DOMRect;
+                const f = Number(this.style.getPropertyValue("--ps-fit") || 1);
+                return { height: (this.querySelector(".ps-about") ? A4 * 1.2 : 500) * f, width: 700 } as DOMRect;
+            });
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet() });
+            render(<CarPrintSheet />);
+            await screen.findByTestId("ps-options");
+            const fit = () => screen.getByTestId("print-sheet").querySelector(".ps-fit") as HTMLElement;
+            await act(async () => { await Promise.resolve(); });
+            expect(fit().dataset.fit).toBe("1");
+            expect(screen.getByTestId("ps-fit-status")).toHaveTextContent("Cabe numa página");
+
+            await act(async () => { fireEvent.click(screen.getByTestId("ps-opt-about")); await Promise.resolve(); });
+            expect(screen.getByTestId("ps-about")).toHaveTextContent("Autocaravana integral muito bem conservada.");
+            expect(Number(fit().dataset.fit)).toBeLessThan(0.84);
+            expect(Number(fit().dataset.fit)).toBeGreaterThan(0.8);
+            expect(screen.getByTestId("ps-fit-status")).toHaveTextContent("Cabe numa página");
+            expect(screen.getByTestId("ps-fit-status")).toHaveTextContent(/Letra reduzida a 8\d %/);
+            jest.restoreAllMocks();
+        });
+
+        it("quando nem com o fator mínimo cabe, o painel diz que passa a 2 páginas", async () => {
+            const A4 = (276 * 96) / 25.4;
+            jest.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+                if (!this.classList.contains("ps-fit")) return { height: 0, width: 0 } as DOMRect;
+                return { height: A4 * 1.6 * Number(this.style.getPropertyValue("--ps-fit") || 1), width: 700 } as DOMRect;
+            });
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet() });
+            render(<CarPrintSheet />);
+            await screen.findByTestId("ps-options");
+            await act(async () => { await Promise.resolve(); });
+            expect(screen.getByTestId("ps-fit-status")).toHaveTextContent("Passa a 2 páginas");
+            jest.restoreAllMocks();
+        });
+
+        it("a escolha é lembrada por empresa", async () => {
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_note: "Nota." }) });
+            const { unmount } = render(<CarPrintSheet />);
+            await screen.findByTestId("ps-options");
+            fireEvent.click(screen.getByTestId("ps-opt-about"));
+            fireEvent.click(screen.getByTestId("ps-opt-note"));
+            expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ about: true, note: false });
+            unmount();
+
+            // A mesma empresa abre outra ficha: a escolha volta.
+            render(<CarPrintSheet />);
+            await screen.findByTestId("ps-options");
+            expect(screen.getByTestId("ps-about")).toBeInTheDocument();
+            expect(screen.queryByTestId("ps-note")).not.toBeInTheDocument();
+            // Outra empresa não a usa.
+            expect(window.localStorage.getItem("xp-ficha-opcoes:2")).toBeNull();
+        });
+
+        it("a escolha de outra empresa não se aplica a esta", async () => {
+            window.localStorage.setItem("xp-ficha-opcoes:2", JSON.stringify({ about: true, note: false }));
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_note: "Nota." }) });
+            render(<CarPrintSheet />);
+            await screen.findByTestId("ps-options");
+            expect(screen.queryByTestId("ps-about")).not.toBeInTheDocument();
+            expect(screen.getByTestId("ps-note")).toBeInTheDocument();
+        });
+
+        it("sem localStorage (ou com o acesso bloqueado), os valores são os de omissão e nada falha", async () => {
+            jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("bloqueado"); });
+            jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("bloqueado"); });
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet({ print_note: "Nota." }) });
+            render(<CarPrintSheet />);
+            await screen.findByTestId("ps-options");
+            expect(screen.queryByTestId("ps-about")).not.toBeInTheDocument();
+            expect(screen.getByTestId("ps-note")).toBeInTheDocument();
+            fireEvent.click(screen.getByTestId("ps-opt-about")); // muda na mesma, só nesta visita
+            expect(screen.getByTestId("ps-about")).toBeInTheDocument();
+            jest.restoreAllMocks();
+        });
+
+        it("o painel nunca sai na impressão", async () => {
+            mockGetCarPrintSheet.mockResolvedValue({ data: sheet() });
+            const { container } = render(<CarPrintSheet />);
+            const panel = await screen.findByTestId("ps-options");
+            expect(panel).toHaveClass("no-print");
+            expect(screen.getByTestId("print-sheet")).not.toContainElement(panel); // fora da folha
+            const css = container.querySelector("style")!.textContent!;
+            const print = css.slice(css.indexOf("@media print {"));
+            expect(print).toContain(".no-print { display: none !important; }");
+        });
     });
 
     describe("caber numa folha A4 sem passar a largura", () => {
